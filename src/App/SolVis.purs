@@ -63,11 +63,13 @@ render state =
   solution sol =
     [ HH.h2_ [ HH.text "Description" ]
     , HH.p_ [ HH.text sol.description ]
-    , HH.h2_ [ HH.text "Products" ]
     ]
+      <> [ HH.h2_ [ HH.text "Products" ] ]
       <> map (\prod -> HH.p_ [ HH.text prod ]) sol.products
       <> [ HH.h2_ [ HH.text "Prices" ] ]
       <> map (\price -> HH.p_ [ HH.text price.name ]) sol.prices
+      <> [ HH.h2_ [ HH.text "Billing Units" ] ]
+      <> map (\bu -> HH.p_ [ HH.text bu.id ]) sol.billingUnits
 
   content = case state of
     Initial -> [ HH.p_ [ HH.text "No solution loaded yet" ] ]
