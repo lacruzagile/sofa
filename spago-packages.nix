@@ -1156,6 +1156,7 @@ in rec {
             (builtins.attrValues inputs))
         }
         purs bundle -o $out/index.js -m Main output/**/*.js
+        echo 'PS["Main"].main();' >>  $out/index.js
       '';
     };
 }
