@@ -13,6 +13,9 @@ to generate this file without the comments in this block.
 { name = "purs-smart-spec"
 , dependencies =
   [ "aff"
+  , "affjax"
+  , "argonaut"
+  , "argonaut-codecs"
   , "arrays"
   , "console"
   , "control"
@@ -25,6 +28,8 @@ to generate this file without the comments in this block.
   , "random"
   , "routing"
   , "simple-ajax"
+  , "transformers"
+  , "variant"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

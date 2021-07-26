@@ -5,6 +5,9 @@ import Halogen (ClassName(..))
 navbar :: ClassName
 navbar = ClassName "navbar"
 
+hblock :: ClassName
+hblock = ClassName "hblock"
+
 -- Picnic CSS
 brand :: ClassName
 brand = ClassName "brand"
