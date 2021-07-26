@@ -111,7 +111,7 @@ navbar state body =
               [ HP.for "navmenu"
               , HP.classes [ Css.burger, Css.pseudo, Css.button ]
               ]
-              [ HH.text "menu" ]
+              [ HH.text "🍔" ]
           , HH.div [ HP.class_ Css.menu ]
               [ navbarItem Route.Home "Home"
               , navbarItem Route.Button "Button"
