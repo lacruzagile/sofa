@@ -8,6 +8,7 @@ import Data.Argonaut (class DecodeJson, printJsonDecodeError, stringifyWithInden
 import Data.Array (mapWithIndex, modifyAt, (!!))
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), maybe)
+import Data.SmartSpec (RateCard(..))
 import Data.SmartSpec as SS
 import Data.Variant (default, on)
 import Effect.Aff.Class (class MonadAff)
@@ -41,24 +42,11 @@ type StateSolution
   = { name :: String
     , expanded :: Boolean
     , solution :: SubState SS.Solution
-    , products :: Array StateProduct
-    }
-
-type StateProduct
-  = { name :: String
-    , expanded :: Boolean
-    , product :: SubState SS.Product
-    }
-
-type SolWithProd
-  = { solution :: StateSolution
-    , product :: StateProduct
     }
 
 data Action
   = GetMeta
   | ToggleSolution Int
-  | ToggleProduct Int Int
 
 component ::
   forall query input output m.
@@ -82,6 +70,160 @@ render state =
         <> content
     )
   where
+  opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
+  opt = maybe []
+
+  dataItem label value =
+    [ HH.dt_ [ HH.text label ]
+    , HH.dd_ [ HH.text value ]
+    ]
+
+  dataItemCode label value =
+    [ HH.dt_ [ HH.text label ]
+    , HH.dd_ [ HH.pre_ [ HH.code_ [ HH.text value ] ] ]
+    ]
+
+  dataItemJson label = dataItemCode label <<< stringifyWithIndent 2
+
+  dataItemRaw label value =
+    [ HH.dt_ [ HH.text label ]
+    , HH.dd_ [ value ]
+    ]
+
+  billingUnit :: SS.BillingUnit -> H.ComponentHTML Action slots m
+  billingUnit bu =
+    HH.li [ HP.class_ Css.hblock ]
+      [ HH.dl_
+          ( opt (dataItem "ID") bu.id
+              <> opt (dataItem "Name") bu.name
+              <> dataItem "Charge Type" (show bu.chargeType)
+              <> opt (dataItem "Description") bu.description
+          )
+      ]
+
+  dimType :: SS.DimType -> H.ComponentHTML Action slots m
+  dimType dt =
+    HH.li [ HP.class_ Css.hblock ]
+      [ HH.dl_
+          ( opt (dataItem "ID") dt.id
+              <> opt (dataItem "Name") dt.name
+              <> opt (dataItem "Description") dt.description
+              <> opt (dataItemJson "Schema") dt.schema
+          )
+      ]
+
+  sku :: SS.Sku -> H.ComponentHTML Action slots m
+  sku (SS.SkuCode s) = HH.text s
+
+  sku (SS.Sku s) =
+    HH.dl [ HP.class_ Css.hblock ]
+      ( dataItem "Code" s.code
+          <> opt (dataItem "Description") s.description
+          <> opt (dataItem "Name") s.name
+          <> opt (dataItem "Platform") (show <$> s.platform)
+          <> opt (dataItem "Product Category") (show <$> s.productCategory)
+          <> opt (dataItem "Account Product") (show <$> s.accountProduct)
+          <> opt (dataItem "Billable Product") (show <$> s.billableProduct)
+          <> opt (dataItem "Commercial Product") (show <$> s.commercialProduct)
+      )
+
+  productOption :: SS.ProductOption -> H.ComponentHTML Action slots m
+  productOption (SS.ProdOptSkuCode s) = HH.li [ HP.class_ Css.hblock ] [ HH.text s ]
+
+  productOption (SS.ProductOption po) =
+    HH.li [ HP.class_ Css.hblock ]
+      [ HH.dl_
+          ( dataItemRaw "SKU" (sku po.sku)
+              <> opt (dataItem "Name") po.name
+              <> dataItem "Required" (show po.required)
+              <> dataItem "Quote Line Visible" (show po.quoteLineVisible)
+              <> dataItem "Quantity" (show po.quantity)
+              <> dataItem "Min Quantity" (show po.minQuantity)
+              <> dataItem "Max Quantity" (show po.maxQuantity)
+              {- <> dataItem "Required Options" (show po.quantity)
+                 <> dataItem "Exclude Options" (show po.quantity) -}
+              
+              <> dataItem "Selected by Default" (show po.selectedByDefault)
+              <> dataItem "Type" (show po.type_)
+          )
+      ]
+
+  productOptions :: Maybe (Array SS.ProductOption) -> Array (H.ComponentHTML Action slots m)
+  productOptions = maybe [] (html <<< HH.ul_ <<< map productOption)
+    where
+    html x =
+      [ HH.dt_ [ HH.text "Product Options" ]
+      , HH.dd_ [ x ]
+      ]
+
+  product :: SS.Product -> H.ComponentHTML Action slots m
+  product p =
+    HH.li [ HP.class_ Css.hblock ]
+      [ HH.dl_
+          ( dataItem "SKU" p.sku
+              <> dataItem "Description" p.description
+              <> productOptions p.options
+          )
+      ]
+
+  billingUnitRef :: SS.BillingUnitRef -> String
+  billingUnitRef (SS.BillingUnitRef bur) =
+    bur.billingUnitId
+      <> (maybe "" (\x -> " [" <> show x <> "]") bur.solutionUri)
+
+  rateElementSimple :: SS.RateElementSimple -> String
+  rateElementSimple (SS.RateElementSimple r) =
+    billingUnitRef r.billingUnitRef
+      <> " "
+      <> show r.price
+
+  rateElementUsage :: SS.RateElementUsage -> H.ComponentHTML Action slots m
+  rateElementUsage (SS.RateElementUsage r) =
+    HH.dl_
+      ( dataItem "Term of Price Change in Days" (show r.termOfPriceChangeInDays)
+          <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
+      )
+
+  rateCard :: SS.RateCard -> H.ComponentHTML Action slots m
+  rateCard =
+    let
+      wrap = HH.li [ HP.class_ Css.hblock ]
+    in
+      case _ of
+        RateCardPath p -> wrap [ HH.text p ]
+        RateCardPeriodic r ->
+          wrap
+            ( dataItemRaw "SKU" (sku r.sku)
+                <> opt (dataItem "Name") r.name
+                <> dataItem "Currency" (currency r.currency)
+                <> dataItem "Onetime Charge" (rateElementSimple r.onetimeCharge)
+            )
+        RateCardUsage r ->
+          wrap
+            ( dataItemRaw "SKU" (sku r.sku)
+                <> opt (dataItem "Name") r.name
+                <> dataItem "Currency" (currency r.currency)
+                <> dataItemRaw "Usage Charge" (rateElementUsage r.usageCharge)
+            )
+
+  rateCards :: Array SS.RateCard -> H.ComponentHTML Action slots m
+  rateCards = HH.ul_ <<< map rateCard
+
+  currency :: SS.Currency -> String
+  currency (SS.Currency c) =
+    c.code
+      <> maybe "" (\c' -> "\"" <> c' <> "\"") c.country
+
+  price :: SS.Price -> H.ComponentHTML Action slots m
+  price p =
+    HH.li [ HP.class_ Css.hblock ]
+      [ HH.dl_
+          ( dataItem "Name" p.name
+              <> dataItem "Currency" (currency p.currency)
+              <> opt (dataItemRaw "Rate Cards" <<< rateCards) p.rateCards
+          )
+      ]
+
   error err =
     [ HH.div [ HP.class_ Css.card ]
         [ HH.header_
@@ -95,74 +237,16 @@ render state =
 
   loading = [ HH.p_ [ HH.text "Loading …" ] ]
 
-  defRender :: forall a. SubState a -> (a -> Array (H.ComponentHTML Action slots m)) -> Array (H.ComponentHTML Action slots m)
+  defRender ::
+    forall a.
+    SubState a ->
+    (a -> Array (H.ComponentHTML Action slots m)) ->
+    Array (H.ComponentHTML Action slots m)
   defRender s rend = case s of
     Idle -> []
     Loading -> loading
     Success dat -> rend dat
     Error err -> error err
-
-  dataItem label value =
-    [ HH.dt_ [ HH.text label ]
-    , HH.dd_ [ HH.text value ]
-    ]
-
-  dataItem' label =
-    maybe [] \v ->
-      [ HH.dt_ [ HH.text label ]
-      , HH.dd_ [ HH.text v ]
-      ]
-
-  dataItemCode' label =
-    maybe [] \v ->
-      [ HH.dt_ [ HH.text label ]
-      , HH.dd_ [ HH.pre_ [ HH.code_ [ HH.text v ] ] ]
-      ]
-
-  billingUnit :: SS.BillingUnit -> H.ComponentHTML Action slots m
-  billingUnit bu =
-    HH.li [ HP.class_ Css.hblock ]
-      [ HH.dl_
-          ( dataItem' "ID" bu.id
-              <> dataItem' "Name" bu.name
-              <> dataItem "Charge Type" (show bu.chargeType)
-              <> dataItem' "Description" bu.description
-          )
-      ]
-
-  dimType :: SS.DimType -> H.ComponentHTML Action slots m
-  dimType dt =
-    HH.li [ HP.class_ Css.hblock ]
-      [ HH.dl_
-          ( dataItem' "ID" dt.id
-              <> dataItem' "Name" dt.name
-              <> dataItem' "Description" dt.description
-              <> dataItemCode' "Schema" (stringifyWithIndent 2 <$> dt.schema)
-          )
-      ]
-
-  product :: Int -> Int -> StateProduct -> H.ComponentHTML Action slots m
-  product iSol iProd prod =
-    HH.li [ HP.class_ Css.hblock ]
-      $ [ HH.button [ HE.onClick \_ -> ToggleProduct iSol iProd ] [ HH.text prod.name ]
-        ]
-      <> if prod.expanded then defRender prod.product exp else []
-    where
-    exp p =
-      [ HH.dl_
-          ( dataItem "SKU" p.sku
-              <> dataItem "Description" p.description
-          )
-      ]
-
-  price :: SS.Price -> H.ComponentHTML Action slots m
-  price p =
-    HH.li [ HP.class_ Css.hblock ]
-      [ HH.dl_
-          ( dataItem "Name" p.name
-              <> dataItem "Currency" p.currency.code
-          )
-      ]
 
   solution :: Int -> StateSolution -> H.ComponentHTML Action slots m
   solution iSol sol =
@@ -172,17 +256,29 @@ render state =
       <> if sol.expanded then defRender sol.solution exp else []
     where
     exp s =
-      [ HH.h2_ [ HH.text "Description" ]
+      [ HH.h4_ [ HH.text "Description" ]
       , HH.p_ [ HH.text s.description ]
       ]
-        <> [ HH.h2_ [ HH.text "Dimension Types" ] ]
-        <> [ HH.ul_ (map dimType s.dimTypes) ]
-        <> [ HH.h2_ [ HH.text "Products" ] ]
-        <> [ HH.ul_ (mapWithIndex (\iProd -> product iSol iProd) sol.products) ]
-        <> [ HH.h2_ [ HH.text "Prices" ] ]
-        <> [ HH.ul_ (map price s.prices) ]
-        <> [ HH.h2_ [ HH.text "Billing Units" ] ]
-        <> [ HH.ul_ (map billingUnit s.billingUnits) ]
+        <> [ HH.details_
+              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Dimension Types" ]
+              , HH.ul_ (map dimType s.dimTypes)
+              ]
+          ]
+        <> [ HH.details_
+              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Products" ]
+              , HH.ul_ (map product s.products)
+              ]
+          ]
+        <> [ HH.details_
+              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Prices" ]
+              , HH.ul_ (map price s.prices)
+              ]
+          ]
+        <> [ HH.details_
+              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Billing Units" ]
+              , HH.ul_ (map billingUnit s.billingUnits)
+              ]
+          ]
 
   meta m =
     [ HH.h2_ [ HH.text "Solutions" ]
@@ -197,13 +293,8 @@ baseUrl = "v1alpha1/solutions"
 metaUrl :: String
 metaUrl = baseUrl <> "/meta.json"
 
--- url :: String
--- url = "v1alpha1/solutions/example-messaging-sms/solution.json"
 solutionUrl :: String -> String
-solutionUrl solName = baseUrl <> "/" <> solName <> "/solution.json"
-
-productUrl :: String -> String -> String
-productUrl solName prodName = baseUrl <> "/" <> solName <> "/products/" <> prodName <> ".json"
+solutionUrl solName = baseUrl <> "/" <> solName <> "/nsolution.json"
 
 -- | Modifies the solution at the given index.
 modifySolution_ :: forall m. MonadState State m => Int -> (StateSolution -> StateSolution) -> m Unit
@@ -227,24 +318,9 @@ getSolution iSol =
         _ -> Nothing
     )
 
--- | Modifies the product at the given index.
-modifyProduct_ :: forall m. MonadState State m => Int -> Int -> (StateProduct -> StateProduct) -> m Unit
-modifyProduct_ iSol iProd f =
-  modifySolution_ iSol \sol ->
-    sol
-      { products =
-        maybe sol.products identity $ modifyAt iProd f $ sol.products
-      }
-
-getProduct :: forall m. MonadState State m => Int -> Int -> m (Maybe SolWithProd)
-getProduct iSol iProd = do
-  msol <- getSolution iSol
-  pure do
-    solution <- msol
-    product <- solution.products !! iProd
-    pure $ { solution, product }
-
-handleAction :: forall o m. MonadAff m => Action -> H.HalogenM State Action () o m Unit
+handleAction ::
+  forall o m.
+  MonadAff m => Action -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   GetMeta -> do
     H.modify_ \_ -> Loading
@@ -252,7 +328,7 @@ handleAction = case _ of
       getJson metaUrl
         ( \meta ->
             { meta
-            , solutions: map (\x -> { name: x, expanded: false, solution: Idle, products: [] }) meta.solutions
+            , solutions: map (\x -> { name: x, expanded: false, solution: Idle }) meta.solutions
             }
         )
     H.modify_ \_ -> res
@@ -261,37 +337,16 @@ handleAction = case _ of
     case msolution of
       Just solution ->
         if solution.expanded then
-          modifySolution_ iSol \sol -> sol { expanded = false }
+          modifySolution_ iSol $ _ { expanded = false }
         else do
-          modifySolution_ iSol \sol -> sol { solution = Loading }
-          res <- getJson (solutionUrl solution.name) (\sol -> sol)
-          modifySolution_ iSol \sol ->
-            sol
-              { expanded = true
-              , solution = res
-              , products =
-                case res of
-                  Success r -> map (\x -> { name: x, expanded: false, product: Idle }) r.products
-                  _ -> []
-              }
-      _ -> pure unit
-  ToggleProduct iSol iProd -> do
-    mproduction <- getProduct iSol iProd
-    case mproduction of
-      Just product ->
-        if product.product.expanded then
-          modifyProduct_ iSol iProd \prod -> prod { expanded = false }
-        else do
-          modifyProduct_ iSol iProd \prod -> prod { product = Loading }
-          res <- getJson (productUrl product.solution.name product.product.name) (\prod -> prod)
-          modifyProduct_ iSol iProd \prod ->
-            prod
-              { expanded = true
-              , product = res
-              }
+          modifySolution_ iSol $ _ { solution = Loading }
+          res <- getJson (solutionUrl solution.name) identity
+          modifySolution_ iSol $ _ { expanded = true, solution = res }
       _ -> pure unit
 
-getJson :: forall m a b. Bind m => MonadAff m => DecodeJson a => String -> (a -> b) -> m (SubState b)
+getJson ::
+  forall m a b.
+  Bind m => MonadAff m => DecodeJson a => String -> (a -> b) -> m (SubState b)
 getJson url handle = do
   res <- H.liftAff (AJX.get url)
   case res of

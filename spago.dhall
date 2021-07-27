@@ -15,7 +15,6 @@ to generate this file without the comments in this block.
   [ "aff"
   , "affjax"
   , "argonaut"
-  , "argonaut-codecs"
   , "arrays"
   , "console"
   , "control"
