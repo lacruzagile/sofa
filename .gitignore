@@ -13,3 +13,6 @@
 
 ### Emacs ###
 .\#*
+
+### Nix ###
+/.spago2nix
