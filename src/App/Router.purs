@@ -1,7 +1,6 @@
 module App.Router where
 
 import Prelude
-import App.Button as Button
 import App.Home as Home
 import App.SolVis as SolVis
 import Css as Css
@@ -34,7 +33,6 @@ type State
 
 type Slots
   = ( home :: Home.Slot Unit
-    , button :: Button.Slot Unit
     , solvis :: SolVis.Slot Unit
     )
 
@@ -73,12 +71,9 @@ render state =
     $ case state.route of
         Nothing -> slotHome
         Just Route.Home -> slotHome
-        Just Route.Button -> slotButton
         Just Route.SolVis -> slotSolVis
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
-
-  slotButton = HH.slot_ Button.proxy unit Button.component absurd
 
   slotSolVis = HH.slot_ SolVis.proxy unit SolVis.component absurd
 
@@ -113,8 +108,7 @@ navbar state body =
               ]
               [ HH.text "🍔" ]
           , HH.div [ HP.class_ Css.menu ]
-              [ navbarItem Route.Home "Home"
-              , navbarItem Route.Button "Button"
+              [ navbarItem Route.Home "🏠 Home"
               , navbarItem Route.SolVis "SolVis"
               ]
           ]

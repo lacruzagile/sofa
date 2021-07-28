@@ -30,4 +30,6 @@ render _ = do
         [ HH.text "Smart Spec" ]
     , HH.p_
         [ HH.text "This is a basic tool to experiment with Smart Spec." ]
+    , HH.p_
+        [ HH.text "Currently solution visualizer (SolVis) is available." ]
     ]

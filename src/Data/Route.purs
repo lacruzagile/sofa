@@ -9,7 +9,6 @@ import Halogen.HTML.Properties as HP
 
 data Route
   = Home
-  | Button
   | SolVis
 
 derive instance genericRoute :: Generic Route _
@@ -22,18 +21,15 @@ instance showRoute :: Show Route where
   show = genericShow
 
 routes :: Match Route
-routes = root *> (home <|> button <|> solvis)
+routes = root *> (home <|> solvis)
   where
   home = pure Home <* end
-
-  button = Button <$ lit "button" <* end
 
   solvis = SolVis <$ lit "solvis" <* end
 
 rawHref :: Route -> String
 rawHref = case _ of
   Home -> "/"
-  Button -> "/button"
   SolVis -> "/solvis"
 
 href :: forall r i. Route -> HP.IProp ( href :: String | r ) i
