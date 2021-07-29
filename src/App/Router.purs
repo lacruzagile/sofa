@@ -121,13 +121,5 @@ handleQuery ::
   Query a -> H.HalogenM State action slots output m (Maybe a)
 handleQuery = case _ of
   GotoRoute route next -> do
-    liftEffect $ log $ "Route " <> show route
     H.modify_ _ { route = Just route }
     pure (Just next)
-
--- handleAction ::
---   forall slots output m.
---   MonadEffect m =>
---   Action -> H.HalogenM State Action slots output m Unit
--- handleAction = case _ of
---   ToggleMenu -> H.modify_ $ \s -> s { menuOpen = not s.menuOpen }
