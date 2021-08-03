@@ -2,20 +2,12 @@ module Data.SmartSpec
   ( BillingUnit(..)
   , BillingUnitRef(..)
   , ChargeType(..)
+  , ConfigSchemaEntry(..)
   , Currency(..)
-  , DimType(..)
-  , Meta(..)
-  , RateElementUsage(..)
-  , DimTypeRef(..)
-  , UsageSchemaRefByBillingUnit(..)
-  , SegmentationByBillingUnit(..)
   , DefaultUnitPriceByBillingUnit(..)
-  , UsageSchemaRef(..)
-  , Segmentation(..)
-  , SegmentationPeriod(..)
-  , SegmentationModel(..)
-  , SegmentedPrice(..)
-  , UsageCharge(..)
+  , DimType(..)
+  , DimTypeRef(..)
+  , Meta(..)
   , MonthlyCharge(..)
   , OnetimeCharge(..)
   , Platform(..)
@@ -29,16 +21,28 @@ module Data.SmartSpec
   , RateElementMonthly(..)
   , RateElementOnetime(..)
   , RateElementSimple(..)
+  , RateElementUsage(..)
+  , Segmentation(..)
+  , SegmentationByBillingUnit(..)
+  , SegmentationModel(..)
+  , SegmentationPeriod(..)
+  , SegmentedPrice(..)
   , Sku(..)
   , Solution(..)
   , Uri(..)
+  , UsageCharge(..)
+  , UsageSchemaRef(..)
+  , UsageSchemaRefByBillingUnit(..)
   ) where
 
 import Prelude
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), decodeJson, (.:?), (.:), (.!=))
 import Data.Either (Either(..))
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
+import Foreign.Object as FO
 
 type Uri
   = String
@@ -357,12 +361,70 @@ instance decodeJsonChargeType :: DecodeJson ChargeType where
       "Usage" -> Right ChargeTypeUsage
       _ -> Left (TypeMismatch "ChargeType")
 
-type Product
-  = { sku :: String
-    , description :: String
-    , options :: Maybe (Array ProductOption)
-    , features :: Maybe (Array ProductFeature)
+data ConfigSchemaEntry
+  = CseInteger
+    { minimum :: Maybe Number
+    , maximum :: Maybe Number
+    , default :: Maybe Number
     }
+  | CseString
+    { minLength :: Maybe Int
+    , maxLength :: Maybe Int
+    , default :: Maybe String
+    }
+  | CseRegex
+    { pattern :: String
+    , default :: Maybe String
+    }
+
+instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
+  decodeJson json = do
+    o <- decodeJson json
+    type_ <- o .: "type"
+    case type_ of
+      "integer" -> do
+        minimum <- o .:? "minimum"
+        maximum <- o .:? "maximum"
+        default <- o .:? "default"
+        pure $ CseInteger { minimum, maximum, default }
+      "string" -> do
+        minLength <- o .:? "minLength"
+        maxLength <- o .:? "maxLength"
+        default <- o .:? "default"
+        pure $ CseString { minLength, maxLength, default }
+      "regex" -> do
+        pattern <- o .: "pattern"
+        default <- o .:? "default"
+        pure $ CseRegex { pattern, default }
+      _ -> Left (TypeMismatch "ConfigSchemaEntry")
+
+newtype Product
+  = Product
+  { sku :: String
+  , description :: String
+  , configSchema :: Maybe (Map String ConfigSchemaEntry)
+  , options :: Maybe (Array ProductOption)
+  , features :: Maybe (Array ProductFeature)
+  }
+
+instance decodeJsonProduct :: DecodeJson Product where
+  decodeJson json = do
+    o <- decodeJson json
+    sku <- o .: "sku"
+    description <- o .: "description"
+    configSchemaObj :: Maybe (FO.Object ConfigSchemaEntry) <- o .:? "configSchema"
+    let
+      configSchema = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> configSchemaObj
+    options <- o .:? "options"
+    features <- o .:? "features"
+    pure
+      $ Product
+          { sku
+          , description
+          , configSchema
+          , options
+          , features
+          }
 
 data Platform
   = PlatformACL

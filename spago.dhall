@@ -20,14 +20,17 @@ to generate this file without the comments in this block.
   , "control"
   , "effect"
   , "either"
+  , "foldable-traversable"
+  , "foreign-object"
   , "halogen"
   , "maybe"
+  , "ordered-collections"
   , "prelude"
   , "psci-support"
-  , "random"
   , "routing"
   , "simple-ajax"
   , "transformers"
+  , "tuples"
   , "variant"
   ]
 , packages = ./packages.dhall

@@ -5,11 +5,14 @@ import Affjax (printError)
 import Control.Monad.State (class MonadState)
 import Css as Css
 import Data.Argonaut (class DecodeJson, printJsonDecodeError, stringifyWithIndent)
-import Data.Array (mapWithIndex, modifyAt, (!!))
+import Data.Array (concatMap, mapWithIndex, modifyAt, (!!))
 import Data.Either (Either(..))
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec (RateCard(..))
 import Data.SmartSpec as SS
+import Data.Tuple (uncurry)
 import Data.Variant (default, on)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -156,13 +159,54 @@ render state =
       , HH.dd_ [ x ]
       ]
 
+  configSchemaEntry :: String -> SS.ConfigSchemaEntry -> Array (H.ComponentHTML Action slots m)
+  configSchemaEntry k = case _ of
+    SS.CseInteger v ->
+      [ HH.dt_ [ HH.text k, HH.text " (integer)" ]
+      , HH.dd_
+          [ HH.dl_
+              ( opt (dataItem "Minimum" <<< show) v.minimum
+                  <> opt (dataItem "Maximum" <<< show) v.maximum
+                  <> opt (dataItem "Default" <<< show) v.default
+              )
+          ]
+      ]
+    SS.CseString v ->
+      [ HH.dt_ [ HH.text k, HH.text " (string)" ]
+      , HH.dd_
+          [ HH.dl_
+              ( opt (dataItem "Minimum Length" <<< show) v.minLength
+                  <> opt (dataItem "Maximum Length" <<< show) v.maxLength
+                  <> opt (dataItem "Default") v.default
+              )
+          ]
+      ]
+    SS.CseRegex v ->
+      [ HH.dt_ [ HH.text k, HH.text " (regex)" ]
+      , HH.dd_
+          [ HH.dl_
+              ( dataItem "Pattern" v.pattern
+                  <> opt (dataItem "Default") v.default
+              )
+          ]
+      ]
+
+  configSchema :: Maybe (Map String SS.ConfigSchemaEntry) -> Array (H.ComponentHTML Action slots m)
+  configSchema = maybe [] (html <<< HH.dl_ <<< concatMap (uncurry configSchemaEntry) <<< Map.toUnfoldable)
+    where
+    html x =
+      [ HH.dt_ [ HH.text "Configuration Schema" ]
+      , HH.dd_ [ x ]
+      ]
+
   product :: SS.Product -> H.ComponentHTML Action slots m
-  product p =
+  product (SS.Product p) =
     HH.li [ HP.class_ Css.hblock ]
       [ HH.dl_
           ( dataItem "SKU" p.sku
               <> dataItem "Description" p.description
               <> productOptions p.options
+              <> configSchema p.configSchema
           )
       ]
 
