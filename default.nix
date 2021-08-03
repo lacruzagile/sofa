@@ -5,6 +5,6 @@ let spagoPkgs = import ./spago-packages.nix { inherit pkgs; };
 
 in spagoPkgs.mkBuildProjectBundle {
   name = "smart-spec-web";
-  src = ./.;
+  src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
   purs = pkgs.purescript;
 }

@@ -12,7 +12,7 @@
 /index.js
 
 ### Emacs ###
-.\#*
+.#*
 
 ### Nix ###
 /.spago2nix
