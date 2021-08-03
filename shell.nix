@@ -1,6 +1,6 @@
 { pkgs ? import ../nix/packages.nix }:
 
-pkgs.mkShell {
+pkgs.mkShellNoCC {
   name = "nix-shell-for-purssmartspec";
   buildInputs = with pkgs; [
     dhall-lsp-server
