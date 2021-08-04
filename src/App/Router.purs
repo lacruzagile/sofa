@@ -3,6 +3,7 @@ module App.Router where
 import Prelude
 import App.Home as Home
 import App.SolVis as SolVis
+import App.OrderForm as OrderForm
 import Css as Css
 import Data.Maybe (Maybe(..))
 import Data.Route (Route)
@@ -32,7 +33,8 @@ type State
 
 type Slots
   = ( home :: Home.Slot Unit
-    , solvis :: SolVis.Slot Unit
+    , solVis :: SolVis.Slot Unit
+    , orderForm :: OrderForm.Slot Unit
     )
 
 data Query a
@@ -70,9 +72,12 @@ render state =
     $ case state.route of
         Nothing -> slotHome
         Just Route.Home -> slotHome
+        Just Route.OrderForm -> slotOrderForm
         Just Route.SolVis -> slotSolVis
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
+
+  slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component absurd
 
   slotSolVis = HH.slot_ SolVis.proxy unit SolVis.component absurd
 
@@ -109,6 +114,7 @@ navbar state body =
           , HH.div [ HP.class_ Css.menu ]
               [ navbarItem Route.Home "🏠 Home"
               , navbarItem Route.SolVis "SolVis"
+              , navbarItem Route.OrderForm "OrderForm"
               ]
           ]
       , HH.main [ HP.class_ (H.ClassName "content") ] [ body ]

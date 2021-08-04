@@ -8,6 +8,15 @@ navbar = ClassName "navbar"
 hblock :: ClassName
 hblock = ClassName "hblock"
 
+blocklist :: ClassName
+blocklist = ClassName "blocklist"
+
+tabBody :: ClassName
+tabBody = ClassName "tabbody"
+
+orderSection :: ClassName
+orderSection = ClassName "ordersection"
+
 -- Picnic CSS
 brand :: ClassName
 brand = ClassName "brand"
@@ -45,33 +54,23 @@ content = ClassName "content"
 close :: ClassName
 close = ClassName "close"
 
--- modal ::
---   forall slot action.
---   String -> String -> Array (HH.HTML slot action) -> HH.HTML slot action
--- modal label title body =
---   HH.div [ HP.class_ Css.modal ]
---     [ HH.input [ HP.id label, HP.type_ InputCheckbox ]
---     , HH.label [ HP.for label, HP.class_ Css.overlay ] []
---     , HH.article_
---         [ HH.header_
---             [ HH.h3_ [ HH.text title ]
---             , HH.label [ HP.for label, HP.class_ Css.close ] [ HH.text "&times;" ]
---             ]
---         , HH.section [ HP.class_ Css.content ] body
---         ]
---     ]
--- textModal ::
---   forall slot action.
---   String -> String -> String -> HH.HTML slot action
--- textModal label title body =
---   HH.div [ HP.class_ Css.modal ]
---     [ HH.input [ HP.id label, HP.type_ InputCheckbox ]
---     , HH.label [ HP.for label, HP.class_ Css.overlay ] []
---     , HH.article_
---         [ HH.header_
---             [ HH.h3_ [ HH.text title ]
---             , HH.label [ HP.for label, HP.class_ Css.close ] [ HH.text "&times;" ]
---             ]
---         , HH.section [ HP.class_ Css.content ] [HH.p_ [ HH.text body]]
---         ]
---     ]
+flex :: ClassName
+flex = ClassName "flex"
+
+tabs :: ClassName
+tabs = ClassName "tabs"
+
+toggle :: ClassName
+toggle = ClassName "toggle"
+
+checkable :: ClassName
+checkable = ClassName "checkable"
+
+row :: ClassName
+row = ClassName "row"
+
+two :: ClassName
+two = ClassName "two"
+
+three :: ClassName
+three = ClassName "three"

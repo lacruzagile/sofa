@@ -1,38 +1,74 @@
 module Data.SmartSpec
-  ( BillingUnit(..)
+  ( Address(..)
+  , Asset(..)
+  , BillingAccountRef(..)
+  , BillingOption(..)
+  , BillingUnit(..)
   , BillingUnitRef(..)
   , ChargeType(..)
+  , Commercial(..)
   , ConfigSchemaEntry(..)
+  , ConfigValue(..)
+  , Contact(..)
+  , ContractTerm(..)
   , Currency(..)
+  , Customer(..)
   , DefaultUnitPriceByBillingUnit(..)
   , DimType(..)
   , DimTypeRef(..)
+  , LegalEntity(..)
   , Meta(..)
   , MonthlyCharge(..)
+  , MonthlyPriceOverride(..)
+  , MonthlyPriceOverrideElem(..)
   , OnetimeCharge(..)
+  , OnetimePriceOverride(..)
+  , OnetimePriceOverrideElem(..)
+  , OrderForm(..)
+  , OrderLine(..)
+  , OrderSection(..)
+  , OrderSectionSummary(..)
+  , OrderStatus(..)
+  , OrderSummary(..)
   , Platform(..)
   , Price(..)
+  , PriceOverrides(..)
   , Product(..)
   , ProductCategory(..)
   , ProductFeature(..)
+  , ProductInstance(..)
   , ProductOption(..)
   , ProductOptionType(..)
+  , Purchaser(..)
   , RateCard(..)
+  , RateCardCharge(..)
   , RateElementMonthly(..)
   , RateElementOnetime(..)
   , RateElementSimple(..)
+  , RateElementSimpleRow(..)
   , RateElementUsage(..)
+  , RateElementUsageRow(..)
+  , ReturnCustomerCommercial(..)
+  , ReturnCustomerData(..)
+  , SalesforceAccountRef(..)
   , Segmentation(..)
   , SegmentationByBillingUnit(..)
   , SegmentationModel(..)
   , SegmentationPeriod(..)
   , SegmentedPrice(..)
+  , Seller(..)
   , Sku(..)
   , Solution(..)
+  , UnitPriceByBillingUnit(..)
+  , UnitPricePerDimByBillingUnit(..)
   , Uri(..)
   , UsageCharge(..)
+  , UsagePriceOverride(..)
+  , UsagePriceOverrideElem(..)
   , UsageSchemaRef(..)
   , UsageSchemaRefByBillingUnit(..)
+  , Validity(..)
+  , Date(..)
   ) where
 
 import Prelude
@@ -51,13 +87,17 @@ type Meta
   = { solutions :: Array String
     }
 
-type Solution
-  = { description :: String
-    , dimTypes :: Array DimType
-    , products :: Array Product
-    , prices :: Array Price
-    , billingUnits :: Array BillingUnit
-    }
+newtype Solution
+  = Solution
+  { description :: String
+  , dimTypes :: Array DimType
+  , products :: Array Product
+  , prices :: Array Price
+  , billingUnits :: Array BillingUnit
+  }
+
+instance decodeJsonSolution :: DecodeJson Solution where
+  decodeJson json = Solution <$> decodeJson json
 
 newtype Currency
   = Currency { code :: String, country :: Maybe String }
@@ -73,72 +113,72 @@ instance decodeJsonCurrency :: DecodeJson Currency where
       country <- o .:? "country" .!= Nothing
       pure $ Currency { code, country }
 
-type Price
-  = { name :: String
-    , currency :: Currency
-    , rateCardPathPrefix :: Maybe String
-    , rateCards :: Maybe (Array RateCard)
+newtype Price
+  = Price
+  { name :: String
+  , currency :: Currency
+  , rateCardPathPrefix :: Maybe String
+  , rateCards :: Maybe (Array RateCard)
+  }
+
+instance decodeJsonPrice :: DecodeJson Price where
+  decodeJson json = Price <$> decodeJson json
+
+data RateCardCharge
+  = RateCardCharge1
+    { onetimeCharge :: RateElementOnetime
+    , monthlyCharge :: RateElementMonthly
     }
+  | RateCardCharge2
+    { onetimeCharge :: RateElementOnetime
+    , monthlyCharges :: Array MonthlyCharge
+    }
+  | RateCardCharge3
+    { onetimeCharges :: Array OnetimeCharge
+    , monthlyCharge :: RateElementMonthly
+    }
+  | RateCardCharge4
+    { onetimeCharges :: Array OnetimeCharge
+    , monthlyCharges :: Array MonthlyCharge
+    }
+  | RateCardCharge5
+    { usageCharge :: RateElementUsage
+    }
+  | RateCardCharge6
+    { usageCharges :: Array UsageCharge
+    }
+
+instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
+  decodeJson json =
+    (RateCardCharge1 <$> decodeJson json)
+      <|> (RateCardCharge1 <$> decodeJson json)
+      <|> (RateCardCharge2 <$> decodeJson json)
+      <|> (RateCardCharge3 <$> decodeJson json)
+      <|> (RateCardCharge4 <$> decodeJson json)
+      <|> (RateCardCharge5 <$> decodeJson json)
+      <|> (RateCardCharge6 <$> decodeJson json)
 
 data RateCard
   = RateCardPath String
-  | RateCardPeriodic
+  | RateCard
     { sku :: Sku
     , name :: Maybe String
     , currency :: Currency
-    , onetimeCharge :: RateElementOnetime
-    , onetimeCharges :: Maybe (Array OnetimeCharge)
-    , monthlyCharge :: RateElementMonthly
-    , monthlyCharges :: Maybe (Array MonthlyCharge)
-    }
-  | RateCardUsage
-    { sku :: Sku
-    , name :: Maybe String
-    , currency :: Currency
-    , usageCharge :: RateElementUsage
-    , usageCharges :: Maybe (Array UsageCharge)
+    , charge :: RateCardCharge
     }
 
 instance decodeJsonRateCard :: DecodeJson RateCard where
-  decodeJson json = rateCardPath <|> rateCardPeriodic <|> rateCardUsage
+  decodeJson json = rateCardPath <|> rateCard
     where
     rateCardPath = RateCardPath <$> decodeJson json
 
-    rateCardPeriodic = do
+    rateCard = do
       o <- decodeJson json
       sku <- o .: "sku"
       name <- o .:? "name"
       currency <- o .: "currency"
-      onetimeCharge <- o .: "onetimeCharge"
-      onetimeCharges <- o .:? "onetimeCharges"
-      monthlyCharge <- o .: "monthlyCharge"
-      monthlyCharges <- o .:? "monthlyCharges"
-      pure
-        $ RateCardPeriodic
-            { sku
-            , name
-            , currency
-            , onetimeCharge
-            , onetimeCharges
-            , monthlyCharge
-            , monthlyCharges
-            }
-
-    rateCardUsage = do
-      o <- decodeJson json
-      sku <- o .: "sku"
-      name <- o .:? "name"
-      currency <- o .: "currency"
-      usageCharge <- o .: "usageCharge"
-      usageCharges <- o .:? "usageCharges"
-      pure
-        $ RateCardUsage
-            { sku
-            , name
-            , currency
-            , usageCharge
-            , usageCharges
-            }
+      charge <- decodeJson json
+      pure $ RateCard { sku, name, currency, charge }
 
 newtype OnetimeCharge
   = OnetimeCharge
@@ -164,32 +204,39 @@ newtype UsageCharge
 instance decodeJsonUsageCharge :: DecodeJson UsageCharge where
   decodeJson json = UsageCharge <$> decodeJson json
 
-newtype RateElementSimple
-  = RateElementSimple
-  { billingUnitRef :: BillingUnitRef
-  , price :: Number
-  }
+type RateElementSimpleRow
+  = ( billingUnitRef :: BillingUnitRef
+    , price :: Number
+    )
 
-instance decodeJsonRateElementSimple :: DecodeJson RateElementSimple where
-  decodeJson json = RateElementSimple <$> decodeJson json
+type RateElementSimple
+  = Record RateElementSimpleRow
 
-type RateElementOnetime
-  = RateElementSimple
+newtype RateElementOnetime
+  = RateElementOnetime RateElementSimple
 
-type RateElementMonthly
-  = RateElementSimple
+instance decodeJsonRateElementOnetime :: DecodeJson RateElementOnetime where
+  decodeJson json = RateElementOnetime <$> decodeJson json
+
+newtype RateElementMonthly
+  = RateElementMonthly RateElementSimple
+
+instance decodeJsonRateElementMonthly :: DecodeJson RateElementMonthly where
+  decodeJson json = RateElementMonthly <$> decodeJson json
+
+type RateElementUsageRow
+  = ( termOfPriceChangeInDays :: Int
+    , dimTypeRef :: Maybe DimTypeRef
+    , billingUnitRefs :: Maybe (Array BillingUnitRef)
+    , usageSchemaRefByBillingUnit :: Maybe UsageSchemaRefByBillingUnit
+    , segmentationByBillingUnit :: Maybe SegmentationByBillingUnit
+    , defaultUnitPriceByBillingUnit :: Maybe DefaultUnitPriceByBillingUnit
+    , unitPricePerDimByBillingUnit :: Array (UnitPricePerDimByBillingUnit)
+    , monthlyMinimum :: Number
+    )
 
 newtype RateElementUsage
-  = RateElementUsage
-  { termOfPriceChangeInDays :: Int
-  , dimTypeRef :: Maybe DimTypeRef
-  , billingUnitRefs :: Maybe (Array BillingUnitRef)
-  , usageSchemaRefByBillingUnit :: Maybe UsageSchemaRefByBillingUnit
-  , segmentationByBillingUnit :: Maybe SegmentationByBillingUnit
-  , defaultUnitPriceByBillingUnit :: Maybe DefaultUnitPriceByBillingUnit
-  -- , unitPricePerDimByBillingUnit :: Maybe UnitPricePerDimByBillingUnit
-  , monthlyMinimum :: Number
-  }
+  = RateElementUsage (Record RateElementUsageRow)
 
 instance decodeJsonRateElementUsage :: DecodeJson RateElementUsage where
   decodeJson json = do
@@ -200,6 +247,7 @@ instance decodeJsonRateElementUsage :: DecodeJson RateElementUsage where
     usageSchemaRefByBillingUnit <- o .:? "usageSchemaRefByBillingUnit"
     segmentationByBillingUnit <- o .:? "segmentationByBillingUnit"
     defaultUnitPriceByBillingUnit <- o .:? "defaultUnitPriceByBillingUnit"
+    unitPricePerDimByBillingUnit <- o .:? "unitPricePerDimByBillingUnit" .!= []
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
     pure
       $ RateElementUsage
@@ -209,6 +257,7 @@ instance decodeJsonRateElementUsage :: DecodeJson RateElementUsage where
           , usageSchemaRefByBillingUnit
           , segmentationByBillingUnit
           , defaultUnitPriceByBillingUnit
+          , unitPricePerDimByBillingUnit
           , monthlyMinimum
           }
 
@@ -248,10 +297,26 @@ newtype UnitPriceByBillingUnit
   , price :: SegmentedPrice
   }
 
--- newtype UnitPricePerDimByBillingUnit = UnitPricePerDimByBillingUnit {
---   dim :: Json
---   , unitPricesByBillingUnit :: Array UnitPriceByBillingUnit
---                                                                     }
+instance decodeJsonUnitPriceByBillingUnit :: DecodeJson UnitPriceByBillingUnit where
+  decodeJson json = UnitPriceByBillingUnit <$> decodeJson json
+
+newtype UnitPricePerDimByBillingUnit
+  = UnitPricePerDimByBillingUnit
+  { dim :: Map String ConfigValue
+  , monthlyMinimum :: Number
+  , unitPricesByBillingUnit :: Array UnitPriceByBillingUnit
+  }
+
+instance decodeJsonUnitPricePerDimByBillingUnit :: DecodeJson UnitPricePerDimByBillingUnit where
+  decodeJson json = do
+    o <- decodeJson json
+    dimObj :: FO.Object ConfigValue <- o .: "dim"
+    let
+      dim = Map.fromFoldable (FO.toUnfoldable dimObj :: Array _)
+    monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
+    unitPricesByBillingUnit <- o .: "unitPricesByBillingUnit"
+    pure $ UnitPricePerDimByBillingUnit { dim, monthlyMinimum, unitPricesByBillingUnit }
+
 newtype SegmentationByBillingUnit
   = SegmentationByBillingUnit
   { billingUnitRef :: BillingUnitRef
@@ -334,12 +399,16 @@ instance decodeJsonBillingUnitRef :: DecodeJson BillingUnitRef where
       solutionUri <- o .:? "solutionURI"
       pure $ BillingUnitRef { billingUnitId, solutionUri }
 
-type BillingUnit
-  = { id :: Maybe String
-    , name :: Maybe String
-    , chargeType :: ChargeType
-    , description :: Maybe String
-    }
+newtype BillingUnit
+  = BillingUnit
+  { id :: Maybe String
+  , name :: Maybe String
+  , chargeType :: ChargeType
+  , description :: Maybe String
+  }
+
+instance decodeJsonBillingUnit :: DecodeJson BillingUnit where
+  decodeJson json = BillingUnit <$> decodeJson json
 
 data ChargeType
   = ChargeTypeOnetime
@@ -397,6 +466,20 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
         default <- o .:? "default"
         pure $ CseRegex { pattern, default }
       _ -> Left (TypeMismatch "ConfigSchemaEntry")
+
+data ConfigValue
+  = CvInteger Int
+  | CvString String
+
+instance showConfigValue :: Show ConfigValue where
+  show = case _ of
+    CvInteger v -> show v
+    CvString v -> v
+
+instance decodeJsonConfigValue :: DecodeJson ConfigValue where
+  decodeJson json =
+    (CvInteger <$> decodeJson json)
+      <|> (CvString <$> decodeJson json)
 
 newtype Product
   = Product
@@ -677,11 +760,15 @@ instance decodeJsonProductOptionType :: DecodeJson ProductOptionType where
       "Related" -> Right Related
       _ -> Left (TypeMismatch "ProductOptionType")
 
-type ProductFeature
-  = { name :: Maybe String
-    , description :: Maybe String
-    , options :: Maybe (Array Json)
-    }
+newtype ProductFeature
+  = ProductFeature
+  { name :: Maybe String
+  , description :: Maybe String
+  , options :: Maybe (Array Json)
+  }
+
+instance decodeJsonProductFeature :: DecodeJson ProductFeature where
+  decodeJson json = ProductFeature <$> decodeJson json
 
 newtype DimTypeRef
   = DimTypeRef { dimTypeId :: String, solutionUri :: Maybe Uri }
@@ -697,12 +784,30 @@ instance decodeJsonDimTypeRef :: DecodeJson DimTypeRef where
       solutionUri <- o .:? "solutionURI"
       pure $ DimTypeRef { dimTypeId, solutionUri }
 
-type DimType
-  = { id :: Maybe String
-    , name :: Maybe String
-    , description :: Maybe String
-    , schema :: Maybe Json
-    }
+newtype DimType
+  = DimType
+  { id :: Maybe String
+  , name :: Maybe String
+  , description :: Maybe String
+  , schema :: Map String ConfigSchemaEntry
+  }
+
+instance decodeJsonDimType :: DecodeJson DimType where
+  decodeJson json = do
+    o <- decodeJson json
+    id <- o .: "id"
+    name <- o .:? "name"
+    description <- o .:? "description"
+    schemaObj :: FO.Object ConfigSchemaEntry <- o .: "schema"
+    let
+      schema = Map.fromFoldable (FO.toUnfoldable schemaObj :: Array _)
+    pure
+      $ DimType
+          { id
+          , name
+          , description
+          , schema
+          }
 
 newtype UsageSchemaRef
   = UsageSchemaRef { usageSchemaId :: String, solutionUri :: Maybe Uri }
@@ -718,9 +823,353 @@ instance decodeJsonUsageSchemaRef :: DecodeJson UsageSchemaRef where
       solutionUri <- o .:? "solutionURI"
       pure $ UsageSchemaRef { usageSchemaId, solutionUri }
 
-type UsageSchema
-  = { id :: Maybe String
-    , name :: Maybe String
-    , description :: Maybe String
-    , dimTypeRefs :: Maybe (Array String)
+newtype UsageSchema
+  = UsageSchema
+  { id :: Maybe String
+  , name :: Maybe String
+  , description :: Maybe String
+  , dimTypeRefs :: Maybe (Array String)
+  }
+
+instance decodeJsonUsageSchema :: DecodeJson UsageSchema where
+  decodeJson json = UsageSchema <$> decodeJson json
+
+data BillingOption
+  = Prepay
+  | PostPay
+
+instance showBillingOption :: Show BillingOption where
+  show = case _ of
+    Prepay -> "Prepay"
+    PostPay -> "PostPay"
+
+instance decodeJsonBillingOption :: DecodeJson BillingOption where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "Prepay" -> Right Prepay
+      "PostPay" -> Right PostPay
+      _ -> Left (TypeMismatch "BillingOption")
+
+data ContractTerm
+  = Ongoing
+  | Fixed
+
+instance showContractTerm :: Show ContractTerm where
+  show = case _ of
+    Ongoing -> "Ongoing"
+    Fixed -> "Fixed"
+
+instance decodeJsonContractTerm :: DecodeJson ContractTerm where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "Ongoing" -> Right Ongoing
+      "Fixed" -> Right Fixed
+      _ -> Left (TypeMismatch "ContractTerm")
+
+newtype Commercial
+  = Commercial
+  { billingOption :: BillingOption
+  , contractTerm :: ContractTerm
+  , paymentCurrency :: Currency
+  , priceCurrency :: Currency
+  }
+
+instance decodeJsonCommercial :: DecodeJson Commercial where
+  decodeJson json = Commercial <$> decodeJson json
+
+newtype Address
+  = Address {}
+
+instance decodeJsonAddress :: DecodeJson Address where
+  decodeJson json = Address <$> decodeJson json
+
+newtype Contact
+  = Contact
+  { email :: String
+  , name :: String
+  , phone :: String
+  }
+
+instance decodeJsonContact :: DecodeJson Contact where
+  decodeJson json = Contact <$> decodeJson json
+
+newtype Purchaser
+  = Purchaser
+  { address :: Address
+  , contacts :: { primary :: Contact, finance :: Contact }
+  , corporateName :: String
+  , country :: String
+  , registrationNr :: String
+  , taxID :: String
+  , website :: Uri
+  }
+
+instance decodeJsonPurchaser :: DecodeJson Purchaser where
+  decodeJson json = Purchaser <$> decodeJson json
+
+newtype LegalEntity
+  = LegalEntity
+  { name :: String
+  , address :: Address
+  , country :: String
+  }
+
+instance decodeJsonLegalEntity :: DecodeJson LegalEntity where
+  decodeJson json = LegalEntity <$> decodeJson json
+
+newtype Seller
+  = Seller
+  { contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
+  , legalEntity :: LegalEntity
+  }
+
+instance decodeJsonSeller :: DecodeJson Seller where
+  decodeJson json = Seller <$> decodeJson json
+
+newtype BillingAccountRef
+  = BillingAccountRef
+  { billingAccountID :: String
+  }
+
+instance decodeJsonBillingAccountRef :: DecodeJson BillingAccountRef where
+  decodeJson json = BillingAccountRef <$> decodeJson json
+
+data ReturnCustomerCommercial
+  = RccCommercial Commercial
+  | RccBillingAccountRef BillingAccountRef
+
+instance decodeJsonReturnCustomerCommercial :: DecodeJson ReturnCustomerCommercial where
+  decodeJson json =
+    (RccCommercial <$> decodeJson json)
+      <|> (RccBillingAccountRef <$> decodeJson json)
+
+type Date
+  = String
+
+newtype Validity
+  = Validity
+  { startDate :: Date
+  , endDateExclusive :: Date
+  }
+
+instance decodeJsonValidity :: DecodeJson Validity where
+  decodeJson json = Validity <$> decodeJson json
+
+newtype MonthlyPriceOverrideElem
+  = MonthlyPriceOverrideElem
+  { validity :: Validity
+  | RateElementSimpleRow
+  }
+
+instance decodeJsonMonthlyPriceOverrideElem :: DecodeJson MonthlyPriceOverrideElem where
+  decodeJson json = MonthlyPriceOverrideElem <$> decodeJson json
+
+newtype MonthlyPriceOverride
+  = MonthlyPriceOverride
+  { id :: String
+  , elements :: Array MonthlyPriceOverrideElem
+  }
+
+instance decodeJsonMonthlyPriceOverride :: DecodeJson MonthlyPriceOverride where
+  decodeJson json = MonthlyPriceOverride <$> decodeJson json
+
+newtype OnetimePriceOverrideElem
+  = OnetimePriceOverrideElem
+  { validity :: Validity
+  | RateElementSimpleRow
+  }
+
+instance decodeJsonOnetimePriceOverrideElem :: DecodeJson OnetimePriceOverrideElem where
+  decodeJson json = OnetimePriceOverrideElem <$> decodeJson json
+
+newtype OnetimePriceOverride
+  = OnetimePriceOverride
+  { id :: String
+  , elements :: Array OnetimePriceOverrideElem
+  }
+
+instance decodeJsonOnetimePriceOverride :: DecodeJson OnetimePriceOverride where
+  decodeJson json = OnetimePriceOverride <$> decodeJson json
+
+newtype UsagePriceOverrideElem
+  = UsagePriceOverrideElem
+  { validity :: Validity
+  | RateElementUsageRow
+  }
+
+instance decodeJsonUsagePriceOverrideElem :: DecodeJson UsagePriceOverrideElem where
+  decodeJson json = UsagePriceOverrideElem <$> decodeJson json
+
+newtype UsagePriceOverride
+  = UsagePriceOverride
+  { id :: String
+  , elements :: Array UsagePriceOverrideElem
+  }
+
+instance decodeJsonUsagePriceOverride :: DecodeJson UsagePriceOverride where
+  decodeJson json = UsagePriceOverride <$> decodeJson json
+
+newtype PriceOverrides
+  = PriceOverrides
+  { monthlyPriceOverrides :: Array MonthlyPriceOverride
+  , onetimePriceOverrides :: Array OnetimePriceOverride
+  , usagePriceOverrides :: Array UsagePriceOverride
+  }
+
+instance decodeJsonPriceOverrides :: DecodeJson PriceOverrides where
+  decodeJson json = PriceOverrides <$> decodeJson json
+
+newtype ProductInstance
+  = ProductInstance
+  {
+  }
+
+instance decodeJsonProductInstance :: DecodeJson ProductInstance where
+  decodeJson json = ProductInstance <$> decodeJson json
+
+newtype Asset
+  = Asset
+  { baseRateCardURI :: Uri
+  , priceOverrides :: PriceOverrides
+  , product :: ProductInstance
+  , quantity :: Int
+  }
+
+instance decodeJsonAsset :: DecodeJson Asset where
+  decodeJson json = Asset <$> decodeJson json
+
+newtype SalesforceAccountRef
+  = SalesforceAccountRef
+  { salesforceAccountID :: String
+  }
+
+instance decodeJsonSalesforceAccountRef :: DecodeJson SalesforceAccountRef where
+  decodeJson json = SalesforceAccountRef <$> decodeJson json
+
+newtype ReturnCustomerData
+  = ReturnCustomerData
+  { assets :: Array Asset
+  , salesforceAccountRef :: SalesforceAccountRef
+  }
+
+instance decodeJsonReturnCustomerData :: DecodeJson ReturnCustomerData where
+  decodeJson json = ReturnCustomerData <$> decodeJson json
+
+data Customer
+  = NewCustomer
+    { commercial :: Commercial
+    , purchaser :: Purchaser
+    , seller :: Seller
     }
+  | ReturnCustomer
+    { commercial :: ReturnCustomerCommercial
+    , customer :: ReturnCustomerData
+    }
+
+instance decodeJsonCustomer :: DecodeJson Customer where
+  decodeJson json = (NewCustomer <$> decodeJson json) <|> (ReturnCustomer <$> decodeJson json)
+
+data OrderStatus
+  = OsQuoteNew
+  | OsQuoteApprovalPending
+  | OsQuoteApproved
+  | OsQuoteAborted
+  | OsQuoteSignPending
+  | OsQuoteSigned
+  | OsOrderPending
+  | OsOrderOngoing
+  | OsOrderAborted
+  | OsOrderCompleted
+  | OsProvisionPending
+  | OsProvisionOngoging
+  | OsProvisionCompleted
+  | OsProvisionAborted
+
+instance showOrderStatus :: Show OrderStatus where
+  show = case _ of
+    OsQuoteNew -> "ProvisionAborted"
+    OsQuoteApprovalPending -> "ProvisionAborted"
+    OsQuoteApproved -> "ProvisionAborted"
+    OsQuoteAborted -> "ProvisionAborted"
+    OsQuoteSignPending -> "ProvisionAborted"
+    OsQuoteSigned -> "ProvisionAborted"
+    OsOrderPending -> "ProvisionAborted"
+    OsOrderOngoing -> "ProvisionAborted"
+    OsOrderAborted -> "ProvisionAborted"
+    OsOrderCompleted -> "ProvisionAborted"
+    OsProvisionPending -> "ProvisionAborted"
+    OsProvisionOngoging -> "ProvisionAborted"
+    OsProvisionCompleted -> "ProvisionAborted"
+    OsProvisionAborted -> "ProvisionAborted"
+
+instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "QuoteNew" -> Right OsProvisionAborted
+      "QuoteApprovalPending" -> Right OsProvisionAborted
+      "QuoteApproved" -> Right OsProvisionAborted
+      "QuoteAborted" -> Right OsProvisionAborted
+      "QuoteSignPending" -> Right OsProvisionAborted
+      "QuoteSigned" -> Right OsProvisionAborted
+      "OrderPending" -> Right OsProvisionAborted
+      "OrderOngoing" -> Right OsProvisionAborted
+      "OrderAborted" -> Right OsProvisionAborted
+      "OrderCompleted" -> Right OsProvisionAborted
+      "ProvisionPending" -> Right OsProvisionAborted
+      "ProvisionOngoging" -> Right OsProvisionAborted
+      "ProvisionCompleted" -> Right OsProvisionAborted
+      "ProvisionAborted" -> Right OsProvisionAborted
+      _ -> Left (TypeMismatch "OrderStatus")
+
+newtype OrderSummary
+  = OrderSummary
+  { estimatedUsageTotal :: Number
+  , monthlyTotal :: Number
+  , onetimeTotal :: Number
+  }
+
+instance decodeJsonOrderSummary :: DecodeJson OrderSummary where
+  decodeJson json = OrderSummary <$> decodeJson json
+
+newtype OrderSectionSummary
+  = OrderSectionSummary
+  { estimatedUsageSubTotal :: Number
+  , monthlySubTotal :: Number
+  , onetimeSubTotal :: Number
+  }
+
+instance decodeJsonOrderSectionSummary :: DecodeJson OrderSectionSummary where
+  decodeJson json = OrderSectionSummary <$> decodeJson json
+
+newtype OrderLine
+  = OrderLine
+  {
+  }
+
+instance decodeJsonOrderLine :: DecodeJson OrderLine where
+  decodeJson json = OrderLine <$> decodeJson json
+
+newtype OrderSection
+  = OrderSection
+  { orderLines :: Array OrderLine
+  , summary :: OrderSectionSummary
+  }
+
+instance decodeJsonOrderSection :: DecodeJson OrderSection where
+  decodeJson json = OrderSection <$> decodeJson json
+
+newtype OrderForm
+  = OrderForm
+  { id :: String
+  , customer :: Customer
+  , status :: OrderStatus
+  , summary :: OrderSummary
+  , solutionURIs :: Array Uri
+  , sections :: Array OrderSection
+  }
+
+instance decodeJsonOrderForm :: DecodeJson OrderForm where
+  decodeJson json = OrderForm <$> decodeJson json
