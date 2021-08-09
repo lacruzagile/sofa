@@ -13,6 +13,7 @@ module Data.SmartSpec
   , ContractTerm(..)
   , Currency(..)
   , Customer(..)
+  , Date(..)
   , DefaultUnitPriceByBillingUnit(..)
   , DimType(..)
   , DimTypeRef(..)
@@ -42,12 +43,6 @@ module Data.SmartSpec
   , Purchaser(..)
   , RateCard(..)
   , RateCardCharge(..)
-  , RateElementMonthly(..)
-  , RateElementOnetime(..)
-  , RateElementSimple(..)
-  , RateElementSimpleRow(..)
-  , RateElementUsage(..)
-  , RateElementUsageRow(..)
   , ReturnCustomerCommercial(..)
   , ReturnCustomerData(..)
   , SalesforceAccountRef(..)
@@ -57,18 +52,20 @@ module Data.SmartSpec
   , SegmentationPeriod(..)
   , SegmentedPrice(..)
   , Seller(..)
+  , SimpleCharge(..)
+  , SimpleChargeRow(..)
   , Sku(..)
   , Solution(..)
   , UnitPriceByBillingUnit(..)
   , UnitPricePerDimByBillingUnit(..)
   , Uri(..)
   , UsageCharge(..)
+  , UsageChargeRow(..)
   , UsagePriceOverride(..)
   , UsagePriceOverrideElem(..)
   , UsageSchemaRef(..)
   , UsageSchemaRefByBillingUnit(..)
   , Validity(..)
-  , Date(..)
   ) where
 
 import Prelude
@@ -126,43 +123,24 @@ instance decodeJsonPrice :: DecodeJson Price where
 
 data RateCardCharge
   = RateCardCharge1
-    { onetimeCharge :: RateElementOnetime
-    , monthlyCharge :: RateElementMonthly
+    { onetimeCharges :: Array OnetimeCharge
+    , monthlyCharges :: Array MonthlyCharge
     }
   | RateCardCharge2
-    { onetimeCharge :: RateElementOnetime
-    , monthlyCharges :: Array MonthlyCharge
-    }
-  | RateCardCharge3
-    { onetimeCharges :: Array OnetimeCharge
-    , monthlyCharge :: RateElementMonthly
-    }
-  | RateCardCharge4
-    { onetimeCharges :: Array OnetimeCharge
-    , monthlyCharges :: Array MonthlyCharge
-    }
-  | RateCardCharge5
-    { usageCharge :: RateElementUsage
-    }
-  | RateCardCharge6
     { usageCharges :: Array UsageCharge
     }
 
 instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
   decodeJson json =
     (RateCardCharge1 <$> decodeJson json)
-      <|> (RateCardCharge1 <$> decodeJson json)
       <|> (RateCardCharge2 <$> decodeJson json)
-      <|> (RateCardCharge3 <$> decodeJson json)
-      <|> (RateCardCharge4 <$> decodeJson json)
-      <|> (RateCardCharge5 <$> decodeJson json)
-      <|> (RateCardCharge6 <$> decodeJson json)
 
 data RateCard
   = RateCardPath String
   | RateCard
     { sku :: Sku
     , name :: Maybe String
+    , description :: Maybe String
     , currency :: Currency
     , charge :: RateCardCharge
     }
@@ -176,55 +154,32 @@ instance decodeJsonRateCard :: DecodeJson RateCard where
       o <- decodeJson json
       sku <- o .: "sku"
       name <- o .:? "name"
+      description <- o .:? "description"
       currency <- o .: "currency"
       charge <- decodeJson json
-      pure $ RateCard { sku, name, currency, charge }
+      pure $ RateCard { sku, name, description, currency, charge }
+
+type SimpleChargeRow
+  = ( billingUnitRef :: BillingUnitRef
+    , price :: Number
+    )
+
+type SimpleCharge
+  = Record SimpleChargeRow
 
 newtype OnetimeCharge
-  = OnetimeCharge
-  { id :: String, element :: RateElementOnetime
-  }
+  = OnetimeCharge SimpleCharge
 
 instance decodeJsonOnetimeCharge :: DecodeJson OnetimeCharge where
   decodeJson json = OnetimeCharge <$> decodeJson json
 
 newtype MonthlyCharge
-  = MonthlyCharge
-  { id :: String, element :: RateElementMonthly
-  }
+  = MonthlyCharge SimpleCharge
 
 instance decodeJsonMonthlyCharge :: DecodeJson MonthlyCharge where
   decodeJson json = MonthlyCharge <$> decodeJson json
 
-newtype UsageCharge
-  = UsageCharge
-  { id :: String, element :: RateElementUsage
-  }
-
-instance decodeJsonUsageCharge :: DecodeJson UsageCharge where
-  decodeJson json = UsageCharge <$> decodeJson json
-
-type RateElementSimpleRow
-  = ( billingUnitRef :: BillingUnitRef
-    , price :: Number
-    )
-
-type RateElementSimple
-  = Record RateElementSimpleRow
-
-newtype RateElementOnetime
-  = RateElementOnetime RateElementSimple
-
-instance decodeJsonRateElementOnetime :: DecodeJson RateElementOnetime where
-  decodeJson json = RateElementOnetime <$> decodeJson json
-
-newtype RateElementMonthly
-  = RateElementMonthly RateElementSimple
-
-instance decodeJsonRateElementMonthly :: DecodeJson RateElementMonthly where
-  decodeJson json = RateElementMonthly <$> decodeJson json
-
-type RateElementUsageRow
+type UsageChargeRow
   = ( termOfPriceChangeInDays :: Int
     , dimTypeRef :: Maybe DimTypeRef
     , billingUnitRefs :: Maybe (Array BillingUnitRef)
@@ -235,10 +190,10 @@ type RateElementUsageRow
     , monthlyMinimum :: Number
     )
 
-newtype RateElementUsage
-  = RateElementUsage (Record RateElementUsageRow)
+newtype UsageCharge
+  = UsageCharge (Record UsageChargeRow)
 
-instance decodeJsonRateElementUsage :: DecodeJson RateElementUsage where
+instance decodeJsonUsageCharge :: DecodeJson UsageCharge where
   decodeJson json = do
     o <- decodeJson json
     termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
@@ -250,7 +205,7 @@ instance decodeJsonRateElementUsage :: DecodeJson RateElementUsage where
     unitPricePerDimByBillingUnit <- o .:? "unitPricePerDimByBillingUnit" .!= []
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
     pure
-      $ RateElementUsage
+      $ UsageCharge
           { termOfPriceChangeInDays
           , dimTypeRef
           , billingUnitRefs
@@ -960,7 +915,7 @@ instance decodeJsonValidity :: DecodeJson Validity where
 newtype MonthlyPriceOverrideElem
   = MonthlyPriceOverrideElem
   { validity :: Validity
-  | RateElementSimpleRow
+  | SimpleChargeRow
   }
 
 instance decodeJsonMonthlyPriceOverrideElem :: DecodeJson MonthlyPriceOverrideElem where
@@ -978,7 +933,7 @@ instance decodeJsonMonthlyPriceOverride :: DecodeJson MonthlyPriceOverride where
 newtype OnetimePriceOverrideElem
   = OnetimePriceOverrideElem
   { validity :: Validity
-  | RateElementSimpleRow
+  | SimpleChargeRow
   }
 
 instance decodeJsonOnetimePriceOverrideElem :: DecodeJson OnetimePriceOverrideElem where
@@ -996,7 +951,7 @@ instance decodeJsonOnetimePriceOverride :: DecodeJson OnetimePriceOverride where
 newtype UsagePriceOverrideElem
   = UsagePriceOverrideElem
   { validity :: Validity
-  | RateElementUsageRow
+  | UsageChargeRow
   }
 
 instance decodeJsonUsagePriceOverrideElem :: DecodeJson UsagePriceOverrideElem where

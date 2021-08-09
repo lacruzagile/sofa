@@ -2,13 +2,12 @@ module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
 import Affjax (printError)
-import Control.Monad.State (class MonadState)
 import Css as Css
 import Data.Argonaut (class DecodeJson, printJsonDecodeError)
-import Data.Array (concatMap, modifyAt)
+import Data.Array (concatMap)
 import Data.Either (Either(..))
 import Data.Map (Map)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.SmartSpec as SS
 import Data.Traversable (sequence, traverse)
 import Data.Variant (default, on)
@@ -263,7 +262,7 @@ render state =
   sections s = HH.div_ [ HH.h3_ [ HH.text "Sections" ], section s ]
 
   orderForm :: Array StateSolution -> OrderForm -> H.ComponentHTML Action slots m
-  orderForm s o =
+  orderForm s _o =
     HH.div_
       [ Widgets.tabbed2 "customer"
           { label: HH.text "New Customer", content: newCustomer }
@@ -286,20 +285,6 @@ metaUrl = baseUrl <> "/meta.json"
 
 solutionUrl :: String -> String
 solutionUrl solName = baseUrl <> "/" <> solName <> "/nsolution.json"
-
--- | Modifies the solution at the given index.
-modifySolution_ :: forall m. MonadState State m => Int -> (StateSolution -> StateSolution) -> m Unit
-modifySolution_ id f =
-  H.modify_
-    ( case _ of
-        Success st ->
-          Success
-            ( st
-                { solutions = maybe st.solutions identity $ modifyAt id f st.solutions
-                }
-            )
-        o -> o
-    )
 
 getSolution ::
   forall m.

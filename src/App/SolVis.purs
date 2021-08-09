@@ -225,33 +225,31 @@ render state =
     bur.billingUnitId
       <> (maybe "" (\x -> " [" <> show x <> "]") bur.solutionUri)
 
-  rateElementOnetime :: SS.RateElementOnetime -> Array (H.ComponentHTML Action slots m)
-  rateElementOnetime (SS.RateElementOnetime r) =
-    dataItem "Onetime Charge"
-      $ billingUnitRef r.billingUnitRef
+  onetimeCharge :: SS.OnetimeCharge -> H.ComponentHTML Action slots m
+  onetimeCharge (SS.OnetimeCharge r) =
+    HH.text $ billingUnitRef r.billingUnitRef
       <> " "
       <> show r.price
 
   onetimeCharges :: Array SS.OnetimeCharge -> Array (H.ComponentHTML Action slots m)
   onetimeCharges xs =
     dataItemRaw "Onetime Charges"
-      ( blockList
-          $ map (\(SS.OnetimeCharge x) -> HH.li_ [ HH.dl_ $ dataItem "ID" x.id <> rateElementOnetime x.element ]) xs
-      )
+      <<< blockList
+      <<< map (\x -> HH.li_ [ onetimeCharge x ])
+      $ xs
 
-  rateElementMonthly :: SS.RateElementMonthly -> Array (H.ComponentHTML Action slots m)
-  rateElementMonthly (SS.RateElementMonthly r) =
-    dataItem "Monthly Charge"
-      $ billingUnitRef r.billingUnitRef
+  monthlyCharge :: SS.MonthlyCharge -> H.ComponentHTML Action slots m
+  monthlyCharge (SS.MonthlyCharge r) =
+    HH.text $ billingUnitRef r.billingUnitRef
       <> " "
       <> show r.price
 
   monthlyCharges :: Array SS.MonthlyCharge -> Array (H.ComponentHTML Action slots m)
   monthlyCharges xs =
     dataItemRaw "Monthly Charges"
-      ( blockList
-          $ map (\(SS.MonthlyCharge x) -> HH.li_ [ HH.dl_ $ dataItem "ID" x.id <> rateElementMonthly x.element ]) xs
-      )
+      <<< blockList
+      <<< map (\x -> HH.li_ [ monthlyCharge x ])
+      $ xs
 
   segmentedPrice :: SS.SegmentedPrice -> String
   segmentedPrice = case _ of
@@ -287,8 +285,8 @@ render state =
   unitPricesPerDimByBillingUnit :: Array SS.UnitPricePerDimByBillingUnit -> H.ComponentHTML Action slots m
   unitPricesPerDimByBillingUnit elems = blockList (map unitPricePerDimByBillingUnit elems)
 
-  rateElementUsage :: SS.RateElementUsage -> Array (H.ComponentHTML Action slots m)
-  rateElementUsage (SS.RateElementUsage r) =
+  usageCharge :: SS.UsageCharge -> Array (H.ComponentHTML Action slots m)
+  usageCharge (SS.UsageCharge r) =
     maybe [] dimTypeRef r.dimTypeRef
       <> dataItem "Term of Price Change in Days" (show r.termOfPriceChangeInDays)
       <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
@@ -297,26 +295,16 @@ render state =
   usageCharges :: Array SS.UsageCharge -> Array (H.ComponentHTML Action slots m)
   usageCharges xs =
     dataItemRaw "Usage Charges"
-      ( blockList
-          $ map (\(SS.UsageCharge x) -> HH.li_ [ HH.dl_ $ dataItem "ID" x.id <> rateElementUsage x.element ]) xs
-      )
+      <<< blockList
+      <<< map (\x -> HH.li_ [ HH.dl_ (usageCharge x) ])
+      $ xs
 
   rateCardCharge :: SS.RateCardCharge -> Array (H.ComponentHTML Action slots m)
   rateCardCharge = case _ of
     SS.RateCardCharge1 r ->
-      rateElementOnetime r.onetimeCharge
-        <> rateElementMonthly r.monthlyCharge
-    SS.RateCardCharge2 r ->
-      rateElementOnetime r.onetimeCharge
-        <> monthlyCharges r.monthlyCharges
-    SS.RateCardCharge3 r ->
-      onetimeCharges r.onetimeCharges
-        <> rateElementMonthly r.monthlyCharge
-    SS.RateCardCharge4 r ->
       onetimeCharges r.onetimeCharges
         <> monthlyCharges r.monthlyCharges
-    SS.RateCardCharge5 r -> rateElementUsage r.usageCharge
-    SS.RateCardCharge6 r -> usageCharges r.usageCharges
+    SS.RateCardCharge2 r -> usageCharges r.usageCharges
 
   rateCard :: SS.RateCard -> H.ComponentHTML Action slots m
   rateCard = case _ of
