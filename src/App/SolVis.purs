@@ -11,6 +11,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
+import Data.String as String
 import Data.Tuple (uncurry)
 import Data.Variant (default, on)
 import Effect.Aff.Class (class MonadAff)
@@ -405,7 +406,13 @@ metaUrl :: String
 metaUrl = baseUrl <> "/meta.json"
 
 solutionUrl :: String -> String
-solutionUrl solName = baseUrl <> "/" <> solName <> "/nsolution.json"
+solutionUrl solUri =
+  if isWebUrl then
+    solUri
+  else
+    baseUrl <> "/" <> solUri <> "/nsolution.json"
+  where
+  isWebUrl = String.contains (String.Pattern "^https?:") solUri
 
 -- | Modifies the solution at the given index.
 modifySolution_ :: forall m. MonadState State m => Int -> (StateSolution -> StateSolution) -> m Unit

@@ -29,6 +29,7 @@ to generate this file without the comments in this block.
   , "psci-support"
   , "routing"
   , "simple-ajax"
+  , "strings"
   , "transformers"
   , "tuples"
   , "variant"

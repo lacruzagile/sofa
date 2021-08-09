@@ -81,7 +81,7 @@ type Uri
   = String
 
 type Meta
-  = { solutions :: Array String
+  = { solutions :: Array Uri
     }
 
 newtype Solution
