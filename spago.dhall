@@ -23,6 +23,7 @@ to generate this file without the comments in this block.
   , "foldable-traversable"
   , "foreign-object"
   , "halogen"
+  , "integers"
   , "maybe"
   , "ordered-collections"
   , "prelude"

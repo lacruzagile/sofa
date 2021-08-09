@@ -17,12 +17,16 @@ module Data.SmartSpec
   , DefaultUnitPriceByBillingUnit(..)
   , DimType(..)
   , DimTypeRef(..)
+  , EstPriceSegment(..)
+  , EstWeightByDim(..)
   , LegalEntity(..)
   , Meta(..)
   , MonthlyCharge(..)
+  , MonthlyChargeOrderline(..)
   , MonthlyPriceOverride(..)
   , MonthlyPriceOverrideElem(..)
   , OnetimeCharge(..)
+  , OnetimeChargeOrderline(..)
   , OnetimePriceOverride(..)
   , OnetimePriceOverrideElem(..)
   , OrderForm(..)
@@ -60,6 +64,7 @@ module Data.SmartSpec
   , UnitPricePerDimByBillingUnit(..)
   , Uri(..)
   , UsageCharge(..)
+  , UsageChargeOrderline(..)
   , UsageChargeRow(..)
   , UsagePriceOverride(..)
   , UsagePriceOverrideElem(..)
@@ -1094,9 +1099,60 @@ newtype OrderSectionSummary
 instance decodeJsonOrderSectionSummary :: DecodeJson OrderSectionSummary where
   decodeJson json = OrderSectionSummary <$> decodeJson json
 
+newtype OnetimeChargeOrderline
+  = OnetimeChargeOrderline SimpleCharge
+
+instance decodeJsonOnetimeChargeOrderline :: DecodeJson OnetimeChargeOrderline where
+  decodeJson json = OnetimeChargeOrderline <$> decodeJson json
+
+-- | Estimated semgement volume.
+newtype EstPriceSegment
+  = EstPriceSegment
+  { minimum :: Int
+  , exclusiveMaximum :: Int
+  }
+
+instance decodeJsonEstPriceSegment :: DecodeJson EstPriceSegment where
+  decodeJson json = EstPriceSegment <$> decodeJson json
+
+newtype MonthlyChargeOrderline
+  = MonthlyChargeOrderline
+  { estPriceSegment :: Maybe EstPriceSegment
+  | SimpleChargeRow
+  }
+
+instance decodeJsonMonthlyChargeOrderline :: DecodeJson MonthlyChargeOrderline where
+  decodeJson json = MonthlyChargeOrderline <$> decodeJson json
+
+newtype EstWeightByDim
+  = EstWeightByDim
+  { -- dim :: 
+    weight :: Number
+  }
+
+instance decodeJsonEstWeightByDim :: DecodeJson EstWeightByDim where
+  decodeJson json = EstWeightByDim <$> decodeJson json
+
+newtype UsageChargeOrderline
+  = UsageChargeOrderline
+  { -- Sum {i in dims} {j in billingUnits  w_ij * p_ij.
+    estQuantity :: Int
+  , -- Typically this is populated with operator market share data.
+    estWeightByDim :: Array EstWeightByDim
+  , estPriceSegment :: EstPriceSegment
+  | UsageChargeRow
+  }
+
+instance decodeJsonUsageChargeOrderline :: DecodeJson UsageChargeOrderline where
+  decodeJson json = UsageChargeOrderline <$> decodeJson json
+
 newtype OrderLine
   = OrderLine
-  {
+  { product :: ProductInstance
+  , quantity :: Int
+  , onetimeCharges :: Array OnetimeChargeOrderline
+  , monthlyCharges :: Array MonthlyChargeOrderline
+  , usageCharges :: Array UsageChargeOrderline
   }
 
 instance decodeJsonOrderLine :: DecodeJson OrderLine where
@@ -1104,7 +1160,8 @@ instance decodeJsonOrderLine :: DecodeJson OrderLine where
 
 newtype OrderSection
   = OrderSection
-  { orderLines :: Array OrderLine
+  { solutionURI :: Uri
+  , orderLines :: Array OrderLine
   , summary :: OrderSectionSummary
   }
 
@@ -1117,7 +1174,6 @@ newtype OrderForm
   , customer :: Customer
   , status :: OrderStatus
   , summary :: OrderSummary
-  , solutionURIs :: Array Uri
   , sections :: Array OrderSection
   }
 

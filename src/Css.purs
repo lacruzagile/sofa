@@ -74,3 +74,6 @@ two = ClassName "two"
 
 three :: ClassName
 three = ClassName "three"
+
+four :: ClassName
+four = ClassName "four"
