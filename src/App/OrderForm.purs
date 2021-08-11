@@ -297,7 +297,11 @@ render state =
       $ [ HH.a [ HP.class_ Css.close, HE.onClick \_ -> RemoveSection { sectionIndex: idx } ] [ HH.text "×" ]
         , HH.label_
             [ HH.text "Solution"
-            , HH.input [ HP.type_ HP.InputText, HP.disabled true, HP.value solution.description ]
+            , HH.input
+                [ HP.type_ HP.InputText
+                , HP.disabled true
+                , HP.value (maybe "Unnamed Solution" identity solution.name)
+                ]
             ]
         ]
       <> sectionBody sec.solution

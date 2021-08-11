@@ -39,16 +39,21 @@ module Data.SmartSpec
   , PriceBook(..)
   , PriceOverrides(..)
   , Product(..)
+  , ProductCatalog(..)
   , ProductCategory(..)
   , ProductFeature(..)
   , ProductInstance(..)
   , ProductOption(..)
   , ProductOptionType(..)
   , Purchaser(..)
+  , Quantifier(..)
   , RateCard(..)
   , RateCardCharge(..)
   , ReturnCustomerCommercial(..)
   , ReturnCustomerData(..)
+  , Rule(..)
+  , RuleConditionExpr(..)
+  , RuleStage(..)
   , SalesforceAccountRef(..)
   , Segmentation(..)
   , SegmentationByBillingUnit(..)
@@ -56,6 +61,7 @@ module Data.SmartSpec
   , SegmentationPeriod(..)
   , SegmentedPrice(..)
   , Seller(..)
+  , Severity(..)
   , SimpleCharge(..)
   , SimpleChargeRow(..)
   , Sku(..)
@@ -68,6 +74,7 @@ module Data.SmartSpec
   , UsageChargeRow(..)
   , UsagePriceOverride(..)
   , UsagePriceOverrideElem(..)
+  , UsageSchema(..)
   , UsageSchemaRef(..)
   , UsageSchemaRefByBillingUnit(..)
   , Validity(..)
@@ -91,13 +98,135 @@ type Meta
 
 newtype Solution
   = Solution
-  { description :: String
+  { id :: String
+  , name :: Maybe String
+  , description :: Maybe String
+  , rules :: Array Rule
   , products :: Array Product
   , priceBooks :: Array PriceBook
   }
 
 instance decodeJsonSolution :: DecodeJson Solution where
-  decodeJson json = Solution <$> decodeJson json
+  decodeJson json = do
+    o <- decodeJson json
+    id <- o .: "id"
+    name <- o .:? "name"
+    description <- o .:? "description"
+    rules <- o .:? "rules" .!= []
+    products <- o .: "products"
+    priceBooks <- o .: "priceBooks"
+    pure $ Solution { id, name, description, rules, products, priceBooks }
+
+newtype ProductCatalog
+  = ProductCatalog
+  { name :: Maybe String
+  , description :: Maybe String
+  , dimTypes :: Array DimType
+  , usageSchemas :: Array UsageSchema
+  , billingUnits :: Array BillingUnit
+  , rules :: Array Rule
+  , solutions :: Array Solution
+  }
+
+instance decodeJsonProductCatalog :: DecodeJson ProductCatalog where
+  decodeJson json = do
+    o <- decodeJson json
+    name <- o .:? "name"
+    description <- o .:? "description"
+    dimTypes <- o .:? "dimTypes" .!= []
+    usageSchemas <- o .:? "usageSchemas" .!= []
+    billingUnits <- o .:? "billingUnits" .!= []
+    rules <- o .:? "rules" .!= []
+    solutions <- o .: "solutions"
+    pure
+      $ ProductCatalog
+          { name
+          , description
+          , dimTypes
+          , usageSchemas
+          , billingUnits
+          , rules
+          , solutions
+          }
+
+data RuleStage
+  = SalesOrder
+  | ServiceOrder
+  | OrderFulfillment
+
+instance showRuleStage :: Show RuleStage where
+  show = case _ of
+    SalesOrder -> "SalesOrder"
+    ServiceOrder -> "ServiceOrder"
+    OrderFulfillment -> "OrderFulfillment"
+
+instance decodeJsonRuleStage :: DecodeJson RuleStage where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "SalesOrder" -> Right SalesOrder
+      "ServiceOrder" -> Right ServiceOrder
+      "OrderFulfillment" -> Right OrderFulfillment
+      _ -> Left (TypeMismatch "RuleStage")
+
+data Severity
+  = SeverityInfo
+  | SeverityWarning
+  | SeverityError
+
+instance showSeverity :: Show Severity where
+  show = case _ of
+    SeverityInfo -> "Info"
+    SeverityWarning -> "Warning"
+    SeverityError -> "Error"
+
+instance decodeJsonSeverity :: DecodeJson Severity where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "Info" -> Right SeverityInfo
+      "Warning" -> Right SeverityWarning
+      "Error" -> Right SeverityError
+      _ -> Left (TypeMismatch "Severity")
+
+data Quantifier
+  = QuantifierAll
+  | QuantifierAny
+
+instance showQuantifier :: Show Quantifier where
+  show = case _ of
+    QuantifierAll -> "All"
+    QuantifierAny -> "Any"
+
+instance decodeJsonQuantifier :: DecodeJson Quantifier where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "All" -> Right QuantifierAll
+      "Any" -> Right QuantifierAny
+      _ -> Left (TypeMismatch "Quantifier")
+
+newtype RuleConditionExpr
+  = RuleConditionExpr { type_ :: String, expr :: String }
+
+instance decodeJsonRuleConditionExpr :: DecodeJson RuleConditionExpr where
+  decodeJson json = do
+    o <- decodeJson json
+    type_ <- o .: "type"
+    expr <- o .: "expr"
+    pure $ RuleConditionExpr { type_, expr }
+
+newtype Rule
+  = Rule
+  { severity :: Severity
+  , stages :: Array RuleStage
+  , quantifier :: Quantifier
+  , message :: String
+  , conditions :: Array RuleConditionExpr
+  }
+
+instance decodeJsonRule :: DecodeJson Rule where
+  decodeJson json = Rule <$> decodeJson json
 
 newtype Currency
   = Currency { code :: String, country :: Maybe String }
@@ -116,9 +245,9 @@ instance decodeJsonCurrency :: DecodeJson Currency where
 newtype PriceBook
   = PriceBook
   { id :: String
-  , name :: String
+  , name :: Maybe String
+  , description :: Maybe String
   , currency :: Currency
-  , rateCardPathPrefix :: Maybe String
   , rateCards :: Maybe (Array RateCard)
   }
 
@@ -185,7 +314,7 @@ instance decodeJsonMonthlyCharge :: DecodeJson MonthlyCharge where
 type UsageChargeRow
   = ( termOfPriceChangeInDays :: Int
     , billingUnitRefs :: Maybe (Array BillingUnitRef)
-    , usageSchemaRefByBillingUnit :: Maybe UsageSchemaRefByBillingUnit
+    , usageSchemaRefByBillingUnit :: Maybe (Array UsageSchemaRefByBillingUnit)
     , segmentationByBillingUnit :: Maybe SegmentationByBillingUnit
     , defaultUnitPriceByBillingUnit :: Maybe DefaultUnitPriceByBillingUnit
     , unitPricePerDimByBillingUnit :: Array (UnitPricePerDimByBillingUnit)
@@ -400,6 +529,8 @@ data ConfigSchemaEntry
     { pattern :: String
     , default :: Maybe String
     }
+  | CseArray
+    { items :: ConfigSchemaEntry }
 
 instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
   decodeJson json = do
@@ -420,6 +551,9 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
         pattern <- o .: "pattern"
         default <- o .:? "default"
         pure $ CseRegex { pattern, default }
+      "array" -> do
+        items <- o .: "items"
+        pure $ CseArray { items }
       _ -> Left (TypeMismatch "ConfigSchemaEntry")
 
 data ConfigValue
@@ -439,7 +573,9 @@ instance decodeJsonConfigValue :: DecodeJson ConfigValue where
 newtype Product
   = Product
   { sku :: String
-  , description :: String
+  , name :: Maybe String
+  , description :: Maybe String
+  , attr :: Maybe (Map String ConfigValue)
   , configSchema :: Maybe (Map String ConfigSchemaEntry)
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
@@ -449,16 +585,22 @@ instance decodeJsonProduct :: DecodeJson Product where
   decodeJson json = do
     o <- decodeJson json
     sku <- o .: "sku"
-    description <- o .: "description"
+    name <- o .:? "name"
+    description <- o .:? "description"
+    attrObj :: Maybe (FO.Object ConfigValue) <- o .:? "attr"
     configSchemaObj :: Maybe (FO.Object ConfigSchemaEntry) <- o .:? "configSchema"
     let
+      attr = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> attrObj
+
       configSchema = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> configSchemaObj
     options <- o .:? "options"
     features <- o .:? "features"
     pure
       $ Product
           { sku
+          , name
           , description
+          , attr
           , configSchema
           , options
           , features
@@ -1126,8 +1268,7 @@ instance decodeJsonMonthlyChargeOrderline :: DecodeJson MonthlyChargeOrderline w
 
 newtype EstWeightByDim
   = EstWeightByDim
-  { -- dim :: 
-    weight :: Number
+  { weight :: Number
   }
 
 instance decodeJsonEstWeightByDim :: DecodeJson EstWeightByDim where
@@ -1135,10 +1276,8 @@ instance decodeJsonEstWeightByDim :: DecodeJson EstWeightByDim where
 
 newtype UsageChargeOrderline
   = UsageChargeOrderline
-  { -- Sum {i in dims} {j in billingUnits  w_ij * p_ij.
-    estQuantity :: Int
-  , -- Typically this is populated with operator market share data.
-    estWeightByDim :: Array EstWeightByDim
+  { estQuantity :: Int
+  , estWeightByDim :: Array EstWeightByDim
   , estPriceSegment :: EstPriceSegment
   | UsageChargeRow
   }

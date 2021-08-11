@@ -1,4 +1,4 @@
-module App.SolVis (Slot, proxy, component) where
+module App.ProductCatalog (Slot, proxy, component) where
 
 import Prelude
 import Affjax (printError)
@@ -26,11 +26,11 @@ import Type.Proxy (Proxy(..))
 type Slot id
   = forall query. H.Slot query Void id
 
-proxy :: Proxy "solVis"
+proxy :: Proxy "productCatalog"
 proxy = Proxy
 
 type State
-  = StateMeta
+  = SubState SS.ProductCatalog
 
 data SubState a
   = Idle
@@ -38,18 +38,8 @@ data SubState a
   | Loading
   | Error String
 
-type StateMeta
-  = SubState { meta :: SS.Meta, solutions :: Array StateSolution }
-
-type StateSolution
-  = { name :: String
-    , expanded :: Boolean
-    , solution :: SubState SS.Solution
-    }
-
 data Action
-  = GetMeta
-  | ToggleSolution Int
+  = LoadProductCatalog String
 
 component ::
   forall query input output m.
@@ -58,7 +48,7 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just GetMeta }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
 
 initialState :: forall input. input -> State
@@ -68,7 +58,8 @@ render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
   HH.div_
     ( [ HH.h1_
-          [ HH.text "Solution Visualizer" ]
+          [ HH.text "Product Catalog" ]
+      , HH.button [ HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json" ] [ HH.text "Sinch Cloud offering" ]
       ]
         <> content
     )
@@ -174,33 +165,51 @@ render state =
   configSchemaEntry k = case _ of
     SS.CseInteger v ->
       [ HH.dt_ [ HH.text k, HH.text " (integer)" ]
-      , HH.dd_
-          [ HH.dl_
-              ( opt (dataItem "Minimum" <<< show) v.minimum
-                  <> opt (dataItem "Maximum" <<< show) v.maximum
-                  <> opt (dataItem "Default" <<< show) v.default
-              )
-          ]
+      , HH.dd_ [ renderInteger v ]
       ]
     SS.CseString v ->
       [ HH.dt_ [ HH.text k, HH.text " (string)" ]
-      , HH.dd_
-          [ HH.dl_
-              ( opt (dataItem "Minimum Length" <<< show) v.minLength
-                  <> opt (dataItem "Maximum Length" <<< show) v.maxLength
-                  <> opt (dataItem "Default") v.default
-              )
-          ]
+      , HH.dd_ [ renderString v ]
       ]
     SS.CseRegex v ->
       [ HH.dt_ [ HH.text k, HH.text " (regex)" ]
-      , HH.dd_
-          [ HH.dl_
-              ( dataItem "Pattern" v.pattern
-                  <> opt (dataItem "Default") v.default
-              )
-          ]
+      , HH.dd_ [ renderRegex v ]
       ]
+    SS.CseArray v ->
+      [ HH.dt_ [ HH.text k, HH.text " (array)" ]
+      , HH.dd_ [ renderArray v ]
+      ]
+    where
+    renderInteger v =
+      HH.dl_
+        ( opt (dataItem "Minimum" <<< show) v.minimum
+            <> opt (dataItem "Maximum" <<< show) v.maximum
+            <> opt (dataItem "Default" <<< show) v.default
+        )
+
+    renderString v =
+      HH.dl_
+        ( opt (dataItem "Minimum Length" <<< show) v.minLength
+            <> opt (dataItem "Maximum Length" <<< show) v.maxLength
+            <> opt (dataItem "Default") v.default
+        )
+
+    renderRegex v =
+      HH.dl_
+        ( dataItem "Pattern" v.pattern
+            <> opt (dataItem "Default") v.default
+        )
+
+    renderArray v =
+      HH.dl_
+        ( dataItemRaw "Items" (renderAny v.items)
+        )
+
+    renderAny = case _ of
+      SS.CseInteger v -> renderInteger v
+      SS.CseString v -> renderString v
+      SS.CseRegex v -> renderRegex v
+      SS.CseArray v -> renderArray v
 
   configSchema :: Maybe (Map String SS.ConfigSchemaEntry) -> Array (H.ComponentHTML Action slots m)
   configSchema = maybe [] (html <<< HH.dl_ <<< concatMap (uncurry configSchemaEntry) <<< Map.toUnfoldable)
@@ -215,8 +224,10 @@ render state =
     HH.li_
       [ HH.dl_
           ( dataItem "SKU" p.sku
-              <> dataItem "Description" p.description
+              <> opt (dataItem "Name") p.name
+              <> opt (dataItem "Description") p.description
               <> productOptions p.options
+              <> opt (dataItemRaw "Attributes" <<< configValues) p.attr
               <> configSchema p.configSchema
           )
       ]
@@ -327,7 +338,9 @@ render state =
   price (SS.PriceBook p) =
     HH.li_
       [ HH.dl_
-          ( dataItem "Name" p.name
+          ( dataItem "ID" p.id
+              <> opt (dataItem "Name") p.name
+              <> opt (dataItem "Description") p.description
               <> dataItem "Currency" (currency p.currency)
               <> opt (dataItemRaw "Rate Cards" <<< rateCards) p.rateCards
           )
@@ -357,97 +370,40 @@ render state =
     Success dat -> rend dat
     Error err -> error err
 
-  solution :: Int -> StateSolution -> H.ComponentHTML Action slots m
-  solution iSol sol =
+  solution :: SS.Solution -> H.ComponentHTML Action slots m
+  solution (SS.Solution sol) =
     HH.li_
-      $ [ HH.button [ HE.onClick \_ -> ToggleSolution iSol ] [ HH.text sol.name ]
-        ]
-      <> if sol.expanded then defRender sol.solution exp else []
-    where
-    exp (SS.Solution s) =
       [ HH.h4_ [ HH.text "Description" ]
-      , HH.p_ [ HH.text s.description ]
+      , HH.p_ [ HH.text $ maybe "No description" identity sol.description ]
+      , HH.details_
+          [ HH.summary [ HP.class_ Css.button ] [ HH.text "Products" ]
+          , blockList (map product sol.products)
+          ]
+      , HH.details_
+          [ HH.summary [ HP.class_ Css.button ] [ HH.text "Price Books" ]
+          , blockList (map price sol.priceBooks)
+          ]
       ]
-        <> [ HH.details_
-              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Products" ]
-              , blockList (map product s.products)
-              ]
-          ]
-        <> [ HH.details_
-              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Price Books" ]
-              , blockList (map price s.priceBooks)
-              ]
-          ]
 
-  meta m =
-    [ HH.h2_ [ HH.text "Solutions" ]
-    , blockList (mapWithIndex (\i -> solution i) m.solutions)
+  productCatalog (SS.ProductCatalog pc) =
+    [ HH.h2_ [ HH.text (maybe "Unnamed" identity pc.name) ]
+    , HH.h3_ [ HH.text "Solutions" ]
+    , blockList (map solution pc.solutions)
     ]
 
-  content = defRender state meta
+  content = defRender state productCatalog
 
 baseUrl :: String
 baseUrl = "v1alpha1/solutions"
-
-metaUrl :: String
-metaUrl = baseUrl <> "/meta.json"
-
-solutionUrl :: String -> String
-solutionUrl solUri =
-  if isWebUrl then
-    solUri
-  else
-    baseUrl <> "/" <> solUri <> "/nsolution.json"
-  where
-  isWebUrl = String.contains (String.Pattern "^https?:") solUri
-
--- | Modifies the solution at the given index.
-modifySolution_ :: forall m. MonadState State m => Int -> (StateSolution -> StateSolution) -> m Unit
-modifySolution_ id f =
-  H.modify_
-    ( case _ of
-        Success st ->
-          Success
-            ( st
-                { solutions = maybe st.solutions identity $ modifyAt id f st.solutions
-                }
-            )
-        o -> o
-    )
-
-getSolution :: forall m. MonadState State m => Int -> m (Maybe StateSolution)
-getSolution iSol =
-  H.gets
-    ( case _ of
-        Success meta -> meta.solutions !! iSol
-        _ -> Nothing
-    )
 
 handleAction ::
   forall o m.
   MonadAff m => Action -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
-  GetMeta -> do
+  LoadProductCatalog url -> do
     H.modify_ \_ -> Loading
-    res <-
-      getJson metaUrl
-        ( \meta ->
-            { meta
-            , solutions: map (\x -> { name: x, expanded: false, solution: Idle }) meta.solutions
-            }
-        )
+    res <- getJson url identity
     H.modify_ \_ -> res
-  ToggleSolution iSol -> do
-    msolution <- getSolution iSol
-    case msolution of
-      Just solution ->
-        if solution.expanded then
-          modifySolution_ iSol $ _ { expanded = false }
-        else do
-          modifySolution_ iSol $ _ { solution = Loading }
-          res <- getJson (solutionUrl solution.name) identity
-          modifySolution_ iSol $ _ { expanded = true, solution = res }
-      _ -> pure unit
 
 getJson ::
   forall m a b.

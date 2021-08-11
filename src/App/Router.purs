@@ -2,7 +2,7 @@ module App.Router where
 
 import Prelude
 import App.Home as Home
-import App.SolVis as SolVis
+import App.ProductCatalog as ProductCatalog
 import App.OrderForm as OrderForm
 import Css as Css
 import Data.Maybe (Maybe(..))
@@ -33,7 +33,7 @@ type State
 
 type Slots
   = ( home :: Home.Slot Unit
-    , solVis :: SolVis.Slot Unit
+    , productCatalog :: ProductCatalog.Slot Unit
     , orderForm :: OrderForm.Slot Unit
     )
 
@@ -55,7 +55,7 @@ component =
     , eval:
         H.mkEval
           H.defaultEval
-            { handleQuery = handleQuery --, handleAction = handleAction
+            { handleQuery = handleQuery
             }
     }
 
@@ -73,13 +73,13 @@ render state =
         Nothing -> slotHome
         Just Route.Home -> slotHome
         Just Route.OrderForm -> slotOrderForm
-        Just Route.SolVis -> slotSolVis
+        Just Route.ProductCatalog -> slotProductCatalog
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
   slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component absurd
 
-  slotSolVis = HH.slot_ SolVis.proxy unit SolVis.component absurd
+  slotProductCatalog = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component absurd
 
 navbar ::
   forall slot. State -> HH.HTML slot Action -> HH.HTML slot Action
@@ -113,8 +113,8 @@ navbar state body =
               [ HH.text "🍔" ]
           , HH.div [ HP.class_ Css.menu ]
               [ navbarItem Route.Home "🏠 Home"
-              , navbarItem Route.SolVis "SolVis"
-              , navbarItem Route.OrderForm "OrderForm"
+              , navbarItem Route.ProductCatalog "Product Catalog"
+              , navbarItem Route.OrderForm "Order Form"
               ]
           ]
       , HH.main [ HP.class_ (H.ClassName "content") ] [ body ]
