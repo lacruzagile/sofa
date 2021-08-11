@@ -288,8 +288,7 @@ render state =
 
   usageCharge :: SS.UsageCharge -> Array (H.ComponentHTML Action slots m)
   usageCharge (SS.UsageCharge r) =
-    maybe [] dimTypeRef r.dimTypeRef
-      <> dataItem "Term of Price Change in Days" (show r.termOfPriceChangeInDays)
+    dataItem "Term of Price Change in Days" (show r.termOfPriceChangeInDays)
       <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
       <> dataItemRaw "Unit Price per Dimension by Billing Unit" (unitPricesPerDimByBillingUnit r.unitPricePerDimByBillingUnit)
 
@@ -301,11 +300,10 @@ render state =
       $ xs
 
   rateCardCharge :: SS.RateCardCharge -> Array (H.ComponentHTML Action slots m)
-  rateCardCharge = case _ of
-    SS.RateCardCharge1 r ->
-      onetimeCharges r.onetimeCharges
-        <> monthlyCharges r.monthlyCharges
-    SS.RateCardCharge2 r -> usageCharges r.usageCharges
+  rateCardCharge (SS.RateCardCharge r) =
+    onetimeCharges r.onetimeCharges
+      <> monthlyCharges r.monthlyCharges
+      <> usageCharges r.usageCharges
 
   rateCard :: SS.RateCard -> H.ComponentHTML Action slots m
   rateCard = case _ of
@@ -314,7 +312,6 @@ render state =
       HH.li_
         ( dataItemRaw "SKU" (sku r.sku)
             <> opt (dataItem "Name") r.name
-            <> dataItem "Currency" (currency r.currency)
             <> rateCardCharge r.charge
         )
 
@@ -326,8 +323,8 @@ render state =
     c.code
       <> maybe "" (\c' -> "\"" <> c' <> "\"") c.country
 
-  price :: SS.Price -> H.ComponentHTML Action slots m
-  price (SS.Price p) =
+  price :: SS.PriceBook -> H.ComponentHTML Action slots m
+  price (SS.PriceBook p) =
     HH.li_
       [ HH.dl_
           ( dataItem "Name" p.name
@@ -372,23 +369,13 @@ render state =
       , HH.p_ [ HH.text s.description ]
       ]
         <> [ HH.details_
-              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Dimension Types" ]
-              , blockList (map dimType s.dimTypes)
-              ]
-          ]
-        <> [ HH.details_
               [ HH.summary [ HP.class_ Css.button ] [ HH.text "Products" ]
               , blockList (map product s.products)
               ]
           ]
         <> [ HH.details_
-              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Prices" ]
-              , blockList (map price s.prices)
-              ]
-          ]
-        <> [ HH.details_
-              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Billing Units" ]
-              , blockList (map billingUnit s.billingUnits)
+              [ HH.summary [ HP.class_ Css.button ] [ HH.text "Price Books" ]
+              , blockList (map price s.priceBooks)
               ]
           ]
 

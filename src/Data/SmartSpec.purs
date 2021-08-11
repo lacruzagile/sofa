@@ -32,7 +32,7 @@ module Data.SmartSpec
   , OrderStatus(..)
   , OrderSummary(..)
   , Platform(..)
-  , Price(..)
+  , PriceBook(..)
   , PriceOverrides(..)
   , Product(..)
   , ProductCategory(..)
@@ -87,10 +87,8 @@ type Meta
 newtype Solution
   = Solution
   { description :: String
-  , dimTypes :: Array DimType
   , products :: Array Product
-  , prices :: Array Price
-  , billingUnits :: Array BillingUnit
+  , priceBooks :: Array PriceBook
   }
 
 instance decodeJsonSolution :: DecodeJson Solution where
@@ -110,30 +108,32 @@ instance decodeJsonCurrency :: DecodeJson Currency where
       country <- o .:? "country" .!= Nothing
       pure $ Currency { code, country }
 
-newtype Price
-  = Price
-  { name :: String
+newtype PriceBook
+  = PriceBook
+  { id :: String
+  , name :: String
   , currency :: Currency
   , rateCardPathPrefix :: Maybe String
   , rateCards :: Maybe (Array RateCard)
   }
 
-instance decodeJsonPrice :: DecodeJson Price where
-  decodeJson json = Price <$> decodeJson json
+instance decodeJsonPriceBook :: DecodeJson PriceBook where
+  decodeJson json = PriceBook <$> decodeJson json
 
 data RateCardCharge
-  = RateCardCharge1
+  = RateCardCharge
     { onetimeCharges :: Array OnetimeCharge
     , monthlyCharges :: Array MonthlyCharge
-    }
-  | RateCardCharge2
-    { usageCharges :: Array UsageCharge
+    , usageCharges :: Array UsageCharge
     }
 
 instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
-  decodeJson json =
-    (RateCardCharge1 <$> decodeJson json)
-      <|> (RateCardCharge2 <$> decodeJson json)
+  decodeJson json = do
+    o <- decodeJson json
+    onetimeCharges <- o .:? "onetimeCharges" .!= []
+    monthlyCharges <- o .:? "monthlyCharges" .!= []
+    usageCharges <- o .:? "usageCharges" .!= []
+    pure $ RateCardCharge { onetimeCharges, monthlyCharges, usageCharges }
 
 data RateCard
   = RateCardPath String
@@ -141,7 +141,6 @@ data RateCard
     { sku :: Sku
     , name :: Maybe String
     , description :: Maybe String
-    , currency :: Currency
     , charge :: RateCardCharge
     }
 
@@ -155,9 +154,8 @@ instance decodeJsonRateCard :: DecodeJson RateCard where
       sku <- o .: "sku"
       name <- o .:? "name"
       description <- o .:? "description"
-      currency <- o .: "currency"
       charge <- decodeJson json
-      pure $ RateCard { sku, name, description, currency, charge }
+      pure $ RateCard { sku, name, description, charge }
 
 type SimpleChargeRow
   = ( billingUnitRef :: BillingUnitRef
@@ -181,7 +179,6 @@ instance decodeJsonMonthlyCharge :: DecodeJson MonthlyCharge where
 
 type UsageChargeRow
   = ( termOfPriceChangeInDays :: Int
-    , dimTypeRef :: Maybe DimTypeRef
     , billingUnitRefs :: Maybe (Array BillingUnitRef)
     , usageSchemaRefByBillingUnit :: Maybe UsageSchemaRefByBillingUnit
     , segmentationByBillingUnit :: Maybe SegmentationByBillingUnit
@@ -197,7 +194,6 @@ instance decodeJsonUsageCharge :: DecodeJson UsageCharge where
   decodeJson json = do
     o <- decodeJson json
     termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
-    dimTypeRef <- o .:? "dimTypeRef"
     billingUnitRefs <- o .:? "billingUnitRefs"
     usageSchemaRefByBillingUnit <- o .:? "usageSchemaRefByBillingUnit"
     segmentationByBillingUnit <- o .:? "segmentationByBillingUnit"
@@ -207,7 +203,6 @@ instance decodeJsonUsageCharge :: DecodeJson UsageCharge where
     pure
       $ UsageCharge
           { termOfPriceChangeInDays
-          , dimTypeRef
           , billingUnitRefs
           , usageSchemaRefByBillingUnit
           , segmentationByBillingUnit
