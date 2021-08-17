@@ -3,8 +3,6 @@ module Data.SmartSpec
   , Asset(..)
   , BillingAccountRef(..)
   , BillingOption(..)
-  , BillingUnit(..)
-  , BillingUnitRef(..)
   , ChargeType(..)
   , Commercial(..)
   , ConfigSchemaEntry(..)
@@ -14,21 +12,10 @@ module Data.SmartSpec
   , Currency(..)
   , Customer(..)
   , Date(..)
-  , DefaultUnitPriceByBillingUnit(..)
-  , DimType(..)
-  , DimTypeRef(..)
-  , EstPriceSegment(..)
-  , EstWeightByDim(..)
+  , DateTime(..)
+  , DefaultPriceByUnit(..)
+  , DimValue(..)
   , LegalEntity(..)
-  , Meta(..)
-  , MonthlyCharge(..)
-  , MonthlyChargeOrderline(..)
-  , MonthlyPriceOverride(..)
-  , MonthlyPriceOverrideElem(..)
-  , OnetimeCharge(..)
-  , OnetimeChargeOrderline(..)
-  , OnetimePriceOverride(..)
-  , OnetimePriceOverrideElem(..)
   , OrderForm(..)
   , OrderLine(..)
   , OrderSection(..)
@@ -37,7 +24,13 @@ module Data.SmartSpec
   , OrderSummary(..)
   , Platform(..)
   , PriceBook(..)
-  , PriceOverrides(..)
+  , PriceBookRef(..)
+  , PriceByDim(..)
+  , PriceByUnit(..)
+  , PriceOverride(..)
+  , PriceSegmentation(..)
+  , PriceSegmentationByUnit(..)
+  , PricesPerDimByUnit(..)
   , Product(..)
   , ProductCatalog(..)
   , ProductCategory(..)
@@ -45,6 +38,8 @@ module Data.SmartSpec
   , ProductInstance(..)
   , ProductOption(..)
   , ProductOptionType(..)
+  , ProductRef(..)
+  , ProductVariable(..)
   , Purchaser(..)
   , Quantifier(..)
   , RateCard(..)
@@ -55,34 +50,26 @@ module Data.SmartSpec
   , RuleConditionExpr(..)
   , RuleStage(..)
   , SalesforceAccountRef(..)
-  , Segmentation(..)
-  , SegmentationByBillingUnit(..)
+  , Segment(..)
+  , SegmentPrice(..)
   , SegmentationModel(..)
   , SegmentationPeriod(..)
   , SegmentedPrice(..)
   , Seller(..)
   , Severity(..)
-  , SimpleCharge(..)
-  , SimpleChargeRow(..)
+  , SimplePrice(..)
   , Sku(..)
   , Solution(..)
-  , UnitPriceByBillingUnit(..)
-  , UnitPricePerDimByBillingUnit(..)
+  , SpecUnit(..)
+  , UnitRef(..)
   , Uri(..)
-  , UsageCharge(..)
-  , UsageChargeOrderline(..)
-  , UsageChargeRow(..)
-  , UsagePriceOverride(..)
-  , UsagePriceOverrideElem(..)
-  , UsageSchema(..)
-  , UsageSchemaRef(..)
-  , UsageSchemaRefByBillingUnit(..)
   , Validity(..)
   ) where
 
 import Prelude
 import Control.Alternative ((<|>))
-import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), decodeJson, (.:?), (.:), (.!=))
+import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), decodeJson, (.!=), (.:), (.:?))
+import Data.Argonaut.Decode.Decoders (decodeArray)
 import Data.Either (Either(..))
 import Data.Map (Map)
 import Data.Map as Map
@@ -92,17 +79,13 @@ import Foreign.Object as FO
 type Uri
   = String
 
-type Meta
-  = { solutions :: Array Uri
-    }
-
 newtype Solution
   = Solution
   { id :: String
   , name :: Maybe String
   , description :: Maybe String
-  , rules :: Array Rule
   , products :: Array Product
+  , rules :: Array Rule
   , priceBooks :: Array PriceBook
   }
 
@@ -112,8 +95,8 @@ instance decodeJsonSolution :: DecodeJson Solution where
     id <- o .: "id"
     name <- o .:? "name"
     description <- o .:? "description"
-    rules <- o .:? "rules" .!= []
     products <- o .: "products"
+    rules <- o .:? "rules" .!= []
     priceBooks <- o .: "priceBooks"
     pure $ Solution { id, name, description, rules, products, priceBooks }
 
@@ -121,11 +104,8 @@ newtype ProductCatalog
   = ProductCatalog
   { name :: Maybe String
   , description :: Maybe String
-  , dimTypes :: Array DimType
-  , usageSchemas :: Array UsageSchema
-  , billingUnits :: Array BillingUnit
   , rules :: Array Rule
-  , solutions :: Array Solution
+  , solutions :: Map String Solution
   }
 
 instance decodeJsonProductCatalog :: DecodeJson ProductCatalog where
@@ -133,18 +113,14 @@ instance decodeJsonProductCatalog :: DecodeJson ProductCatalog where
     o <- decodeJson json
     name <- o .:? "name"
     description <- o .:? "description"
-    dimTypes <- o .:? "dimTypes" .!= []
-    usageSchemas <- o .:? "usageSchemas" .!= []
-    billingUnits <- o .:? "billingUnits" .!= []
     rules <- o .:? "rules" .!= []
-    solutions <- o .: "solutions"
+    solutionsObj :: FO.Object Solution <- o .: "solutions"
+    let
+      solutions = Map.fromFoldable (FO.toUnfoldable solutionsObj :: Array _)
     pure
       $ ProductCatalog
           { name
           , description
-          , dimTypes
-          , usageSchemas
-          , billingUnits
           , rules
           , solutions
           }
@@ -245,7 +221,8 @@ instance decodeJsonCurrency :: DecodeJson Currency where
 newtype PriceBook
   = PriceBook
   { id :: String
-  , name :: Maybe String
+  , plan :: String
+  , version :: Date
   , description :: Maybe String
   , currency :: Currency
   , rateCards :: Maybe (Array RateCard)
@@ -254,170 +231,143 @@ newtype PriceBook
 instance decodeJsonPriceBook :: DecodeJson PriceBook where
   decodeJson json = PriceBook <$> decodeJson json
 
+-- TODO: Assert non-negative.
 data RateCardCharge
-  = RateCardCharge
-    { onetimeCharges :: Array OnetimeCharge
-    , monthlyCharges :: Array MonthlyCharge
-    , usageCharges :: Array UsageCharge
+  = RccSimple
+    { unit :: UnitRef
+    , price :: SimplePrice
+    , segmentation :: Maybe PriceSegmentation
+    , termOfPriceChangeInDays :: Maybe Int
+    , monthlyMinimum :: Maybe Int
     }
+  | RccMixed
+    { units :: Array UnitRef
+    , priceSegmentations :: Array PriceSegmentationByUnit
+    , defaultPrices :: Array DefaultPriceByUnit
+    , pricesPerDim :: Array PricesPerDimByUnit
+    , monthlyMinimum :: Number
+    , termOfPriceChangeInDays :: Int
+    }
+  | RccArray (Array RateCardCharge)
 
 instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
+  decodeJson json = rccElement json <|> rccArray json
+    where
+    rccElement j = rccSimple j <|> rccMixed j
+
+    rccArray j = RccArray <$> decodeArray rccElement j
+
+    rccSimple j = RccSimple <$> decodeJson j
+
+    rccMixed j = do
+      o <- decodeJson j
+      units <- o .: "units"
+      priceSegmentations <- o .:? "priceSegmentations" .!= []
+      defaultPrices <- o .:? "defaultPrices" .!= []
+      pricesPerDim <- o .: "pricesPerDim"
+      monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
+      termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
+      pure
+        $ RccMixed
+            { units
+            , priceSegmentations
+            , defaultPrices
+            , pricesPerDim
+            , monthlyMinimum
+            , termOfPriceChangeInDays
+            }
+
+data SimplePrice
+  = SimplePriceSegmented SegmentedPrice
+  | SimplePriceByDim (Array PriceByDim)
+
+instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
+  decodeJson json = segmented <|> byDim
+    where
+    segmented = SimplePriceSegmented <$> decodeJson json
+
+    byDim = SimplePriceByDim <$> decodeJson json
+
+data DimValue
+  = DimFlat ConfigValue
+  | DimMap (Map String ConfigValue)
+
+instance decodeJsonDimValue :: DecodeJson DimValue where
+  decodeJson json = dimFlat <|> dimMap
+    where
+    dimFlat = DimFlat <$> decodeJson json
+
+    dimMap = do
+      dimObj :: FO.Object ConfigValue <- decodeJson json
+      let
+        dim = Map.fromFoldable (FO.toUnfoldable dimObj :: Array _)
+      pure $ DimMap dim
+
+newtype PriceByDim
+  = PriceByDim
+  { dim :: DimValue
+  , price :: SegmentedPrice
+  , monthlyMinimum :: Number
+  }
+
+instance decodeJsonPriceByDim :: DecodeJson PriceByDim where
   decodeJson json = do
     o <- decodeJson json
-    onetimeCharges <- o .:? "onetimeCharges" .!= []
-    monthlyCharges <- o .:? "monthlyCharges" .!= []
-    usageCharges <- o .:? "usageCharges" .!= []
-    pure $ RateCardCharge { onetimeCharges, monthlyCharges, usageCharges }
+    dim <- o .: "dim"
+    price <- o .: "prices"
+    monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
+    pure $ PriceByDim { dim, price, monthlyMinimum }
 
-data RateCard
-  = RateCardPath String
-  | RateCard
-    { sku :: Sku
-    , name :: Maybe String
-    , description :: Maybe String
-    , charge :: RateCardCharge
-    }
+newtype SegmentPrice
+  = SegmentPrice
+  { minimum :: Int, exclusiveMaximum :: Maybe Int, price :: Number
+  }
+
+instance decodeJsonSegmentPrice :: DecodeJson SegmentPrice where
+  decodeJson json = SegmentPrice <$> decodeJson json
+
+newtype PriceSegmentation
+  = PriceSegmentation
+  { segmentUnit :: UnitRef
+  , period :: SegmentationPeriod
+  , model :: SegmentationModel
+  , segments :: Array Segment
+  }
+
+instance decodeJsonPriceSegmentation :: DecodeJson PriceSegmentation where
+  decodeJson json = PriceSegmentation <$> decodeJson json
+
+newtype PriceSegmentationByUnit
+  = PriceSegmentationByUnit
+  { unit :: UnitRef
+  , segmentation :: PriceSegmentation
+  }
+
+instance decodeJsonPriceSegmentationByUnit :: DecodeJson PriceSegmentationByUnit where
+  decodeJson json = PriceSegmentationByUnit <$> decodeJson json
+
+newtype RateCard
+  = RateCard
+  { sku :: Sku
+  , name :: Maybe String
+  , description :: Maybe String
+  , charge :: RateCardCharge
+  }
 
 instance decodeJsonRateCard :: DecodeJson RateCard where
-  decodeJson json = rateCardPath <|> rateCard
-    where
-    rateCardPath = RateCardPath <$> decodeJson json
+  decodeJson json = RateCard <$> decodeJson json
 
-    rateCard = do
-      o <- decodeJson json
-      sku <- o .: "sku"
-      name <- o .:? "name"
-      description <- o .:? "description"
-      charge <- decodeJson json
-      pure $ RateCard { sku, name, description, charge }
-
-type SimpleChargeRow
-  = ( billingUnitRef :: BillingUnitRef
-    , price :: Number
-    )
-
-type SimpleCharge
-  = Record SimpleChargeRow
-
-newtype OnetimeCharge
-  = OnetimeCharge SimpleCharge
-
-instance decodeJsonOnetimeCharge :: DecodeJson OnetimeCharge where
-  decodeJson json = OnetimeCharge <$> decodeJson json
-
-newtype MonthlyCharge
-  = MonthlyCharge SimpleCharge
-
-instance decodeJsonMonthlyCharge :: DecodeJson MonthlyCharge where
-  decodeJson json = MonthlyCharge <$> decodeJson json
-
-type UsageChargeRow
-  = ( termOfPriceChangeInDays :: Int
-    , billingUnitRefs :: Maybe (Array BillingUnitRef)
-    , usageSchemaRefByBillingUnit :: Maybe (Array UsageSchemaRefByBillingUnit)
-    , segmentationByBillingUnit :: Maybe SegmentationByBillingUnit
-    , defaultUnitPriceByBillingUnit :: Maybe DefaultUnitPriceByBillingUnit
-    , unitPricePerDimByBillingUnit :: Array (UnitPricePerDimByBillingUnit)
-    , monthlyMinimum :: Number
-    )
-
-newtype UsageCharge
-  = UsageCharge (Record UsageChargeRow)
-
-instance decodeJsonUsageCharge :: DecodeJson UsageCharge where
-  decodeJson json = do
-    o <- decodeJson json
-    termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
-    billingUnitRefs <- o .:? "billingUnitRefs"
-    usageSchemaRefByBillingUnit <- o .:? "usageSchemaRefByBillingUnit"
-    segmentationByBillingUnit <- o .:? "segmentationByBillingUnit"
-    defaultUnitPriceByBillingUnit <- o .:? "defaultUnitPriceByBillingUnit"
-    unitPricePerDimByBillingUnit <- o .:? "unitPricePerDimByBillingUnit" .!= []
-    monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
-    pure
-      $ UsageCharge
-          { termOfPriceChangeInDays
-          , billingUnitRefs
-          , usageSchemaRefByBillingUnit
-          , segmentationByBillingUnit
-          , defaultUnitPriceByBillingUnit
-          , unitPricePerDimByBillingUnit
-          , monthlyMinimum
-          }
-
-newtype DefaultUnitPriceByBillingUnit
-  = DefaultUnitPriceByBillingUnit
-  { billingUnitRef :: BillingUnitRef
-  , defaultPrice :: Number
-  }
-
-instance decodeJsonDefaultUnitPriceByBillingUnit :: DecodeJson DefaultUnitPriceByBillingUnit where
-  decodeJson json = DefaultUnitPriceByBillingUnit <$> decodeJson json
-
-data SegmentedPrice
-  = FixedPrice Number
-  | SegmentedPrice
-    { minimum :: Int
-    , exclusiveMaximum :: Int
-    , price :: Number
-    }
+newtype SegmentedPrice
+  = SegmentedPrice (Array SegmentPrice)
 
 instance decodeJsonSegmentedPrice :: DecodeJson SegmentedPrice where
-  decodeJson json = fixedPrice <|> segmented
+  decodeJson json = fixed <|> segmented
     where
-    fixedPrice = FixedPrice <$> decodeJson json
+    mkSingleton p = SegmentedPrice [ SegmentPrice { minimum: 0, exclusiveMaximum: Nothing, price: p } ]
 
-    -- TODO: The fields are optional in the schema??
-    segmented = do
-      o <- decodeJson json
-      minimum <- o .: "minimum"
-      exclusiveMaximum <- o .: "exclusiveMaximum"
-      price <- o .: "price"
-      pure $ SegmentedPrice { minimum, exclusiveMaximum, price }
+    fixed = mkSingleton <$> decodeJson json
 
-newtype UnitPriceByBillingUnit
-  = UnitPriceByBillingUnit
-  { billingUnitRef :: BillingUnitRef
-  , price :: SegmentedPrice
-  }
-
-instance decodeJsonUnitPriceByBillingUnit :: DecodeJson UnitPriceByBillingUnit where
-  decodeJson json = UnitPriceByBillingUnit <$> decodeJson json
-
-newtype UnitPricePerDimByBillingUnit
-  = UnitPricePerDimByBillingUnit
-  { dim :: Map String ConfigValue
-  , monthlyMinimum :: Number
-  , unitPricesByBillingUnit :: Array UnitPriceByBillingUnit
-  }
-
-instance decodeJsonUnitPricePerDimByBillingUnit :: DecodeJson UnitPricePerDimByBillingUnit where
-  decodeJson json = do
-    o <- decodeJson json
-    dimObj :: FO.Object ConfigValue <- o .: "dim"
-    let
-      dim = Map.fromFoldable (FO.toUnfoldable dimObj :: Array _)
-    monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
-    unitPricesByBillingUnit <- o .: "unitPricesByBillingUnit"
-    pure $ UnitPricePerDimByBillingUnit { dim, monthlyMinimum, unitPricesByBillingUnit }
-
-newtype SegmentationByBillingUnit
-  = SegmentationByBillingUnit
-  { billingUnitRef :: BillingUnitRef
-  , segmentation :: Segmentation
-  }
-
-instance decodeJsonSegmentationByBillingUnit :: DecodeJson SegmentationByBillingUnit where
-  decodeJson json = SegmentationByBillingUnit <$> decodeJson json
-
-newtype UsageSchemaRefByBillingUnit
-  = UsageSchemaRefByBillingUnit
-  { billingUnitRef :: BillingUnitRef
-  , usageSchemaRef :: UsageSchemaRef
-  }
-
-instance decodeJsonUsageSchemaRefByBillingUnit :: DecodeJson UsageSchemaRefByBillingUnit where
-  decodeJson json = UsageSchemaRefByBillingUnit <$> decodeJson json
+    segmented = SegmentedPrice <$> decodeJson json
 
 data SegmentationPeriod
   = SegmentationPeriodMonthly
@@ -456,43 +406,58 @@ instance decodeJsonSegmentationModel :: DecodeJson SegmentationModel where
       "Overage" -> Right SegmentationModelOverage
       _ -> Left (TypeMismatch "SegmentationModel")
 
-newtype Segmentation
-  = Segmentation
-  { usageSchemaRef :: UsageSchemaRef
-  -- , specifiedDims :: Array …
-  , unspecifiedDims :: Array DimTypeRef
-  , period :: SegmentationPeriod
-  , model :: SegmentationModel
-  , segments :: Array SegmentedPrice
+newtype DefaultPriceByUnit
+  = DefaultPriceByUnit
+  { unit :: UnitRef
+  , price :: Number
   }
 
-instance decodeJsonSegmentation :: DecodeJson Segmentation where
-  decodeJson json = Segmentation <$> decodeJson json
+instance decodeJsonDefaultPriceByUnit :: DecodeJson DefaultPriceByUnit where
+  decodeJson json = DefaultPriceByUnit <$> decodeJson json
 
-newtype BillingUnitRef
-  = BillingUnitRef { billingUnitId :: String, solutionUri :: Maybe Uri }
+newtype PricesPerDimByUnit
+  = PricesPerDimByUnit
+  { dim :: DimValue
+  , prices :: Array PriceByUnit
+  , monthlyMinimum :: Number
+  }
 
-instance decodeJsonBillingUnitRef :: DecodeJson BillingUnitRef where
-  decodeJson json = BillingUnitRef <$> plainId <|> full
+instance decodeJsonPricesPerDimByUnit :: DecodeJson PricesPerDimByUnit where
+  decodeJson json = do
+    o <- decodeJson json
+    dim <- o .: "dim"
+    prices <- o .: "prices"
+    monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
+    pure $ PricesPerDimByUnit { dim, prices, monthlyMinimum }
+
+newtype PriceByUnit
+  = PriceByUnit
+  { unit :: UnitRef
+  , price :: SegmentedPrice
+  }
+
+instance decodeJsonPriceByUnit :: DecodeJson PriceByUnit where
+  decodeJson = map PriceByUnit <<< decodeJson
+
+newtype UnitRef
+  = UnitRef { unitID :: String, product :: Maybe ProductRef }
+
+instance decodeJsonUnitRef :: DecodeJson UnitRef where
+  decodeJson json = UnitRef <$> plainID <|> full
     where
-    plainId = (\id -> { billingUnitId: id, solutionUri: Nothing }) <$> decodeJson json
+    plainID = (\id -> { unitID: id, product: Nothing }) <$> decodeJson json
 
     full = do
       o <- decodeJson json
-      billingUnitId <- o .: "billingUnitID"
-      solutionUri <- o .:? "solutionURI"
-      pure $ BillingUnitRef { billingUnitId, solutionUri }
+      unitID <- o .: "unitID"
+      product <- o .: "product"
+      pure $ UnitRef { unitID, product }
 
-newtype BillingUnit
-  = BillingUnit
-  { id :: Maybe String
-  , name :: Maybe String
-  , chargeType :: ChargeType
-  , description :: Maybe String
-  }
+newtype ProductRef
+  = ProductRef { sku :: Sku, solutionURI :: Maybe Uri }
 
-instance decodeJsonBillingUnit :: DecodeJson BillingUnit where
-  decodeJson json = BillingUnit <$> decodeJson json
+instance decodeJsonProductRef :: DecodeJson ProductRef where
+  decodeJson = map ProductRef <<< decodeJson
 
 data ChargeType
   = ChargeTypeOnetime
@@ -531,6 +496,8 @@ data ConfigSchemaEntry
     }
   | CseArray
     { items :: ConfigSchemaEntry }
+  | CseObject
+    { properties :: Map String ConfigSchemaEntry }
 
 instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
   decodeJson json = do
@@ -554,6 +521,10 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
       "array" -> do
         items <- o .: "items"
         pure $ CseArray { items }
+      "object" -> do
+        propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
+        let properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
+        pure $ CseObject { properties }
       _ -> Left (TypeMismatch "ConfigSchemaEntry")
 
 data ConfigValue
@@ -570,6 +541,28 @@ instance decodeJsonConfigValue :: DecodeJson ConfigValue where
     (CvInteger <$> decodeJson json)
       <|> (CvString <$> decodeJson json)
 
+-- TODO: Add `schema` and `variable`.
+newtype ProductVariable
+  = ProductVariable
+  { name :: String, path :: String
+  }
+
+instance decodeJsonProductVariable :: DecodeJson ProductVariable where
+  decodeJson = map ProductVariable <<< decodeJson
+
+newtype SpecUnit
+  = SpecUnit
+  { id :: String
+  , name :: Maybe String
+  , description :: Maybe String
+  , chargeType :: ChargeType
+  , priceDimSchema :: Maybe ConfigSchemaEntry
+  , reportDimSchemas :: Maybe (Array ConfigSchemaEntry)
+  }
+
+instance decodeJsonSpecUnit :: DecodeJson SpecUnit where
+  decodeJson = map SpecUnit <<< decodeJson
+
 newtype Product
   = Product
   { sku :: String
@@ -579,6 +572,9 @@ newtype Product
   , configSchema :: Maybe (Map String ConfigSchemaEntry)
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
+  , variables :: Maybe (Array ProductVariable)
+  , units :: Array SpecUnit
+  , rules :: Maybe (Array Rule)
   }
 
 instance decodeJsonProduct :: DecodeJson Product where
@@ -595,6 +591,9 @@ instance decodeJsonProduct :: DecodeJson Product where
       configSchema = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> configSchemaObj
     options <- o .:? "options"
     features <- o .:? "features"
+    variables <- o .:? "variables"
+    units <- o .: "units"
+    rules <- o .:? "rules"
     pure
       $ Product
           { sku
@@ -604,6 +603,9 @@ instance decodeJsonProduct :: DecodeJson Product where
           , configSchema
           , options
           , features
+          , variables
+          , units
+          , rules
           }
 
 data Platform
@@ -752,13 +754,10 @@ data Sku
   = SkuCode String
   | Sku
     { code :: String
+    , name :: String
     , description :: Maybe String
-    , name :: Maybe String
-    , platform :: Maybe Platform
-    , productCategory :: Maybe ProductCategory
-    , accountProduct :: Maybe Boolean
-    , billableProduct :: Maybe Boolean
-    , commercialProduct :: Maybe Boolean
+    , productCategory :: ProductCategory
+    , platform :: Platform
     }
 
 instance decodeJsonSku :: DecodeJson Sku where
@@ -769,23 +768,17 @@ instance decodeJsonSku :: DecodeJson Sku where
     productOption = do
       o <- decodeJson json
       code <- o .: "code"
+      name <- o .: "name"
       description <- o .:? "description"
-      name <- o .:? "name"
-      platform <- o .:? "platform"
-      productCategory <- o .:? "productCategory"
-      accountProduct <- o .:? "accountProduct"
-      billableProduct <- o .:? "billableProduct"
-      commercialProduct <- o .:? "commercialProduct"
+      productCategory <- o .: "productCategory"
+      platform <- o .: "platform"
       pure
         $ Sku
             { code
-            , description
             , name
-            , platform
+            , description
             , productCategory
-            , accountProduct
-            , billableProduct
-            , commercialProduct
+            , platform
             }
 
 data ProductOption
@@ -866,70 +859,6 @@ newtype ProductFeature
 
 instance decodeJsonProductFeature :: DecodeJson ProductFeature where
   decodeJson json = ProductFeature <$> decodeJson json
-
-newtype DimTypeRef
-  = DimTypeRef { dimTypeId :: String, solutionUri :: Maybe Uri }
-
-instance decodeJsonDimTypeRef :: DecodeJson DimTypeRef where
-  decodeJson json = DimTypeRef <$> plainId <|> full
-    where
-    plainId = (\id -> { dimTypeId: id, solutionUri: Nothing }) <$> decodeJson json
-
-    full = do
-      o <- decodeJson json
-      dimTypeId <- o .: "dimTypeID"
-      solutionUri <- o .:? "solutionURI"
-      pure $ DimTypeRef { dimTypeId, solutionUri }
-
-newtype DimType
-  = DimType
-  { id :: Maybe String
-  , name :: Maybe String
-  , description :: Maybe String
-  , schema :: Map String ConfigSchemaEntry
-  }
-
-instance decodeJsonDimType :: DecodeJson DimType where
-  decodeJson json = do
-    o <- decodeJson json
-    id <- o .: "id"
-    name <- o .:? "name"
-    description <- o .:? "description"
-    schemaObj :: FO.Object ConfigSchemaEntry <- o .: "schema"
-    let
-      schema = Map.fromFoldable (FO.toUnfoldable schemaObj :: Array _)
-    pure
-      $ DimType
-          { id
-          , name
-          , description
-          , schema
-          }
-
-newtype UsageSchemaRef
-  = UsageSchemaRef { usageSchemaId :: String, solutionUri :: Maybe Uri }
-
-instance decodeJsonUsageSchemaRef :: DecodeJson UsageSchemaRef where
-  decodeJson json = UsageSchemaRef <$> plainId <|> full
-    where
-    plainId = (\id -> { usageSchemaId: id, solutionUri: Nothing }) <$> decodeJson json
-
-    full = do
-      o <- decodeJson json
-      usageSchemaId <- o .: "usageSchemaID"
-      solutionUri <- o .:? "solutionURI"
-      pure $ UsageSchemaRef { usageSchemaId, solutionUri }
-
-newtype UsageSchema
-  = UsageSchema
-  { id :: Maybe String
-  , name :: Maybe String
-  , description :: Maybe String
-  , dimTypeRefs :: Maybe (Array String)
-  }
-
-instance decodeJsonUsageSchema :: DecodeJson UsageSchema where
-  decodeJson json = UsageSchema <$> decodeJson json
 
 data BillingOption
   = Prepay
@@ -1048,75 +977,11 @@ type Date
 newtype Validity
   = Validity
   { startDate :: Date
-  , endDateExclusive :: Date
+  , endDateExclusive :: Maybe Date
   }
 
 instance decodeJsonValidity :: DecodeJson Validity where
   decodeJson json = Validity <$> decodeJson json
-
-newtype MonthlyPriceOverrideElem
-  = MonthlyPriceOverrideElem
-  { validity :: Validity
-  | SimpleChargeRow
-  }
-
-instance decodeJsonMonthlyPriceOverrideElem :: DecodeJson MonthlyPriceOverrideElem where
-  decodeJson json = MonthlyPriceOverrideElem <$> decodeJson json
-
-newtype MonthlyPriceOverride
-  = MonthlyPriceOverride
-  { id :: String
-  , elements :: Array MonthlyPriceOverrideElem
-  }
-
-instance decodeJsonMonthlyPriceOverride :: DecodeJson MonthlyPriceOverride where
-  decodeJson json = MonthlyPriceOverride <$> decodeJson json
-
-newtype OnetimePriceOverrideElem
-  = OnetimePriceOverrideElem
-  { validity :: Validity
-  | SimpleChargeRow
-  }
-
-instance decodeJsonOnetimePriceOverrideElem :: DecodeJson OnetimePriceOverrideElem where
-  decodeJson json = OnetimePriceOverrideElem <$> decodeJson json
-
-newtype OnetimePriceOverride
-  = OnetimePriceOverride
-  { id :: String
-  , elements :: Array OnetimePriceOverrideElem
-  }
-
-instance decodeJsonOnetimePriceOverride :: DecodeJson OnetimePriceOverride where
-  decodeJson json = OnetimePriceOverride <$> decodeJson json
-
-newtype UsagePriceOverrideElem
-  = UsagePriceOverrideElem
-  { validity :: Validity
-  | UsageChargeRow
-  }
-
-instance decodeJsonUsagePriceOverrideElem :: DecodeJson UsagePriceOverrideElem where
-  decodeJson json = UsagePriceOverrideElem <$> decodeJson json
-
-newtype UsagePriceOverride
-  = UsagePriceOverride
-  { id :: String
-  , elements :: Array UsagePriceOverrideElem
-  }
-
-instance decodeJsonUsagePriceOverride :: DecodeJson UsagePriceOverride where
-  decodeJson json = UsagePriceOverride <$> decodeJson json
-
-newtype PriceOverrides
-  = PriceOverrides
-  { monthlyPriceOverrides :: Array MonthlyPriceOverride
-  , onetimePriceOverrides :: Array OnetimePriceOverride
-  , usagePriceOverrides :: Array UsagePriceOverride
-  }
-
-instance decodeJsonPriceOverrides :: DecodeJson PriceOverrides where
-  decodeJson json = PriceOverrides <$> decodeJson json
 
 newtype ProductInstance
   = ProductInstance
@@ -1126,16 +991,43 @@ newtype ProductInstance
 instance decodeJsonProductInstance :: DecodeJson ProductInstance where
   decodeJson json = ProductInstance <$> decodeJson json
 
+newtype DateTime
+  = DateTime String
+
+instance decodeDateTime :: DecodeJson DateTime where
+  decodeJson json = DateTime <$> decodeJson json
+
+-- TODO: Add `configs`
 newtype Asset
   = Asset
-  { baseRateCardURI :: Uri
-  , priceOverrides :: PriceOverrides
-  , product :: ProductInstance
-  , quantity :: Int
+  { sku :: Sku
+  -- , configs :: Array ConfigValue
+  , billingAccount :: BillingAccountRef
+  , createTime :: DateTime
+  , updateTime :: DateTime
+  , priceOverrides :: Array PriceOverride
   }
 
 instance decodeJsonAsset :: DecodeJson Asset where
   decodeJson json = Asset <$> decodeJson json
+
+newtype PriceOverride
+  = PriceOverride
+  { basePriceBookRef :: PriceBookRef
+  , charge :: RateCardCharge
+  , validity :: Validity
+  }
+
+instance decodeJsonPriceOverride :: DecodeJson PriceOverride where
+  decodeJson json = PriceOverride <$> decodeJson json
+
+newtype PriceBookRef
+  = PriceBookRef
+  { priceBookID :: String, solutionURI :: Maybe Uri
+  }
+
+instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
+  decodeJson json = PriceBookRef <$> decodeJson json
 
 newtype SalesforceAccountRef
   = SalesforceAccountRef
@@ -1241,57 +1133,21 @@ newtype OrderSectionSummary
 instance decodeJsonOrderSectionSummary :: DecodeJson OrderSectionSummary where
   decodeJson json = OrderSectionSummary <$> decodeJson json
 
-newtype OnetimeChargeOrderline
-  = OnetimeChargeOrderline SimpleCharge
-
-instance decodeJsonOnetimeChargeOrderline :: DecodeJson OnetimeChargeOrderline where
-  decodeJson json = OnetimeChargeOrderline <$> decodeJson json
-
--- | Estimated semgement volume.
-newtype EstPriceSegment
-  = EstPriceSegment
+newtype Segment
+  = Segment
   { minimum :: Int
-  , exclusiveMaximum :: Int
+  , exclusiveMaximum :: Maybe Int
   }
 
-instance decodeJsonEstPriceSegment :: DecodeJson EstPriceSegment where
-  decodeJson json = EstPriceSegment <$> decodeJson json
-
-newtype MonthlyChargeOrderline
-  = MonthlyChargeOrderline
-  { estPriceSegment :: Maybe EstPriceSegment
-  | SimpleChargeRow
-  }
-
-instance decodeJsonMonthlyChargeOrderline :: DecodeJson MonthlyChargeOrderline where
-  decodeJson json = MonthlyChargeOrderline <$> decodeJson json
-
-newtype EstWeightByDim
-  = EstWeightByDim
-  { weight :: Number
-  }
-
-instance decodeJsonEstWeightByDim :: DecodeJson EstWeightByDim where
-  decodeJson json = EstWeightByDim <$> decodeJson json
-
-newtype UsageChargeOrderline
-  = UsageChargeOrderline
-  { estQuantity :: Int
-  , estWeightByDim :: Array EstWeightByDim
-  , estPriceSegment :: EstPriceSegment
-  | UsageChargeRow
-  }
-
-instance decodeJsonUsageChargeOrderline :: DecodeJson UsageChargeOrderline where
-  decodeJson json = UsageChargeOrderline <$> decodeJson json
+instance decodeJsonSegment :: DecodeJson Segment where
+  decodeJson json = Segment <$> decodeJson json
 
 newtype OrderLine
   = OrderLine
-  { product :: ProductInstance
+  { basePriceBookRef :: PriceBookRef
+  , sku :: Sku
+  , charge :: RateCardCharge
   , quantity :: Int
-  , onetimeCharges :: Array OnetimeChargeOrderline
-  , monthlyCharges :: Array MonthlyChargeOrderline
-  , usageCharges :: Array UsageChargeOrderline
   }
 
 instance decodeJsonOrderLine :: DecodeJson OrderLine where

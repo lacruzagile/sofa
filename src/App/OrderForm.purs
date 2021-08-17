@@ -4,16 +4,13 @@ import Prelude
 import Affjax (printError)
 import Css as Css
 import Data.Argonaut (class DecodeJson, printJsonDecodeError)
-import Data.Array (deleteAt, mapWithIndex, modifyAt, snoc)
+import Data.Array (deleteAt, fromFoldable, mapWithIndex, modifyAt, snoc)
 import Data.Either (Either(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
-import Data.String as String
-import Data.Traversable (sequence, traverse)
 import Data.Variant (default, on)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (log)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -30,7 +27,7 @@ proxy :: Proxy "orderForm"
 proxy = Proxy
 
 type State
-  = SubState StateMeta
+  = SubState StateOrderForm
 
 data SubState a
   = Idle
@@ -60,16 +57,9 @@ instance bindSubState :: Bind SubState where
   bind Loading _ = Loading
   bind (Error e) _ = Error e
 
-type StateMeta
-  = { meta :: SS.Meta
-    , solutions :: Array StateSolution
+type StateOrderForm
+  = { productCatalog :: SS.ProductCatalog
     , orderForm :: OrderForm
-    }
-
-type StateSolution
-  = { name :: String
-    , solution :: SS.Solution
-    --   , products :: Map String SS.ConfigSchemaEntry
     }
 
 -- Similar to SS.OrderForm but with a few optional fields.
@@ -89,7 +79,7 @@ newtype OrderSection
   }
 
 data Action
-  = GetMeta
+  = LoadProductCatalog String
   | AddSection { solution :: SS.Solution }
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
@@ -105,7 +95,7 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just GetMeta }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
 
 initialState :: forall input. input -> State
@@ -116,6 +106,9 @@ render state =
   HH.div_
     ( [ HH.h1_
           [ HH.text "Order Form" ]
+      , HH.button
+          [ HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json" ]
+          [ HH.text "Sinch Cloud" ]
       ]
         <> content
     )
@@ -328,87 +321,56 @@ render state =
             ]
         ]
 
-  sections :: Array StateSolution -> Array OrderSection -> H.ComponentHTML Action slots m
-  sections stateSols secs =
+  sections :: SS.ProductCatalog -> Array OrderSection -> H.ComponentHTML Action slots m
+  sections (SS.ProductCatalog pc) secs =
     HH.div_
       $ [ HH.h3_ [ HH.text "Sections" ]
         ]
       <> mapWithIndex section secs
       <> addSection
     where
-    solutionButtons = map (\s -> HH.button [ HE.onClick \_ -> AddSection { solution: s.solution } ] [ HH.text s.name ]) stateSols
+    solutionLabel (SS.Solution s) = HH.text $ maybe s.id identity s.name
+
+    solutionButton s = HH.button [ HE.onClick \_ -> AddSection { solution: s } ] [ solutionLabel s ]
+
+    solutionButtons = map solutionButton <<< fromFoldable $ pc.solutions
 
     addSection =
       [ HH.label [ HP.for "of-add-section", HP.class_ Css.button ] [ HH.text "Add Section" ]
       , Widgets.modal "of-add-section" "Choose Section Solution" solutionButtons
       ]
 
-  orderForm :: Array StateSolution -> OrderForm -> H.ComponentHTML Action slots m
-  orderForm sols order =
-    HH.div_
-      [ Widgets.tabbed2 "customer"
-          { label: HH.text "New Customer", content: newCustomer }
-          { label: HH.text "Return Customer", content: returnCustomer }
-      , sections sols order.sections
-      , HH.div [ HP.classes [ Css.flex, Css.four ] ]
-          [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
-          , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageTotal) ]
-          , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlyTotal) ]
-          , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeTotal) ]
-          ]
-      ]
+  renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action slots m)
+  renderOrderForm { productCatalog, orderForm } =
+    [ HH.div_
+        [ Widgets.tabbed2 "customer"
+            { label: HH.text "New Customer", content: newCustomer }
+            { label: HH.text "Return Customer", content: returnCustomer }
+        , sections productCatalog orderForm.sections
+        , HH.div [ HP.classes [ Css.flex, Css.four ] ]
+            [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
+            , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageTotal) ]
+            , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlyTotal) ]
+            , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeTotal) ]
+            ]
+        ]
+    ]
     where
-    SS.OrderSummary summary = order.summary
+    SS.OrderSummary summary = orderForm.summary
 
-  meta m = [ orderForm m.solutions m.orderForm ]
-
-  content = defRender state meta
-
-baseUrl :: String
-baseUrl = "v1alpha1/solutions"
-
-metaUrl :: String
-metaUrl = baseUrl <> "/meta.json"
-
-solutionUrl :: String -> String
-solutionUrl solUri =
-  if isWebUrl then
-    solUri
-  else
-    baseUrl <> "/" <> solUri <> "/nsolution.json"
-  where
-  isWebUrl = String.contains (String.Pattern "^https?:") solUri
-
-getSolution ::
-  forall m.
-  Bind m => MonadAff m => String -> m (SubState StateSolution)
-getSolution name = getJson (solutionUrl name) (\sol -> { name, solution: sol })
-
-getSolutions ::
-  forall m.
-  Bind m => MonadAff m => SubState SS.Meta -> m (SubState (Array StateSolution))
-getSolutions = case _ of
-  Idle -> pure Idle
-  Success meta -> sequence <$> get meta
-  Loading -> pure Idle
-  Error x -> pure $ Error x
-  where
-  get :: SS.Meta -> m (Array (SubState StateSolution))
-  get meta = traverse getSolution meta.solutions
+  content = defRender state renderOrderForm
 
 handleAction ::
   forall o m.
   MonadAff m => Action -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
-  GetMeta -> do
+  LoadProductCatalog url -> do
     H.modify_ \_ -> Loading
-    meta <- getJson metaUrl identity
-    solutions <- getSolutions meta
+    productCatalog <- getJson url identity
     let
       res =
-        ( \(m :: SS.Meta) (ss :: Array StateSolution) ->
-            { meta: m
-            , solutions: ss
+        ( \(pc :: SS.ProductCatalog) ->
+            { productCatalog: pc
             , orderForm:
                 { id: Nothing
                 , customer: Nothing
@@ -423,8 +385,7 @@ handleAction = case _ of
                 }
             }
         )
-          <$> meta
-          <*> solutions
+          <$> productCatalog
     H.modify_ \_ -> res
   AddSection { solution } ->
     H.modify_
@@ -465,11 +426,17 @@ handleAction = case _ of
               { orderLines =
                 snoc section.orderLines
                   ( SS.OrderLine
-                      { product: SS.ProductInstance {}
+                      { basePriceBookRef: SS.PriceBookRef { priceBookID: "PBID", solutionURI: Nothing }
+                      , sku: SS.SkuCode "NO CODE"
+                      , charge:
+                          SS.RccSimple
+                            { unit: SS.UnitRef { unitID: "UID", product: Nothing }
+                            , price: SS.SimplePriceSegmented $ SS.SegmentedPrice [ SS.SegmentPrice { minimum: 0, exclusiveMaximum: Nothing, price: 0.0 } ]
+                            , segmentation: Nothing
+                            , termOfPriceChangeInDays: Nothing
+                            , monthlyMinimum: Nothing
+                            }
                       , quantity: 1
-                      , onetimeCharges: []
-                      , monthlyCharges: []
-                      , usageCharges: []
                       }
                   )
               }

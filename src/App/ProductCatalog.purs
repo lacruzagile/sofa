@@ -2,16 +2,14 @@ module App.ProductCatalog (Slot, proxy, component) where
 
 import Prelude
 import Affjax (printError)
-import Control.Monad.State (class MonadState)
 import Css as Css
 import Data.Argonaut (class DecodeJson, printJsonDecodeError)
-import Data.Array (concatMap, mapWithIndex, modifyAt, (!!))
+import Data.Array (concatMap, fromFoldable, singleton)
 import Data.Either (Either(..))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe, maybe)
 import Data.SmartSpec as SS
-import Data.String as String
 import Data.Tuple (uncurry)
 import Data.Variant (default, on)
 import Effect.Aff.Class (class MonadAff)
@@ -59,13 +57,21 @@ render state =
   HH.div_
     ( [ HH.h1_
           [ HH.text "Product Catalog" ]
-      , HH.button [ HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json" ] [ HH.text "Sinch Cloud offering" ]
+      , HH.button
+          [ HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json" ]
+          [ HH.text "Sinch Cloud" ]
       ]
         <> content
     )
   where
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
   opt = maybe []
+
+  -- Apply the given function if array is non-empty, otherwise return empty array.
+  optArr :: forall a b. (Array a -> Array b) -> Array a -> Array b
+  optArr f = case _ of
+    [] -> []
+    xs -> f xs
 
   blockList = HH.ul [ HP.class_ Css.blocklist ]
 
@@ -79,58 +85,18 @@ render state =
     , HH.dd_ [ value ]
     ]
 
-  billingUnit :: SS.BillingUnit -> H.ComponentHTML Action slots m
-  billingUnit (SS.BillingUnit bu) =
-    HH.li_
-      [ HH.dl_
-          ( opt (dataItem "ID") bu.id
-              <> opt (dataItem "Name") bu.name
-              <> dataItem "Charge Type" (show bu.chargeType)
-              <> opt (dataItem "Description") bu.description
-          )
-      ]
-
-  dimTypeSchema :: Map String SS.ConfigSchemaEntry -> Array (H.ComponentHTML Action slots m)
-  dimTypeSchema = html <<< HH.dl_ <<< concatMap (uncurry configSchemaEntry) <<< Map.toUnfoldable
-    where
-    html x =
-      [ HH.dt_ [ HH.text "Schema" ]
-      , HH.dd_ [ x ]
-      ]
-
-  dimType :: SS.DimType -> H.ComponentHTML Action slots m
-  dimType (SS.DimType dt) =
-    HH.li_
-      [ HH.dl_
-          ( opt (dataItem "ID") dt.id
-              <> opt (dataItem "Name") dt.name
-              <> opt (dataItem "Description") dt.description
-              <> dimTypeSchema dt.schema
-          )
-      ]
-
-  dimTypeRef :: SS.DimTypeRef -> Array (H.ComponentHTML Action slots m)
-  dimTypeRef (SS.DimTypeRef r) =
-    dataItemRaw "Dimension Type Reference"
-      $ HH.dl_
-          ( dataItem "Dimension Type ID" r.dimTypeId
-              <> opt (dataItem "Solution URI") r.solutionUri
-          )
-
   sku :: SS.Sku -> H.ComponentHTML Action slots m
-  sku (SS.SkuCode s) = HH.text s
+  sku (SS.SkuCode s) =
+    HH.dl [ HP.class_ Css.hblock ]
+      $ dataItem "Code" s
 
   sku (SS.Sku s) =
     HH.dl [ HP.class_ Css.hblock ]
-      ( dataItem "Code" s.code
-          <> opt (dataItem "Description") s.description
-          <> opt (dataItem "Name") s.name
-          <> opt (dataItem "Platform") (show <$> s.platform)
-          <> opt (dataItem "Product Category") (show <$> s.productCategory)
-          <> opt (dataItem "Account Product") (show <$> s.accountProduct)
-          <> opt (dataItem "Billable Product") (show <$> s.billableProduct)
-          <> opt (dataItem "Commercial Product") (show <$> s.commercialProduct)
-      )
+      $ dataItem "Code" s.code
+      <> dataItem "Name" s.name
+      <> opt (dataItem "Description") s.description
+      <> dataItem "Product Category" (show s.productCategory)
+      <> dataItem "Platform" (show s.platform)
 
   productOption :: SS.ProductOption -> H.ComponentHTML Action slots m
   productOption (SS.ProdOptSkuCode s) = HH.li_ [ HH.text s ]
@@ -145,9 +111,6 @@ render state =
               <> dataItem "Quantity" (show po.quantity)
               <> dataItem "Min Quantity" (show po.minQuantity)
               <> dataItem "Max Quantity" (show po.maxQuantity)
-              {- <> dataItem "Required Options" (show po.quantity)
-                 <> dataItem "Exclude Options" (show po.quantity) -}
-              
               <> dataItem "Selected by Default" (show po.selectedByDefault)
               <> dataItem "Type" (show po.type_)
           )
@@ -179,6 +142,10 @@ render state =
       [ HH.dt_ [ HH.text k, HH.text " (array)" ]
       , HH.dd_ [ renderArray v ]
       ]
+    SS.CseObject v ->
+      [ HH.dt_ [ HH.text k, HH.text " (object)" ]
+      , HH.dd_ [ renderObject v ]
+      ]
     where
     renderInteger v =
       HH.dl_
@@ -205,11 +172,14 @@ render state =
         ( dataItemRaw "Items" (renderAny v.items)
         )
 
+    renderObject v = HH.div_ $ configSchema $ pure v.properties
+
     renderAny = case _ of
       SS.CseInteger v -> renderInteger v
       SS.CseString v -> renderString v
       SS.CseRegex v -> renderRegex v
       SS.CseArray v -> renderArray v
+      SS.CseObject v -> renderObject v
 
   configSchema :: Maybe (Map String SS.ConfigSchemaEntry) -> Array (H.ComponentHTML Action slots m)
   configSchema = maybe [] (html <<< HH.dl_ <<< concatMap (uncurry configSchemaEntry) <<< Map.toUnfoldable)
@@ -232,99 +202,135 @@ render state =
           )
       ]
 
-  billingUnitRef :: SS.BillingUnitRef -> String
-  billingUnitRef (SS.BillingUnitRef bur) =
-    bur.billingUnitId
-      <> (maybe "" (\x -> " [" <> show x <> "]") bur.solutionUri)
+  showSkuCode :: SS.Sku -> String
+  showSkuCode = case _ of
+    SS.SkuCode c -> c
+    SS.Sku s -> s.code
 
-  onetimeCharge :: SS.OnetimeCharge -> H.ComponentHTML Action slots m
-  onetimeCharge (SS.OnetimeCharge r) =
-    HH.text $ billingUnitRef r.billingUnitRef
-      <> " "
-      <> show r.price
+  showProductRef :: SS.ProductRef -> String
+  showProductRef (SS.ProductRef p) = showSkuCode p.sku <> (maybe "" (\s -> " [" <> show s <> "]") p.solutionURI)
 
-  onetimeCharges :: Array SS.OnetimeCharge -> Array (H.ComponentHTML Action slots m)
-  onetimeCharges xs =
-    dataItemRaw "Onetime Charges"
-      <<< blockList
-      <<< map (\x -> HH.li_ [ onetimeCharge x ])
-      $ xs
+  unitRef :: SS.UnitRef -> String
+  unitRef (SS.UnitRef unit) =
+    unit.unitID
+      <> (maybe "" (\p -> " [" <> showProductRef p <> "]") unit.product)
 
-  monthlyCharge :: SS.MonthlyCharge -> H.ComponentHTML Action slots m
-  monthlyCharge (SS.MonthlyCharge r) =
-    HH.text $ billingUnitRef r.billingUnitRef
-      <> " "
-      <> show r.price
+  unitRefs :: Array SS.UnitRef -> H.ComponentHTML Action slots m
+  unitRefs = HH.ul_ <<< map (\u -> HH.li_ [ HH.text $ unitRef u ])
 
-  monthlyCharges :: Array SS.MonthlyCharge -> Array (H.ComponentHTML Action slots m)
-  monthlyCharges xs =
-    dataItemRaw "Monthly Charges"
-      <<< blockList
-      <<< map (\x -> HH.li_ [ monthlyCharge x ])
-      $ xs
+  showSegmentPrice :: SS.SegmentPrice -> String
+  showSegmentPrice (SS.SegmentPrice p) =
+    show p.price
+      <> " ["
+      <> show p.minimum
+      <> ","
+      <> maybe "" show p.exclusiveMaximum
+      <> ")"
 
-  segmentedPrice :: SS.SegmentedPrice -> String
-  segmentedPrice = case _ of
-    SS.FixedPrice p -> show p
-    SS.SegmentedPrice p ->
-      show p.price
-        <> " ["
-        <> show p.minimum
-        <> ", "
-        <> show p.exclusiveMaximum
-        <> ")"
-
-  unitPriceByBillingUnit :: SS.UnitPriceByBillingUnit -> H.ComponentHTML Action slots m
-  unitPriceByBillingUnit (SS.UnitPriceByBillingUnit r) =
-    HH.li_
-      $ dataItem "Billing Unit Reference" (billingUnitRef r.billingUnitRef)
-      <> dataItem "Price" (segmentedPrice r.price)
+  segmentedPrice :: SS.SegmentedPrice -> H.ComponentHTML Action slots m
+  segmentedPrice (SS.SegmentedPrice ps) = blockList $ map (\p -> HH.li_ [ HH.text $ showSegmentPrice p ]) ps
 
   configValues :: Map String SS.ConfigValue -> H.ComponentHTML Action slots m
   configValues = HH.dl_ <<< concatMap (uncurry entry) <<< Map.toUnfoldable
     where
     entry k v = dataItem k (show v)
 
-  unitPricePerDimByBillingUnit :: SS.UnitPricePerDimByBillingUnit -> H.ComponentHTML Action slots m
-  unitPricePerDimByBillingUnit (SS.UnitPricePerDimByBillingUnit r) =
-    HH.li_
-      $ dataItemRaw "Dimensions" (configValues r.dim)
+  dimValue :: SS.DimValue -> H.ComponentHTML Action slots m
+  dimValue = case _ of
+    SS.DimFlat v -> HH.text (show v)
+    SS.DimMap m -> configValues m
+
+  priceByDim :: SS.PriceByDim -> H.ComponentHTML Action slots m
+  priceByDim (SS.PriceByDim r) =
+    HH.dl_
+      $ dataItemRaw "Dimension" (dimValue r.dim)
       <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
-      <> dataItemRaw "Unit Prices by Billing Unit" unitPricesPerBillingUnit
+      <> dataItemRaw "Prices" (segmentedPrice r.price)
+
+  simplePrice :: SS.SimplePrice -> H.ComponentHTML Action slots m
+  simplePrice = case _ of
+    SS.SimplePriceSegmented p -> segmentedPrice p
+    SS.SimplePriceByDim p -> HH.ul_ $ map priceByDim p
+
+  showSegment :: SS.Segment -> String
+  showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "" show s.exclusiveMaximum <> ")"
+
+  segmentation :: SS.PriceSegmentation -> H.ComponentHTML Action slots m
+  segmentation (SS.PriceSegmentation p) =
+    HH.dl_
+      $ dataItem "Segment Unit" (unitRef p.segmentUnit)
+      <> dataItem "Period" (show p.period)
+      <> dataItem "Model" (show p.model)
+      <> dataItemRaw "Segments" (HH.ul_ $ segment <$> p.segments)
     where
-    unitPricesPerBillingUnit = blockList (map unitPriceByBillingUnit r.unitPricesByBillingUnit)
+    segment s = HH.li_ [ HH.text $ showSegment s ]
 
-  unitPricesPerDimByBillingUnit :: Array SS.UnitPricePerDimByBillingUnit -> H.ComponentHTML Action slots m
-  unitPricesPerDimByBillingUnit elems = blockList (map unitPricePerDimByBillingUnit elems)
+  priceSegmentationByUnit :: SS.PriceSegmentationByUnit -> H.ComponentHTML Action slots m
+  priceSegmentationByUnit (SS.PriceSegmentationByUnit p) =
+    HH.dl_
+      $ dataItem "Unit" (unitRef p.unit)
+      <> dataItemRaw "Segmentation" (segmentation p.segmentation)
 
-  usageCharge :: SS.UsageCharge -> Array (H.ComponentHTML Action slots m)
-  usageCharge (SS.UsageCharge r) =
-    dataItem "Term of Price Change in Days" (show r.termOfPriceChangeInDays)
-      <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
-      <> dataItemRaw "Unit Price per Dimension by Billing Unit" (unitPricesPerDimByBillingUnit r.unitPricePerDimByBillingUnit)
+  priceSegmentationsByUnit :: Array SS.PriceSegmentationByUnit -> H.ComponentHTML Action slots m
+  priceSegmentationsByUnit = HH.ul_ <<< map (HH.li_ <<< singleton <<< priceSegmentationByUnit)
 
-  usageCharges :: Array SS.UsageCharge -> Array (H.ComponentHTML Action slots m)
-  usageCharges xs =
-    dataItemRaw "Usage Charges"
-      <<< blockList
-      <<< map (\x -> HH.li_ [ HH.dl_ (usageCharge x) ])
-      $ xs
+  defaultPrices :: Array SS.DefaultPriceByUnit -> H.ComponentHTML Action slots m
+  defaultPrices ps =
+    HH.table_
+      $ [ HH.tr_
+            [ HH.th_ [ HH.text "Unit" ]
+            , HH.th_ [ HH.text "Price" ]
+            ]
+        ]
+      <> map mkRow ps
+    where
+    mkRow (SS.DefaultPriceByUnit p) =
+      HH.tr_
+        [ HH.td_ [ HH.text $ unitRef p.unit ]
+        , HH.td_ [ HH.text $ show p.price ]
+        ]
 
-  rateCardCharge :: SS.RateCardCharge -> Array (H.ComponentHTML Action slots m)
-  rateCardCharge (SS.RateCardCharge r) =
-    onetimeCharges r.onetimeCharges
-      <> monthlyCharges r.monthlyCharges
-      <> usageCharges r.usageCharges
+  priceByUnit :: SS.PriceByUnit -> H.ComponentHTML Action slots m
+  priceByUnit (SS.PriceByUnit p) =
+    HH.dl_
+      $ dataItem "Unit" (unitRef p.unit)
+      <> dataItemRaw "Price" (segmentedPrice p.price)
+
+  pricesByUnit :: Array SS.PriceByUnit -> H.ComponentHTML Action slots m
+  pricesByUnit = blockList <<< map (HH.li_ <<< singleton <<< priceByUnit)
+
+  pricesPerDim :: Array SS.PricesPerDimByUnit -> H.ComponentHTML Action slots m
+  pricesPerDim = HH.ul_ <<< map mkItem
+    where
+    mkItem (SS.PricesPerDimByUnit p) =
+      HH.dl_
+        $ dataItemRaw "Dimension" (dimValue p.dim)
+        <> dataItemRaw "Prices" (pricesByUnit p.prices)
+        <> dataItem "Monthly Minimum" (show p.monthlyMinimum)
+
+  rateCardCharge :: SS.RateCardCharge -> H.ComponentHTML Action slots m
+  rateCardCharge = case _ of
+    SS.RccSimple r ->
+      HH.dl_ $ dataItem "Unit" (unitRef r.unit)
+        <> dataItemRaw "Price" (simplePrice r.price)
+        <> opt (dataItemRaw "Segmentation" <<< segmentation) r.segmentation
+        <> opt (dataItem "Term of Price Change" <<< \n -> show n <> " days") r.termOfPriceChangeInDays
+        <> opt (dataItem "Monthly Minimum" <<< show) r.monthlyMinimum
+    SS.RccMixed r ->
+      HH.dl_ $ dataItemRaw "Units" (unitRefs r.units)
+        <> optArr (dataItemRaw "Price Segmentations" <<< priceSegmentationsByUnit) r.priceSegmentations
+        <> optArr (dataItemRaw "Default Prices" <<< defaultPrices) r.defaultPrices
+        <> dataItemRaw "Prices per Dimension" (pricesPerDim r.pricesPerDim)
+        <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
+        <> dataItem "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
+    SS.RccArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ rateCardCharge r ]) $ rs
 
   rateCard :: SS.RateCard -> H.ComponentHTML Action slots m
-  rateCard = case _ of
-    SS.RateCardPath p -> HH.li_ [ HH.text p ]
-    SS.RateCard r ->
-      HH.li_
-        ( dataItemRaw "SKU" (sku r.sku)
-            <> opt (dataItem "Name") r.name
-            <> rateCardCharge r.charge
-        )
+  rateCard (SS.RateCard r) =
+    HH.li_ $ dataItemRaw "SKU" (sku r.sku)
+      <> opt (dataItem "Name") r.name
+      <> opt (dataItem "Description") r.description
+      <> dataItemRaw "Charge" (rateCardCharge r.charge)
 
   rateCards :: Array SS.RateCard -> H.ComponentHTML Action slots m
   rateCards = blockList <<< map rateCard
@@ -339,7 +345,8 @@ render state =
     HH.li_
       [ HH.dl_
           ( dataItem "ID" p.id
-              <> opt (dataItem "Name") p.name
+              <> dataItem "Plan" p.plan
+              <> dataItem "Version" p.version
               <> opt (dataItem "Description") p.description
               <> dataItem "Currency" (currency p.currency)
               <> opt (dataItemRaw "Rate Cards" <<< rateCards) p.rateCards
@@ -373,28 +380,23 @@ render state =
   solution :: SS.Solution -> H.ComponentHTML Action slots m
   solution (SS.Solution sol) =
     HH.li_
-      [ HH.h4_ [ HH.text "Description" ]
-      , HH.p_ [ HH.text $ maybe "No description" identity sol.description ]
-      , HH.details_
-          [ HH.summary [ HP.class_ Css.button ] [ HH.text "Products" ]
-          , blockList (map product sol.products)
-          ]
-      , HH.details_
-          [ HH.summary [ HP.class_ Css.button ] [ HH.text "Price Books" ]
-          , blockList (map price sol.priceBooks)
-          ]
+      [ HH.dl_
+          $ dataItem "ID" sol.id
+          <> opt (dataItem "Name") sol.name
+          <> opt (dataItem "Description") sol.description
+          <> dataItemRaw "Price Books" (blockList (map price sol.priceBooks))
+          <> dataItemRaw "Products" (blockList (map product sol.products))
       ]
 
   productCatalog (SS.ProductCatalog pc) =
-    [ HH.h2_ [ HH.text (maybe "Unnamed" identity pc.name) ]
+    [ HH.h2_ [ HH.text (maybe "Unnamed Product Catalog" identity pc.name) ]
+    , HH.h3_ [ HH.text "Description" ]
+    , HH.p_ [ HH.text $ maybe "No description" identity pc.description ]
     , HH.h3_ [ HH.text "Solutions" ]
-    , blockList (map solution pc.solutions)
+    , blockList <<< map solution <<< fromFoldable $ pc.solutions
     ]
 
   content = defRender state productCatalog
-
-baseUrl :: String
-baseUrl = "v1alpha1/solutions"
 
 handleAction ::
   forall o m.
