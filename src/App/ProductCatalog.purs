@@ -54,15 +54,20 @@ initialState _ = Idle
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
-  HH.div_
-    ( [ HH.h1_
-          [ HH.text "Product Catalog" ]
-      , HH.button
-          [ HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json" ]
-          [ HH.text "Sinch Cloud" ]
-      ]
-        <> content
-    )
+  HH.section [ HP.classes [ Css.flex, Css.five ] ]
+    [ HH.aside [ HP.classes [ Css.full, Css.fifth1000, Css.sideMenu ] ]
+        [ HH.h2_ [ HH.text "Catalogs" ]
+        , HH.div
+            [ HP.classes [ Css.flex, Css.two, Css.three500, Css.five800, Css.one1000 ] ]
+            [ HH.button
+                [ HP.classes [ Css.button, Css.success ]
+                , HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json"
+                ]
+                [ HH.text "Sinch Cloud" ]
+            ]
+        ]
+    , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
+    ]
   where
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
   opt = maybe []
@@ -364,6 +369,8 @@ render state =
         ]
     ]
 
+  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Select a product catalog to display…" ] ]
+
   loading = [ HH.p_ [ HH.text "Loading …" ] ]
 
   defRender ::
@@ -372,7 +379,7 @@ render state =
     (a -> Array (H.ComponentHTML Action slots m)) ->
     Array (H.ComponentHTML Action slots m)
   defRender s rend = case s of
-    Idle -> []
+    Idle -> idle
     Loading -> loading
     Success dat -> rend dat
     Error err -> error err
@@ -389,10 +396,10 @@ render state =
       ]
 
   productCatalog (SS.ProductCatalog pc) =
-    [ HH.h2_ [ HH.text (maybe "Unnamed Product Catalog" identity pc.name) ]
-    , HH.h3_ [ HH.text "Description" ]
+    [ HH.h1_ [ HH.text (maybe "Unnamed Product Catalog" identity pc.name) ]
+    , HH.h2_ [ HH.text "Description" ]
     , HH.p_ [ HH.text $ maybe "No description" identity pc.description ]
-    , HH.h3_ [ HH.text "Solutions" ]
+    , HH.h2_ [ HH.text "Solutions" ]
     , blockList <<< map solution <<< fromFoldable $ pc.solutions
     ]
 

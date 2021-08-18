@@ -17,6 +17,12 @@ tabBody = ClassName "tabbody"
 orderSection :: ClassName
 orderSection = ClassName "ordersection"
 
+sideMenu :: ClassName
+sideMenu = ClassName "sidemenu"
+
+landing :: ClassName
+landing = ClassName "landing"
+
 -- Picnic CSS
 brand :: ClassName
 brand = ClassName "brand"
@@ -57,6 +63,9 @@ close = ClassName "close"
 flex :: ClassName
 flex = ClassName "flex"
 
+center :: ClassName
+center = ClassName "center"
+
 tabs :: ClassName
 tabs = ClassName "tabs"
 
@@ -69,11 +78,44 @@ checkable = ClassName "checkable"
 row :: ClassName
 row = ClassName "row"
 
+full :: ClassName
+full = ClassName "full"
+
+one1000 :: ClassName
+one1000 = ClassName "one-1000"
+
 two :: ClassName
 two = ClassName "two"
 
 three :: ClassName
 three = ClassName "three"
 
+three500 :: ClassName
+three500 = ClassName "three-500"
+
 four :: ClassName
 four = ClassName "four"
+
+five :: ClassName
+five = ClassName "five"
+
+five800 :: ClassName
+five800 = ClassName "five-800"
+
+fourFifth1000 :: ClassName
+fourFifth1000 = ClassName "four-fifth-1000"
+
+fifth1000 :: ClassName
+fifth1000 = ClassName "fifth-1000"
+
+success :: ClassName
+success = ClassName "success"
+
+warning :: ClassName
+warning = ClassName "warning"
+
+error :: ClassName
+error = ClassName "error"
+
+dull :: ClassName
+dull = ClassName "dull"

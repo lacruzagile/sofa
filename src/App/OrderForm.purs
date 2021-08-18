@@ -103,15 +103,20 @@ initialState _ = Idle
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
-  HH.div_
-    ( [ HH.h1_
-          [ HH.text "Order Form" ]
-      , HH.button
-          [ HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json" ]
-          [ HH.text "Sinch Cloud" ]
-      ]
-        <> content
-    )
+  HH.section [ HP.classes [ Css.flex, Css.five ] ]
+    [ HH.aside [ HP.classes [ Css.full, Css.fifth1000, Css.sideMenu ] ]
+        [ HH.h2_ [ HH.text "Catalogs" ]
+        , HH.div
+            [ HP.classes [ Css.flex, Css.two, Css.three500, Css.five800, Css.one1000 ] ]
+            [ HH.button
+                [ HP.classes [ Css.button, Css.success ]
+                , HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json"
+                ]
+                [ HH.text "Sinch Cloud" ]
+            ]
+        ]
+    , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
+    ]
   where
   error err =
     [ HH.div [ HP.class_ Css.card ]
@@ -124,6 +129,8 @@ render state =
         ]
     ]
 
+  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Select a product catalog to open its order form…" ] ]
+
   loading = [ HH.p_ [ HH.text "Loading …" ] ]
 
   defRender ::
@@ -132,7 +139,7 @@ render state =
     (a -> Array (H.ComponentHTML Action slots m)) ->
     Array (H.ComponentHTML Action slots m)
   defRender s rend = case s of
-    Idle -> []
+    Idle -> idle
     Loading -> loading
     Success dat -> rend dat
     Error err -> error err
@@ -342,7 +349,8 @@ render state =
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action slots m)
   renderOrderForm { productCatalog, orderForm } =
-    [ HH.div_
+    [ HH.h1_ [ HH.text "Order Form" ]
+    , HH.div_
         [ Widgets.tabbed2 "customer"
             { label: HH.text "New Customer", content: newCustomer }
             { label: HH.text "Return Customer", content: returnCustomer }

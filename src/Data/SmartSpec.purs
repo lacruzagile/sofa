@@ -523,7 +523,8 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
         pure $ CseArray { items }
       "object" -> do
         propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
-        let properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
+        let
+          properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
         pure $ CseObject { properties }
       _ -> Left (TypeMismatch "ConfigSchemaEntry")
 
