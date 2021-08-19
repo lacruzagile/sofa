@@ -61,20 +61,24 @@ module Data.SmartSpec
   , Sku(..)
   , Solution(..)
   , SpecUnit(..)
+  , SpecUnitMap
   , UnitRef(..)
   , Uri(..)
   , Validity(..)
+  , productUnits
+  , specUnitLabel
   ) where
 
 import Prelude
-import Data.Newtype (class Newtype)
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), decodeJson, (.!=), (.:), (.:?))
 import Data.Argonaut.Decode.Decoders (decodeArray)
 import Data.Either (Either(..))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Newtype (class Newtype, unwrap)
+import Data.Tuple (Tuple(..))
 import Foreign.Object as FO
 
 type Uri
@@ -437,11 +441,15 @@ newtype PriceByUnit
   , price :: SegmentedPrice
   }
 
+derive instance newtypePriceByUnit :: Newtype PriceByUnit _
+
 instance decodeJsonPriceByUnit :: DecodeJson PriceByUnit where
   decodeJson = map PriceByUnit <<< decodeJson
 
 newtype UnitRef
   = UnitRef { unitID :: String, product :: Maybe ProductRef }
+
+derive instance newtypeUnitRef :: Newtype UnitRef _
 
 instance decodeJsonUnitRef :: DecodeJson UnitRef where
   decodeJson json = UnitRef <$> plainID <|> full
@@ -565,6 +573,14 @@ newtype SpecUnit
 instance decodeJsonSpecUnit :: DecodeJson SpecUnit where
   decodeJson = map SpecUnit <<< decodeJson
 
+type SpecUnitMap
+  = Map String SpecUnit
+
+-- | A suitable label for a unit. Uses the unit name, if available, otherwise
+-- | its identifier.
+specUnitLabel :: SpecUnit -> String
+specUnitLabel (SpecUnit { id, name }) = fromMaybe id name
+
 newtype Product
   = Product
   { sku :: String
@@ -578,6 +594,8 @@ newtype Product
   , units :: Array SpecUnit
   , rules :: Maybe (Array Rule)
   }
+
+derive instance newtypeProduct :: Newtype Product _
 
 instance decodeJsonProduct :: DecodeJson Product where
   decodeJson json = do
@@ -609,6 +627,10 @@ instance decodeJsonProduct :: DecodeJson Product where
           , units
           , rules
           }
+
+-- | Produces a map from unit ID to the unit itself.
+productUnits :: Product -> SpecUnitMap
+productUnits = Map.fromFoldable <<< map (\u@(SpecUnit { id }) -> Tuple id u) <<< _.units <<< unwrap
 
 data Platform
   = PlatformACL
