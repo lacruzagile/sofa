@@ -11,7 +11,12 @@ type Tab slot action
     , content :: HH.HTML slot action
     }
 
-tabbed2 :: forall slot action. String -> Tab slot action -> Tab slot action -> HH.HTML slot action
+tabbed2 ::
+  forall slot action.
+  String ->
+  Tab slot action ->
+  Tab slot action ->
+  HH.HTML slot action
 tabbed2 id tab1 tab2 =
   HH.div [ HP.classes [ Css.tabs, Css.two ] ]
     ( input "1" tab1
@@ -36,8 +41,12 @@ tabbed2 id tab1 tab2 =
 
 modal ::
   forall slot action.
-  String -> String -> Array (HH.HTML slot action) -> HH.HTML slot action
-modal label title body =
+  String ->
+  String ->
+  Array (HH.HTML slot action) ->
+  Array (HH.HTML slot action) ->
+  HH.HTML slot action
+modal label title body footer =
   HH.div [ HP.class_ Css.modal ]
     [ HH.input [ HP.id label, HP.type_ HP.InputCheckbox ]
     , HH.label [ HP.for label, HP.class_ Css.overlay ] []
@@ -47,5 +56,6 @@ modal label title body =
             , HH.label [ HP.for label, HP.class_ Css.close ] [ HH.text "×" ]
             ]
         , HH.section [ HP.class_ Css.content ] body
+        , HH.footer_ footer
         ]
     ]

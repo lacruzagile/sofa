@@ -25,11 +25,13 @@ to generate this file without the comments in this block.
   , "halogen"
   , "integers"
   , "maybe"
+  , "newtype"
   , "ordered-collections"
   , "prelude"
   , "psci-support"
   , "routing"
   , "simple-ajax"
+  , "strings"
   , "tuples"
   , "variant"
   ]

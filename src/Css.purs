@@ -117,5 +117,8 @@ warning = ClassName "warning"
 error :: ClassName
 error = ClassName "error"
 
+dangerous :: ClassName
+dangerous = ClassName "dangerous"
+
 dull :: ClassName
 dull = ClassName "dull"

@@ -67,6 +67,7 @@ module Data.SmartSpec
   ) where
 
 import Prelude
+import Data.Newtype (class Newtype)
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), decodeJson, (.!=), (.:), (.:?))
 import Data.Argonaut.Decode.Decoders (decodeArray)
@@ -1150,6 +1151,8 @@ newtype OrderLine
   , charge :: RateCardCharge
   , quantity :: Int
   }
+
+derive instance newtypeOrderLine :: Newtype OrderLine _
 
 instance decodeJsonOrderLine :: DecodeJson OrderLine where
   decodeJson json = OrderLine <$> decodeJson json

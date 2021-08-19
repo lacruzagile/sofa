@@ -131,7 +131,7 @@ render state =
 
   idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Select a product catalog to open its order form…" ] ]
 
-  loading = [ HH.p_ [ HH.text "Loading …" ] ]
+  loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
 
   defRender ::
     forall a.
@@ -181,6 +181,13 @@ render state =
         , currency "Payment Currency"
         , currency "Price Currency"
         ]
+        [ HH.label
+            [ HP.for "of-commercial", HP.classes [ Css.button ] ]
+            [ HH.text "Save" ]
+        , HH.label
+            [ HP.for "of-commercial", HP.classes [ Css.button, Css.dangerous ] ]
+            [ HH.text "Cancel" ]
+        ]
     ]
 
   address = [ HH.fieldset_ [ HH.legend_ [ HH.text "Address" ], HH.textarea [ HP.placeholder "Address" ] ] ]
@@ -224,12 +231,19 @@ render state =
             <> contact "purchaser" "Finance Contact"
             <> address
         )
+        [ HH.label
+            [ HP.for "of-purchaser", HP.classes [ Css.button ] ]
+            [ HH.text "Save" ]
+        , HH.label
+            [ HP.for "of-purchaser", HP.classes [ Css.button, Css.dangerous ] ]
+            [ HH.text "Cancel" ]
+        ]
     ]
 
   seller =
     [ HH.label [ HP.for "of-seller", HP.class_ Css.button ] [ HH.text "Seller" ]
     , Widgets.modal "of-seller" "Seller"
-        $ [ HH.label_
+        ( [ HH.label_
               [ HH.text "Legal Entity Name"
               , HH.input [ HP.type_ HP.InputText, HP.name "seller-name" ]
               ]
@@ -238,10 +252,18 @@ render state =
               , HH.input [ HP.type_ HP.InputText, HP.name "seller-country", HP.placeholder "DE" ]
               ]
           ]
-        <> address
-        <> contact "seller" "Primary Contract"
-        <> contact "seller" "Finance Contract"
-        <> contact "seller" "Support Contract"
+            <> address
+            <> contact "seller" "Primary Contract"
+            <> contact "seller" "Finance Contract"
+            <> contact "seller" "Support Contract"
+        )
+        [ HH.label
+            [ HP.for "of-seller", HP.classes [ Css.button ] ]
+            [ HH.text "Save" ]
+        , HH.label
+            [ HP.for "of-seller", HP.classes [ Css.button, Css.dangerous ] ]
+            [ HH.text "Cancel" ]
+        ]
     ]
 
   newCustomer = HH.div [ HP.class_ Css.tabBody ] (commercial <> purchaser <> seller)
@@ -249,11 +271,18 @@ render state =
   billingAccountRef =
     [ HH.label [ HP.for "of-billing-account", HP.class_ Css.button ] [ HH.text "Billing Account" ]
     , Widgets.modal "of-billing-account" "Billing Account"
-        $ [ HH.label_
-              [ HH.text "Identifier"
-              , HH.input [ HP.type_ HP.InputText, HP.name "billing-account-id" ]
-              ]
-          ]
+        [ HH.label_
+            [ HH.text "Identifier"
+            , HH.input [ HP.type_ HP.InputText, HP.name "billing-account-id" ]
+            ]
+        ]
+        [ HH.label
+            [ HP.for "of-billing-account", HP.classes [ Css.button ] ]
+            [ HH.text "Save" ]
+        , HH.label
+            [ HP.for "of-billing-account", HP.classes [ Css.button, Css.dangerous ] ]
+            [ HH.text "Cancel" ]
+        ]
     ]
 
   returnCustomer =
@@ -344,7 +373,7 @@ render state =
 
     addSection =
       [ HH.label [ HP.for "of-add-section", HP.class_ Css.button ] [ HH.text "Add Section" ]
-      , Widgets.modal "of-add-section" "Choose Section Solution" solutionButtons
+      , Widgets.modal "of-add-section" "Choose Section Solution" solutionButtons []
       ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action slots m)

@@ -207,14 +207,6 @@ render state =
           )
       ]
 
-  showSkuCode :: SS.Sku -> String
-  showSkuCode = case _ of
-    SS.SkuCode c -> c
-    SS.Sku s -> s.code
-
-  showProductRef :: SS.ProductRef -> String
-  showProductRef (SS.ProductRef p) = showSkuCode p.sku <> (maybe "" (\s -> " [" <> show s <> "]") p.solutionURI)
-
   unitRef :: SS.UnitRef -> String
   unitRef (SS.UnitRef unit) =
     unit.unitID
@@ -222,15 +214,6 @@ render state =
 
   unitRefs :: Array SS.UnitRef -> H.ComponentHTML Action slots m
   unitRefs = HH.ul_ <<< map (\u -> HH.li_ [ HH.text $ unitRef u ])
-
-  showSegmentPrice :: SS.SegmentPrice -> String
-  showSegmentPrice (SS.SegmentPrice p) =
-    show p.price
-      <> " ["
-      <> show p.minimum
-      <> ","
-      <> maybe "" show p.exclusiveMaximum
-      <> ")"
 
   segmentedPrice :: SS.SegmentedPrice -> H.ComponentHTML Action slots m
   segmentedPrice (SS.SegmentedPrice ps) = blockList $ map (\p -> HH.li_ [ HH.text $ showSegmentPrice p ]) ps
@@ -256,9 +239,6 @@ render state =
   simplePrice = case _ of
     SS.SimplePriceSegmented p -> segmentedPrice p
     SS.SimplePriceByDim p -> HH.ul_ $ map priceByDim p
-
-  showSegment :: SS.Segment -> String
-  showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "" show s.exclusiveMaximum <> ")"
 
   segmentation :: SS.PriceSegmentation -> H.ComponentHTML Action slots m
   segmentation (SS.PriceSegmentation p) =
@@ -308,7 +288,7 @@ render state =
   pricesPerDim = HH.ul_ <<< map mkItem
     where
     mkItem (SS.PricesPerDimByUnit p) =
-      HH.dl_
+      HH.dl [HP.class_ Css.blocklist]
         $ dataItemRaw "Dimension" (dimValue p.dim)
         <> dataItemRaw "Prices" (pricesByUnit p.prices)
         <> dataItem "Monthly Minimum" (show p.monthlyMinimum)
@@ -371,7 +351,7 @@ render state =
 
   idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Select a product catalog to display…" ] ]
 
-  loading = [ HH.p_ [ HH.text "Loading …" ] ]
+  loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
 
   defRender ::
     forall a.
@@ -404,6 +384,26 @@ render state =
     ]
 
   content = defRender state productCatalog
+
+showSkuCode :: SS.Sku -> String
+showSkuCode = case _ of
+  SS.SkuCode c -> c
+  SS.Sku s -> s.code
+
+showProductRef :: SS.ProductRef -> String
+showProductRef (SS.ProductRef p) = showSkuCode p.sku <> (maybe "" (\s -> " [" <> show s <> "]") p.solutionURI)
+
+showSegmentPrice :: SS.SegmentPrice -> String
+showSegmentPrice (SS.SegmentPrice p) =
+  show p.price
+    <> " ["
+    <> show p.minimum
+    <> ","
+    <> maybe "" show p.exclusiveMaximum
+    <> ")"
+
+showSegment :: SS.Segment -> String
+showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "" show s.exclusiveMaximum <> ")"
 
 handleAction ::
   forall o m.
