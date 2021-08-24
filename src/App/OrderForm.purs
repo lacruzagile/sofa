@@ -1,22 +1,17 @@
 module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
-import Affjax (printError)
 import Css as Css
-import Data.Argonaut (class DecodeJson, printJsonDecodeError)
 import Data.Array (deleteAt, fromFoldable, mapWithIndex, modifyAt, snoc)
-import Data.Either (Either(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
-import Data.Variant (default, on)
+import Data.Loadable (Loadable(..), getJson)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Simple.Ajax (_affjaxError, _notFound, _parseError)
-import Simple.Ajax as AJX
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
 
@@ -27,35 +22,7 @@ proxy :: Proxy "orderForm"
 proxy = Proxy
 
 type State
-  = SubState StateOrderForm
-
-data SubState a
-  = Idle
-  | Success a
-  | Loading
-  | Error String
-
-instance functorSubState :: Functor SubState where
-  map f = case _ of
-    Idle -> Idle
-    Success x -> Success $ f x
-    Loading -> Loading
-    Error x -> Error x
-
-instance applySubState :: Apply SubState where
-  apply Idle _ = Idle
-  apply (Success f) r = f <$> r
-  apply Loading _ = Loading
-  apply (Error e) _ = Error e
-
-instance applicationSubState :: Applicative SubState where
-  pure = Success
-
-instance bindSubState :: Bind SubState where
-  bind Idle _ = Idle
-  bind (Success x) f = f x
-  bind Loading _ = Loading
-  bind (Error e) _ = Error e
+  = Loadable StateOrderForm
 
 type StateOrderForm
   = { productCatalog :: SS.ProductCatalog
@@ -135,13 +102,13 @@ render state =
 
   defRender ::
     forall a.
-    SubState a ->
+    Loadable a ->
     (a -> Array (H.ComponentHTML Action slots m)) ->
     Array (H.ComponentHTML Action slots m)
   defRender s rend = case s of
     Idle -> idle
     Loading -> loading
-    Success dat -> rend dat
+    Loaded dat -> rend dat
     Error err -> error err
 
   currency legend =
@@ -403,7 +370,7 @@ handleAction ::
 handleAction = case _ of
   LoadProductCatalog url -> do
     H.modify_ \_ -> Loading
-    productCatalog <- getJson url identity
+    productCatalog <- H.liftAff $ getJson url
     let
       res =
         ( \(pc :: SS.ProductCatalog) ->
@@ -525,21 +492,3 @@ handleAction = case _ of
     in
       H.modify_
         $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
-
-getJson ::
-  forall m a b.
-  Bind m => MonadAff m => DecodeJson a => String -> (a -> b) -> m (SubState b)
-getJson url handle = do
-  res <- H.liftAff (AJX.get url)
-  case res of
-    Left error ->
-      let
-        errorStr =
-          default "Generic error"
-            # on _affjaxError printError
-            # on _notFound (const "Not found")
-            # on _parseError printJsonDecodeError
-            $ error
-      in
-        pure $ Error errorStr
-    Right content -> pure $ Success $ handle content

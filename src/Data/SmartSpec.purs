@@ -507,35 +507,40 @@ data ConfigSchemaEntry
     { items :: ConfigSchemaEntry }
   | CseObject
     { properties :: Map String ConfigSchemaEntry }
+  | CseOneOf { oneOf :: Array ConfigSchemaEntry }
 
 instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
-  decodeJson json = do
-    o <- decodeJson json
-    type_ <- o .: "type"
-    case type_ of
-      "integer" -> do
-        minimum <- o .:? "minimum"
-        maximum <- o .:? "maximum"
-        default <- o .:? "default"
-        pure $ CseInteger { minimum, maximum, default }
-      "string" -> do
-        minLength <- o .:? "minLength"
-        maxLength <- o .:? "maxLength"
-        default <- o .:? "default"
-        pure $ CseString { minLength, maxLength, default }
-      "regex" -> do
-        pattern <- o .: "pattern"
-        default <- o .:? "default"
-        pure $ CseRegex { pattern, default }
-      "array" -> do
-        items <- o .: "items"
-        pure $ CseArray { items }
-      "object" -> do
-        propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
-        let
-          properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
-        pure $ CseObject { properties }
-      _ -> Left (TypeMismatch "ConfigSchemaEntry")
+  decodeJson json = typed <|> oneOf
+    where
+    typed = do
+      o <- decodeJson json
+      type_ <- o .: "type"
+      case type_ of
+        "integer" -> do
+          minimum <- o .:? "minimum"
+          maximum <- o .:? "maximum"
+          default <- o .:? "default"
+          pure $ CseInteger { minimum, maximum, default }
+        "string" -> do
+          minLength <- o .:? "minLength"
+          maxLength <- o .:? "maxLength"
+          default <- o .:? "default"
+          pure $ CseString { minLength, maxLength, default }
+        "regex" -> do
+          pattern <- o .: "pattern"
+          default <- o .:? "default"
+          pure $ CseRegex { pattern, default }
+        "array" -> do
+          items <- o .: "items"
+          pure $ CseArray { items }
+        "object" -> do
+          propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
+          let
+            properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
+          pure $ CseObject { properties }
+        _ -> Left (TypeMismatch "ConfigSchemaEntry")
+
+    oneOf = CseOneOf <$> decodeJson json
 
 data ConfigValue
   = CvInteger Int

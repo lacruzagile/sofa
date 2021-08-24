@@ -1,11 +1,9 @@
 module App.ProductCatalog (Slot, proxy, component) where
 
 import Prelude
-import Affjax (printError)
 import Css as Css
-import Data.Argonaut (class DecodeJson, printJsonDecodeError)
 import Data.Array (concatMap, fromFoldable, head, length, mapMaybe, singleton, sortBy)
-import Data.Either (Either(..))
+import Data.Loadable (Loadable(..), getJson)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -14,14 +12,11 @@ import Data.SmartSpec (productUnits)
 import Data.SmartSpec as SS
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..), uncurry)
-import Data.Variant (default, on)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Simple.Ajax (_affjaxError, _notFound, _parseError)
-import Simple.Ajax as AJX
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -31,13 +26,7 @@ proxy :: Proxy "productCatalog"
 proxy = Proxy
 
 type State
-  = SubState SS.ProductCatalog
-
-data SubState a
-  = Idle
-  | Success a
-  | Loading
-  | Error String
+  = Loadable SS.ProductCatalog
 
 data Action
   = LoadProductCatalog String
@@ -139,6 +128,7 @@ render state =
     SS.CseRegex v -> renderRegex v
     SS.CseArray v -> renderArray v
     SS.CseObject v -> renderObject v
+    SS.CseOneOf v -> renderOneOf v
     where
     renderInteger v =
       HH.dl_
@@ -160,27 +150,21 @@ render state =
             <> opt (dataItem "Default") v.default
         )
 
-    renderArray v =
-      HH.dl_
-        ( dataItemRaw "Items" (configSchemaEntry v.items)
-        )
+    renderArray v = HH.dl_ $ dataItemRaw "Items" $ HH.dl_ $ renderInner v.items
 
     renderObject v = HH.div_ $ configSchema $ pure v.properties
+
+    renderOneOf v = HH.dl_ $ concatMap renderInner $ v.oneOf
+
+    renderInner v = dataItemRaw (showCseTypeName v) (configSchemaEntry v)
 
   configSchema :: Maybe (Map String SS.ConfigSchemaEntry) -> Array (H.ComponentHTML Action slots m)
   configSchema = maybe [] (html <<< HH.dl_ <<< concatMap entry <<< Map.toUnfoldable)
     where
     entry (Tuple k e) =
-      [ HH.dt_ [ HH.text k, HH.text " (", HH.text $ typeName e, HH.text ")" ]
+      [ HH.dt_ [ HH.text k, HH.text " (", HH.text $ showCseTypeName e, HH.text ")" ]
       , HH.dd_ [ configSchemaEntry e ]
       ]
-
-    typeName = case _ of
-      SS.CseInteger _ -> "integer"
-      SS.CseString _ -> "string"
-      SS.CseRegex _ -> "regex"
-      SS.CseArray _ -> "array"
-      SS.CseObject _ -> "object"
 
     html schema =
       [ HH.dt_ [ HH.text "Configuration Schema" ]
@@ -380,13 +364,13 @@ render state =
 
   defRender ::
     forall a.
-    SubState a ->
+    Loadable a ->
     (a -> Array (H.ComponentHTML Action slots m)) ->
     Array (H.ComponentHTML Action slots m)
   defRender s rend = case s of
     Idle -> idle
     Loading -> loading
-    Success dat -> rend dat
+    Loaded dat -> rend dat
     Error err -> error err
 
   solution :: SS.Solution -> H.ComponentHTML Action slots m
@@ -440,29 +424,20 @@ showSegmentPrice (SS.SegmentPrice p) =
 showSegment :: SS.Segment -> String
 showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "" show s.exclusiveMaximum <> ")"
 
+showCseTypeName :: SS.ConfigSchemaEntry -> String
+showCseTypeName = case _ of
+  SS.CseInteger _ -> "integer"
+  SS.CseString _ -> "string"
+  SS.CseRegex _ -> "regex"
+  SS.CseArray _ -> "array"
+  SS.CseObject _ -> "object"
+  SS.CseOneOf _ -> "oneOf"
+
 handleAction ::
   forall o m.
   MonadAff m => Action -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   LoadProductCatalog url -> do
     H.modify_ \_ -> Loading
-    res <- getJson url identity
+    res <- H.liftAff $ getJson url
     H.modify_ \_ -> res
-
-getJson ::
-  forall m a b.
-  Bind m => MonadAff m => DecodeJson a => String -> (a -> b) -> m (SubState b)
-getJson url handle = do
-  res <- H.liftAff (AJX.get url)
-  case res of
-    Left error ->
-      let
-        errorStr =
-          default "Generic error"
-            # on _affjaxError printError
-            # on _notFound (const "Not found")
-            # on _parseError printJsonDecodeError
-            $ error
-      in
-        pure $ Error errorStr
-    Right content -> pure $ Success $ handle content
