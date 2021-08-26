@@ -242,8 +242,8 @@ data RateCardCharge
     { unit :: UnitRef
     , price :: SimplePrice
     , segmentation :: Maybe PriceSegmentation
-    , termOfPriceChangeInDays :: Maybe Int
-    , monthlyMinimum :: Maybe Int
+    , termOfPriceChangeInDays :: Int
+    , monthlyMinimum :: Number
     }
   | RccMixed
     { units :: Array UnitRef
@@ -262,7 +262,21 @@ instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
 
     rccArray j = RccArray <$> decodeArray rccElement j
 
-    rccSimple j = RccSimple <$> decodeJson j
+    rccSimple j = do
+      o <- decodeJson j
+      unit <- o .: "unit"
+      price <- o .: "price"
+      segmentation <- o .:? "segmentation"
+      termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
+      monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
+      pure
+        $ RccSimple
+            { unit
+            , price
+            , segmentation
+            , termOfPriceChangeInDays
+            , monthlyMinimum
+            }
 
     rccMixed j = do
       o <- decodeJson j
@@ -293,20 +307,11 @@ instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
 
     byDim = SimplePriceByDim <$> decodeJson json
 
-data DimValue
-  = DimFlat ConfigValue
-  | DimMap (Map String ConfigValue)
+newtype DimValue
+  = DimValue ConfigValue
 
 instance decodeJsonDimValue :: DecodeJson DimValue where
-  decodeJson json = dimFlat <|> dimMap
-    where
-    dimFlat = DimFlat <$> decodeJson json
-
-    dimMap = do
-      dimObj :: FO.Object ConfigValue <- decodeJson json
-      let
-        dim = Map.fromFoldable (FO.toUnfoldable dimObj :: Array _)
-      pure $ DimMap dim
+  decodeJson json = DimValue <$> decodeJson json
 
 newtype PriceByDim
   = PriceByDim
@@ -319,7 +324,7 @@ instance decodeJsonPriceByDim :: DecodeJson PriceByDim where
   decodeJson json = do
     o <- decodeJson json
     dim <- o .: "dim"
-    price <- o .: "prices"
+    price <- o .: "price"
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
     pure $ PriceByDim { dim, price, monthlyMinimum }
 
@@ -503,6 +508,7 @@ data ConfigSchemaEntry
     { pattern :: String
     , default :: Maybe String
     }
+  | CseConst { const :: ConfigValue }
   | CseArray
     { items :: ConfigSchemaEntry }
   | CseObject
@@ -510,7 +516,7 @@ data ConfigSchemaEntry
   | CseOneOf { oneOf :: Array ConfigSchemaEntry }
 
 instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
-  decodeJson json = typed <|> oneOf
+  decodeJson json = typed <|> constValue <|> oneOf
     where
     typed = do
       o <- decodeJson json
@@ -520,41 +526,62 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
           minimum <- o .:? "minimum"
           maximum <- o .:? "maximum"
           default <- o .:? "default"
-          pure $ CseInteger { minimum, maximum, default }
+          Right $ CseInteger { minimum, maximum, default }
         "string" -> do
           minLength <- o .:? "minLength"
           maxLength <- o .:? "maxLength"
           default <- o .:? "default"
-          pure $ CseString { minLength, maxLength, default }
+          Right $ CseString { minLength, maxLength, default }
         "regex" -> do
           pattern <- o .: "pattern"
           default <- o .:? "default"
-          pure $ CseRegex { pattern, default }
+          Right $ CseRegex { pattern, default }
         "array" -> do
           items <- o .: "items"
-          pure $ CseArray { items }
+          Right $ CseArray { items }
         "object" -> do
           propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
           let
             properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
-          pure $ CseObject { properties }
+          Right $ CseObject { properties }
         _ -> Left (TypeMismatch "ConfigSchemaEntry")
+
+    constValue = CseConst <$> decodeJson json
 
     oneOf = CseOneOf <$> decodeJson json
 
 data ConfigValue
   = CvInteger Int
   | CvString String
+  | CvArray (Array ConfigValue)
+  | CvObject (Map String ConfigValue)
+  | CvNull
 
 instance showConfigValue :: Show ConfigValue where
   show = case _ of
     CvInteger v -> show v
     CvString v -> v
+    CvArray v -> show v
+    CvObject v -> show v
+    CvNull -> "null"
 
 instance decodeJsonConfigValue :: DecodeJson ConfigValue where
   decodeJson json =
     (CvInteger <$> decodeJson json)
       <|> (CvString <$> decodeJson json)
+      <|> (CvArray <$> decodeJson json)
+      <|> parseObject
+      <|> parseNull
+    where
+    parseObject = do
+      valuesObj :: FO.Object ConfigValue <- decodeJson json
+      let
+        values = Map.fromFoldable (FO.toUnfoldable valuesObj :: Array _)
+      pure $ CvObject values
+
+    parseNull = do
+      _ :: Maybe Int <- decodeJson json
+      pure CvNull
 
 -- TODO: Add `schema` and `variable`.
 newtype ProductVariable

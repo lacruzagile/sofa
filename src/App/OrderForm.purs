@@ -437,8 +437,8 @@ handleAction = case _ of
                             { unit: SS.UnitRef { unitID: "UID", product: Nothing }
                             , price: SS.SimplePriceSegmented $ SS.SegmentedPrice [ SS.SegmentPrice { minimum: 0, exclusiveMaximum: Nothing, price: 0.0 } ]
                             , segmentation: Nothing
-                            , termOfPriceChangeInDays: Nothing
-                            , monthlyMinimum: Nothing
+                            , termOfPriceChangeInDays: 0
+                            , monthlyMinimum: 0.0
                             }
                       , quantity: 1
                       }

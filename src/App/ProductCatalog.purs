@@ -56,6 +56,11 @@ render state =
                 , HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json"
                 ]
                 [ HH.text "Sinch Cloud" ]
+            , HH.button
+                [ HP.classes [ Css.button, Css.success ]
+                , HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.normalized.json"
+                ]
+                [ HH.text "Normalized Example" ]
             ]
         ]
     , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
@@ -126,6 +131,7 @@ render state =
     SS.CseInteger v -> renderInteger v
     SS.CseString v -> renderString v
     SS.CseRegex v -> renderRegex v
+    SS.CseConst v -> renderConst v
     SS.CseArray v -> renderArray v
     SS.CseObject v -> renderObject v
     SS.CseOneOf v -> renderOneOf v
@@ -150,25 +156,26 @@ render state =
             <> opt (dataItem "Default") v.default
         )
 
+    renderConst v = HH.text $ show $ v.const
+
     renderArray v = HH.dl_ $ dataItemRaw "Items" $ HH.dl_ $ renderInner v.items
 
-    renderObject v = HH.div_ $ configSchema $ pure v.properties
+    renderObject v = configSchema v.properties
 
-    renderOneOf v = HH.dl_ $ concatMap renderInner $ v.oneOf
+    renderOneOf v =
+      HH.dl_
+        [ HH.dt_ [ HH.text "One Of" ]
+        , HH.dd_ [ HH.dl_ $ concatMap renderInner $ v.oneOf ]
+        ]
 
     renderInner v = dataItemRaw (showCseTypeName v) (configSchemaEntry v)
 
-  configSchema :: Maybe (Map String SS.ConfigSchemaEntry) -> Array (H.ComponentHTML Action slots m)
-  configSchema = maybe [] (html <<< HH.dl_ <<< concatMap entry <<< Map.toUnfoldable)
+  configSchema :: Map String SS.ConfigSchemaEntry -> H.ComponentHTML Action slots m
+  configSchema = HH.dl_ <<< concatMap entry <<< Map.toUnfoldable
     where
     entry (Tuple k e) =
       [ HH.dt_ [ HH.text k, HH.text " (", HH.text $ showCseTypeName e, HH.text ")" ]
       , HH.dd_ [ configSchemaEntry e ]
-      ]
-
-    html schema =
-      [ HH.dt_ [ HH.text "Configuration Schema" ]
-      , HH.dd_ [ schema ]
       ]
 
   product :: SS.Product -> H.ComponentHTML Action slots m
@@ -178,7 +185,7 @@ render state =
           <> opt (dataItem "Name") p.name
           <> opt (dataItem "Description") p.description
           <> opt (dataItemRaw "Attributes" <<< configValues) p.attr
-          <> configSchema p.configSchema
+          <> opt (dataItemRaw "Configuration Schema" <<< configSchema) p.configSchema
           <> productOptions p.options
           <> opt (dataItem "Features" <<< const "TODO") p.features
           <> opt (dataItem "Variables" <<< const "TODO") p.variables
@@ -198,30 +205,30 @@ render state =
   specUnits :: Array SS.SpecUnit -> H.ComponentHTML Action slots m
   specUnits = blockList <<< map (HH.li_ <<< singleton <<< specUnit)
 
-  segmentedPrice :: SS.SegmentedPrice -> H.ComponentHTML Action slots m
-  segmentedPrice (SS.SegmentedPrice ps) = blockList $ map (\p -> HH.li_ [ HH.text $ showSegmentPrice p ]) ps
-
   configValues :: Map String SS.ConfigValue -> H.ComponentHTML Action slots m
   configValues = HH.dl_ <<< concatMap (uncurry entry) <<< Map.toUnfoldable
     where
     entry k v = dataItem k (show v)
 
-  dimValue :: SS.DimValue -> H.ComponentHTML Action slots m
-  dimValue = case _ of
-    SS.DimFlat v -> HH.text (show v)
-    SS.DimMap m -> configValues m
+  simplePrice :: SS.SpecUnitMap -> SS.UnitRef -> SS.SimplePrice -> H.ComponentHTML Action slots m
+  simplePrice unitMap unit = case _ of
+    SS.SimplePriceSegmented p -> pricesPerDim unitMap (singleton unit) (conv' p)
+    SS.SimplePriceByDim p -> pricesPerDim unitMap (singleton unit) (map conv p)
+    where
+    conv (SS.PriceByDim p) =
+      SS.PricesPerDimByUnit
+        { dim: p.dim
+        , prices: singleton $ SS.PriceByUnit { price: p.price, unit }
+        , monthlyMinimum: 0.0
+        }
 
-  priceByDim :: SS.PriceByDim -> H.ComponentHTML Action slots m
-  priceByDim (SS.PriceByDim r) =
-    HH.dl_
-      $ dataItemRaw "Dimension" (dimValue r.dim)
-      <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
-      <> dataItemRaw "Prices" (segmentedPrice r.price)
-
-  simplePrice :: SS.SimplePrice -> H.ComponentHTML Action slots m
-  simplePrice = case _ of
-    SS.SimplePriceSegmented p -> segmentedPrice p
-    SS.SimplePriceByDim p -> HH.ul_ $ map priceByDim p
+    conv' price =
+      singleton
+        $ SS.PricesPerDimByUnit
+            { dim: SS.DimValue SS.CvNull
+            , prices: singleton $ SS.PriceByUnit { unit, price }
+            , monthlyMinimum: 0.0
+            }
 
   segmentation :: SS.PriceSegmentation -> H.ComponentHTML Action slots m
   segmentation (SS.PriceSegmentation p) =
@@ -268,8 +275,9 @@ render state =
       $ [ HH.tr_
             [ HH.th [ HP.colSpan $ length dims ] [ HH.text "Dimension" ]
             , HH.th [ HP.colSpan $ length units ] [ HH.text "Unit" ]
+            , HH.th_ [ HH.text "Monthly Minimum" ]
             ]
-        , HH.tr_ $ map (HH.th_ <<< singleton <<< HH.text) $ dims <> unitLabels
+        , HH.tr_ $ map (HH.th_ <<< singleton <<< HH.text) $ dims <> unitLabels <> [ "" ]
         ]
       <> map priceRow ppd
     where
@@ -278,6 +286,7 @@ render state =
         $ map (HH.td_ <<< singleton <<< HH.text)
         $ dimVals p.dim
         <> priceVals p.prices
+        <> [ show p.monthlyMinimum ]
 
     units = mapMaybe (\(SS.UnitRef u) -> Map.lookup u.unitID unitMap) unitRefs
 
@@ -291,8 +300,8 @@ render state =
 
     dimVals :: SS.DimValue -> Array String
     dimVals = case _ of
-      SS.DimFlat v -> [ show v ]
-      SS.DimMap m -> fromFoldable $ map show $ Map.values m
+      SS.DimValue (SS.CvObject m) -> (\d -> maybe "N/A" show $ Map.lookup d m) <$> dims
+      SS.DimValue v -> [ show v ]
 
     showSegmentedPrice :: SS.SegmentedPrice -> String
     showSegmentedPrice (SS.SegmentedPrice p) = joinWith ", " $ map showSegmentPrice p
@@ -306,11 +315,10 @@ render state =
   rateCardCharge :: SS.SpecUnitMap -> SS.RateCardCharge -> H.ComponentHTML Action slots m
   rateCardCharge unitMap = case _ of
     SS.RccSimple r ->
-      HH.dl_ $ dataItem "Unit" (showUnitRef r.unit)
-        <> dataItemRaw "Price" (simplePrice r.price)
+      HH.dl_ $ dataItemRaw "Price" (simplePrice unitMap r.unit r.price)
         <> opt (dataItemRaw "Segmentation" <<< segmentation) r.segmentation
-        <> opt (dataItem "Term of Price Change" <<< \n -> show n <> " days") r.termOfPriceChangeInDays
-        <> opt (dataItem "Monthly Minimum" <<< show) r.monthlyMinimum
+        <> dataItem "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
+        <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
     SS.RccMixed r ->
       HH.dl_ $ optArr (dataItemRaw "Price Segmentations" <<< priceSegmentationsByUnit) r.priceSegmentations
         <> optArr (dataItemRaw "Default Prices" <<< defaultPrices) r.defaultPrices
@@ -429,6 +437,7 @@ showCseTypeName = case _ of
   SS.CseInteger _ -> "integer"
   SS.CseString _ -> "string"
   SS.CseRegex _ -> "regex"
+  SS.CseConst _ -> "const"
   SS.CseArray _ -> "array"
   SS.CseObject _ -> "object"
   SS.CseOneOf _ -> "oneOf"
