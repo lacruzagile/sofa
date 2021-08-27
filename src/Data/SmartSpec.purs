@@ -66,6 +66,7 @@ module Data.SmartSpec
   , Uri(..)
   , Validity(..)
   , productUnits
+  , skuCode
   , specUnitLabel
   ) where
 
@@ -836,6 +837,11 @@ instance decodeJsonSku :: DecodeJson Sku where
             , productCategory
             , platform
             }
+
+skuCode :: Sku -> String
+skuCode (SkuCode code) = code
+
+skuCode (Sku { code }) = code
 
 data ProductOption
   = ProdOptSkuCode String
