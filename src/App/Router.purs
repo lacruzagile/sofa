@@ -73,52 +73,53 @@ render state =
         Nothing -> slotHome
         Just Route.Home -> slotHome
         Just Route.OrderForm -> slotOrderForm
-        Just Route.ProductCatalog -> slotProductCatalog
+        Just (Route.ProductCatalog s) -> slotProductCatalog s
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
   slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component absurd
 
-  slotProductCatalog = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component absurd
+  slotProductCatalog s = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component s.catalogUri
 
 navbar ::
   forall slot. State -> HH.HTML slot Action -> HH.HTML slot Action
 navbar state body =
-  let
-    navbarItemClasses route =
-      [ Css.pseudo, Css.button ]
-        <> if state.route == Just route then [ Css.active ] else []
+  HH.div_
+    [ HH.nav_
+        [ HH.a
+            [ Route.href Route.Home
+            , HP.class_ Css.brand
+            ]
+            [ HH.text "Sinch Smart Spec" ]
+        , HH.input
+            [ HP.id "navmenu"
+            , HP.type_ HP.InputCheckbox
+            , HP.class_ Css.show
+            ]
+        , HH.label
+            [ HP.for "navmenu"
+            , HP.classes [ Css.burger, Css.pseudo, Css.button ]
+            ]
+            [ HH.text "🍔" ]
+        , HH.div [ HP.class_ Css.menu ]
+            [ navbarItem Route.Home "🏠 Home"
+            , navbarItem routeProductCatalog "Product Catalog"
+            , navbarItem Route.OrderForm "Order Form"
+            ]
+        ]
+    , HH.main [ HP.class_ (H.ClassName "content") ] [ body ]
+    ]
+  where
+  routeProductCatalog = Route.ProductCatalog { catalogUri: Nothing }
 
-    navbarItem route text =
-      HH.a
-        [ Route.href route, HP.classes (navbarItemClasses route) ]
-        [ HH.text text ]
-  in
-    HH.div_
-      [ HH.nav_
-          [ HH.a
-              [ Route.href Route.Home
-              , HP.class_ Css.brand
-              ]
-              [ HH.text "Sinch Smart Spec" ]
-          , HH.input
-              [ HP.id "navmenu"
-              , HP.type_ HP.InputCheckbox
-              , HP.class_ Css.show
-              ]
-          , HH.label
-              [ HP.for "navmenu"
-              , HP.classes [ Css.burger, Css.pseudo, Css.button ]
-              ]
-              [ HH.text "🍔" ]
-          , HH.div [ HP.class_ Css.menu ]
-              [ navbarItem Route.Home "🏠 Home"
-              , navbarItem Route.ProductCatalog "Product Catalog"
-              , navbarItem Route.OrderForm "Order Form"
-              ]
-          ]
-      , HH.main [ HP.class_ (H.ClassName "content") ] [ body ]
-      ]
+  navbarItemClasses route =
+    [ Css.pseudo, Css.button ]
+      <> if state.route == Just route then [ Css.active ] else []
+
+  navbarItem route text =
+    HH.a
+      [ Route.href route, HP.classes (navbarItemClasses route) ]
+      [ HH.text text ]
 
 handleQuery ::
   forall action slots output m a.

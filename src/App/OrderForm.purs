@@ -107,6 +107,7 @@ render state =
     Array (H.ComponentHTML Action slots m)
   defRender s rend = case s of
     Idle -> idle
+    ToLoad _ -> idle
     Loading -> loading
     Loaded dat -> rend dat
     Error err -> error err

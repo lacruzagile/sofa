@@ -8,6 +8,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
+import Data.Route as Route
 import Data.SmartSpec (productUnits)
 import Data.SmartSpec as SS
 import Data.String (joinWith)
@@ -15,7 +16,6 @@ import Data.Tuple (Tuple(..), uncurry)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 
@@ -25,24 +25,42 @@ type Slot id
 proxy :: Proxy "productCatalog"
 proxy = Proxy
 
+-- Takes as input a product catalog URL.
+type Input
+  = Maybe String
+
 type State
   = Loadable SS.ProductCatalog
 
 data Action
-  = LoadProductCatalog String
+  = ClearState
+  | CheckToLoad
+  | LoadProductCatalog String
 
 component ::
-  forall query input output m.
-  MonadAff m => H.Component query input output m
+  forall query output m.
+  MonadAff m => H.Component query Input output m
 component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+    , eval:
+        H.mkEval
+          H.defaultEval
+            { handleAction = handleAction
+            , initialize = initialize
+            , receive = receive
+            }
     }
 
-initialState :: forall input. input -> State
-initialState _ = Idle
+initialState :: Input -> State
+initialState = maybe Idle ToLoad
+
+initialize :: Maybe Action
+initialize = Just CheckToLoad
+
+receive :: Input -> Maybe Action
+receive = Just <<< maybe ClearState LoadProductCatalog
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
@@ -51,21 +69,20 @@ render state =
         [ HH.h2_ [ HH.text "Catalogs" ]
         , HH.div
             [ HP.classes [ Css.flex, Css.two, Css.three500, Css.five800, Css.one1000 ] ]
-            [ HH.button
-                [ HP.classes [ Css.button, Css.success ]
-                , HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json"
-                ]
-                [ HH.text "Sinch Cloud" ]
-            , HH.button
-                [ HP.classes [ Css.button, Css.success ]
-                , HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.normalized.json"
-                ]
-                [ HH.text "Normalized Example" ]
+            [ prodCatLink "Sinch Cloud" "v1alpha1/examples/product-catalog.cloud.json"
+            , prodCatLink "Normalized Example" "v1alpha1/examples/product-catalog.cloud.normalized.json"
             ]
         ]
     , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
     ]
   where
+  prodCatLink txt uri =
+    HH.a
+      [ HP.classes [ Css.button, Css.success ]
+      , Route.href $ Route.ProductCatalog { catalogUri: Just uri }
+      ]
+      [ HH.text txt ]
+
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
   opt = maybe []
 
@@ -377,6 +394,7 @@ render state =
     Array (H.ComponentHTML Action slots m)
   defRender s rend = case s of
     Idle -> idle
+    ToLoad _ -> idle
     Loading -> loading
     Loaded dat -> rend dat
     Error err -> error err
@@ -446,7 +464,15 @@ handleAction ::
   forall o m.
   MonadAff m => Action -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
-  LoadProductCatalog url -> do
+  ClearState -> H.put Idle
+  CheckToLoad -> do
+    state <- H.get
+    case state of
+      ToLoad url -> loadCatalog url
+      _ -> pure unit
+  LoadProductCatalog url -> loadCatalog url
+  where
+  loadCatalog url = do
     H.modify_ \_ -> Loading
     res <- H.liftAff $ getJson url
     H.modify_ \_ -> res

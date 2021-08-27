@@ -9,10 +9,11 @@ import Effect.Aff (Aff)
 import Simple.Ajax (_affjaxError, _notFound, _parseError)
 import Simple.Ajax as AJX
 
--- | A representation of data that is loaded, typically from an external source.
--- | The load can, e.g., fail with an error message.
+-- | A representation of URL data that is loaded. The load can, e.g., fail with
+-- | an error message.
 data Loadable a
   = Idle
+  | ToLoad String -- ^ Waiting to load the given URL.
   | Loaded a
   | Loading
   | Error String
@@ -20,24 +21,27 @@ data Loadable a
 instance functorLoadable :: Functor Loadable where
   map f = case _ of
     Idle -> Idle
+    ToLoad url -> ToLoad url
     Loaded x -> Loaded $ f x
     Loading -> Loading
-    Error x -> Error x
+    Error err -> Error err
 
 instance applyLoadable :: Apply Loadable where
   apply Idle _ = Idle
+  apply (ToLoad url) _ = ToLoad url
   apply (Loaded f) r = f <$> r
   apply Loading _ = Loading
-  apply (Error e) _ = Error e
+  apply (Error err) _ = Error err
 
 instance applicationLoadable :: Applicative Loadable where
   pure = Loaded
 
 instance bindLoadable :: Bind Loadable where
   bind Idle _ = Idle
+  bind (ToLoad url) _ = ToLoad url
   bind (Loaded x) f = f x
   bind Loading _ = Loading
-  bind (Error e) _ = Error e
+  bind (Error err) _ = Error err
 
 -- | Fetch JSON from an URL.
 getJson :: forall a. DecodeJson a => String -> Aff (Loadable a)
