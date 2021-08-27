@@ -16,6 +16,8 @@ import Routing.Match (Match, end, lit, param, root)
 data Route
   = Home
   | OrderForm
+    { catalogUri :: Maybe String
+    }
   | ProductCatalog
     { catalogUri :: Maybe String
     }
@@ -34,7 +36,11 @@ routes = root *> (home <|> orderForm <|> productCatalog)
   where
   home = Home <$ end
 
-  orderForm = OrderForm <$ lit "order-form" <* end
+  orderForm = OrderForm <$> (orderForm1 <|> orderForm2)
+
+  orderForm1 = { catalogUri: Nothing } <$ lit "order-form" <* end
+
+  orderForm2 = (\u -> { catalogUri: Just u }) <$> (lit "order-form" *> param "url" <* end)
 
   productCatalog = ProductCatalog <$> (prodCat1 <|> prodCat2)
 
@@ -45,10 +51,10 @@ routes = root *> (home <|> orderForm <|> productCatalog)
 rawHref :: Route -> String
 rawHref = case _ of
   Home -> "/"
-  OrderForm -> "/order-form"
-  ProductCatalog s -> "/product-catalog" <> prodCatParams s
+  OrderForm s -> "/order-form" <> urlParam s
+  ProductCatalog s -> "/product-catalog" <> urlParam s
   where
-  prodCatParams s = params $ catMaybes [ Tuple "url" <$> s.catalogUri ]
+  urlParam s = params $ catMaybes [ Tuple "url" <$> s.catalogUri ]
 
   params :: Array (Tuple String String) -> String
   params [] = ""

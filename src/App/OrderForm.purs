@@ -4,9 +4,10 @@ import Prelude
 import Css as Css
 import Data.Array (deleteAt, fromFoldable, mapWithIndex, modifyAt, snoc)
 import Data.Int as Int
-import Data.Maybe (Maybe(..), maybe)
-import Data.SmartSpec as SS
 import Data.Loadable (Loadable(..), getJson)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Route as Route
+import Data.SmartSpec as SS
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -20,6 +21,10 @@ type Slot id
 
 proxy :: Proxy "orderForm"
 proxy = Proxy
+
+-- Takes as input a product catalog URL.
+type Input
+  = Maybe String
 
 type State
   = Loadable StateOrderForm
@@ -46,7 +51,9 @@ newtype OrderSection
   }
 
 data Action
-  = LoadProductCatalog String
+  = ClearState
+  | CheckToLoad
+  | LoadProductCatalog String
   | AddSection { solution :: SS.Solution }
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
@@ -56,17 +63,29 @@ data Action
     }
 
 component ::
-  forall query input output m.
-  MonadAff m => H.Component query input output m
+  forall query output m.
+  MonadAff m => H.Component query Input output m
 component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+    , eval:
+        H.mkEval
+          H.defaultEval
+            { handleAction = handleAction
+            , initialize = initialize
+            , receive = receive
+            }
     }
 
-initialState :: forall input. input -> State
-initialState _ = Idle
+initialState :: Input -> State
+initialState = maybe Idle ToLoad
+
+initialize :: Maybe Action
+initialize = Just CheckToLoad
+
+receive :: Input -> Maybe Action
+receive = Just <<< maybe ClearState LoadProductCatalog
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
@@ -75,16 +94,20 @@ render state =
         [ HH.h2_ [ HH.text "Catalogs" ]
         , HH.div
             [ HP.classes [ Css.flex, Css.two, Css.three500, Css.five800, Css.one1000 ] ]
-            [ HH.button
-                [ HP.classes [ Css.button, Css.success ]
-                , HE.onClick \_ -> LoadProductCatalog "v1alpha1/examples/product-catalog.cloud.json"
-                ]
-                [ HH.text "Sinch Cloud" ]
+            [ orderFormLink "Sinch Cloud" "v1alpha1/examples/product-catalog.cloud.json"
+            , orderFormLink "Normalized Example" "v1alpha1/examples/product-catalog.cloud.normalized.json"
             ]
         ]
     , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
     ]
   where
+  orderFormLink txt uri =
+    HH.a
+      [ HP.classes [ Css.button, Css.success ]
+      , Route.href $ Route.OrderForm { catalogUri: Just uri }
+      ]
+      [ HH.text txt ]
+
   error err =
     [ HH.div [ HP.class_ Css.card ]
         [ HH.header_
@@ -365,33 +388,42 @@ render state =
 
   content = defRender state renderOrderForm
 
+loadCatalog :: forall o m. MonadAff m => String -> H.HalogenM State Action () o m Unit
+loadCatalog url = do
+  H.modify_ \_ -> Loading
+  productCatalog <- H.liftAff $ getJson url
+  let
+    res =
+      ( \(pc :: SS.ProductCatalog) ->
+          { productCatalog: pc
+          , orderForm:
+              { id: Nothing
+              , customer: Nothing
+              , status: Nothing
+              , summary:
+                  SS.OrderSummary
+                    { estimatedUsageTotal: 0.0
+                    , monthlyTotal: 0.0
+                    , onetimeTotal: 0.0
+                    }
+              , sections: []
+              }
+          }
+      )
+        <$> productCatalog
+  H.modify_ \_ -> res
+
 handleAction ::
   forall o m.
   MonadAff m => Action -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
-  LoadProductCatalog url -> do
-    H.modify_ \_ -> Loading
-    productCatalog <- H.liftAff $ getJson url
-    let
-      res =
-        ( \(pc :: SS.ProductCatalog) ->
-            { productCatalog: pc
-            , orderForm:
-                { id: Nothing
-                , customer: Nothing
-                , status: Nothing
-                , summary:
-                    SS.OrderSummary
-                      { estimatedUsageTotal: 0.0
-                      , monthlyTotal: 0.0
-                      , onetimeTotal: 0.0
-                      }
-                , sections: []
-                }
-            }
-        )
-          <$> productCatalog
-    H.modify_ \_ -> res
+  ClearState -> H.put Idle
+  CheckToLoad -> do
+    state <- H.get
+    case state of
+      ToLoad url -> loadCatalog url
+      _ -> pure unit
+  LoadProductCatalog url -> loadCatalog url
   AddSection { solution } ->
     H.modify_
       $ map \st ->
