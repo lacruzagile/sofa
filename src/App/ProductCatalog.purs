@@ -320,8 +320,8 @@ render state =
       SS.DimValue (SS.CvObject m) -> (\d -> maybe "N/A" show $ Map.lookup d m) <$> dims
       SS.DimValue v -> [ show v ]
 
-    showSegmentedPrice :: SS.SegmentedPrice -> String
-    showSegmentedPrice (SS.SegmentedPrice p) = joinWith ", " $ map showSegmentPrice p
+    showSegmentedPrice :: SS.Price -> String
+    showSegmentedPrice (SS.Price p) = joinWith ", " $ map showSegmentPrice p
 
     priceVal :: SS.PriceByUnit -> String
     priceVal (SS.PriceByUnit { price }) = showSegmentedPrice price
@@ -329,20 +329,20 @@ render state =
     priceVals :: Array SS.PriceByUnit -> Array String
     priceVals = map priceVal <<< sortBy (comparing (_.unitID <<< unwrap <<< _.unit <<< unwrap))
 
-  rateCardCharge :: SS.SpecUnitMap -> SS.RateCardCharge -> H.ComponentHTML Action slots m
+  rateCardCharge :: SS.SpecUnitMap -> SS.Charge -> H.ComponentHTML Action slots m
   rateCardCharge unitMap = case _ of
-    SS.RccSimple r ->
+    SS.ChargeSimple r ->
       HH.dl_ $ dataItemRaw "Price" (simplePrice unitMap r.unit r.price)
         <> opt (dataItemRaw "Segmentation" <<< segmentation) r.segmentation
         <> dataItem "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
         <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
-    SS.RccMixed r ->
+    SS.ChargeMixed r ->
       HH.dl_ $ optArr (dataItemRaw "Price Segmentations" <<< priceSegmentationsByUnit) r.priceSegmentations
         <> optArr (dataItemRaw "Default Prices" <<< defaultPrices) r.defaultPrices
         <> dataItemRaw "Prices per Dimension" (pricesPerDim unitMap r.units r.pricesPerDim)
         <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
         <> dataItem "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
-    SS.RccArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ rateCardCharge unitMap r ]) $ rs
+    SS.ChargeArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ rateCardCharge unitMap r ]) $ rs
 
   rateCard :: SS.SpecUnitMap -> SS.RateCard -> H.ComponentHTML Action slots m
   rateCard unitMap (SS.RateCard r) =
@@ -439,13 +439,23 @@ showProductRef :: SS.ProductRef -> String
 showProductRef (SS.ProductRef p) = showSkuCode p.sku <> (maybe "" (\s -> " [" <> show s <> "]") p.solutionURI)
 
 showSegmentPrice :: SS.SegmentPrice -> String
-showSegmentPrice (SS.SegmentPrice p) =
-  show p.price
-    <> " ["
-    <> show p.minimum
-    <> ","
-    <> maybe "" show p.exclusiveMaximum
-    <> ")"
+showSegmentPrice (SS.SegmentPrice p) = case p.discount of
+  Nothing -> noDiscount
+  Just d -> discount d
+  where
+  noDiscount =
+    show p.listPrice
+      <> " ["
+      <> show p.minimum
+      <> ","
+      <> maybe "" show p.exclusiveMaximum
+      <> ")"
+
+  discount d = noDiscount <> " (discount " <> showDiscount d <> ")"
+
+  showDiscount = case _ of
+    SS.DiscountPercentage d -> show d <> "%"
+    SS.DiscountAbsolute d -> show d
 
 showSegment :: SS.Segment -> String
 showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "" show s.exclusiveMaximum <> ")"

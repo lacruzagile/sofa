@@ -3,6 +3,7 @@ module Data.SmartSpec
   , Asset(..)
   , BillingAccountRef(..)
   , BillingOption(..)
+  , Charge(..)
   , ChargeType(..)
   , Commercial(..)
   , ConfigSchemaEntry(..)
@@ -15,6 +16,7 @@ module Data.SmartSpec
   , DateTime(..)
   , DefaultPriceByUnit(..)
   , DimValue(..)
+  , Discount(..)
   , LegalEntity(..)
   , OrderForm(..)
   , OrderLine(..)
@@ -23,6 +25,7 @@ module Data.SmartSpec
   , OrderStatus(..)
   , OrderSummary(..)
   , Platform(..)
+  , Price(..)
   , PriceBook(..)
   , PriceBookRef(..)
   , PriceByDim(..)
@@ -43,7 +46,6 @@ module Data.SmartSpec
   , Purchaser(..)
   , Quantifier(..)
   , RateCard(..)
-  , RateCardCharge(..)
   , ReturnCustomerCommercial(..)
   , ReturnCustomerData(..)
   , Rule(..)
@@ -54,7 +56,6 @@ module Data.SmartSpec
   , SegmentPrice(..)
   , SegmentationModel(..)
   , SegmentationPeriod(..)
-  , SegmentedPrice(..)
   , Seller(..)
   , Severity(..)
   , SimplePrice(..)
@@ -67,6 +68,7 @@ module Data.SmartSpec
   , Validity(..)
   , productUnits
   , skuCode
+  , solutionProducts
   , specUnitLabel
   ) where
 
@@ -95,6 +97,8 @@ newtype Solution
   , priceBooks :: Array PriceBook
   }
 
+derive instance newtypeSolution :: Newtype Solution _
+
 instance decodeJsonSolution :: DecodeJson Solution where
   decodeJson json = do
     o <- decodeJson json
@@ -105,6 +109,13 @@ instance decodeJsonSolution :: DecodeJson Solution where
     rules <- o .:? "rules" .!= []
     priceBooks <- o .: "priceBooks"
     pure $ Solution { id, name, description, rules, products, priceBooks }
+
+solutionProducts :: Solution -> Map String Product
+solutionProducts =
+  Map.fromFoldable
+    <<< map (\p@(Product { sku }) -> Tuple sku p)
+    <<< _.products
+    <<< unwrap
 
 newtype ProductCatalog
   = ProductCatalog
@@ -238,15 +249,15 @@ instance decodeJsonPriceBook :: DecodeJson PriceBook where
   decodeJson json = PriceBook <$> decodeJson json
 
 -- TODO: Assert non-negative.
-data RateCardCharge
-  = RccSimple
+data Charge
+  = ChargeSimple
     { unit :: UnitRef
     , price :: SimplePrice
     , segmentation :: Maybe PriceSegmentation
     , termOfPriceChangeInDays :: Int
     , monthlyMinimum :: Number
     }
-  | RccMixed
+  | ChargeMixed
     { units :: Array UnitRef
     , priceSegmentations :: Array PriceSegmentationByUnit
     , defaultPrices :: Array DefaultPriceByUnit
@@ -254,14 +265,14 @@ data RateCardCharge
     , monthlyMinimum :: Number
     , termOfPriceChangeInDays :: Int
     }
-  | RccArray (Array RateCardCharge)
+  | ChargeArray (Array Charge)
 
-instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
+instance decodeJsonCharge :: DecodeJson Charge where
   decodeJson json = rccElement json <|> rccArray json
     where
     rccElement j = rccSimple j <|> rccMixed j
 
-    rccArray j = RccArray <$> decodeArray rccElement j
+    rccArray j = ChargeArray <$> decodeArray rccElement j
 
     rccSimple j = do
       o <- decodeJson j
@@ -271,7 +282,7 @@ instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
       pure
-        $ RccSimple
+        $ ChargeSimple
             { unit
             , price
             , segmentation
@@ -288,7 +299,7 @@ instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
       monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       pure
-        $ RccMixed
+        $ ChargeMixed
             { units
             , priceSegmentations
             , defaultPrices
@@ -298,7 +309,7 @@ instance decodeJsonRateCardCharge :: DecodeJson RateCardCharge where
             }
 
 data SimplePrice
-  = SimplePriceSegmented SegmentedPrice
+  = SimplePriceSegmented Price
   | SimplePriceByDim (Array PriceByDim)
 
 instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
@@ -317,7 +328,7 @@ instance decodeJsonDimValue :: DecodeJson DimValue where
 newtype PriceByDim
   = PriceByDim
   { dim :: DimValue
-  , price :: SegmentedPrice
+  , price :: Price
   , monthlyMinimum :: Number
   }
 
@@ -329,13 +340,57 @@ instance decodeJsonPriceByDim :: DecodeJson PriceByDim where
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
     pure $ PriceByDim { dim, price, monthlyMinimum }
 
+data Discount
+  = DiscountPercentage Number
+  | DiscountAbsolute Number
+
+instance decodeJsonDiscount :: DecodeJson Discount where
+  decodeJson json = percentage <|> absolute
+    where
+    percentage = do
+      o <- decodeJson json
+      perc <- o .: "percentage"
+      pure $ DiscountPercentage perc
+
+    absolute = do
+      o <- decodeJson json
+      amount <- o .: "amount"
+      pure $ DiscountAbsolute amount
+
 newtype SegmentPrice
   = SegmentPrice
-  { minimum :: Int, exclusiveMaximum :: Maybe Int, price :: Number
+  { minimum :: Int
+  , exclusiveMaximum :: Maybe Int
+  , listPrice :: Number
+  , salesPrice :: Number
+  , discount :: Maybe Discount
   }
 
 instance decodeJsonSegmentPrice :: DecodeJson SegmentPrice where
-  decodeJson json = SegmentPrice <$> decodeJson json
+  decodeJson json = do
+    o <- decodeJson json
+    minimum <- o .: "minimum"
+    exclusiveMaximum <- o .:? "exclusiveMaximum"
+    let
+      basicPrice = do
+        p <- o .: "price"
+        pure { listPrice: p, salesPrice: p, discount: Nothing }
+
+      discountedPrice = do
+        po <- o .: "price"
+        listPrice <- po .: "listPrice"
+        salesPrice <- po .: "salesPrice"
+        discount <- po .: "discount"
+        pure { listPrice, salesPrice, discount }
+    p <- basicPrice <|> discountedPrice
+    pure
+      $ SegmentPrice
+          { minimum
+          , exclusiveMaximum
+          , listPrice: p.listPrice
+          , salesPrice: p.salesPrice
+          , discount: p.discount
+          }
 
 newtype PriceSegmentation
   = PriceSegmentation
@@ -362,23 +417,32 @@ newtype RateCard
   { sku :: Sku
   , name :: Maybe String
   , description :: Maybe String
-  , charge :: RateCardCharge
+  , charge :: Charge
   }
 
 instance decodeJsonRateCard :: DecodeJson RateCard where
   decodeJson json = RateCard <$> decodeJson json
 
-newtype SegmentedPrice
-  = SegmentedPrice (Array SegmentPrice)
+newtype Price
+  = Price (Array SegmentPrice)
 
-instance decodeJsonSegmentedPrice :: DecodeJson SegmentedPrice where
+instance decodeJsonPrice :: DecodeJson Price where
   decodeJson json = fixed <|> segmented
     where
-    mkSingleton p = SegmentedPrice [ SegmentPrice { minimum: 0, exclusiveMaximum: Nothing, price: p } ]
+    mkSingleton p =
+      Price
+        [ SegmentPrice
+            { minimum: 0
+            , exclusiveMaximum: Nothing
+            , listPrice: p
+            , salesPrice: p
+            , discount: Nothing
+            }
+        ]
 
     fixed = mkSingleton <$> decodeJson json
 
-    segmented = SegmentedPrice <$> decodeJson json
+    segmented = Price <$> decodeJson json
 
 data SegmentationPeriod
   = SegmentationPeriodMonthly
@@ -444,7 +508,7 @@ instance decodeJsonPricesPerDimByUnit :: DecodeJson PricesPerDimByUnit where
 newtype PriceByUnit
   = PriceByUnit
   { unit :: UnitRef
-  , price :: SegmentedPrice
+  , price :: Price
   }
 
 derive instance newtypePriceByUnit :: Newtype PriceByUnit _
@@ -1076,7 +1140,7 @@ instance decodeJsonAsset :: DecodeJson Asset where
 newtype PriceOverride
   = PriceOverride
   { basePriceBookRef :: PriceBookRef
-  , charge :: RateCardCharge
+  , charge :: Charge
   , validity :: Validity
   }
 
@@ -1085,7 +1149,9 @@ instance decodeJsonPriceOverride :: DecodeJson PriceOverride where
 
 newtype PriceBookRef
   = PriceBookRef
-  { priceBookID :: String, solutionURI :: Maybe Uri
+  { priceBookID :: String
+  , version :: String
+  , solutionURI :: Maybe Uri
   }
 
 instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
@@ -1208,7 +1274,7 @@ newtype OrderLine
   = OrderLine
   { basePriceBookRef :: PriceBookRef
   , sku :: Sku
-  , charge :: RateCardCharge
+  , charge :: Charge
   , quantity :: Int
   }
 
