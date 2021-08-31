@@ -6,10 +6,11 @@ import Data.Array (deleteAt, mapWithIndex, modifyAt, snoc)
 import Data.Array as A
 import Data.Int as Int
 import Data.Loadable (Loadable(..), getJson)
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.Route as Route
-import Data.SmartSpec (skuCode)
+import Data.SmartSpec (ConfigSchemaEntry, ProductOption(..), skuCode, solutionProducts)
 import Data.SmartSpec as SS
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -44,11 +45,11 @@ type OrderForm
     , customer :: Maybe SS.Customer
     , status :: Maybe SS.OrderStatus
     , summary :: SS.OrderSummary
-    , sections :: Array OrderSection
+    , sections :: Array (Maybe OrderSection)
     }
 
 type OrderSection
-  = { solution :: Maybe SS.Solution
+  = { solution :: SS.Solution
     , orderLines :: Array (Maybe SS.OrderLine)
     -- ^ Order lines of the product options.
     , summary :: SS.OrderSectionSummary
@@ -60,7 +61,6 @@ data Action
   | LoadProductCatalog String
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
-  | SectionSetTopLevel { sectionIndex :: Int, sku :: SS.Sku }
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
   | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.Sku }
@@ -289,12 +289,12 @@ render state =
       )
 
   orderLine ::
-    Array (H.ComponentHTML Action slots m) ->
+    SS.Solution ->
     Int ->
     Int ->
     Maybe SS.OrderLine ->
     H.ComponentHTML Action slots m
-  orderLine products secIdx olIdx = case _ of
+  orderLine solution@(SS.Solution sol) secIdx olIdx = case _ of
     Nothing ->
       body
         [ HH.label_
@@ -306,27 +306,29 @@ render state =
         ]
     Just (SS.OrderLine ol) ->
       body
-        [ HH.label_
-            [ HH.text "Product"
-            , HH.input
-                [ HP.type_ HP.InputText
-                , HP.disabled true
-                , HP.value (skuCode ol.sku)
-                ]
-            ]
-        , HH.label_
-            [ HH.text "Quantity"
-            , HH.input
-                [ HP.type_ HP.InputNumber
-                , HE.onValueChange \input ->
-                    OrderLineSetQuantity
-                      { sectionIndex: secIdx
-                      , orderLineIndex: olIdx
-                      , quantity: maybe 0 identity $ Int.fromString input
-                      }
-                ]
-            ]
-        ]
+        $ [ HH.label_
+              [ HH.text "Product"
+              , HH.input
+                  [ HP.type_ HP.InputText
+                  , HP.disabled true
+                  , HP.value (skuCode ol.sku)
+                  ]
+              ]
+          , HH.label_
+              [ HH.text "Quantity"
+              , HH.input
+                  [ HP.type_ HP.InputNumber
+                  , HP.value $ show ol.quantity
+                  , HE.onValueChange \input ->
+                      OrderLineSetQuantity
+                        { sectionIndex: secIdx
+                        , orderLineIndex: olIdx
+                        , quantity: maybe 0 identity $ Int.fromString input
+                        }
+                  ]
+              ]
+          ]
+        <> prodConfig (skuCode ol.sku)
     where
     body subBody =
       HH.div [ HP.classes [ Css.orderSection ] ]
@@ -338,6 +340,8 @@ render state =
           ]
         <> subBody
 
+    products = map (\(SS.Product p) -> HH.option [ HP.value p.sku ] [ HH.text p.sku ]) sol.products
+
     actionSetProduct sku =
       OrderLineSetProduct
         { sectionIndex: secIdx
@@ -345,36 +349,41 @@ render state =
         , sku: SS.SkuCode sku
         }
 
-  section :: SS.ProductCatalog -> Int -> OrderSection -> H.ComponentHTML Action slots m
-  section (SS.ProductCatalog pc) secIdx sec =
-    HH.div [ HP.classes [ Css.orderSection ] ]
-      $ [ HH.a [ HP.class_ Css.close, HE.onClick \_ -> RemoveSection { sectionIndex: secIdx } ] [ HH.text "×" ]
+    prodConfig sku =
+      let
+        configSchema = do
+          SS.Product prod <- Map.lookup sku $ solutionProducts solution
+          prod.configSchema
+      in
+        maybe [] renderConfigSchema configSchema
+
+  renderConfigSchema :: Map String ConfigSchemaEntry -> Array (H.ComponentHTML Action slots m)
+  renderConfigSchema =
+    let
+      renderSchemaEntry = case _ of
+        SS.CseInteger _c -> HH.input [ HP.type_ HP.InputNumber ]
+        SS.CseString c
+          | not (A.null c.enum) -> HH.select_ $ map (\e -> HH.option_ [ HH.text e ]) c.enum
+        SS.CseString _ -> HH.input []
+        SS.CseRegex _c -> HH.input []
+        SS.CseConst _c -> HH.input [ HP.value "const", HP.disabled true ]
+        SS.CseArray _c -> HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
+        SS.CseObject _c -> HH.input [ HP.value "Unsupported configuration type: object", HP.disabled true ]
+        SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
+
+      renderEntry (Tuple key opt) =
+        [ HH.label_
+            [ HH.text key
+            , renderSchemaEntry opt
+            ]
         ]
-      <> sectionBody
-    where
-    solutionLabel (SS.Solution s) = maybe s.id identity s.name
+    in
+      A.concatMap renderEntry <<< Map.toUnfoldable
 
-    SS.OrderSectionSummary summary = sec.summary
-
-    actionSetSolution solId =
-      SectionSetSolution
-        { sectionIndex: secIdx
-        , solutionId: solId
-        }
-
-    actionSetTopLevel sku =
-      SectionSetTopLevel
-        { sectionIndex: secIdx
-        , sku: SS.SkuCode sku
-        }
-
-    solutionOptions =
-      map
-        (\(Tuple i s) -> HH.option [ HP.value i ] [ HH.text $ solutionLabel s ])
-        (Map.toUnfoldable pc.solutions)
-
-    sectionBody = case sec.solution of
-      Nothing ->
+  section :: SS.ProductCatalog -> Int -> Maybe OrderSection -> H.ComponentHTML Action slots m
+  section (SS.ProductCatalog pc) secIdx = case _ of
+    Nothing ->
+      body
         [ HH.label_
             [ HH.text "Solution"
             , HH.select [ HE.onValueChange actionSetSolution ]
@@ -382,84 +391,54 @@ render state =
                 <> solutionOptions
             ]
         ]
-      Just sol ->
-        [ HH.label_
-            [ HH.text "Solution"
-            , HH.input
-                [ HP.type_ HP.InputText
-                , HP.disabled true
-                , HP.value $ solutionLabel sol
-                ]
-            ]
-        ]
-          <> sectionOrderLines sol
+    Just sec ->
+      body
+        $ [ HH.label_
+              [ HH.text "Solution"
+              , HH.input
+                  [ HP.type_ HP.InputText
+                  , HP.disabled true
+                  , HP.value $ solutionLabel sec.solution
+                  ]
+              ]
+          ]
+        <> sectionOrderLines sec.solution sec.orderLines
+        <> [ HH.button [ HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ] [ HH.text "Add Order Line" ]
+          , renderSummary sec.summary
+          ]
+    where
+    body subBody =
+      HH.div [ HP.classes [ Css.orderSection ] ]
+        $ [ HH.a [ HP.class_ Css.close, HE.onClick \_ -> RemoveSection { sectionIndex: secIdx } ] [ HH.text "×" ]
+          ]
+        <> subBody
 
-    topLevelSelect (SS.Solution sol) =
-      let
-        products = map (\(SS.Product p) -> HH.option [ HP.value p.sku ] [ HH.text p.sku ]) sol.products
-      in
-        [ HH.label_
-            [ HH.text "Top Level Product"
-            , HH.select [ HE.onValueChange actionSetTopLevel ]
-                $ [ HH.option [ HP.value "", HP.selected true ] [ HH.text "Please choose a product" ] ]
-                <> products
-            ]
-        ]
+    solutionLabel (SS.Solution s) = maybe s.id identity s.name
 
-    topLevelSelected sol olTopLevel orderLines =
-      let
-        topLevelSkuCode = skuCode olTopLevel.sku
+    actionSetSolution solId =
+      SectionSetSolution
+        { sectionIndex: secIdx
+        , solutionId: solId
+        }
 
-        optionSku = case _ of
-          SS.ProdOptSkuCode sku -> sku
-          SS.ProductOption { sku } -> skuCode sku
+    solutionOptions =
+      map
+        (\(Tuple i s) -> HH.option [ HP.value i ] [ HH.text $ solutionLabel s ])
+        (Map.toUnfoldable pc.solutions)
 
-        availableOptions =
-          maybe [] identity do
-            SS.Product p <- Map.lookup topLevelSkuCode $ SS.solutionProducts sol
-            opts <- p.options
-            pure opts
+    sectionOrderLines sol orderLines =
+      [ HH.div_ (mapWithIndex (orderLine sol secIdx) orderLines)
+      ]
 
-        renderOption = (\sku -> HH.option [ HP.value sku ] [ HH.text sku ]) <<< optionSku
-
-        products = map renderOption availableOptions
-      in
-        [ HH.label_
-            [ HH.text "Top level Product"
-            , HH.input
-                [ HP.type_ HP.InputText
-                , HP.disabled true
-                , HP.value (skuCode olTopLevel.sku)
-                ]
-            , HH.label_
-                [ HH.text "Quantity"
-                , HH.input
-                    [ HP.type_ HP.InputNumber
-                    , HE.onValueChange \input ->
-                        OrderLineSetQuantity
-                          { sectionIndex: secIdx
-                          , orderLineIndex: 0
-                          , quantity: maybe 0 identity $ Int.fromString input
-                          }
-                    ]
-                ]
-            ]
-        , HH.div_ (mapWithIndex (orderLine products secIdx) orderLines)
-        , HH.button [ HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ] [ HH.text "Add Order Line" ]
-        , HH.div [ HP.classes [ Css.flex, Css.four ] ]
-            [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
-            , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageSubTotal) ]
-            , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlySubTotal) ]
-            , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeSubTotal) ]
-            ]
+    renderSummary (SS.OrderSectionSummary summary) =
+      HH.div [ HP.classes [ Css.flex, Css.four ] ]
+        [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
+        , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageSubTotal) ]
+        , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlySubTotal) ]
+        , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeSubTotal) ]
         ]
 
-    sectionOrderLines sol = case A.uncons sec.orderLines of
-      Nothing -> topLevelSelect sol
-      Just { head: Nothing, tail: _ } -> topLevelSelect sol -- Should not happen.
-      Just { head: Just (SS.OrderLine olTopLevel), tail: orderLines } -> topLevelSelected sol olTopLevel orderLines
-
-  sections :: SS.ProductCatalog -> Array OrderSection -> H.ComponentHTML Action slots m
+  sections :: SS.ProductCatalog -> Array (Maybe OrderSection) -> H.ComponentHTML Action slots m
   sections pc secs =
     HH.div_
       $ [ HH.h3_ [ HH.text "Sections" ]
@@ -527,22 +506,7 @@ handleAction = case _ of
   AddSection ->
     H.modify_
       $ map \st ->
-          st
-            { orderForm
-              { sections =
-                snoc
-                  st.orderForm.sections
-                  { solution: Nothing
-                  , orderLines: []
-                  , summary:
-                      SS.OrderSectionSummary
-                        { estimatedUsageSubTotal: 0.0
-                        , monthlySubTotal: 0.0
-                        , onetimeSubTotal: 0.0
-                        }
-                  }
-              }
-            }
+          st { orderForm { sections = snoc st.orderForm.sections Nothing } }
   SectionSetSolution { sectionIndex, solutionId } ->
     H.modify_
       $ map \st ->
@@ -555,36 +519,22 @@ handleAction = case _ of
                   maybe st.orderForm.sections identity
                     $ do
                         solution <- Map.lookup solutionId pc.solutions
-                        modifyAt sectionIndex (\s -> s { solution = Just solution }) st.orderForm.sections
+                        modifyAt sectionIndex
+                          ( \s ->
+                              Just
+                                { solution: solution
+                                , orderLines: [ Nothing ]
+                                , summary:
+                                    SS.OrderSectionSummary
+                                      { estimatedUsageSubTotal: 0.0
+                                      , monthlySubTotal: 0.0
+                                      , onetimeSubTotal: 0.0
+                                      }
+                                }
+                          )
+                          st.orderForm.sections
                 }
               }
-  SectionSetTopLevel { sectionIndex, sku } ->
-    H.modify_
-      $ map \st ->
-          st
-            { orderForm
-              { sections =
-                maybe st.orderForm.sections identity
-                  $ modifyAt sectionIndex
-                      ( \s ->
-                          s
-                            { orderLines =
-                              [ Just
-                                  $ SS.OrderLine
-                                      { basePriceBookRef:
-                                          SS.PriceBookRef
-                                            { priceBookID: "pbid", version: "", solutionURI: Nothing
-                                            }
-                                      , sku: sku
-                                      , charge: SS.ChargeArray []
-                                      , quantity: 1
-                                      }
-                              ]
-                            }
-                      )
-                      st.orderForm.sections
-              }
-            }
   RemoveSection { sectionIndex } ->
     H.modify_
       $ map \st ->
@@ -596,8 +546,8 @@ handleAction = case _ of
             }
   AddOrderLine { sectionIndex } ->
     let
-      addOrderLine :: OrderSection -> OrderSection
-      addOrderLine section = section { orderLines = snoc section.orderLines Nothing }
+      addOrderLine :: Maybe OrderSection -> Maybe OrderSection
+      addOrderLine = map (\section -> section { orderLines = snoc section.orderLines Nothing })
     in
       H.modify_
         $ map \st ->
@@ -609,12 +559,15 @@ handleAction = case _ of
               }
   RemoveOrderLine { sectionIndex, orderLineIndex } ->
     let
-      removeOrderLine :: OrderSection -> OrderSection
-      removeOrderLine section =
-        section
-          { orderLines =
-            maybe section.orderLines identity (deleteAt (orderLineIndex + 1) section.orderLines)
-          }
+      removeOrderLine :: Maybe OrderSection -> Maybe OrderSection
+      removeOrderLine =
+        map
+          ( \section ->
+              section
+                { orderLines =
+                  maybe section.orderLines identity (deleteAt orderLineIndex section.orderLines)
+                }
+          )
     in
       H.modify_
         $ map \st ->
@@ -626,11 +579,10 @@ handleAction = case _ of
               }
   OrderLineSetProduct { sectionIndex, orderLineIndex, sku } ->
     let
-      updateSku :: Maybe SS.OrderLine -> SS.OrderLine
-      updateSku Nothing =
+      mkOrderLine prodSku =
         SS.OrderLine
           { basePriceBookRef: SS.PriceBookRef { priceBookID: "PBID", version: "", solutionURI: Nothing }
-          , sku: sku
+          , sku: prodSku
           , charge:
               SS.ChargeSimple
                 { unit: SS.UnitRef { unitID: "UID", product: Nothing }
@@ -652,7 +604,24 @@ handleAction = case _ of
           , quantity: 1
           }
 
-      updateSku (Just (SS.OrderLine ol)) = SS.OrderLine $ ol { sku = sku }
+      updateSku :: Maybe SS.OrderLine -> SS.OrderLine
+      updateSku = case _ of
+        Nothing -> mkOrderLine sku
+        Just (SS.OrderLine ol) -> SS.OrderLine $ ol { sku = sku }
+
+      -- | Add any required product options.
+      requiredOptions :: OrderSection -> Array (Maybe SS.OrderLine)
+      requiredOptions section =
+        let
+          prod = do
+            SS.Product p <- Map.lookup (skuCode sku) $ solutionProducts section.solution
+            p.options
+
+          code = case _ of
+            ProdOptSkuCode _ -> Nothing
+            ProductOption po -> if po.required then Just po.sku else Nothing
+        in
+          maybe [] (map Just <<< A.mapMaybe (map mkOrderLine <<< code)) prod
 
       updateOrderLine :: OrderSection -> OrderSection
       updateOrderLine section =
@@ -660,14 +629,14 @@ handleAction = case _ of
           { orderLines =
             maybe
               section.orderLines
-              identity
-              (modifyAt (orderLineIndex + 1) (Just <<< updateSku) section.orderLines)
+              (\ls -> ls <> requiredOptions section)
+              (modifyAt orderLineIndex (Just <<< updateSku) section.orderLines)
           }
 
-      updateSections :: Array OrderSection -> Array OrderSection
+      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
       updateSections sections =
         maybe sections identity
-          $ modifyAt sectionIndex updateOrderLine
+          $ modifyAt sectionIndex (map updateOrderLine)
           $ sections
     in
       H.modify_
@@ -686,13 +655,13 @@ handleAction = case _ of
             maybe
               section.orderLines
               identity
-              (modifyAt (orderLineIndex + 1) updateQuantity section.orderLines)
+              (modifyAt orderLineIndex updateQuantity section.orderLines)
           }
 
-      updateSections :: Array OrderSection -> Array OrderSection
+      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
       updateSections sections =
         maybe sections identity
-          $ modifyAt sectionIndex updateOrderLine
+          $ modifyAt sectionIndex (map updateOrderLine)
           $ sections
     in
       H.modify_

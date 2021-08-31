@@ -567,6 +567,7 @@ data ConfigSchemaEntry
   | CseString
     { minLength :: Maybe Int
     , maxLength :: Maybe Int
+    , enum :: Array String
     , default :: Maybe String
     }
   | CseRegex
@@ -595,8 +596,9 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
         "string" -> do
           minLength <- o .:? "minLength"
           maxLength <- o .:? "maxLength"
+          enum <- o .:? "enum" .!= []
           default <- o .:? "default"
-          Right $ CseString { minLength, maxLength, default }
+          Right $ CseString { minLength, maxLength, enum, default }
         "regex" -> do
           pattern <- o .: "pattern"
           default <- o .:? "default"
