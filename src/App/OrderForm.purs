@@ -403,12 +403,16 @@ render state =
               ]
           ]
         <> sectionOrderLines sec.solution sec.orderLines
-        <> [ HH.button [ HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ] [ HH.text "Add Order Line" ]
+        <> [ HH.div [ HP.class_ Css.orderSection ]
+              [ HH.button
+                  [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
+                  [ HH.text "+" ]
+              ]
           , renderSummary sec.summary
           ]
     where
     body subBody =
-      HH.div [ HP.classes [ Css.orderSection ] ]
+      HH.div [ HP.class_ Css.orderSection ]
         $ [ HH.a [ HP.class_ Css.close, HE.onClick \_ -> RemoveSection { sectionIndex: secIdx } ] [ HH.text "×" ]
           ]
         <> subBody
@@ -520,7 +524,7 @@ handleAction = case _ of
                     $ do
                         solution <- Map.lookup solutionId pc.solutions
                         modifyAt sectionIndex
-                          ( \s ->
+                          ( \_ ->
                               Just
                                 { solution: solution
                                 , orderLines: [ Nothing ]
