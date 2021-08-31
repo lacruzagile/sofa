@@ -74,7 +74,7 @@ module Data.SmartSpec
 
 import Prelude
 import Control.Alternative ((<|>))
-import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), decodeJson, (.!=), (.:), (.:?))
+import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (~>))
 import Data.Argonaut.Decode.Decoders (decodeArray)
 import Data.Either (Either(..))
 import Data.Map (Map)
@@ -109,6 +109,9 @@ instance decodeJsonSolution :: DecodeJson Solution where
     rules <- o .:? "rules" .!= []
     priceBooks <- o .: "priceBooks"
     pure $ Solution { id, name, description, rules, products, priceBooks }
+
+instance encodeJsonSolution :: EncodeJson Solution where
+  encodeJson (Solution x) = encodeJson x
 
 solutionProducts :: Solution -> Map String Product
 solutionProducts =
@@ -162,6 +165,9 @@ instance decodeJsonRuleStage :: DecodeJson RuleStage where
       "OrderFulfillment" -> Right OrderFulfillment
       _ -> Left (TypeMismatch "RuleStage")
 
+instance encodeJsonRuleStage :: EncodeJson RuleStage where
+  encodeJson = encodeJson <<< show
+
 data Severity
   = SeverityInfo
   | SeverityWarning
@@ -182,6 +188,9 @@ instance decodeJsonSeverity :: DecodeJson Severity where
       "Error" -> Right SeverityError
       _ -> Left (TypeMismatch "Severity")
 
+instance encodeJsonSeverity :: EncodeJson Severity where
+  encodeJson = encodeJson <<< show
+
 data Quantifier
   = QuantifierAll
   | QuantifierAny
@@ -199,6 +208,9 @@ instance decodeJsonQuantifier :: DecodeJson Quantifier where
       "Any" -> Right QuantifierAny
       _ -> Left (TypeMismatch "Quantifier")
 
+instance encodeJsonQuantifier :: EncodeJson Quantifier where
+  encodeJson = encodeJson <<< show
+
 newtype RuleConditionExpr
   = RuleConditionExpr { type_ :: String, expr :: String }
 
@@ -208,6 +220,9 @@ instance decodeJsonRuleConditionExpr :: DecodeJson RuleConditionExpr where
     type_ <- o .: "type"
     expr <- o .: "expr"
     pure $ RuleConditionExpr { type_, expr }
+
+instance encodeJsonRuleConditionExpr :: EncodeJson RuleConditionExpr where
+  encodeJson (RuleConditionExpr x) = encodeJson x
 
 newtype Rule
   = Rule
@@ -220,6 +235,9 @@ newtype Rule
 
 instance decodeJsonRule :: DecodeJson Rule where
   decodeJson json = Rule <$> decodeJson json
+
+instance encodeJsonRule :: EncodeJson Rule where
+  encodeJson (Rule x) = encodeJson x
 
 newtype Currency
   = Currency { code :: String, country :: Maybe String }
@@ -235,6 +253,9 @@ instance decodeJsonCurrency :: DecodeJson Currency where
       country <- o .:? "country" .!= Nothing
       pure $ Currency { code, country }
 
+instance encodeJsonCurrency :: EncodeJson Currency where
+  encodeJson (Currency x) = encodeJson x
+
 newtype PriceBook
   = PriceBook
   { id :: String
@@ -247,6 +268,9 @@ newtype PriceBook
 
 instance decodeJsonPriceBook :: DecodeJson PriceBook where
   decodeJson json = PriceBook <$> decodeJson json
+
+instance encodeJsonPriceBook :: EncodeJson PriceBook where
+  encodeJson (PriceBook x) = encodeJson x
 
 -- TODO: Assert non-negative.
 data Charge
@@ -308,6 +332,12 @@ instance decodeJsonCharge :: DecodeJson Charge where
             , termOfPriceChangeInDays
             }
 
+instance encodeJsonCharge :: EncodeJson Charge where
+  encodeJson = case _ of
+    ChargeSimple x -> encodeJson x
+    ChargeMixed x -> encodeJson x
+    ChargeArray x -> encodeJson x
+
 data SimplePrice
   = SimplePriceSegmented Price
   | SimplePriceByDim (Array PriceByDim)
@@ -319,11 +349,18 @@ instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
 
     byDim = SimplePriceByDim <$> decodeJson json
 
+instance encodeJsonSimplePrice :: EncodeJson SimplePrice where
+  encodeJson (SimplePriceSegmented x) = encodeJson x
+  encodeJson (SimplePriceByDim x) = encodeJson x
+
 newtype DimValue
   = DimValue ConfigValue
 
 instance decodeJsonDimValue :: DecodeJson DimValue where
   decodeJson json = DimValue <$> decodeJson json
+
+instance encodeJsonDimValue :: EncodeJson DimValue where
+  encodeJson (DimValue x) = encodeJson x
 
 newtype PriceByDim
   = PriceByDim
@@ -339,6 +376,9 @@ instance decodeJsonPriceByDim :: DecodeJson PriceByDim where
     price <- o .: "price"
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
     pure $ PriceByDim { dim, price, monthlyMinimum }
+
+instance encodeJsonPriceByDim :: EncodeJson PriceByDim where
+  encodeJson (PriceByDim x) = encodeJson x
 
 data Discount
   = DiscountPercentage Number
@@ -356,6 +396,16 @@ instance decodeJsonDiscount :: DecodeJson Discount where
       o <- decodeJson json
       amount <- o .: "amount"
       pure $ DiscountAbsolute amount
+
+instance encodeJsonDiscount :: EncodeJson Discount where
+  encodeJson (DiscountPercentage x) =
+    encodeJson
+      { percentage: x
+      }
+  encodeJson (DiscountAbsolute x) =
+    encodeJson
+      { amount: x
+      }
 
 newtype SegmentPrice
   = SegmentPrice
@@ -392,6 +442,9 @@ instance decodeJsonSegmentPrice :: DecodeJson SegmentPrice where
           , discount: p.discount
           }
 
+instance encodeJsonSegmentPrice :: EncodeJson SegmentPrice where
+  encodeJson (SegmentPrice x) = encodeJson x
+
 newtype PriceSegmentation
   = PriceSegmentation
   { segmentUnit :: UnitRef
@@ -403,6 +456,9 @@ newtype PriceSegmentation
 instance decodeJsonPriceSegmentation :: DecodeJson PriceSegmentation where
   decodeJson json = PriceSegmentation <$> decodeJson json
 
+instance encodeJsonPriceSegmentation :: EncodeJson PriceSegmentation where
+  encodeJson (PriceSegmentation x) = encodeJson x
+
 newtype PriceSegmentationByUnit
   = PriceSegmentationByUnit
   { unit :: UnitRef
@@ -411,6 +467,9 @@ newtype PriceSegmentationByUnit
 
 instance decodeJsonPriceSegmentationByUnit :: DecodeJson PriceSegmentationByUnit where
   decodeJson json = PriceSegmentationByUnit <$> decodeJson json
+
+instance encodeJsonPriceSegmentationByUnit :: EncodeJson PriceSegmentationByUnit where
+  encodeJson (PriceSegmentationByUnit x) = encodeJson x
 
 newtype RateCard
   = RateCard
@@ -422,6 +481,9 @@ newtype RateCard
 
 instance decodeJsonRateCard :: DecodeJson RateCard where
   decodeJson json = RateCard <$> decodeJson json
+
+instance encodeJsonRateCard :: EncodeJson RateCard where
+  encodeJson (RateCard x) = encodeJson x
 
 newtype Price
   = Price (Array SegmentPrice)
@@ -444,6 +506,9 @@ instance decodeJsonPrice :: DecodeJson Price where
 
     segmented = Price <$> decodeJson json
 
+instance encodeJsonPrice :: EncodeJson Price where
+  encodeJson (Price x) = encodeJson x
+
 data SegmentationPeriod
   = SegmentationPeriodMonthly
 
@@ -457,6 +522,9 @@ instance decodeJsonSegmentationPeriod :: DecodeJson SegmentationPeriod where
     case string of
       "Monthly" -> Right SegmentationPeriodMonthly
       _ -> Left (TypeMismatch "SegmentationPeriod")
+
+instance encodeJsonSegmentationPeriod :: EncodeJson SegmentationPeriod where
+  encodeJson = encodeJson <<< show
 
 data SegmentationModel
   = SegmentationModelTiered
@@ -481,6 +549,9 @@ instance decodeJsonSegmentationModel :: DecodeJson SegmentationModel where
       "Overage" -> Right SegmentationModelOverage
       _ -> Left (TypeMismatch "SegmentationModel")
 
+instance encodeJsonSegmentationModel :: EncodeJson SegmentationModel where
+  encodeJson = encodeJson <<< show
+
 newtype DefaultPriceByUnit
   = DefaultPriceByUnit
   { unit :: UnitRef
@@ -489,6 +560,9 @@ newtype DefaultPriceByUnit
 
 instance decodeJsonDefaultPriceByUnit :: DecodeJson DefaultPriceByUnit where
   decodeJson json = DefaultPriceByUnit <$> decodeJson json
+
+instance encodeJsonDefaultPriceByUnit :: EncodeJson DefaultPriceByUnit where
+  encodeJson (DefaultPriceByUnit x) = encodeJson x
 
 newtype PricesPerDimByUnit
   = PricesPerDimByUnit
@@ -505,6 +579,9 @@ instance decodeJsonPricesPerDimByUnit :: DecodeJson PricesPerDimByUnit where
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
     pure $ PricesPerDimByUnit { dim, prices, monthlyMinimum }
 
+instance encodeJsonPricesPerDimByUnit :: EncodeJson PricesPerDimByUnit where
+  encodeJson (PricesPerDimByUnit x) = encodeJson x
+
 newtype PriceByUnit
   = PriceByUnit
   { unit :: UnitRef
@@ -515,6 +592,9 @@ derive instance newtypePriceByUnit :: Newtype PriceByUnit _
 
 instance decodeJsonPriceByUnit :: DecodeJson PriceByUnit where
   decodeJson = map PriceByUnit <<< decodeJson
+
+instance encodeJsonPriceByUnit :: EncodeJson PriceByUnit where
+  encodeJson (PriceByUnit x) = encodeJson x
 
 newtype UnitRef
   = UnitRef { unitID :: String, product :: Maybe ProductRef }
@@ -532,11 +612,17 @@ instance decodeJsonUnitRef :: DecodeJson UnitRef where
       product <- o .: "product"
       pure $ UnitRef { unitID, product }
 
+instance encodeJsonUnitRef :: EncodeJson UnitRef where
+  encodeJson (UnitRef x) = encodeJson x
+
 newtype ProductRef
   = ProductRef { sku :: Sku, solutionURI :: Maybe Uri }
 
 instance decodeJsonProductRef :: DecodeJson ProductRef where
   decodeJson = map ProductRef <<< decodeJson
+
+instance encodeJsonProductRef :: EncodeJson ProductRef where
+  encodeJson (ProductRef x) = encodeJson x
 
 data ChargeType
   = ChargeTypeOnetime
@@ -557,6 +643,9 @@ instance decodeJsonChargeType :: DecodeJson ChargeType where
       "Monthly" -> Right ChargeTypeMonthly
       "Usage" -> Right ChargeTypeUsage
       _ -> Left (TypeMismatch "ChargeType")
+
+instance encodeJsonChargeType :: EncodeJson ChargeType where
+  encodeJson = encodeJson <<< show
 
 data ConfigSchemaEntry
   = CseInteger
@@ -617,6 +706,16 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
 
     oneOf = CseOneOf <$> decodeJson json
 
+instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
+  encodeJson = case _ of
+    CseInteger x -> encodeJson x
+    CseString x -> encodeJson x
+    CseRegex x -> encodeJson x
+    CseConst x -> encodeJson x
+    CseArray x -> encodeJson x
+    CseObject x -> encodeJson x
+    CseOneOf x -> encodeJson x
+
 data ConfigValue
   = CvInteger Int
   | CvString String
@@ -650,6 +749,13 @@ instance decodeJsonConfigValue :: DecodeJson ConfigValue where
       _ :: Maybe Int <- decodeJson json
       pure CvNull
 
+instance encodeJsonConfigValue :: EncodeJson ConfigValue where
+  encodeJson (CvInteger v) = encodeJson v
+  encodeJson (CvString v) = encodeJson v
+  encodeJson (CvArray v) = encodeJson v
+  encodeJson (CvObject v) = encodeJson v
+  encodeJson (CvNull) = encodeJson (Nothing :: Maybe Int)
+
 -- TODO: Add `schema` and `variable`.
 newtype ProductVariable
   = ProductVariable
@@ -658,6 +764,9 @@ newtype ProductVariable
 
 instance decodeJsonProductVariable :: DecodeJson ProductVariable where
   decodeJson = map ProductVariable <<< decodeJson
+
+instance encodeJsonProductVariable :: EncodeJson ProductVariable where
+  encodeJson (ProductVariable x) = encodeJson x
 
 newtype SpecUnit
   = SpecUnit
@@ -671,6 +780,9 @@ newtype SpecUnit
 
 instance decodeJsonSpecUnit :: DecodeJson SpecUnit where
   decodeJson = map SpecUnit <<< decodeJson
+
+instance encodeJsonSpecUnit :: EncodeJson SpecUnit where
+  encodeJson (SpecUnit x) = encodeJson x
 
 type SpecUnitMap
   = Map String SpecUnit
@@ -727,6 +839,9 @@ instance decodeJsonProduct :: DecodeJson Product where
           , rules
           }
 
+instance encodeJsonProduct :: EncodeJson Product where
+  encodeJson (Product x) = encodeJson x
+
 -- | Produces a map from unit ID to the unit itself.
 productUnits :: Product -> SpecUnitMap
 productUnits = Map.fromFoldable <<< map (\u@(SpecUnit { id }) -> Tuple id u) <<< _.units <<< unwrap
@@ -774,6 +889,9 @@ instance decodeJsonPlatform :: DecodeJson Platform where
       "Unwire" -> Right PlatformUnwire
       "Xura" -> Right PlatformXura
       _ -> Left (TypeMismatch "Platform")
+
+instance encodeJsonPlatform :: EncodeJson Platform where
+  encodeJson = encodeJson <<< show
 
 data ProductCategory
   = CategoryCalling
@@ -873,6 +991,9 @@ instance decodeJsonProductCategory :: DecodeJson ProductCategory where
       "Whatsapp" -> Right CategoryWhatsapp
       _ -> Left (TypeMismatch "ProductCategory")
 
+instance encodeJsonProductCategory :: EncodeJson ProductCategory where
+  encodeJson = encodeJson <<< show
+
 data Sku
   = SkuCode String
   | Sku
@@ -903,6 +1024,10 @@ instance decodeJsonSku :: DecodeJson Sku where
             , productCategory
             , platform
             }
+
+instance encodeJsonSku :: EncodeJson Sku where
+  encodeJson (SkuCode x) = encodeJson x
+  encodeJson (Sku x) = encodeJson x
 
 skuCode :: Sku -> String
 skuCode (SkuCode code) = code
@@ -958,6 +1083,10 @@ instance decodeJsonProductOption :: DecodeJson ProductOption where
             , type_
             }
 
+instance encodeJsonProductOption :: EncodeJson ProductOption where
+  encodeJson (ProdOptSkuCode x) = encodeJson x
+  encodeJson (ProductOption x) = encodeJson x
+
 data ProductOptionType
   = Component
   | Accessory
@@ -978,6 +1107,9 @@ instance decodeJsonProductOptionType :: DecodeJson ProductOptionType where
       "Related" -> Right Related
       _ -> Left (TypeMismatch "ProductOptionType")
 
+instance encodeJsonProductOptionType :: EncodeJson ProductOptionType where
+  encodeJson = encodeJson <<< show
+
 newtype ProductFeature
   = ProductFeature
   { name :: Maybe String
@@ -988,9 +1120,14 @@ newtype ProductFeature
 instance decodeJsonProductFeature :: DecodeJson ProductFeature where
   decodeJson json = ProductFeature <$> decodeJson json
 
+instance encodeJsonProductFeature :: EncodeJson ProductFeature where
+  encodeJson (ProductFeature x) = encodeJson x
+
 data BillingOption
   = Prepay
   | PostPay
+
+derive instance eqBillingOption :: Eq BillingOption
 
 instance showBillingOption :: Show BillingOption where
   show = case _ of
@@ -1005,9 +1142,14 @@ instance decodeJsonBillingOption :: DecodeJson BillingOption where
       "PostPay" -> Right PostPay
       _ -> Left (TypeMismatch "BillingOption")
 
+instance encodeJsonBillingOption :: EncodeJson BillingOption where
+  encodeJson = encodeJson <<< show
+
 data ContractTerm
   = Ongoing
   | Fixed
+
+derive instance eqContractTerm :: Eq ContractTerm
 
 instance showContractTerm :: Show ContractTerm where
   show = case _ of
@@ -1022,6 +1164,9 @@ instance decodeJsonContractTerm :: DecodeJson ContractTerm where
       "Fixed" -> Right Fixed
       _ -> Left (TypeMismatch "ContractTerm")
 
+instance encodeJsonContractTerm :: EncodeJson ContractTerm where
+  encodeJson = encodeJson <<< show
+
 newtype Commercial
   = Commercial
   { billingOption :: BillingOption
@@ -1033,11 +1178,17 @@ newtype Commercial
 instance decodeJsonCommercial :: DecodeJson Commercial where
   decodeJson json = Commercial <$> decodeJson json
 
+instance encodeJsonCommercial :: EncodeJson Commercial where
+  encodeJson (Commercial x) = encodeJson x
+
 newtype Address
   = Address {}
 
 instance decodeJsonAddress :: DecodeJson Address where
   decodeJson json = Address <$> decodeJson json
+
+instance encodeJsonAddress :: EncodeJson Address where
+  encodeJson (Address x) = encodeJson x
 
 newtype Contact
   = Contact
@@ -1048,6 +1199,9 @@ newtype Contact
 
 instance decodeJsonContact :: DecodeJson Contact where
   decodeJson json = Contact <$> decodeJson json
+
+instance encodeJsonContact :: EncodeJson Contact where
+  encodeJson (Contact x) = encodeJson x
 
 newtype Purchaser
   = Purchaser
@@ -1063,6 +1217,9 @@ newtype Purchaser
 instance decodeJsonPurchaser :: DecodeJson Purchaser where
   decodeJson json = Purchaser <$> decodeJson json
 
+instance encodeJsonPurchaser :: EncodeJson Purchaser where
+  encodeJson (Purchaser x) = encodeJson x
+
 newtype LegalEntity
   = LegalEntity
   { name :: String
@@ -1073,6 +1230,9 @@ newtype LegalEntity
 instance decodeJsonLegalEntity :: DecodeJson LegalEntity where
   decodeJson json = LegalEntity <$> decodeJson json
 
+instance encodeJsonLegalEntity :: EncodeJson LegalEntity where
+  encodeJson (LegalEntity x) = encodeJson x
+
 newtype Seller
   = Seller
   { contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
@@ -1082,6 +1242,9 @@ newtype Seller
 instance decodeJsonSeller :: DecodeJson Seller where
   decodeJson json = Seller <$> decodeJson json
 
+instance encodeJsonSeller :: EncodeJson Seller where
+  encodeJson (Seller x) = encodeJson x
+
 newtype BillingAccountRef
   = BillingAccountRef
   { billingAccountID :: String
@@ -1089,6 +1252,9 @@ newtype BillingAccountRef
 
 instance decodeJsonBillingAccountRef :: DecodeJson BillingAccountRef where
   decodeJson json = BillingAccountRef <$> decodeJson json
+
+instance encodeJsonBillingAccountRef :: EncodeJson BillingAccountRef where
+  encodeJson (BillingAccountRef x) = encodeJson x
 
 data ReturnCustomerCommercial
   = RccCommercial Commercial
@@ -1098,6 +1264,11 @@ instance decodeJsonReturnCustomerCommercial :: DecodeJson ReturnCustomerCommerci
   decodeJson json =
     (RccCommercial <$> decodeJson json)
       <|> (RccBillingAccountRef <$> decodeJson json)
+
+instance encodeJsonReturnCustomerCommercial :: EncodeJson ReturnCustomerCommercial where
+  encodeJson = case _ of
+    RccCommercial x -> encodeJson x
+    RccBillingAccountRef x -> encodeJson x
 
 type Date
   = String
@@ -1110,6 +1281,9 @@ newtype Validity
 
 instance decodeJsonValidity :: DecodeJson Validity where
   decodeJson json = Validity <$> decodeJson json
+
+instance encodeJsonValidity :: EncodeJson Validity where
+  encodeJson (Validity x) = encodeJson x
 
 newtype ProductInstance
   = ProductInstance
@@ -1125,6 +1299,9 @@ newtype DateTime
 instance decodeDateTime :: DecodeJson DateTime where
   decodeJson json = DateTime <$> decodeJson json
 
+instance encodeJsonDateTime :: EncodeJson DateTime where
+  encodeJson (DateTime x) = encodeJson x
+
 -- TODO: Add `configs`
 newtype Asset
   = Asset
@@ -1139,6 +1316,9 @@ newtype Asset
 instance decodeJsonAsset :: DecodeJson Asset where
   decodeJson json = Asset <$> decodeJson json
 
+instance encodeJsonAsset :: EncodeJson Asset where
+  encodeJson (Asset x) = encodeJson x
+
 newtype PriceOverride
   = PriceOverride
   { basePriceBookRef :: PriceBookRef
@@ -1148,6 +1328,9 @@ newtype PriceOverride
 
 instance decodeJsonPriceOverride :: DecodeJson PriceOverride where
   decodeJson json = PriceOverride <$> decodeJson json
+
+instance encodeJsonPriceOverride :: EncodeJson PriceOverride where
+  encodeJson (PriceOverride x) = encodeJson x
 
 newtype PriceBookRef
   = PriceBookRef
@@ -1159,6 +1342,9 @@ newtype PriceBookRef
 instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
   decodeJson json = PriceBookRef <$> decodeJson json
 
+instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
+  encodeJson (PriceBookRef x) = encodeJson x
+
 newtype SalesforceAccountRef
   = SalesforceAccountRef
   { salesforceAccountID :: String
@@ -1166,6 +1352,9 @@ newtype SalesforceAccountRef
 
 instance decodeJsonSalesforceAccountRef :: DecodeJson SalesforceAccountRef where
   decodeJson json = SalesforceAccountRef <$> decodeJson json
+
+instance encodeJsonSalesforceAccountRef :: EncodeJson SalesforceAccountRef where
+  encodeJson (SalesforceAccountRef x) = encodeJson x
 
 newtype ReturnCustomerData
   = ReturnCustomerData
@@ -1175,6 +1364,9 @@ newtype ReturnCustomerData
 
 instance decodeJsonReturnCustomerData :: DecodeJson ReturnCustomerData where
   decodeJson json = ReturnCustomerData <$> decodeJson json
+
+instance encodeJsonReturnCustomerData :: EncodeJson ReturnCustomerData where
+  encodeJson (ReturnCustomerData x) = encodeJson x
 
 data Customer
   = NewCustomer
@@ -1189,6 +1381,11 @@ data Customer
 
 instance decodeJsonCustomer :: DecodeJson Customer where
   decodeJson json = (NewCustomer <$> decodeJson json) <|> (ReturnCustomer <$> decodeJson json)
+
+instance encodeJsonCustomer :: EncodeJson Customer where
+  encodeJson = case _ of
+    NewCustomer x -> encodeJson x
+    ReturnCustomer x -> encodeJson x
 
 data OrderStatus
   = OsQuoteNew
@@ -1208,40 +1405,43 @@ data OrderStatus
 
 instance showOrderStatus :: Show OrderStatus where
   show = case _ of
-    OsQuoteNew -> "ProvisionAborted"
-    OsQuoteApprovalPending -> "ProvisionAborted"
-    OsQuoteApproved -> "ProvisionAborted"
-    OsQuoteAborted -> "ProvisionAborted"
-    OsQuoteSignPending -> "ProvisionAborted"
-    OsQuoteSigned -> "ProvisionAborted"
-    OsOrderPending -> "ProvisionAborted"
-    OsOrderOngoing -> "ProvisionAborted"
-    OsOrderAborted -> "ProvisionAborted"
-    OsOrderCompleted -> "ProvisionAborted"
-    OsProvisionPending -> "ProvisionAborted"
-    OsProvisionOngoging -> "ProvisionAborted"
-    OsProvisionCompleted -> "ProvisionAborted"
+    OsQuoteNew -> "QuoteNew"
+    OsQuoteApprovalPending -> "QuoteApprovalPending"
+    OsQuoteApproved -> "QuoteApproved"
+    OsQuoteAborted -> "QuoteAborted"
+    OsQuoteSignPending -> "QuoteSignPending"
+    OsQuoteSigned -> "QuoteSigned"
+    OsOrderPending -> "OrderPending"
+    OsOrderOngoing -> "OrderOngoing"
+    OsOrderAborted -> "OrderAborted"
+    OsOrderCompleted -> "OrderCompleted"
+    OsProvisionPending -> "ProvisionPending"
+    OsProvisionOngoging -> "ProvisionOngoging"
+    OsProvisionCompleted -> "ProvisionCompleted"
     OsProvisionAborted -> "ProvisionAborted"
 
 instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
   decodeJson json = do
     string <- decodeJson json
     case string of
-      "QuoteNew" -> Right OsProvisionAborted
-      "QuoteApprovalPending" -> Right OsProvisionAborted
-      "QuoteApproved" -> Right OsProvisionAborted
-      "QuoteAborted" -> Right OsProvisionAborted
-      "QuoteSignPending" -> Right OsProvisionAborted
-      "QuoteSigned" -> Right OsProvisionAborted
-      "OrderPending" -> Right OsProvisionAborted
-      "OrderOngoing" -> Right OsProvisionAborted
-      "OrderAborted" -> Right OsProvisionAborted
-      "OrderCompleted" -> Right OsProvisionAborted
-      "ProvisionPending" -> Right OsProvisionAborted
-      "ProvisionOngoging" -> Right OsProvisionAborted
-      "ProvisionCompleted" -> Right OsProvisionAborted
+      "QuoteNew" -> Right OsQuoteNew
+      "QuoteApprovalPending" -> Right OsQuoteApprovalPending
+      "QuoteApproved" -> Right OsQuoteApproved
+      "QuoteAborted" -> Right OsQuoteAborted
+      "QuoteSignPending" -> Right OsQuoteSignPending
+      "QuoteSigned" -> Right OsQuoteSigned
+      "OrderPending" -> Right OsOrderPending
+      "OrderOngoing" -> Right OsOrderOngoing
+      "OrderAborted" -> Right OsOrderAborted
+      "OrderCompleted" -> Right OsOrderCompleted
+      "ProvisionPending" -> Right OsProvisionPending
+      "ProvisionOngoging" -> Right OsProvisionOngoging
+      "ProvisionCompleted" -> Right OsProvisionCompleted
       "ProvisionAborted" -> Right OsProvisionAborted
       _ -> Left (TypeMismatch "OrderStatus")
+
+instance encodeOrderStatus :: EncodeJson OrderStatus where
+  encodeJson = encodeJson <<< show
 
 newtype OrderSummary
   = OrderSummary
@@ -1253,6 +1453,9 @@ newtype OrderSummary
 instance decodeJsonOrderSummary :: DecodeJson OrderSummary where
   decodeJson json = OrderSummary <$> decodeJson json
 
+instance encodeJsonOrderSummary :: EncodeJson OrderSummary where
+  encodeJson (OrderSummary x) = encodeJson x
+
 newtype OrderSectionSummary
   = OrderSectionSummary
   { estimatedUsageSubTotal :: Number
@@ -1263,6 +1466,9 @@ newtype OrderSectionSummary
 instance decodeJsonOrderSectionSummary :: DecodeJson OrderSectionSummary where
   decodeJson json = OrderSectionSummary <$> decodeJson json
 
+instance encodeJsonOrderSectionSummary :: EncodeJson OrderSectionSummary where
+  encodeJson (OrderSectionSummary x) = encodeJson x
+
 newtype Segment
   = Segment
   { minimum :: Int
@@ -1272,18 +1478,49 @@ newtype Segment
 instance decodeJsonSegment :: DecodeJson Segment where
   decodeJson json = Segment <$> decodeJson json
 
+instance encodeJsonSegment :: EncodeJson Segment where
+  encodeJson (Segment x) = encodeJson x
+
 newtype OrderLine
   = OrderLine
   { basePriceBookRef :: PriceBookRef
   , sku :: Sku
   , charge :: Charge
   , quantity :: Int
+  , configs :: Array (Map String ConfigValue)
   }
 
 derive instance newtypeOrderLine :: Newtype OrderLine _
 
 instance decodeJsonOrderLine :: DecodeJson OrderLine where
-  decodeJson json = OrderLine <$> decodeJson json
+  decodeJson json = do
+    o <- decodeJson json
+    basePriceBookRef <- o .: "basePriceBookRef"
+    sku <- o .: "sku"
+    charge <- o .: "charge"
+    quantity <- o .: "quantity"
+    configs <- o .:? "configs" .!= []
+    pure
+      $ OrderLine
+          { basePriceBookRef
+          , sku
+          , charge
+          , quantity
+          , configs
+          }
+
+instance encodeJsonOrderLine :: EncodeJson OrderLine where
+  encodeJson (OrderLine x) =
+    "basePriceBookRef" := x.basePriceBookRef
+      ~> "sku"
+      := x.sku
+      ~> "charge"
+      := x.charge
+      ~> "quantity"
+      := x.quantity
+      ~> "configs"
+      := map (FO.fromFoldable <<< \c -> Map.toUnfoldable c :: Array _) x.configs
+      ~> jsonEmptyObject
 
 newtype OrderSection
   = OrderSection
@@ -1294,6 +1531,9 @@ newtype OrderSection
 
 instance decodeJsonOrderSection :: DecodeJson OrderSection where
   decodeJson json = OrderSection <$> decodeJson json
+
+instance encodeJsonOrderSection :: EncodeJson OrderSection where
+  encodeJson (OrderSection x) = encodeJson x
 
 newtype OrderForm
   = OrderForm
@@ -1306,3 +1546,6 @@ newtype OrderForm
 
 instance decodeJsonOrderForm :: DecodeJson OrderForm where
   decodeJson json = OrderForm <$> decodeJson json
+
+instance encodeJsonOrderForm :: EncodeJson OrderForm where
+  encodeJson (OrderForm x) = encodeJson x

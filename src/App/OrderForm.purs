@@ -1,7 +1,9 @@
 module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
+import App.OrderForm.Customer as Customer
 import Css as Css
+import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (deleteAt, mapWithIndex, modifyAt, snoc)
 import Data.Array as A
 import Data.Int as Int
@@ -9,11 +11,14 @@ import Data.Loadable (Loadable(..), getJson)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
+import Data.Newtype (unwrap)
 import Data.Route as Route
 import Data.SmartSpec (ConfigSchemaEntry, ProductOption(..), skuCode, solutionProducts)
 import Data.SmartSpec as SS
+import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class.Console (log)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -30,6 +35,9 @@ proxy = Proxy
 -- Takes as input a product catalog URL.
 type Input
   = Maybe String
+
+type Slots
+  = ( customer :: Customer.Slot Unit )
 
 type State
   = Loadable StateOrderForm
@@ -50,15 +58,25 @@ type OrderForm
 
 type OrderSection
   = { solution :: SS.Solution
-    , orderLines :: Array (Maybe SS.OrderLine)
+    , orderLines :: Array (Maybe OrderLine)
     -- ^ Order lines of the product options.
     , summary :: SS.OrderSectionSummary
     }
 
+type OrderLine
+  = { basePriceBookRef :: SS.PriceBookRef
+    , product :: SS.Product
+    , charge :: SS.Charge
+    , quantity :: Int
+    , configs :: Array (Map String SS.ConfigValue)
+    }
+
 data Action
-  = ClearState
+  = NoOp
+  | ClearState
   | CheckToLoad
   | LoadProductCatalog String
+  | SetCustomer SS.Customer
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
   | RemoveSection { sectionIndex :: Int }
@@ -66,6 +84,12 @@ data Action
   | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.Sku }
   | OrderLineSetQuantity
     { sectionIndex :: Int, orderLineIndex :: Int, quantity :: Int
+    }
+  | OrderLineSetConfig
+    { sectionIndex :: Int
+    , orderLineIndex :: Int
+    , field :: String
+    , value :: SS.ConfigValue
     }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
 
@@ -94,7 +118,7 @@ initialize = Just CheckToLoad
 receive :: Input -> Maybe Action
 receive = Just <<< maybe ClearState LoadProductCatalog
 
-render :: forall slots m. State -> H.ComponentHTML Action slots m
+render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state =
   HH.section [ HP.classes [ Css.flex, Css.five ] ]
     [ HH.aside [ HP.classes [ Css.full, Css.fifth1000, Css.sideMenu ] ]
@@ -133,8 +157,8 @@ render state =
   defRender ::
     forall a.
     Loadable a ->
-    (a -> Array (H.ComponentHTML Action slots m)) ->
-    Array (H.ComponentHTML Action slots m)
+    (a -> Array (H.ComponentHTML Action Slots m)) ->
+    Array (H.ComponentHTML Action Slots m)
   defRender s rend = case s of
     Idle -> idle
     ToLoad _ -> idle
@@ -142,159 +166,13 @@ render state =
     Loaded dat -> rend dat
     Error err -> error err
 
-  currency legend =
-    HH.fieldset_
-      [ HH.legend_ [ HH.text legend ]
-      , HH.div [ HP.class_ Css.two ]
-          [ HH.input [ HP.type_ HP.InputText, HP.name "currency-code", HP.placeholder "Currency (e.g. EUR)" ]
-          , HH.input [ HP.type_ HP.InputText, HP.name "currency-country", HP.placeholder "Country (e.g. DE)" ]
-          ]
-      ]
-
-  commercial =
-    [ HH.label [ HP.for "of-commercial", HP.class_ Css.button ] [ HH.text "Commercial" ]
-    , Widgets.modal "of-commercial" "Commercial"
-        [ HH.fieldset_
-            [ HH.legend_ [ HH.text "Billing Option" ]
-            , HH.label_
-                [ HH.input [ HP.type_ HP.InputRadio, HP.name "billing-option", HP.id "billing-option-prepay" ]
-                , HH.span [ HP.class_ Css.checkable ] [ HH.text "Prepay" ]
-                ]
-            , HH.label_
-                [ HH.input [ HP.type_ HP.InputRadio, HP.name "billing-option", HP.id "billing-option-postpay" ]
-                , HH.span [ HP.class_ Css.checkable ] [ HH.text "Postpay" ]
-                ]
-            ]
-        , HH.fieldset_
-            [ HH.legend_ [ HH.text "Contract Term" ]
-            , HH.label_
-                [ HH.input [ HP.type_ HP.InputRadio, HP.name "contract-term", HP.id "contract-term-ongoing" ]
-                , HH.span [ HP.class_ Css.checkable ] [ HH.text "Ongoing" ]
-                ]
-            , HH.label_
-                [ HH.input [ HP.type_ HP.InputRadio, HP.name "contract-term", HP.id "contract-term-fixed" ]
-                , HH.span [ HP.class_ Css.checkable ] [ HH.text "Fixed" ]
-                ]
-            ]
-        , currency "Payment Currency"
-        , currency "Price Currency"
-        ]
-        [ HH.label
-            [ HP.for "of-commercial", HP.classes [ Css.button ] ]
-            [ HH.text "Save" ]
-        , HH.label
-            [ HP.for "of-commercial", HP.classes [ Css.button, Css.dangerous ] ]
-            [ HH.text "Cancel" ]
-        ]
-    ]
-
-  address = [ HH.fieldset_ [ HH.legend_ [ HH.text "Address" ], HH.textarea [ HP.placeholder "Address" ] ] ]
-
-  contact name label =
-    [ HH.fieldset_
-        [ HH.legend_ [ HH.text label ]
-        , HH.div [ HP.class_ Css.three ]
-            [ HH.input [ HP.type_ HP.InputText, HP.name (name <> "-name"), HP.placeholder "Name" ]
-            , HH.input [ HP.type_ HP.InputEmail, HP.name (name <> "-email"), HP.placeholder "Email" ]
-            , HH.input [ HP.type_ HP.InputTel, HP.name (name <> "-phone"), HP.placeholder "Phone No" ]
-            ]
-        ]
-    ]
-
-  purchaser =
-    [ HH.label [ HP.for "of-purchaser", HP.class_ Css.button ] [ HH.text "Purchaser" ]
-    , Widgets.modal "of-purchaser" "Purchaser"
-        ( [ HH.label_
-              [ HH.text "Corporate Name"
-              , HH.input [ HP.type_ HP.InputText, HP.name "purchaser-corp-name" ]
-              ]
-          , HH.label_
-              [ HH.text "Country"
-              , HH.input [ HP.type_ HP.InputText, HP.name "purchaser-country", HP.placeholder "DE" ]
-              ]
-          , HH.label_
-              [ HH.text "Registration Number"
-              , HH.input [ HP.type_ HP.InputText, HP.name "purchaser-regno", HP.placeholder "012345" ]
-              ]
-          , HH.label_
-              [ HH.text "Tax ID"
-              , HH.input [ HP.type_ HP.InputText, HP.name "purchaser-taxid", HP.placeholder "012345" ]
-              ]
-          , HH.label_
-              [ HH.text "Website"
-              , HH.input [ HP.type_ HP.InputText, HP.name "purchaser-website", HP.placeholder "https://example.org/" ]
-              ]
-          ]
-            <> contact "purchaser" "Primary Contact"
-            <> contact "purchaser" "Finance Contact"
-            <> address
-        )
-        [ HH.label
-            [ HP.for "of-purchaser", HP.classes [ Css.button ] ]
-            [ HH.text "Save" ]
-        , HH.label
-            [ HP.for "of-purchaser", HP.classes [ Css.button, Css.dangerous ] ]
-            [ HH.text "Cancel" ]
-        ]
-    ]
-
-  seller =
-    [ HH.label [ HP.for "of-seller", HP.class_ Css.button ] [ HH.text "Seller" ]
-    , Widgets.modal "of-seller" "Seller"
-        ( [ HH.label_
-              [ HH.text "Legal Entity Name"
-              , HH.input [ HP.type_ HP.InputText, HP.name "seller-name" ]
-              ]
-          , HH.label_
-              [ HH.text "Legal Entity Country"
-              , HH.input [ HP.type_ HP.InputText, HP.name "seller-country", HP.placeholder "DE" ]
-              ]
-          ]
-            <> address
-            <> contact "seller" "Primary Contract"
-            <> contact "seller" "Finance Contract"
-            <> contact "seller" "Support Contract"
-        )
-        [ HH.label
-            [ HP.for "of-seller", HP.classes [ Css.button ] ]
-            [ HH.text "Save" ]
-        , HH.label
-            [ HP.for "of-seller", HP.classes [ Css.button, Css.dangerous ] ]
-            [ HH.text "Cancel" ]
-        ]
-    ]
-
-  newCustomer = HH.div [ HP.class_ Css.tabBody ] (commercial <> purchaser <> seller)
-
-  billingAccountRef =
-    [ HH.label [ HP.for "of-billing-account", HP.class_ Css.button ] [ HH.text "Billing Account" ]
-    , Widgets.modal "of-billing-account" "Billing Account"
-        [ HH.label_
-            [ HH.text "Identifier"
-            , HH.input [ HP.type_ HP.InputText, HP.name "billing-account-id" ]
-            ]
-        ]
-        [ HH.label
-            [ HP.for "of-billing-account", HP.classes [ Css.button ] ]
-            [ HH.text "Save" ]
-        , HH.label
-            [ HP.for "of-billing-account", HP.classes [ Css.button, Css.dangerous ] ]
-            [ HH.text "Cancel" ]
-        ]
-    ]
-
-  returnCustomer =
-    HH.div [ HP.class_ Css.tabBody ]
-      ( commercial <> billingAccountRef
-      )
-
   orderLine ::
     SS.Solution ->
     Int ->
     Int ->
-    Maybe SS.OrderLine ->
-    H.ComponentHTML Action slots m
-  orderLine solution@(SS.Solution sol) secIdx olIdx = case _ of
+    Maybe OrderLine ->
+    H.ComponentHTML Action Slots m
+  orderLine (SS.Solution sol) secIdx olIdx = case _ of
     Nothing ->
       body
         [ HH.label_
@@ -304,31 +182,35 @@ render state =
                 <> products
             ]
         ]
-    Just (SS.OrderLine ol) ->
-      body
-        $ [ HH.label_
-              [ HH.text "Product"
-              , HH.input
-                  [ HP.type_ HP.InputText
-                  , HP.disabled true
-                  , HP.value (skuCode ol.sku)
-                  ]
-              ]
-          , HH.label_
-              [ HH.text "Quantity"
-              , HH.input
-                  [ HP.type_ HP.InputNumber
-                  , HP.value $ show ol.quantity
-                  , HE.onValueChange \input ->
-                      OrderLineSetQuantity
-                        { sectionIndex: secIdx
-                        , orderLineIndex: olIdx
-                        , quantity: maybe 0 identity $ Int.fromString input
-                        }
-                  ]
-              ]
-          ]
-        <> prodConfig (skuCode ol.sku)
+    Just ol ->
+      let
+        SS.Product product = ol.product
+      in
+        body
+          $ [ HH.label_
+                [ HH.text "Product"
+                , HH.input
+                    [ HP.type_ HP.InputText
+                    , HP.disabled true
+                    , HP.value product.sku
+                    ]
+                ]
+            , HH.label_
+                [ HH.text "Quantity"
+                , HH.input
+                    [ HP.type_ HP.InputNumber
+                    , HP.min 1.0
+                    , HP.value $ show ol.quantity
+                    , HE.onValueChange \input ->
+                        OrderLineSetQuantity
+                          { sectionIndex: secIdx
+                          , orderLineIndex: olIdx
+                          , quantity: maybe 0 identity $ Int.fromString input
+                          }
+                    ]
+                ]
+            ]
+          <> prodConfig product
     where
     body subBody =
       HH.div [ HP.classes [ Css.orderSection ] ]
@@ -349,38 +231,76 @@ render state =
         , sku: SS.SkuCode sku
         }
 
-    prodConfig sku =
-      let
-        configSchema = do
-          SS.Product prod <- Map.lookup sku $ solutionProducts solution
-          prod.configSchema
-      in
-        maybe [] renderConfigSchema configSchema
+    prodConfig product =
+      maybe []
+        ( renderConfigSchema
+            ( \field value ->
+                OrderLineSetConfig
+                  { sectionIndex: secIdx
+                  , orderLineIndex: olIdx
+                  , field
+                  , value
+                  }
+            )
+        )
+        product.configSchema
 
-  renderConfigSchema :: Map String ConfigSchemaEntry -> Array (H.ComponentHTML Action slots m)
-  renderConfigSchema =
-    let
-      renderSchemaEntry = case _ of
-        SS.CseInteger _c -> HH.input [ HP.type_ HP.InputNumber ]
-        SS.CseString c
-          | not (A.null c.enum) -> HH.select_ $ map (\e -> HH.option_ [ HH.text e ]) c.enum
-        SS.CseString _ -> HH.input []
-        SS.CseRegex _c -> HH.input []
-        SS.CseConst _c -> HH.input [ HP.value "const", HP.disabled true ]
-        SS.CseArray _c -> HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
-        SS.CseObject _c -> HH.input [ HP.value "Unsupported configuration type: object", HP.disabled true ]
-        SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
+  renderConfigSchema ::
+    (String -> SS.ConfigValue -> Action) ->
+    Map String ConfigSchemaEntry ->
+    Array (H.ComponentHTML Action Slots m)
+  renderConfigSchema onChange = A.concatMap renderEntry <<< Map.toUnfoldable
+    where
+    mact = maybe NoOp
 
-      renderEntry (Tuple key opt) =
-        [ HH.label_
-            [ HH.text key
-            , renderSchemaEntry opt
+    opt :: forall a b. (a -> b) -> Maybe a -> Array b
+    opt f = maybe [] (\x -> [ f x ])
+
+    renderSchemaEntry act = case _ of
+      SS.CseInteger c ->
+        HH.input
+          $ [ HP.type_ HP.InputNumber
+            , HE.onValueChange (mact (act <<< SS.CvInteger) <<< Int.fromString)
             ]
-        ]
-    in
-      A.concatMap renderEntry <<< Map.toUnfoldable
+          <> opt HP.min c.minimum
+          <> opt HP.max c.maximum
+      SS.CseString c
+        | not (A.null c.enum) ->
+          let
+            props e = [ HP.selected (Just e == c.default) ]
+          in
+            HH.select
+              [ HE.onValueChange (act <<< SS.CvString) ]
+              $ map (\e -> HH.option (props e) [ HH.text e ]) c.enum
+      SS.CseString c ->
+        let
+          mi = maybe "0" show c.minLength
 
-  section :: SS.ProductCatalog -> Int -> Maybe OrderSection -> H.ComponentHTML Action slots m
+          ma = maybe "" show c.maxLength
+
+          pat =
+            if mi == "0" && ma == "" then
+              []
+            else
+              [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
+        in
+          HH.input $ [ HE.onValueChange (act <<< SS.CvString) ]
+            <> opt HP.value c.default
+            <> pat
+      SS.CseRegex _c -> HH.input [ HE.onValueChange (act <<< SS.CvString) ]
+      SS.CseConst _c -> HH.input [ HP.value "const", HP.disabled true ]
+      SS.CseArray _c -> HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
+      SS.CseObject _c -> HH.input [ HP.value "Unsupported configuration type: object", HP.disabled true ]
+      SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
+
+    renderEntry (Tuple key schemaEntry) =
+      [ HH.label_
+          [ HH.text key
+          , renderSchemaEntry (onChange key) schemaEntry
+          ]
+      ]
+
+  section :: SS.ProductCatalog -> Int -> Maybe OrderSection -> H.ComponentHTML Action Slots m
   section (SS.ProductCatalog pc) secIdx = case _ of
     Nothing ->
       body
@@ -442,36 +362,84 @@ render state =
         , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeSubTotal) ]
         ]
 
-  sections :: SS.ProductCatalog -> Array (Maybe OrderSection) -> H.ComponentHTML Action slots m
-  sections pc secs =
+  renderSections :: SS.ProductCatalog -> Array (Maybe OrderSection) -> H.ComponentHTML Action Slots m
+  renderSections pc secs =
     HH.div_
       $ [ HH.h3_ [ HH.text "Sections" ]
         ]
       <> mapWithIndex (section pc) secs
       <> [ HH.button [ HE.onClick \_ -> AddSection ] [ HH.text "Add Section" ] ]
 
-  renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action slots m)
+  renderCustomer :: H.ComponentHTML Action Slots m
+  renderCustomer =
+    HH.div_
+      [ HH.h3_ [ HH.text "Customer" ]
+      , HH.slot Customer.proxy unit Customer.component unit SetCustomer
+      ]
+
+  renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm { productCatalog, orderForm } =
     [ HH.h1_ [ HH.text "Order Form" ]
-    , HH.div_
-        [ Widgets.tabbed2 "customer"
-            { label: HH.text "New Customer", content: newCustomer }
-            { label: HH.text "Return Customer", content: returnCustomer }
-        , sections productCatalog orderForm.sections
-        , HH.div [ HP.classes [ Css.flex, Css.four ] ]
-            [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
-            , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageTotal) ]
-            , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlyTotal) ]
-            , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeTotal) ]
+    , renderCustomer
+    , renderSections productCatalog orderForm.sections
+    , HH.div [ HP.classes [ Css.flex, Css.four ] ]
+        [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
+        , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageTotal) ]
+        , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlyTotal) ]
+        , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeTotal) ]
+        ]
+    , HH.hr_
+    , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
+    , Widgets.modal "of-json" "Order Form JSON"
+        [ HH.pre_
+            [ HH.code_
+                [ HH.text
+                    $ let
+                        toOrderLine ol =
+                          SS.OrderLine
+                            { basePriceBookRef: ol.basePriceBookRef
+                            , sku: SS.SkuCode $ _.sku $ unwrap $ ol.product
+                            , charge: ol.charge
+                            , quantity: ol.quantity
+                            , configs: ol.configs
+                            }
+
+                        toOrderSection os =
+                          SS.OrderSection
+                            { solutionURI: _.id $ unwrap $ os.solution
+                            , orderLines: map toOrderLine $ A.catMaybes $ os.orderLines
+                            , summary: os.summary
+                            }
+
+                        json = do
+                          customer <- orderForm.customer
+                          sections <- map toOrderSection <$> sequence orderForm.sections
+                          pure $ stringifyWithIndent 2
+                            $ encodeJson
+                            $ SS.OrderForm
+                                { id: "ORDER-1"
+                                , customer
+                                , status: SS.OsQuoteNew
+                                , summary: orderForm.summary
+                                , sections
+                                }
+                      in
+                        maybe "Cannot produce JSON" identity json
+                ]
             ]
         ]
+        []
     ]
     where
     SS.OrderSummary summary = orderForm.summary
 
   content = defRender state renderOrderForm
 
-loadCatalog :: forall o m. MonadAff m => String -> H.HalogenM State Action () o m Unit
+loadCatalog ::
+  forall slots output m.
+  MonadAff m =>
+  String ->
+  H.HalogenM State Action slots output m Unit
 loadCatalog url = do
   H.modify_ \_ -> Loading
   productCatalog <- H.liftAff $ getJson url
@@ -497,9 +465,10 @@ loadCatalog url = do
   H.modify_ \_ -> res
 
 handleAction ::
-  forall o m.
-  MonadAff m => Action -> H.HalogenM State Action () o m Unit
+  forall slots output m.
+  MonadAff m => Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
+  NoOp -> pure unit
   ClearState -> H.put Idle
   CheckToLoad -> do
     state <- H.get
@@ -507,6 +476,7 @@ handleAction = case _ of
       ToLoad url -> loadCatalog url
       _ -> pure unit
   LoadProductCatalog url -> loadCatalog url
+  SetCustomer customer -> H.modify_ $ map \st -> st { orderForm { customer = Just customer } }
   AddSection ->
     H.modify_
       $ map \st ->
@@ -583,49 +553,79 @@ handleAction = case _ of
               }
   OrderLineSetProduct { sectionIndex, orderLineIndex, sku } ->
     let
-      mkOrderLine prodSku =
-        SS.OrderLine
-          { basePriceBookRef: SS.PriceBookRef { priceBookID: "PBID", version: "", solutionURI: Nothing }
-          , sku: prodSku
-          , charge:
-              SS.ChargeSimple
-                { unit: SS.UnitRef { unitID: "UID", product: Nothing }
-                , price:
-                    SS.SimplePriceSegmented
-                      $ SS.Price
-                          [ SS.SegmentPrice
-                              { minimum: 0
-                              , exclusiveMaximum: Nothing
-                              , listPrice: 0.0
-                              , salesPrice: 0.0
-                              , discount: Nothing
-                              }
-                          ]
-                , segmentation: Nothing
-                , termOfPriceChangeInDays: 0
-                , monthlyMinimum: 0.0
-                }
-          , quantity: 1
-          }
+      mkOrderLine product =
+        { basePriceBookRef: SS.PriceBookRef { priceBookID: "PBID", version: "", solutionURI: Nothing }
+        , product: product
+        , charge:
+            SS.ChargeSimple
+              { unit: SS.UnitRef { unitID: "UID", product: Nothing }
+              , price:
+                  SS.SimplePriceSegmented
+                    $ SS.Price
+                        [ SS.SegmentPrice
+                            { minimum: 0
+                            , exclusiveMaximum: Nothing
+                            , listPrice: 0.0
+                            , salesPrice: 0.0
+                            , discount: Nothing
+                            }
+                        ]
+              , segmentation: Nothing
+              , termOfPriceChangeInDays: 0
+              , monthlyMinimum: 0.0
+              }
+        , quantity: 1
+        , configs: []
+        }
 
-      updateSku :: Maybe SS.OrderLine -> SS.OrderLine
-      updateSku = case _ of
-        Nothing -> mkOrderLine sku
-        Just (SS.OrderLine ol) -> SS.OrderLine $ ol { sku = sku }
+      updateOrderLine :: SS.Product -> Map String SS.Product -> Maybe OrderLine -> OrderLine
+      updateOrderLine prod _solProds = case _ of
+        Nothing -> mkOrderLine prod
+        Just _ol -> mkOrderLine prod
 
-      -- | Add any required product options.
-      requiredOptions :: OrderSection -> Array (Maybe SS.OrderLine)
-      requiredOptions section =
+      -- | Build order lines for all required product options.
+      requiredOptions :: SS.Product -> Map String SS.Product -> Array (Maybe OrderLine)
+      requiredOptions (SS.Product p) solProds =
         let
-          prod = do
-            SS.Product p <- Map.lookup (skuCode sku) $ solutionProducts section.solution
-            p.options
-
-          code = case _ of
+          requiredSkuCode = case _ of
             ProdOptSkuCode _ -> Nothing
-            ProductOption po -> if po.required then Just po.sku else Nothing
+            ProductOption po -> if po.required then Just (skuCode po.sku) else Nothing
+
+          requiredProds = A.mapMaybe (requiredSkuCode >=> (\o -> Map.lookup o solProds)) <$> p.options
         in
-          maybe [] (map Just <<< A.mapMaybe (map mkOrderLine <<< code)) prod
+          maybe [] (map Just <<< map mkOrderLine) requiredProds
+
+      updateOrderSection :: OrderSection -> OrderSection
+      updateOrderSection section =
+        let
+          solProds = solutionProducts section.solution
+        in
+          section
+            { orderLines =
+              maybe
+                section.orderLines
+                (\(Tuple product ls) -> ls <> requiredOptions product solProds)
+                ( do
+                    product <- Map.lookup (skuCode sku) solProds
+                    ls <- modifyAt orderLineIndex (Just <<< updateOrderLine product solProds) section.orderLines
+                    pure $ Tuple product ls
+                )
+            }
+
+      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
+      updateSections sections =
+        maybe sections identity
+          $ modifyAt sectionIndex (map updateOrderSection)
+          $ sections
+    in
+      H.modify_
+        $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
+  OrderLineSetQuantity { sectionIndex, orderLineIndex, quantity } ->
+    let
+      updateQuantity :: Maybe OrderLine -> Maybe OrderLine
+      updateQuantity Nothing = Nothing
+
+      updateQuantity (Just ol) = Just $ ol { quantity = quantity }
 
       updateOrderLine :: OrderSection -> OrderSection
       updateOrderLine section =
@@ -633,8 +633,8 @@ handleAction = case _ of
           { orderLines =
             maybe
               section.orderLines
-              (\ls -> ls <> requiredOptions section)
-              (modifyAt orderLineIndex (Just <<< updateSku) section.orderLines)
+              identity
+              (modifyAt orderLineIndex updateQuantity section.orderLines)
           }
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
@@ -645,12 +645,10 @@ handleAction = case _ of
     in
       H.modify_
         $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
-  OrderLineSetQuantity { sectionIndex, orderLineIndex, quantity } ->
+  OrderLineSetConfig { sectionIndex, orderLineIndex, field, value } ->
     let
-      updateQuantity :: Maybe SS.OrderLine -> Maybe SS.OrderLine
-      updateQuantity Nothing = Nothing
-
-      updateQuantity (Just (SS.OrderLine ol)) = Just $ SS.OrderLine $ ol { quantity = quantity }
+      updateValue :: OrderLine -> OrderLine
+      updateValue ol = ol { configs = [ Map.singleton field value ] }
 
       updateOrderLine :: OrderSection -> OrderSection
       updateOrderLine section =
@@ -659,7 +657,7 @@ handleAction = case _ of
             maybe
               section.orderLines
               identity
-              (modifyAt orderLineIndex updateQuantity section.orderLines)
+              (modifyAt orderLineIndex (map updateValue) section.orderLines)
           }
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)

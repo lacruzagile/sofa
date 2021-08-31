@@ -21,6 +21,7 @@ to generate this file without the comments in this block.
   , "control"
   , "effect"
   , "either"
+  , "foldable-traversable"
   , "foreign-object"
   , "halogen"
   , "integers"
