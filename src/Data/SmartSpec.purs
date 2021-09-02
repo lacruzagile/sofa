@@ -1388,56 +1388,56 @@ instance encodeJsonCustomer :: EncodeJson Customer where
     ReturnCustomer x -> encodeJson x
 
 data OrderStatus
-  = OsQuoteNew
-  | OsQuoteApprovalPending
-  | OsQuoteApproved
-  | OsQuoteAborted
-  | OsQuoteSignPending
-  | OsQuoteSigned
-  | OsOrderPending
-  | OsOrderOngoing
-  | OsOrderAborted
-  | OsOrderCompleted
-  | OsProvisionPending
-  | OsProvisionOngoging
-  | OsProvisionCompleted
-  | OsProvisionAborted
+  = OsSalesOrderNew
+  | OsSalesOrderApprovalPending
+  | OsSalesOrderApproved
+  | OsSalesOrderAborted
+  | OsSalesOrderSignPending
+  | OsSalesOrderSigned
+  | OsServiceOrderPending
+  | OsServiceOrderOngoing
+  | OsServiceOrderCompleted
+  | OsServiceOrderAborted
+  | OsOrderFulfillmentPending
+  | OsOrderFulfillmentOngoging
+  | OsOrderFulfillmentCompleted
+  | OsOrderFulfillmentAborted
 
 instance showOrderStatus :: Show OrderStatus where
   show = case _ of
-    OsQuoteNew -> "QuoteNew"
-    OsQuoteApprovalPending -> "QuoteApprovalPending"
-    OsQuoteApproved -> "QuoteApproved"
-    OsQuoteAborted -> "QuoteAborted"
-    OsQuoteSignPending -> "QuoteSignPending"
-    OsQuoteSigned -> "QuoteSigned"
-    OsOrderPending -> "OrderPending"
-    OsOrderOngoing -> "OrderOngoing"
-    OsOrderAborted -> "OrderAborted"
-    OsOrderCompleted -> "OrderCompleted"
-    OsProvisionPending -> "ProvisionPending"
-    OsProvisionOngoging -> "ProvisionOngoging"
-    OsProvisionCompleted -> "ProvisionCompleted"
-    OsProvisionAborted -> "ProvisionAborted"
+    OsSalesOrderNew -> "SalesOrder.New"
+    OsSalesOrderApprovalPending -> "SalesOrder.ApprovalPending"
+    OsSalesOrderApproved -> "SalesOrder.Approved"
+    OsSalesOrderAborted -> "SalesOrder.Aborted"
+    OsSalesOrderSignPending -> "SalesOrder.SignPending"
+    OsSalesOrderSigned -> "SalesOrder.Signed"
+    OsServiceOrderPending -> "ServiceOrder.Pending"
+    OsServiceOrderOngoing -> "ServiceOrder.Ongoing"
+    OsServiceOrderCompleted -> "ServiceOrder.Completed"
+    OsServiceOrderAborted -> "ServiceOrder.Aborted"
+    OsOrderFulfillmentPending -> "OrderFulfillment.Pending"
+    OsOrderFulfillmentOngoging -> "OrderFulfillment.Ongoging"
+    OsOrderFulfillmentCompleted -> "OrderFulfillment.Completed"
+    OsOrderFulfillmentAborted -> "OrderFulfillment.Aborted"
 
 instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
   decodeJson json = do
     string <- decodeJson json
     case string of
-      "QuoteNew" -> Right OsQuoteNew
-      "QuoteApprovalPending" -> Right OsQuoteApprovalPending
-      "QuoteApproved" -> Right OsQuoteApproved
-      "QuoteAborted" -> Right OsQuoteAborted
-      "QuoteSignPending" -> Right OsQuoteSignPending
-      "QuoteSigned" -> Right OsQuoteSigned
-      "OrderPending" -> Right OsOrderPending
-      "OrderOngoing" -> Right OsOrderOngoing
-      "OrderAborted" -> Right OsOrderAborted
-      "OrderCompleted" -> Right OsOrderCompleted
-      "ProvisionPending" -> Right OsProvisionPending
-      "ProvisionOngoging" -> Right OsProvisionOngoging
-      "ProvisionCompleted" -> Right OsProvisionCompleted
-      "ProvisionAborted" -> Right OsProvisionAborted
+      "SalesOrder.New" -> Right OsSalesOrderNew
+      "SalesOrder.ApprovalPending" -> Right OsSalesOrderApprovalPending
+      "SalesOrder.Approved" -> Right OsSalesOrderApproved
+      "SalesOrder.Aborted" -> Right OsSalesOrderAborted
+      "SalesOrder.SignPending" -> Right OsSalesOrderSignPending
+      "SalesOrder.Signed" -> Right OsSalesOrderSigned
+      "ServiceOrder.Pending" -> Right OsServiceOrderPending
+      "ServiceOrder.Ongoing" -> Right OsServiceOrderOngoing
+      "ServiceOrder.Completed" -> Right OsServiceOrderCompleted
+      "ServiceOrder.Aborted" -> Right OsServiceOrderAborted
+      "OrderFulfillment.Pending" -> Right OsOrderFulfillmentPending
+      "OrderFulfillment.Ongoging" -> Right OsOrderFulfillmentOngoging
+      "OrderFulfillment.Completed" -> Right OsOrderFulfillmentCompleted
+      "OrderFulfillment.Aborted" -> Right OsOrderFulfillmentAborted
       _ -> Left (TypeMismatch "OrderStatus")
 
 instance encodeOrderStatus :: EncodeJson OrderStatus where
@@ -1526,7 +1526,6 @@ newtype OrderSection
   = OrderSection
   { solutionURI :: Uri
   , orderLines :: Array OrderLine
-  , summary :: OrderSectionSummary
   }
 
 instance decodeJsonOrderSection :: DecodeJson OrderSection where
@@ -1538,9 +1537,8 @@ instance encodeJsonOrderSection :: EncodeJson OrderSection where
 newtype OrderForm
   = OrderForm
   { id :: String
-  , customer :: Customer
   , status :: OrderStatus
-  , summary :: OrderSummary
+  , customer :: Customer
   , sections :: Array OrderSection
   }
 

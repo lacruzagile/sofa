@@ -18,7 +18,6 @@ import Data.SmartSpec as SS
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console (log)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -408,7 +407,6 @@ render state =
                           SS.OrderSection
                             { solutionURI: _.id $ unwrap $ os.solution
                             , orderLines: map toOrderLine $ A.catMaybes $ os.orderLines
-                            , summary: os.summary
                             }
 
                         json = do
@@ -419,8 +417,7 @@ render state =
                             $ SS.OrderForm
                                 { id: "ORDER-1"
                                 , customer
-                                , status: SS.OsQuoteNew
-                                , summary: orderForm.summary
+                                , status: SS.OsSalesOrderNew
                                 , sections
                                 }
                       in
