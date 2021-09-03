@@ -90,6 +90,7 @@ type Uri
 newtype Solution
   = Solution
   { id :: String
+  , uri :: Maybe Uri
   , name :: Maybe String
   , description :: Maybe String
   , products :: Array Product
@@ -103,12 +104,13 @@ instance decodeJsonSolution :: DecodeJson Solution where
   decodeJson json = do
     o <- decodeJson json
     id <- o .: "id"
+    uri <- o .:? "uri"
     name <- o .:? "name"
     description <- o .:? "description"
     products <- o .: "products"
     rules <- o .:? "rules" .!= []
     priceBooks <- o .: "priceBooks"
-    pure $ Solution { id, name, description, rules, products, priceBooks }
+    pure $ Solution { id, uri, name, description, rules, products, priceBooks }
 
 instance encodeJsonSolution :: EncodeJson Solution where
   encodeJson (Solution x) = encodeJson x

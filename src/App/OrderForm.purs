@@ -407,7 +407,7 @@ render state =
 
                         toOrderSection os =
                           SS.OrderSection
-                            { solutionURI: _.id $ unwrap $ os.solution
+                            { solutionURI: fromMaybe "" $ _.uri $ unwrap $ os.solution
                             , orderLines: map toOrderLine $ A.catMaybes $ os.orderLines
                             }
 
