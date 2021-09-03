@@ -10,12 +10,12 @@ import Data.Int as Int
 import Data.Loadable (Loadable(..), getJson)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (unwrap)
 import Data.Route as Route
 import Data.SmartSpec (ConfigSchemaEntry, ProductOption(..), skuCode, solutionProducts)
 import Data.SmartSpec as SS
-import Data.Traversable (sequence)
+import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -57,14 +57,14 @@ type OrderForm
 
 type OrderSection
   = { solution :: SS.Solution
+    , priceBook :: Maybe SS.PriceBook
     , orderLines :: Array (Maybe OrderLine)
     -- ^ Order lines of the product options.
     , summary :: SS.OrderSectionSummary
     }
 
 type OrderLine
-  = { basePriceBookRef :: SS.PriceBookRef
-    , product :: SS.Product
+  = { product :: SS.Product
     , charge :: SS.Charge
     , quantity :: Int
     , configs :: Array (Map String SS.ConfigValue)
@@ -78,6 +78,7 @@ data Action
   | SetCustomer SS.Customer
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
+  | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe SS.PriceBook }
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
   | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.Sku }
@@ -268,11 +269,14 @@ render state =
       SS.CseString c
         | not (A.null c.enum) ->
           let
-            props e = [ HP.selected (Just e == c.default) ]
+            props e =
+              [ HP.selected (Just e == c.default)
+              , HE.onClick \_ -> act (SS.CvString e)
+              ]
           in
-            HH.select
-              [ HE.onValueChange (act <<< SS.CvString) ]
-              $ map (\e -> HH.option (props e) [ HH.text e ]) c.enum
+            HH.select_
+              $ [ HH.option_ [ HH.text $ "Please choose an option" ] ]
+              <> map (\e -> HH.option (props e) [ HH.text e ]) c.enum
       SS.CseString c ->
         let
           mi = maybe "0" show c.minLength
@@ -314,12 +318,20 @@ render state =
         ]
     Just sec ->
       body
-        $ [ HH.label_
-              [ HH.text "Solution"
-              , HH.input
-                  [ HP.type_ HP.InputText
-                  , HP.disabled true
-                  , HP.value $ solutionLabel sec.solution
+        $ [ HH.div [ HP.classes [ Css.flex, Css.two ] ]
+              [ HH.label_
+                  [ HH.text "Solution"
+                  , HH.input
+                      [ HP.type_ HP.InputText
+                      , HP.disabled true
+                      , HP.value $ solutionLabel sec.solution
+                      ]
+                  ]
+              , HH.label_
+                  [ HH.text "Price Book"
+                  , HH.select_
+                      $ [ HH.option [ HP.selected (isNothing sec.priceBook), HE.onClick \_ -> actionSetPriceBook Nothing ] [ HH.text "Please choose a price book" ] ]
+                      <> priceBookOptions sec.priceBook sec.solution
                   ]
               ]
           ]
@@ -329,7 +341,7 @@ render state =
                   [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
                   [ HH.text "+" ]
               ]
-          , renderSummary sec.summary
+          , renderSummary sec.priceBook sec.summary
           ]
     where
     body subBody =
@@ -346,22 +358,44 @@ render state =
         , solutionId: solId
         }
 
+    actionSetPriceBook pb =
+      SectionSetPriceBook
+        { sectionIndex: secIdx
+        , priceBook: pb
+        }
+
     solutionOptions =
       map
         (\(Tuple i s) -> HH.option [ HP.value i ] [ HH.text $ solutionLabel s ])
         (Map.toUnfoldable pc.solutions)
 
+    priceBookOptions curPriceBook (SS.Solution { priceBooks }) =
+      map
+        ( \pb@(SS.PriceBook pb') ->
+            HH.option
+              [ HP.selected (Just pb'.id == map (\(SS.PriceBook x) -> x.id) curPriceBook)
+              , HE.onClick \_ -> SectionSetPriceBook { sectionIndex: secIdx, priceBook: Just pb }
+              ]
+              [ HH.text $ pb'.id <> " (" <> pb'.version <> ")" ]
+        )
+        priceBooks
+
     sectionOrderLines sol orderLines =
       [ HH.div_ (mapWithIndex (orderLine sol secIdx) orderLines)
       ]
 
-    renderSummary (SS.OrderSectionSummary summary) =
-      HH.div [ HP.classes [ Css.flex, Css.four ] ]
-        [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
-        , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageSubTotal) ]
-        , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlySubTotal) ]
-        , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeSubTotal) ]
-        ]
+    renderSummary priceBook (SS.OrderSectionSummary summary) =
+      let
+        currency = (\(SS.PriceBook pb) -> _.code $ unwrap $ pb.currency) <$> priceBook
+
+        price p = fromMaybe (HH.text "N/A") $ (\c -> HH.text (show p <> " " <> c)) <$> currency
+      in
+        HH.div [ HP.classes [ Css.flex, Css.four ] ]
+          [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
+          , HH.div_ [ HH.text "Estimated usage: ", price summary.estimatedUsageSubTotal ]
+          , HH.div_ [ HH.text "Monthly: ", price summary.monthlySubTotal ]
+          , HH.div_ [ HH.text "Onetime: ", price summary.onetimeSubTotal ]
+          ]
 
   renderSections :: SS.ProductCatalog -> Array (Maybe OrderSection) -> H.ComponentHTML Action Slots m
   renderSections pc secs =
@@ -393,38 +427,7 @@ render state =
     , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
     , Widgets.modal "of-json" "Order Form JSON"
         [ HH.pre_
-            [ HH.code_
-                [ HH.text
-                    $ let
-                        toOrderLine ol =
-                          SS.OrderLine
-                            { basePriceBookRef: ol.basePriceBookRef
-                            , sku: SS.SkuCode $ _.sku $ unwrap $ ol.product
-                            , charge: ol.charge
-                            , quantity: ol.quantity
-                            , configs: ol.configs
-                            }
-
-                        toOrderSection os =
-                          SS.OrderSection
-                            { solutionURI: fromMaybe "" $ _.uri $ unwrap $ os.solution
-                            , orderLines: map toOrderLine $ A.catMaybes $ os.orderLines
-                            }
-
-                        json = do
-                          customer <- orderForm.customer
-                          sections <- map toOrderSection <$> sequence orderForm.sections
-                          pure $ stringifyWithIndent 2
-                            $ encodeJson
-                            $ SS.OrderForm
-                                { id: "ORDER-1"
-                                , customer
-                                , status: SS.OsSalesOrderNew
-                                , sections
-                                }
-                      in
-                        fromMaybe "Cannot produce JSON" json
-                ]
+            [ HH.code_ [ HH.text $ fromMaybe "Cannot produce JSON" $ toJson orderForm ]
             ]
         ]
         []
@@ -433,6 +436,42 @@ render state =
     SS.OrderSummary summary = orderForm.summary
 
   content = defRender state renderOrderForm
+
+toJson :: OrderForm -> Maybe String
+toJson orderForm = do
+  customer <- orderForm.customer
+  sections <- traverse toOrderSection =<< sequence orderForm.sections
+  pure $ stringifyWithIndent 2
+    $ encodeJson
+    $ SS.OrderForm
+        { id: "ORDER-1"
+        , customer
+        , status: SS.OsSalesOrderNew
+        , sections
+        }
+  where
+  toOrderLine ol =
+    SS.OrderLine
+      { sku: SS.SkuCode $ _.sku $ unwrap $ ol.product
+      , charge: ol.charge
+      , quantity: ol.quantity
+      , configs: ol.configs
+      }
+
+  toPriceBookRef (SS.PriceBook pb) =
+    SS.PriceBookRef
+      { priceBookID: pb.id
+      , version: pb.version
+      , currency: pb.currency
+      , solutionURI: Nothing
+      }
+
+  toOrderSection :: OrderSection -> Maybe SS.OrderSection
+  toOrderSection os = do
+    solutionURI <- _.uri $ unwrap $ os.solution
+    basePriceBook <- toPriceBookRef <$> os.priceBook
+    orderLines <- sequence $ map (map toOrderLine) os.orderLines
+    pure $ SS.OrderSection { solutionURI, basePriceBook, orderLines }
 
 loadCatalog ::
   forall slots output m.
@@ -496,6 +535,7 @@ handleAction = case _ of
                           ( \_ ->
                               Just
                                 { solution: solution
+                                , priceBook: Nothing
                                 , orderLines: [ Nothing ]
                                 , summary:
                                     SS.OrderSectionSummary
@@ -506,6 +546,20 @@ handleAction = case _ of
                                 }
                           )
                           st.orderForm.sections
+                }
+              }
+  SectionSetPriceBook { sectionIndex, priceBook } ->
+    H.modify_
+      $ map \st ->
+          let
+            setPriceBook :: Maybe OrderSection -> Maybe OrderSection
+            setPriceBook = map (\section -> section { priceBook = priceBook })
+          in
+            st
+              { orderForm
+                { sections =
+                  fromMaybe st.orderForm.sections
+                    $ modifyAt sectionIndex setPriceBook st.orderForm.sections
                 }
               }
   RemoveSection { sectionIndex } ->
@@ -553,8 +607,7 @@ handleAction = case _ of
   OrderLineSetProduct { sectionIndex, orderLineIndex, sku } ->
     let
       mkOrderLine product =
-        { basePriceBookRef: SS.PriceBookRef { priceBookID: "PBID", version: "", solutionURI: Nothing }
-        , product: product
+        { product: product
         , charge:
             SS.ChargeSimple
               { unit: SS.UnitRef { unitID: "UID", product: Nothing }

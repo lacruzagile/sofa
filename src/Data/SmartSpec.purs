@@ -244,6 +244,8 @@ instance encodeJsonRule :: EncodeJson Rule where
 newtype Currency
   = Currency { code :: String, country :: Maybe String }
 
+derive instance newtypeCurrency :: Newtype Currency _
+
 instance decodeJsonCurrency :: DecodeJson Currency where
   decodeJson json = plainCode <|> currency
     where
@@ -256,7 +258,9 @@ instance decodeJsonCurrency :: DecodeJson Currency where
       pure $ Currency { code, country }
 
 instance encodeJsonCurrency :: EncodeJson Currency where
-  encodeJson (Currency x) = encodeJson x
+  encodeJson (Currency x) = case x.country of
+    Nothing -> encodeJson x.code
+    Just _ -> encodeJson x
 
 newtype PriceBook
   = PriceBook
@@ -615,7 +619,9 @@ instance decodeJsonUnitRef :: DecodeJson UnitRef where
       pure $ UnitRef { unitID, product }
 
 instance encodeJsonUnitRef :: EncodeJson UnitRef where
-  encodeJson (UnitRef x) = encodeJson x
+  encodeJson (UnitRef x) = case x.product of
+    Nothing -> encodeJson x.unitID
+    Just _ -> encodeJson x
 
 newtype ProductRef
   = ProductRef { sku :: Sku, solutionURI :: Maybe Uri }
@@ -1338,6 +1344,7 @@ newtype PriceBookRef
   = PriceBookRef
   { priceBookID :: String
   , version :: String
+  , currency :: Currency
   , solutionURI :: Maybe Uri
   }
 
@@ -1485,8 +1492,7 @@ instance encodeJsonSegment :: EncodeJson Segment where
 
 newtype OrderLine
   = OrderLine
-  { basePriceBookRef :: PriceBookRef
-  , sku :: Sku
+  { sku :: Sku
   , charge :: Charge
   , quantity :: Int
   , configs :: Array (Map String ConfigValue)
@@ -1497,36 +1503,24 @@ derive instance newtypeOrderLine :: Newtype OrderLine _
 instance decodeJsonOrderLine :: DecodeJson OrderLine where
   decodeJson json = do
     o <- decodeJson json
-    basePriceBookRef <- o .: "basePriceBookRef"
     sku <- o .: "sku"
     charge <- o .: "charge"
     quantity <- o .: "quantity"
     configs <- o .:? "configs" .!= []
-    pure
-      $ OrderLine
-          { basePriceBookRef
-          , sku
-          , charge
-          , quantity
-          , configs
-          }
+    pure $ OrderLine { sku, charge, quantity, configs }
 
 instance encodeJsonOrderLine :: EncodeJson OrderLine where
   encodeJson (OrderLine x) =
-    "basePriceBookRef" := x.basePriceBookRef
-      ~> "sku"
-      := x.sku
-      ~> "charge"
-      := x.charge
-      ~> "quantity"
-      := x.quantity
-      ~> "configs"
-      := map (FO.fromFoldable <<< \c -> Map.toUnfoldable c :: Array _) x.configs
+    ("sku" := x.sku)
+      ~> ("charge" := x.charge)
+      ~> ("quantity" := x.quantity)
+      ~> ("configs" := map (FO.fromFoldable <<< \c -> Map.toUnfoldable c :: Array _) x.configs)
       ~> jsonEmptyObject
 
 newtype OrderSection
   = OrderSection
   { solutionURI :: Uri
+  , basePriceBook :: PriceBookRef
   , orderLines :: Array OrderLine
   }
 
