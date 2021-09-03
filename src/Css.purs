@@ -84,6 +84,12 @@ row = ClassName "row"
 full :: ClassName
 full = ClassName "full"
 
+half :: ClassName
+half = ClassName "half"
+
+one :: ClassName
+one = ClassName "one"
+
 one1000 :: ClassName
 one1000 = ClassName "one-1000"
 
@@ -98,6 +104,15 @@ three500 = ClassName "three-500"
 
 four :: ClassName
 four = ClassName "four"
+
+fourth :: ClassName
+fourth = ClassName "fourth"
+
+fourth1000 :: ClassName
+fourth1000 = ClassName "fourth-1000"
+
+threeFourth1000 :: ClassName
+threeFourth1000 = ClassName "three-fourth-1000"
 
 five :: ClassName
 five = ClassName "five"

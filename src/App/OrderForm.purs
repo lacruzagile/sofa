@@ -186,26 +186,28 @@ render state =
         SS.Product product = ol.product
       in
         body
-          $ [ HH.label_
-                [ HH.text "Product"
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.disabled true
-                    , HP.value product.sku
+          $ [ HH.div [ HP.classes [ Css.flex, Css.four ] ]
+                [ HH.label [ HP.classes [ Css.full, Css.threeFourth1000 ] ]
+                    [ HH.text "Product"
+                    , HH.input
+                        [ HP.type_ HP.InputText
+                        , HP.disabled true
+                        , HP.value product.sku
+                        ]
                     ]
-                ]
-            , HH.label_
-                [ HH.text "Quantity"
-                , HH.input
-                    [ HP.type_ HP.InputNumber
-                    , HP.min 1.0
-                    , HP.value $ show ol.quantity
-                    , HE.onValueChange \input ->
-                        OrderLineSetQuantity
-                          { sectionIndex: secIdx
-                          , orderLineIndex: olIdx
-                          , quantity: maybe 0 identity $ Int.fromString input
-                          }
+                , HH.label [ HP.classes [ Css.full, Css.fourth1000 ] ]
+                    [ HH.text "Quantity"
+                    , HH.input
+                        [ HP.type_ HP.InputNumber
+                        , HP.min 1.0
+                        , HP.value $ show ol.quantity
+                        , HE.onValueChange \input ->
+                            OrderLineSetQuantity
+                              { sectionIndex: secIdx
+                              , orderLineIndex: olIdx
+                              , quantity: maybe 0 identity $ Int.fromString input
+                              }
+                        ]
                     ]
                 ]
             ]

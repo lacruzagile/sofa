@@ -43,84 +43,88 @@ initialState :: forall input. input -> State
 initialState _ = Nothing
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
-render = case _ of
-  Nothing -> renderUnknownCustomer
-  Just (SS.NewCustomer c) -> renderNewCustomer c
-  Just (SS.ReturnCustomer c) -> renderReturnCustomer c
+render st =
+  HH.div [ HP.classes [ Css.flex, Css.two ] ]
+    [ HH.div [ HP.class_ Css.one ] renderSelectCustomerType
+    , HH.div [ HP.class_ Css.one ] (renderCustomerDetails st)
+    ]
   where
-  renderUnknownCustomer =
-    HH.div_
-      [ HH.button
-          [ HE.onClick \_ ->
-              InitializeCustomer
-                $ SS.NewCustomer
-                    { commercial:
-                        SS.Commercial
-                          { billingOption: SS.Prepay
-                          , contractTerm: SS.Ongoing
-                          , paymentCurrency: SS.Currency { code: "", country: Nothing }
-                          , priceCurrency: SS.Currency { code: "", country: Nothing }
-                          }
-                    , purchaser:
-                        SS.Purchaser
-                          { address: SS.Address {}
-                          , contacts:
-                              { primary: SS.Contact { email: "", name: "", phone: "" }
-                              , finance: SS.Contact { email: "", name: "", phone: "" }
+  renderSelectCustomerType =
+    [ HH.button
+        [ HE.onClick \_ ->
+            InitializeCustomer
+              $ SS.NewCustomer
+                  { commercial:
+                      SS.Commercial
+                        { billingOption: SS.Prepay
+                        , contractTerm: SS.Ongoing
+                        , paymentCurrency: SS.Currency { code: "", country: Nothing }
+                        , priceCurrency: SS.Currency { code: "", country: Nothing }
+                        }
+                  , purchaser:
+                      SS.Purchaser
+                        { address: SS.Address {}
+                        , contacts:
+                            { primary: SS.Contact { email: "", name: "", phone: "" }
+                            , finance: SS.Contact { email: "", name: "", phone: "" }
+                            }
+                        , corporateName: ""
+                        , country: ""
+                        , registrationNr: ""
+                        , taxID: ""
+                        , website: ""
+                        }
+                  , seller:
+                      SS.Seller
+                        { contacts:
+                            { primary: SS.Contact { email: "", name: "", phone: "" }
+                            , finance: SS.Contact { email: "", name: "", phone: "" }
+                            , support: SS.Contact { email: "", name: "", phone: "" }
+                            }
+                        , legalEntity:
+                            SS.LegalEntity
+                              { name: ""
+                              , address: SS.Address {}
+                              , country: ""
                               }
-                          , corporateName: ""
-                          , country: ""
-                          , registrationNr: ""
-                          , taxID: ""
-                          , website: ""
-                          }
-                    , seller:
-                        SS.Seller
-                          { contacts:
-                              { primary: SS.Contact { email: "", name: "", phone: "" }
-                              , finance: SS.Contact { email: "", name: "", phone: "" }
-                              , support: SS.Contact { email: "", name: "", phone: "" }
+                        }
+                  }
+        ]
+        [ HH.text "New Customer →" ]
+    , HH.br_
+    , HH.button
+        [ HE.onClick \_ ->
+            InitializeCustomer
+              $ SS.ReturnCustomer
+                  { commercial:
+                      SS.RccBillingAccountRef
+                        $ SS.BillingAccountRef
+                            { billingAccountID: ""
+                            }
+                  , customer:
+                      SS.ReturnCustomerData
+                        { assets: []
+                        , salesforceAccountRef:
+                            SS.SalesforceAccountRef
+                              { salesforceAccountID: ""
                               }
-                          , legalEntity:
-                              SS.LegalEntity
-                                { name: ""
-                                , address: SS.Address {}
-                                , country: ""
-                                }
-                          }
-                    }
-          ]
-          [ HH.text "New Customer →" ]
-      , HH.br_
-      , HH.button
-          [ HE.onClick \_ ->
-              InitializeCustomer
-                $ SS.ReturnCustomer
-                    { commercial:
-                        SS.RccBillingAccountRef
-                          $ SS.BillingAccountRef
-                              { billingAccountID: ""
-                              }
-                    , customer:
-                        SS.ReturnCustomerData
-                          { assets: []
-                          , salesforceAccountRef:
-                              SS.SalesforceAccountRef
-                                { salesforceAccountID: ""
-                                }
-                          }
-                    }
-          ]
-          [ HH.text "Return Customer →" ]
-      ]
+                        }
+                  }
+        ]
+        [ HH.text "Return Customer →" ]
+    ]
+
+  renderCustomerDetails = case _ of
+    Nothing -> []
+    Just (SS.NewCustomer c) -> renderNewCustomer c
+    Just (SS.ReturnCustomer c) -> renderReturnCustomer c
 
   renderNewCustomer c =
-    HH.div_
-      $ renderCommercial c.commercial
+    renderCommercial c.commercial
       <> renderPurchaser c.purchaser
       <> renderSeller c.seller
 
-  renderReturnCustomer _c = HH.div_ [ HH.text "Return customers are unsupported at the moment" ]
+  renderReturnCustomer _c = [ HH.text "Return customers are unsupported at the moment" ]
 
   renderCurrency legend (SS.Currency currency) update =
     let
