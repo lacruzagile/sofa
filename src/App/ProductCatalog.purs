@@ -416,9 +416,9 @@ render state =
         $ sol.products
 
   productCatalog (SS.ProductCatalog pc) =
-    [ HH.h1_ [ HH.text (maybe "Unnamed Product Catalog" identity pc.name) ]
+    [ HH.h1_ [ HH.text (fromMaybe "Unnamed Product Catalog" pc.name) ]
     , HH.h2_ [ HH.text "Description" ]
-    , HH.p_ [ HH.text $ maybe "No description" identity pc.description ]
+    , HH.p_ [ HH.text $ fromMaybe "No description" pc.description ]
     , HH.h2_ [ HH.text "Solutions" ]
     , blockList <<< map solution <<< fromFoldable $ pc.solutions
     ]

@@ -10,7 +10,7 @@ import Data.Int as Int
 import Data.Loadable (Loadable(..), getJson)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.Route as Route
 import Data.SmartSpec (ConfigSchemaEntry, ProductOption(..), skuCode, solutionProducts)
@@ -205,7 +205,7 @@ render state =
                             OrderLineSetQuantity
                               { sectionIndex: secIdx
                               , orderLineIndex: olIdx
-                              , quantity: maybe 0 identity $ Int.fromString input
+                              , quantity: fromMaybe 0 $ Int.fromString input
                               }
                         ]
                     ]
@@ -338,7 +338,7 @@ render state =
           ]
         <> subBody
 
-    solutionLabel (SS.Solution s) = maybe s.id identity s.name
+    solutionLabel (SS.Solution s) = fromMaybe s.id s.name
 
     actionSetSolution solId =
       SectionSetSolution
@@ -423,7 +423,7 @@ render state =
                                 , sections
                                 }
                       in
-                        maybe "Cannot produce JSON" identity json
+                        fromMaybe "Cannot produce JSON" json
                 ]
             ]
         ]
@@ -489,7 +489,7 @@ handleAction = case _ of
             st
               { orderForm
                 { sections =
-                  maybe st.orderForm.sections identity
+                  fromMaybe st.orderForm.sections
                     $ do
                         solution <- Map.lookup solutionId pc.solutions
                         modifyAt sectionIndex
@@ -514,7 +514,7 @@ handleAction = case _ of
           st
             { orderForm
               { sections =
-                maybe st.orderForm.sections identity (deleteAt sectionIndex st.orderForm.sections)
+                fromMaybe st.orderForm.sections (deleteAt sectionIndex st.orderForm.sections)
               }
             }
   AddOrderLine { sectionIndex } ->
@@ -527,7 +527,7 @@ handleAction = case _ of
             st
               { orderForm
                 { sections =
-                  maybe st.orderForm.sections identity (modifyAt sectionIndex addOrderLine st.orderForm.sections)
+                  fromMaybe st.orderForm.sections (modifyAt sectionIndex addOrderLine st.orderForm.sections)
                 }
               }
   RemoveOrderLine { sectionIndex, orderLineIndex } ->
@@ -538,7 +538,7 @@ handleAction = case _ of
           ( \section ->
               section
                 { orderLines =
-                  maybe section.orderLines identity (deleteAt orderLineIndex section.orderLines)
+                  fromMaybe section.orderLines (deleteAt orderLineIndex section.orderLines)
                 }
           )
     in
@@ -547,7 +547,7 @@ handleAction = case _ of
             st
               { orderForm
                 { sections =
-                  maybe st.orderForm.sections identity (modifyAt sectionIndex removeOrderLine st.orderForm.sections)
+                  fromMaybe st.orderForm.sections (modifyAt sectionIndex removeOrderLine st.orderForm.sections)
                 }
               }
   OrderLineSetProduct { sectionIndex, orderLineIndex, sku } ->
@@ -613,7 +613,7 @@ handleAction = case _ of
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
       updateSections sections =
-        maybe sections identity
+        fromMaybe sections
           $ modifyAt sectionIndex (map updateOrderSection)
           $ sections
     in
@@ -630,15 +630,14 @@ handleAction = case _ of
       updateOrderLine section =
         section
           { orderLines =
-            maybe
+            fromMaybe
               section.orderLines
-              identity
               (modifyAt orderLineIndex updateQuantity section.orderLines)
           }
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
       updateSections sections =
-        maybe sections identity
+        fromMaybe sections
           $ modifyAt sectionIndex (map updateOrderLine)
           $ sections
     in
@@ -653,15 +652,14 @@ handleAction = case _ of
       updateOrderLine section =
         section
           { orderLines =
-            maybe
+            fromMaybe
               section.orderLines
-              identity
               (modifyAt orderLineIndex (map updateValue) section.orderLines)
           }
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
       updateSections sections =
-        maybe sections identity
+        fromMaybe sections
           $ modifyAt sectionIndex (map updateOrderLine)
           $ sections
     in
