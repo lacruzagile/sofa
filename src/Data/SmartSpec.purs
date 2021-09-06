@@ -244,6 +244,8 @@ instance encodeJsonRule :: EncodeJson Rule where
 newtype Currency
   = Currency { code :: String, country :: Maybe String }
 
+derive instance eqCurrency :: Eq Currency
+
 derive instance newtypeCurrency :: Newtype Currency _
 
 instance decodeJsonCurrency :: DecodeJson Currency where

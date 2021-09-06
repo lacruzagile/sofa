@@ -49,6 +49,7 @@ type StateOrderForm
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
   = { id :: Maybe String
+    , currency :: Maybe SS.Currency
     , customer :: Maybe SS.Customer
     , status :: Maybe SS.OrderStatus
     , summary :: SS.OrderSummary
@@ -305,8 +306,8 @@ render state =
           ]
       ]
 
-  section :: SS.ProductCatalog -> Int -> Maybe OrderSection -> H.ComponentHTML Action Slots m
-  section (SS.ProductCatalog pc) secIdx = case _ of
+  renderSection :: SS.ProductCatalog -> Maybe SS.Currency -> Int -> Maybe OrderSection -> H.ComponentHTML Action Slots m
+  renderSection (SS.ProductCatalog pc) currency secIdx = case _ of
     Nothing ->
       body
         [ HH.label_
@@ -341,7 +342,7 @@ render state =
                   [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
                   [ HH.text "+" ]
               ]
-          , renderSummary sec.priceBook sec.summary
+          , renderSummary sec.summary
           ]
     where
     body subBody =
@@ -378,17 +379,16 @@ render state =
               ]
               [ HH.text $ pb'.id <> " (" <> pb'.version <> ")" ]
         )
-        priceBooks
+        $ A.filter (\(SS.PriceBook pb) -> Just pb.currency == currency)
+        $ priceBooks
 
     sectionOrderLines sol orderLines =
       [ HH.div_ (mapWithIndex (orderLine sol secIdx) orderLines)
       ]
 
-    renderSummary priceBook (SS.OrderSectionSummary summary) =
+    renderSummary (SS.OrderSectionSummary summary) =
       let
-        currency = (\(SS.PriceBook pb) -> _.code $ unwrap $ pb.currency) <$> priceBook
-
-        price p = fromMaybe (HH.text "N/A") $ (\c -> HH.text (show p <> " " <> c)) <$> currency
+        price = HH.text <<< showWithCurrency currency
       in
         HH.div [ HP.classes [ Css.flex, Css.four ] ]
           [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
@@ -397,12 +397,16 @@ render state =
           , HH.div_ [ HH.text "Onetime: ", price summary.onetimeSubTotal ]
           ]
 
-  renderSections :: SS.ProductCatalog -> Array (Maybe OrderSection) -> H.ComponentHTML Action Slots m
-  renderSections pc secs =
+  renderSections ::
+    SS.ProductCatalog ->
+    Maybe SS.Currency ->
+    Array (Maybe OrderSection) ->
+    H.ComponentHTML Action Slots m
+  renderSections pc currency secs =
     HH.div_
       $ [ HH.h3_ [ HH.text "Sections" ]
         ]
-      <> mapWithIndex (section pc) secs
+      <> mapWithIndex (renderSection pc currency) secs
       <> [ HH.button [ HE.onClick \_ -> AddSection ] [ HH.text "Add Section" ] ]
 
   renderCustomer :: H.ComponentHTML Action Slots m
@@ -416,13 +420,8 @@ render state =
   renderOrderForm { productCatalog, orderForm } =
     [ HH.h1_ [ HH.text "Order Form" ]
     , renderCustomer
-    , renderSections productCatalog orderForm.sections
-    , HH.div [ HP.classes [ Css.flex, Css.four ] ]
-        [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
-        , HH.div_ [ HH.text "Estimated usage: ", HH.text (show summary.estimatedUsageTotal) ]
-        , HH.div_ [ HH.text "Monthly: ", HH.text (show summary.monthlyTotal) ]
-        , HH.div_ [ HH.text "Onetime: ", HH.text (show summary.onetimeTotal) ]
-        ]
+    , renderSections productCatalog orderForm.currency orderForm.sections
+    , renderSummary orderForm.currency
     , HH.hr_
     , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
     , Widgets.modal "of-json" "Order Form JSON"
@@ -435,7 +434,23 @@ render state =
     where
     SS.OrderSummary summary = orderForm.summary
 
+    renderSummary currency =
+      let
+        price = HH.text <<< showWithCurrency currency
+      in
+        HH.div [ HP.classes [ Css.flex, Css.four ] ]
+          [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
+          , HH.div_ [ HH.text "Estimated usage: ", price summary.estimatedUsageTotal ]
+          , HH.div_ [ HH.text "Monthly: ", price summary.monthlyTotal ]
+          , HH.div_ [ HH.text "Onetime: ", price summary.onetimeTotal ]
+          ]
+
   content = defRender state renderOrderForm
+
+showWithCurrency :: Maybe SS.Currency -> Number -> String
+showWithCurrency currency amount = case currency of
+  Nothing -> "N/A"
+  Just (SS.Currency c) -> show amount <> " " <> c.code
 
 toJson :: OrderForm -> Maybe String
 toJson orderForm = do
@@ -487,6 +502,7 @@ loadCatalog url = do
           { productCatalog: pc
           , orderForm:
               { id: Nothing
+              , currency: Nothing
               , customer: Nothing
               , status: Nothing
               , summary:
@@ -514,7 +530,19 @@ handleAction = case _ of
       ToLoad url -> loadCatalog url
       _ -> pure unit
   LoadProductCatalog url -> loadCatalog url
-  SetCustomer customer -> H.modify_ $ map \st -> st { orderForm { customer = Just customer } }
+  SetCustomer customer ->
+    H.modify_
+      $ map \st ->
+          st
+            { orderForm
+              { customer = Just customer
+              , currency =
+                case customer of
+                  SS.NewCustomer cust -> case cust.commercial of
+                    SS.Commercial comm -> Just comm.priceCurrency
+                  _ -> Nothing
+              }
+            }
   AddSection ->
     H.modify_
       $ map \st ->
