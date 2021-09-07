@@ -7,6 +7,7 @@ module Data.SmartSpec
   , ChargeType(..)
   , Commercial(..)
   , ConfigSchemaEntry(..)
+  , ConfigSchemaEntryMeta
   , ConfigValue(..)
   , Contact(..)
   , ContractTerm(..)
@@ -27,7 +28,9 @@ module Data.SmartSpec
   , Platform(..)
   , Price(..)
   , PriceBook(..)
+  , PriceBookCurrency(..)
   , PriceBookRef(..)
+  , PriceBookVersion(..)
   , PriceByDim(..)
   , PriceByUnit(..)
   , PriceOverride(..)
@@ -66,6 +69,7 @@ module Data.SmartSpec
   , UnitRef(..)
   , Uri(..)
   , Validity(..)
+  , configSchemaEntryTitle
   , productUnits
   , skuCode
   , solutionProducts
@@ -148,23 +152,20 @@ instance decodeJsonProductCatalog :: DecodeJson ProductCatalog where
           }
 
 data RuleStage
-  = SalesOrder
-  | ServiceOrder
-  | OrderFulfillment
+  = RsSalesOrder
+  | RsConfiguration
 
 instance showRuleStage :: Show RuleStage where
   show = case _ of
-    SalesOrder -> "SalesOrder"
-    ServiceOrder -> "ServiceOrder"
-    OrderFulfillment -> "OrderFulfillment"
+    RsSalesOrder -> "SalesOrder"
+    RsConfiguration -> "Configuration"
 
 instance decodeJsonRuleStage :: DecodeJson RuleStage where
   decodeJson json = do
     string <- decodeJson json
     case string of
-      "SalesOrder" -> Right SalesOrder
-      "ServiceOrder" -> Right ServiceOrder
-      "OrderFulfillment" -> Right OrderFulfillment
+      "SalesOrder" -> Right RsSalesOrder
+      "Configuration" -> Right RsConfiguration
       _ -> Left (TypeMismatch "RuleStage")
 
 instance encodeJsonRuleStage :: EncodeJson RuleStage where
@@ -267,18 +268,47 @@ instance encodeJsonCurrency :: EncodeJson Currency where
 newtype PriceBook
   = PriceBook
   { id :: String
-  , plan :: String
-  , version :: Date
+  , name :: String
   , description :: Maybe String
-  , currency :: Currency
-  , rateCards :: Maybe (Array RateCard)
+  , versions :: Array PriceBookVersion
   }
+
+derive instance newtypePriceBook :: Newtype PriceBook _
 
 instance decodeJsonPriceBook :: DecodeJson PriceBook where
   decodeJson json = PriceBook <$> decodeJson json
 
 instance encodeJsonPriceBook :: EncodeJson PriceBook where
   encodeJson (PriceBook x) = encodeJson x
+
+newtype PriceBookVersion
+  = PriceBookVersion
+  { version :: Date
+  , parent :: Maybe PriceBookRef
+  , byCurrency :: Array PriceBookCurrency
+  }
+
+derive instance newtypePriceBookVersion :: Newtype PriceBookVersion _
+
+instance decodeJsonPriceBookVersion :: DecodeJson PriceBookVersion where
+  decodeJson json = PriceBookVersion <$> decodeJson json
+
+instance encodeJsonPriceBookVersion :: EncodeJson PriceBookVersion where
+  encodeJson (PriceBookVersion x) = encodeJson x
+
+newtype PriceBookCurrency
+  = PriceBookCurrency
+  { currency :: Currency
+  , rateCards :: Maybe (Array RateCard)
+  }
+
+derive instance newtypePriceBookCurrency :: Newtype PriceBookCurrency _
+
+instance decodeJsonPriceBookCurrency :: DecodeJson PriceBookCurrency where
+  decodeJson json = PriceBookCurrency <$> decodeJson json
+
+instance encodeJsonPriceBookCurrency :: EncodeJson PriceBookCurrency where
+  encodeJson (PriceBookCurrency x) = encodeJson x
 
 -- TODO: Assert non-negative.
 data Charge
@@ -657,23 +687,34 @@ instance decodeJsonChargeType :: DecodeJson ChargeType where
 instance encodeJsonChargeType :: EncodeJson ChargeType where
   encodeJson = encodeJson <<< show
 
+type ConfigSchemaEntryMeta
+  = ( title :: Maybe String
+    , description :: Maybe String
+    )
+
 data ConfigSchemaEntry
   = CseInteger
-    { minimum :: Maybe Number
-    , maximum :: Maybe Number
-    , default :: Maybe Number
+    { minimum :: Maybe Int
+    , maximum :: Maybe Int
+    , default :: Maybe Int
+    | ConfigSchemaEntryMeta
     }
   | CseString
     { minLength :: Maybe Int
     , maxLength :: Maybe Int
     , enum :: Array String
     , default :: Maybe String
+    | ConfigSchemaEntryMeta
     }
   | CseRegex
     { pattern :: String
     , default :: Maybe String
+    | ConfigSchemaEntryMeta
     }
-  | CseConst { const :: ConfigValue }
+  | CseConst
+    { const :: ConfigValue
+    | ConfigSchemaEntryMeta
+    }
   | CseArray
     { items :: ConfigSchemaEntry }
   | CseObject
@@ -686,22 +727,24 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
     typed = do
       o <- decodeJson json
       type_ <- o .: "type"
+      title <- o .:? "title"
+      description <- o .:? "description"
       case type_ of
         "integer" -> do
           minimum <- o .:? "minimum"
           maximum <- o .:? "maximum"
           default <- o .:? "default"
-          Right $ CseInteger { minimum, maximum, default }
+          Right $ CseInteger { title, description, minimum, maximum, default }
         "string" -> do
           minLength <- o .:? "minLength"
           maxLength <- o .:? "maxLength"
           enum <- o .:? "enum" .!= []
           default <- o .:? "default"
-          Right $ CseString { minLength, maxLength, enum, default }
+          Right $ CseString { title, description, minLength, maxLength, enum, default }
         "regex" -> do
           pattern <- o .: "pattern"
           default <- o .:? "default"
-          Right $ CseRegex { pattern, default }
+          Right $ CseRegex { title, description, pattern, default }
         "array" -> do
           items <- o .: "items"
           Right $ CseArray { items }
@@ -725,6 +768,16 @@ instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
     CseArray x -> encodeJson x
     CseObject x -> encodeJson x
     CseOneOf x -> encodeJson x
+
+configSchemaEntryTitle :: ConfigSchemaEntry -> Maybe String
+configSchemaEntryTitle = case _ of
+  CseInteger x -> x.title
+  CseString x -> x.title
+  CseRegex x -> x.title
+  CseConst x -> x.title
+  CseArray _x -> Nothing
+  CseObject _x -> Nothing
+  CseOneOf _x -> Nothing
 
 data ConfigValue
   = CvInteger Int
@@ -1346,7 +1399,6 @@ newtype PriceBookRef
   = PriceBookRef
   { priceBookID :: String
   , version :: String
-  , currency :: Currency
   , solutionURI :: Maybe Uri
   }
 
@@ -1399,56 +1451,35 @@ instance encodeJsonCustomer :: EncodeJson Customer where
     ReturnCustomer x -> encodeJson x
 
 data OrderStatus
-  = OsSalesOrderNew
-  | OsSalesOrderApprovalPending
-  | OsSalesOrderApproved
-  | OsSalesOrderAborted
-  | OsSalesOrderSignPending
-  | OsSalesOrderSigned
-  | OsServiceOrderPending
-  | OsServiceOrderOngoing
-  | OsServiceOrderCompleted
-  | OsServiceOrderAborted
-  | OsOrderFulfillmentPending
-  | OsOrderFulfillmentOngoging
-  | OsOrderFulfillmentCompleted
-  | OsOrderFulfillmentAborted
+  = OsInDraft
+  | OsInReview
+  | OsInApproval
+  | OsInSignature
+  | OsInConfiguration
+  | OsInFulfilment
+  | OsAborted
 
 instance showOrderStatus :: Show OrderStatus where
   show = case _ of
-    OsSalesOrderNew -> "SalesOrder.New"
-    OsSalesOrderApprovalPending -> "SalesOrder.ApprovalPending"
-    OsSalesOrderApproved -> "SalesOrder.Approved"
-    OsSalesOrderAborted -> "SalesOrder.Aborted"
-    OsSalesOrderSignPending -> "SalesOrder.SignPending"
-    OsSalesOrderSigned -> "SalesOrder.Signed"
-    OsServiceOrderPending -> "ServiceOrder.Pending"
-    OsServiceOrderOngoing -> "ServiceOrder.Ongoing"
-    OsServiceOrderCompleted -> "ServiceOrder.Completed"
-    OsServiceOrderAborted -> "ServiceOrder.Aborted"
-    OsOrderFulfillmentPending -> "OrderFulfillment.Pending"
-    OsOrderFulfillmentOngoging -> "OrderFulfillment.Ongoging"
-    OsOrderFulfillmentCompleted -> "OrderFulfillment.Completed"
-    OsOrderFulfillmentAborted -> "OrderFulfillment.Aborted"
+    OsInDraft -> "InDraft"
+    OsInReview -> "InReview"
+    OsInApproval -> "InApproval"
+    OsInSignature -> "InSignature"
+    OsInConfiguration -> "InConfiguration"
+    OsInFulfilment -> "InFulfilment"
+    OsAborted -> "Aborted"
 
 instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
   decodeJson json = do
     string <- decodeJson json
     case string of
-      "SalesOrder.New" -> Right OsSalesOrderNew
-      "SalesOrder.ApprovalPending" -> Right OsSalesOrderApprovalPending
-      "SalesOrder.Approved" -> Right OsSalesOrderApproved
-      "SalesOrder.Aborted" -> Right OsSalesOrderAborted
-      "SalesOrder.SignPending" -> Right OsSalesOrderSignPending
-      "SalesOrder.Signed" -> Right OsSalesOrderSigned
-      "ServiceOrder.Pending" -> Right OsServiceOrderPending
-      "ServiceOrder.Ongoing" -> Right OsServiceOrderOngoing
-      "ServiceOrder.Completed" -> Right OsServiceOrderCompleted
-      "ServiceOrder.Aborted" -> Right OsServiceOrderAborted
-      "OrderFulfillment.Pending" -> Right OsOrderFulfillmentPending
-      "OrderFulfillment.Ongoging" -> Right OsOrderFulfillmentOngoging
-      "OrderFulfillment.Completed" -> Right OsOrderFulfillmentCompleted
-      "OrderFulfillment.Aborted" -> Right OsOrderFulfillmentAborted
+      "InDraft" -> Right OsInDraft
+      "InReview" -> Right OsInReview
+      "InApproval" -> Right OsInApproval
+      "InSignature" -> Right OsInSignature
+      "InConfiguration" -> Right OsInConfiguration
+      "InFulfilment" -> Right OsInFulfilment
+      "Aborted" -> Right OsAborted
       _ -> Left (TypeMismatch "OrderStatus")
 
 instance encodeOrderStatus :: EncodeJson OrderStatus where

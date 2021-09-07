@@ -28,6 +28,7 @@ to generate this file without the comments in this block.
   , "js-uri"
   , "maybe"
   , "newtype"
+  , "numbers"
   , "ordered-collections"
   , "partial"
   , "prelude"

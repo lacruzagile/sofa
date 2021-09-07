@@ -359,16 +359,32 @@ render state =
     c.code
       <> maybe "" (\c' -> "\"" <> c' <> "\"") c.country
 
+  renderPriceBookCurrency :: Map String SS.SpecUnitMap -> SS.PriceBookCurrency -> H.ComponentHTML Action slots m
+  renderPriceBookCurrency prodMap (SS.PriceBookCurrency p) =
+    HH.li_
+      [ HH.dl_
+          ( dataItem "Currency" (currency p.currency)
+              <> opt (dataItemRaw "Rate Cards" <<< rateCards prodMap) p.rateCards
+          )
+      ]
+
+  renderPriceBookVersion :: Map String SS.SpecUnitMap -> SS.PriceBookVersion -> H.ComponentHTML Action slots m
+  renderPriceBookVersion prodMap (SS.PriceBookVersion p) =
+    HH.li_
+      [ HH.dl_
+          ( dataItem "Version" p.version
+              <> (dataItemRaw "Currencies" $ HH.ul_ $ map (renderPriceBookCurrency prodMap) p.byCurrency)
+          )
+      ]
+
   renderPrice :: Map String SS.SpecUnitMap -> SS.PriceBook -> H.ComponentHTML Action slots m
   renderPrice prodMap (SS.PriceBook p) =
     HH.li_
       [ HH.dl_
           ( dataItem "ID" p.id
-              <> dataItem "Plan" p.plan
-              <> dataItem "Version" p.version
+              <> dataItem "Name" p.name
               <> opt (dataItem "Description") p.description
-              <> dataItem "Currency" (currency p.currency)
-              <> opt (dataItemRaw "Rate Cards" <<< rateCards prodMap) p.rateCards
+              <> (dataItemRaw "Versions" $ HH.ul_ $ map (renderPriceBookVersion prodMap) p.versions)
           )
       ]
 

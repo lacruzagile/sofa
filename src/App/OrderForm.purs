@@ -2,9 +2,10 @@ module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
 import App.OrderForm.Customer as Customer
+import Control.Alternative ((<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
-import Data.Array (deleteAt, mapWithIndex, modifyAt, snoc)
+import Data.Array (modifyAt, snoc)
 import Data.Array as A
 import Data.Int as Int
 import Data.Loadable (Loadable(..), getJson)
@@ -13,7 +14,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (unwrap)
 import Data.Route as Route
-import Data.SmartSpec (ConfigSchemaEntry, ProductOption(..), skuCode, solutionProducts)
+import Data.SmartSpec (skuCode, solutionProducts)
 import Data.SmartSpec as SS
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
@@ -43,13 +44,15 @@ type State
 
 type StateOrderForm
   = { productCatalog :: SS.ProductCatalog
+    , currency :: Maybe SS.Currency
+    , priceBooks :: Map String (Array PriceBook)
+    -- ^ Map from solution name to price books in the current currency.
     , orderForm :: OrderForm
     }
 
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
   = { id :: Maybe String
-    , currency :: Maybe SS.Currency
     , customer :: Maybe SS.Customer
     , status :: Maybe SS.OrderStatus
     , summary :: SS.OrderSummary
@@ -58,7 +61,7 @@ type OrderForm
 
 type OrderSection
   = { solution :: SS.Solution
-    , priceBook :: Maybe SS.PriceBook
+    , priceBook :: Maybe PriceBook
     , orderLines :: Array (Maybe OrderLine)
     -- ^ Order lines of the product options.
     , summary :: SS.OrderSectionSummary
@@ -71,6 +74,13 @@ type OrderLine
     , configs :: Array (Map String SS.ConfigValue)
     }
 
+type PriceBook
+  = { id :: String
+    , name :: String
+    , version :: String
+    , rateCards :: Maybe (Array SS.RateCard)
+    }
+
 data Action
   = NoOp
   | ClearState
@@ -79,7 +89,7 @@ data Action
   | SetCustomer SS.Customer
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
-  | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe SS.PriceBook }
+  | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
   | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.Sku }
@@ -89,6 +99,7 @@ data Action
   | OrderLineSetConfig
     { sectionIndex :: Int
     , orderLineIndex :: Int
+    , configIndex :: Int
     , field :: String
     , value :: SS.ConfigValue
     }
@@ -130,7 +141,7 @@ render state =
             , orderFormLink "Normalized Example" "v1alpha1/examples/product-catalog.cloud.normalized.json"
             ]
         ]
-    , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
+    , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] renderContent
     ]
   where
   orderFormLink txt uri =
@@ -167,19 +178,22 @@ render state =
     Loaded dat -> rend dat
     Error err -> error err
 
-  orderLine ::
+  renderOrderLine ::
     SS.Solution ->
     Int ->
     Int ->
     Maybe OrderLine ->
     H.ComponentHTML Action Slots m
-  orderLine (SS.Solution sol) secIdx olIdx = case _ of
+  renderOrderLine (SS.Solution sol) secIdx olIdx = case _ of
     Nothing ->
       body
         [ HH.label_
             [ HH.text "Product"
             , HH.select [ HE.onValueChange actionSetProduct ]
-                $ [ HH.option [ HP.value "", HP.selected true ] [ HH.text "Please choose a product" ] ]
+                $ [ HH.option
+                      [ HP.value "", HP.disabled true, HP.selected true ]
+                      [ HH.text "Please choose a product" ]
+                  ]
                 <> products
             ]
         ]
@@ -213,7 +227,7 @@ render state =
                     ]
                 ]
             ]
-          <> prodConfig product
+          <> renderProductConfigs product ol.configs
     where
     body subBody =
       HH.div [ HP.classes [ Css.orderSection ] ]
@@ -234,49 +248,61 @@ render state =
         , sku: SS.SkuCode sku
         }
 
-    prodConfig product =
+    renderProductConfigs product = A.concat <<< A.mapWithIndex (renderProductConfig product)
+
+    renderProductConfig product cfgIdx config =
       maybe []
         ( renderConfigSchema
             ( \field value ->
                 OrderLineSetConfig
                   { sectionIndex: secIdx
                   , orderLineIndex: olIdx
+                  , configIndex: cfgIdx
                   , field
                   , value
                   }
             )
+            config
         )
         product.configSchema
 
   renderConfigSchema ::
     (String -> SS.ConfigValue -> Action) ->
-    Map String ConfigSchemaEntry ->
+    Map String SS.ConfigValue ->
+    Map String SS.ConfigSchemaEntry ->
     Array (H.ComponentHTML Action Slots m)
-  renderConfigSchema onChange = A.concatMap renderEntry <<< Map.toUnfoldable
+  renderConfigSchema onChange config = A.concatMap renderEntry <<< Map.toUnfoldable
     where
     mact = maybe NoOp
 
     opt :: forall a b. (a -> b) -> Maybe a -> Array b
     opt f = maybe [] (\x -> [ f x ])
 
-    renderSchemaEntry act = case _ of
+    renderSchemaEntry ::
+      (SS.ConfigValue -> Action) ->
+      Maybe SS.ConfigValue ->
+      SS.ConfigSchemaEntry ->
+      H.ComponentHTML Action Slots m
+    renderSchemaEntry act value = case _ of
       SS.CseInteger c ->
         HH.input
           $ [ HP.type_ HP.InputNumber
             , HE.onValueChange (mact (act <<< SS.CvInteger) <<< Int.fromString)
             ]
-          <> opt HP.min c.minimum
-          <> opt HP.max c.maximum
+          <> opt (HP.value <<< show) value
+          <> opt (HP.min <<< Int.toNumber) c.minimum
+          <> opt (HP.max <<< Int.toNumber) c.maximum
       SS.CseString c
         | not (A.null c.enum) ->
           let
-            props e =
-              [ HP.selected (Just e == c.default)
-              , HE.onClick \_ -> act (SS.CvString e)
-              ]
+            props e = [ HP.selected (Just e == c.default) ]
+
+            onIndexChange i = case A.index c.enum (i - 1) of
+              Nothing -> NoOp
+              Just s -> act $ SS.CvString s
           in
-            HH.select_
-              $ [ HH.option_ [ HH.text $ "Please choose an option" ] ]
+            HH.select [ HE.onSelectedIndexChange onIndexChange ]
+              $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
               <> map (\e -> HH.option (props e) [ HH.text e ]) c.enum
       SS.CseString c ->
         let
@@ -291,9 +317,13 @@ render state =
               [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
         in
           HH.input $ [ HE.onValueChange (act <<< SS.CvString) ]
-            <> opt HP.value c.default
+            <> opt HP.value (maybe c.default (Just <<< show) value)
             <> pat
-      SS.CseRegex _c -> HH.input [ HE.onValueChange (act <<< SS.CvString) ]
+      SS.CseRegex c ->
+        HH.input
+          $ [ HE.onValueChange (act <<< SS.CvString)
+            ]
+          <> opt HP.value (maybe c.default (Just <<< show) value)
       SS.CseConst _c -> HH.input [ HP.value "const", HP.disabled true ]
       SS.CseArray _c -> HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
       SS.CseObject _c -> HH.input [ HP.value "Unsupported configuration type: object", HP.disabled true ]
@@ -301,50 +331,77 @@ render state =
 
     renderEntry (Tuple key schemaEntry) =
       [ HH.label_
-          [ HH.text key
-          , renderSchemaEntry (onChange key) schemaEntry
+          [ HH.text $ fromMaybe key $ SS.configSchemaEntryTitle schemaEntry
+          , renderSchemaEntry (onChange key) (Map.lookup key config) schemaEntry
           ]
       ]
 
-  renderSection :: SS.ProductCatalog -> Maybe SS.Currency -> Int -> Maybe OrderSection -> H.ComponentHTML Action Slots m
-  renderSection (SS.ProductCatalog pc) currency secIdx = case _ of
+  renderSection ::
+    StateOrderForm ->
+    Int ->
+    Maybe OrderSection ->
+    H.ComponentHTML Action Slots m
+  renderSection sof secIdx = case _ of
     Nothing ->
       body
         [ HH.label_
             [ HH.text "Solution"
             , HH.select [ HE.onValueChange actionSetSolution ]
-                $ [ HH.option [ HP.value "", HP.selected true ] [ HH.text "Please choose a solution" ] ]
+                $ [ HH.option
+                      [ HP.value "", HP.disabled true, HP.selected true ]
+                      [ HH.text "Please choose a solution" ]
+                  ]
                 <> solutionOptions
             ]
         ]
     Just sec ->
-      body
-        $ [ HH.div [ HP.classes [ Css.flex, Css.two ] ]
-              [ HH.label_
-                  [ HH.text "Solution"
-                  , HH.input
-                      [ HP.type_ HP.InputText
-                      , HP.disabled true
-                      , HP.value $ solutionLabel sec.solution
-                      ]
-                  ]
-              , HH.label_
-                  [ HH.text "Price Book"
-                  , HH.select_
-                      $ [ HH.option [ HP.selected (isNothing sec.priceBook), HE.onClick \_ -> actionSetPriceBook Nothing ] [ HH.text "Please choose a price book" ] ]
-                      <> priceBookOptions sec.priceBook sec.solution
-                  ]
-              ]
-          ]
-        <> sectionOrderLines sec.solution sec.orderLines
-        <> [ HH.div [ HP.class_ Css.orderSection ]
-              [ HH.button
-                  [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
-                  [ HH.text "+" ]
-              ]
-          , renderSummary sec.summary
-          ]
+      let
+        SS.Solution sol = sec.solution
+
+        priceBooks = fromMaybe [] $ Map.lookup sol.id sof.priceBooks
+
+        priceBookOpts = priceBookOptions sec.priceBook priceBooks
+
+        priceBookSel = case sof.currency of
+          Nothing -> "No currency selected"
+          Just (SS.Currency { code }) ->
+            if A.null priceBookOpts then
+              "No price books for " <> code
+            else
+              "Please choose a price book"
+      in
+        body
+          $ [ HH.div [ HP.classes [ Css.flex, Css.two ] ]
+                [ HH.label_
+                    [ HH.text "Solution"
+                    , HH.input
+                        [ HP.type_ HP.InputText
+                        , HP.disabled true
+                        , HP.value $ solutionLabel sec.solution
+                        ]
+                    ]
+                , HH.label_
+                    [ HH.text "Price Book"
+                    , HH.select [ HE.onSelectedIndexChange $ actionSetPriceBook priceBooks ]
+                        $ [ HH.option
+                              [ HP.disabled true, HP.selected (isNothing sec.priceBook) ]
+                              [ HH.text priceBookSel ]
+                          ]
+                        <> priceBookOpts
+                    ]
+                ]
+            ]
+          <> sectionOrderLines sec.solution sec.orderLines
+          <> [ HH.div [ HP.class_ Css.orderSection ]
+                [ HH.button
+                    [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
+                    [ HH.text "+" ]
+                ]
+            , renderOrderSectionSummary sof.currency sec.summary
+            ]
     where
+    SS.ProductCatalog pc = sof.productCatalog
+
     body subBody =
       HH.div [ HP.class_ Css.orderSection ]
         $ [ HH.a [ HP.class_ Css.close, HE.onClick \_ -> RemoveSection { sectionIndex: secIdx } ] [ HH.text "×" ]
@@ -359,55 +416,67 @@ render state =
         , solutionId: solId
         }
 
-    actionSetPriceBook pb =
-      SectionSetPriceBook
-        { sectionIndex: secIdx
-        , priceBook: pb
-        }
+    actionSetPriceBook priceBooks i =
+      ( \pb ->
+          SectionSetPriceBook
+            { sectionIndex: secIdx
+            , priceBook: pb
+            }
+      )
+        $ A.index priceBooks (i - 1)
 
     solutionOptions =
       map
         (\(Tuple i s) -> HH.option [ HP.value i ] [ HH.text $ solutionLabel s ])
         (Map.toUnfoldable pc.solutions)
 
-    priceBookOptions curPriceBook (SS.Solution { priceBooks }) =
+    priceBookOptions curPriceBook =
       map
-        ( \pb@(SS.PriceBook pb') ->
+        ( \pb ->
             HH.option
-              [ HP.selected (Just pb'.id == map (\(SS.PriceBook x) -> x.id) curPriceBook)
-              , HE.onClick \_ -> SectionSetPriceBook { sectionIndex: secIdx, priceBook: Just pb }
+              [ HP.selected (Just pb.id == map _.id curPriceBook)
               ]
-              [ HH.text $ pb'.id <> " (" <> pb'.version <> ")" ]
+              [ HH.text $ pb.id <> " (" <> pb.version <> ")" ]
         )
-        $ A.filter (\(SS.PriceBook pb) -> Just pb.currency == currency)
-        $ priceBooks
 
     sectionOrderLines sol orderLines =
-      [ HH.div_ (mapWithIndex (orderLine sol secIdx) orderLines)
+      [ HH.div_ (A.mapWithIndex (renderOrderLine sol secIdx) orderLines)
       ]
 
-    renderSummary (SS.OrderSectionSummary summary) =
-      let
-        price = HH.text <<< showWithCurrency currency
-      in
-        HH.div [ HP.classes [ Css.flex, Css.four ] ]
-          [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
-          , HH.div_ [ HH.text "Estimated usage: ", price summary.estimatedUsageSubTotal ]
-          , HH.div_ [ HH.text "Monthly: ", price summary.monthlySubTotal ]
-          , HH.div_ [ HH.text "Onetime: ", price summary.onetimeSubTotal ]
-          ]
-
   renderSections ::
-    SS.ProductCatalog ->
-    Maybe SS.Currency ->
+    StateOrderForm ->
     Array (Maybe OrderSection) ->
     H.ComponentHTML Action Slots m
-  renderSections pc currency secs =
+  renderSections sof secs =
     HH.div_
       $ [ HH.h3_ [ HH.text "Sections" ]
         ]
-      <> mapWithIndex (renderSection pc currency) secs
+      <> A.mapWithIndex (renderSection sof) secs
       <> [ HH.button [ HE.onClick \_ -> AddSection ] [ HH.text "Add Section" ] ]
+
+  renderOrderSectionSummary :: Maybe SS.Currency -> SS.OrderSectionSummary -> H.ComponentHTML Action Slots m
+  renderOrderSectionSummary currency (SS.OrderSectionSummary summary) =
+    let
+      price = HH.text <<< showWithCurrency currency
+    in
+      HH.div [ HP.classes [ Css.flex, Css.four ] ]
+        [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
+        , HH.div_ [ HH.text "Estimated usage: ", price summary.estimatedUsageSubTotal ]
+        , HH.div_ [ HH.text "Monthly: ", price summary.monthlySubTotal ]
+        , HH.div_ [ HH.text "Onetime: ", price summary.onetimeSubTotal ]
+        ]
+
+  renderOrderSummary :: Maybe SS.Currency -> SS.OrderSummary -> H.ComponentHTML Action Slots m
+  renderOrderSummary currency (SS.OrderSummary summary) =
+    let
+      price = HH.text <<< showWithCurrency currency
+    in
+      HH.div [ HP.classes [ Css.flex, Css.four ] ]
+        [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
+        , HH.div_ [ HH.text "Estimated usage: ", price summary.estimatedUsageTotal ]
+        , HH.div_ [ HH.text "Monthly: ", price summary.monthlyTotal ]
+        , HH.div_ [ HH.text "Onetime: ", price summary.onetimeTotal ]
+        ]
 
   renderCustomer :: H.ComponentHTML Action Slots m
   renderCustomer =
@@ -417,39 +486,27 @@ render state =
       ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
-  renderOrderForm { productCatalog, orderForm } =
+  renderOrderForm sof =
     [ HH.h1_ [ HH.text "Order Form" ]
     , renderCustomer
-    , renderSections productCatalog orderForm.currency orderForm.sections
-    , renderSummary orderForm.currency
+    , renderSections sof sof.orderForm.sections
+    , renderOrderSummary sof.currency sof.orderForm.summary
     , HH.hr_
     , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
     , Widgets.modal "of-json" "Order Form JSON"
         [ HH.pre_
-            [ HH.code_ [ HH.text $ fromMaybe "Cannot produce JSON" $ toJson orderForm ]
+            [ HH.code_ [ HH.text $ fromMaybe "Cannot produce JSON" $ toJson sof.orderForm ]
             ]
         ]
         []
     ]
-    where
-    SS.OrderSummary summary = orderForm.summary
 
-    renderSummary currency =
-      let
-        price = HH.text <<< showWithCurrency currency
-      in
-        HH.div [ HP.classes [ Css.flex, Css.four ] ]
-          [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
-          , HH.div_ [ HH.text "Estimated usage: ", price summary.estimatedUsageTotal ]
-          , HH.div_ [ HH.text "Monthly: ", price summary.monthlyTotal ]
-          , HH.div_ [ HH.text "Onetime: ", price summary.onetimeTotal ]
-          ]
-
-  content = defRender state renderOrderForm
+  renderContent = defRender state renderOrderForm
 
 showWithCurrency :: Maybe SS.Currency -> Number -> String
 showWithCurrency currency amount = case currency of
   Nothing -> "N/A"
+  Just (SS.Currency { code: "" }) -> "N/A"
   Just (SS.Currency c) -> show amount <> " " <> c.code
 
 toJson :: OrderForm -> Maybe String
@@ -461,7 +518,7 @@ toJson orderForm = do
     $ SS.OrderForm
         { id: "ORDER-1"
         , customer
-        , status: SS.OsSalesOrderNew
+        , status: SS.OsInDraft
         , sections
         }
   where
@@ -473,11 +530,10 @@ toJson orderForm = do
       , configs: ol.configs
       }
 
-  toPriceBookRef (SS.PriceBook pb) =
+  toPriceBookRef pb =
     SS.PriceBookRef
       { priceBookID: pb.id
       , version: pb.version
-      , currency: pb.currency
       , solutionURI: Nothing
       }
 
@@ -500,9 +556,10 @@ loadCatalog url = do
     res =
       ( \(pc :: SS.ProductCatalog) ->
           { productCatalog: pc
+          , currency: Nothing
+          , priceBooks: Map.empty
           , orderForm:
               { id: Nothing
-              , currency: Nothing
               , customer: Nothing
               , status: Nothing
               , summary:
@@ -517,6 +574,20 @@ loadCatalog url = do
       )
         <$> productCatalog
   H.modify_ \_ -> res
+
+mkDefaultConfig :: SS.Product -> Map String SS.ConfigValue
+mkDefaultConfig (SS.Product p) = maybe Map.empty mkDefaults p.configSchema
+  where
+  mkDefaults = Map.mapMaybe mkDefault
+
+  mkDefault = case _ of
+    SS.CseInteger x -> SS.CvInteger <$> x.default
+    SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum)
+    SS.CseRegex x -> SS.CvString <$> x.default
+    SS.CseConst x -> Just x.const
+    SS.CseArray _ -> Just $ SS.CvArray []
+    SS.CseObject _ -> Nothing
+    SS.CseOneOf _ -> Nothing
 
 handleAction ::
   forall slots output m.
@@ -533,16 +604,38 @@ handleAction = case _ of
   SetCustomer customer ->
     H.modify_
       $ map \st ->
-          st
-            { orderForm
-              { customer = Just customer
-              , currency =
-                case customer of
-                  SS.NewCustomer cust -> case cust.commercial of
-                    SS.Commercial comm -> Just comm.priceCurrency
-                  _ -> Nothing
+          let
+            currency = case customer of
+              SS.NewCustomer cust -> case cust.commercial of
+                SS.Commercial comm -> Just comm.priceCurrency
+              _ -> Nothing
+
+            SS.ProductCatalog pc = st.productCatalog
+
+            mkPriceBooks c = do
+              SS.Solution sol <- A.fromFoldable $ Map.values pc.solutions
+              SS.PriceBook pb <- sol.priceBooks
+              SS.PriceBookVersion pbv <- pb.versions
+              SS.PriceBookCurrency pbc <- pbv.byCurrency
+              if (pbc.currency == c) then
+                [ Tuple sol.id
+                    [ { id: pb.id
+                      , name: pb.name
+                      , version: pbv.version
+                      , rateCards: pbc.rateCards
+                      }
+                    ]
+                ]
+              else
+                []
+
+            priceBooks = maybe Map.empty (Map.fromFoldableWith (<>) <<< mkPriceBooks) currency
+          in
+            st
+              { currency = currency
+              , priceBooks = priceBooks
+              , orderForm = st.orderForm { customer = Just customer }
               }
-            }
   AddSection ->
     H.modify_
       $ map \st ->
@@ -596,7 +689,8 @@ handleAction = case _ of
           st
             { orderForm
               { sections =
-                fromMaybe st.orderForm.sections (deleteAt sectionIndex st.orderForm.sections)
+                fromMaybe st.orderForm.sections
+                  $ A.deleteAt sectionIndex st.orderForm.sections
               }
             }
   AddOrderLine { sectionIndex } ->
@@ -620,7 +714,8 @@ handleAction = case _ of
           ( \section ->
               section
                 { orderLines =
-                  fromMaybe section.orderLines (deleteAt orderLineIndex section.orderLines)
+                  fromMaybe section.orderLines
+                    $ A.deleteAt orderLineIndex section.orderLines
                 }
           )
     in
@@ -655,7 +750,7 @@ handleAction = case _ of
               , monthlyMinimum: 0.0
               }
         , quantity: 1
-        , configs: []
+        , configs: [ mkDefaultConfig product ]
         }
 
       updateOrderLine :: SS.Product -> Map String SS.Product -> Maybe OrderLine -> OrderLine
@@ -668,8 +763,8 @@ handleAction = case _ of
       requiredOptions (SS.Product p) solProds =
         let
           requiredSkuCode = case _ of
-            ProdOptSkuCode _ -> Nothing
-            ProductOption po -> if po.required then Just (skuCode po.sku) else Nothing
+            SS.ProdOptSkuCode _ -> Nothing
+            SS.ProductOption po -> if po.required then Just (skuCode po.sku) else Nothing
 
           requiredProds = A.mapMaybe (requiredSkuCode >=> (\o -> Map.lookup o solProds)) <$> p.options
         in
@@ -702,10 +797,20 @@ handleAction = case _ of
         $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
   OrderLineSetQuantity { sectionIndex, orderLineIndex, quantity } ->
     let
-      updateQuantity :: Maybe OrderLine -> Maybe OrderLine
-      updateQuantity Nothing = Nothing
+      -- Creates a new array of product configurations. The list is a truncation
+      -- or extension of the old one such that its length matches the quantity
+      -- variable. If the array needs to be extended then it is extended by
+      -- empty configurations.
+      mkConfigs product oldConfigs =
+        A.take quantity oldConfigs
+          <> A.replicate (quantity - A.length oldConfigs) (mkDefaultConfig product)
 
-      updateQuantity (Just ol) = Just $ ol { quantity = quantity }
+      updateQuantity :: OrderLine -> OrderLine
+      updateQuantity ol =
+        ol
+          { quantity = quantity
+          , configs = mkConfigs ol.product ol.configs
+          }
 
       updateOrderLine :: OrderSection -> OrderSection
       updateOrderLine section =
@@ -713,7 +818,7 @@ handleAction = case _ of
           { orderLines =
             fromMaybe
               section.orderLines
-              (modifyAt orderLineIndex updateQuantity section.orderLines)
+              (modifyAt orderLineIndex (map updateQuantity) section.orderLines)
           }
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
@@ -727,7 +832,12 @@ handleAction = case _ of
   OrderLineSetConfig { sectionIndex, orderLineIndex, field, value } ->
     let
       updateValue :: OrderLine -> OrderLine
-      updateValue ol = ol { configs = [ Map.singleton field value ] }
+      updateValue ol =
+        ol
+          { configs =
+            fromMaybe [ Map.singleton field value ]
+              $ A.modifyAt 0 (Map.insert field value) ol.configs
+          }
 
       updateOrderLine :: OrderSection -> OrderSection
       updateOrderLine section =

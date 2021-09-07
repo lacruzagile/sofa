@@ -162,45 +162,55 @@ render st =
                 in
                   SS.NewCustomer $ oldCustomer { commercial = SS.Commercial (f oldCommercial) }
               returnCustomer -> returnCustomer
+
+      updateBillingOption = case _ of
+        0 -> update (_ { billingOption = SS.Prepay })
+        _ -> update (_ { billingOption = SS.PostPay })
+
+      updateContractTerm = case _ of
+        0 -> update (_ { contractTerm = SS.Ongoing })
+        _ -> update (_ { contractTerm = SS.Fixed })
     in
       [ HH.label [ HP.for "of-commercial", HP.class_ Css.button ] [ HH.text "Commercial" ]
       , Widgets.modal "of-commercial" "Commercial"
           [ HH.label_
               [ HH.text "Billing Option"
-              , HH.select_
+              , HH.select [ HE.onSelectedIndexChange updateBillingOption ]
                   [ HH.option
                       [ HP.value "Prepay"
                       , HP.selected (commercial.billingOption == SS.Prepay)
-                      , HE.onClick \_ -> update (_ { billingOption = SS.Prepay })
                       ]
                       [ HH.text "Pre-pay" ]
                   , HH.option
                       [ HP.value "PostPay"
                       , HP.selected (commercial.billingOption == SS.PostPay)
-                      , HE.onClick \_ -> update (_ { billingOption = SS.PostPay })
                       ]
                       [ HH.text "Post-pay" ]
                   ]
               ]
           , HH.label_
               [ HH.text "Contract Term"
-              , HH.select_
+              , HH.select [ HE.onSelectedIndexChange updateContractTerm ]
                   [ HH.option
                       [ HP.value "Ongoing"
                       , HP.selected (commercial.contractTerm == SS.Ongoing)
-                      , HE.onClick \_ -> update (_ { contractTerm = SS.Ongoing })
                       ]
                       [ HH.text "Ongoing" ]
                   , HH.option
                       [ HP.value "Fixed"
                       , HP.selected (commercial.contractTerm == SS.Fixed)
-                      , HE.onClick \_ -> update (_ { contractTerm = SS.Fixed })
                       ]
                       [ HH.text "Fixed" ]
                   ]
               ]
-          , renderCurrency "Payment Currency" commercial.paymentCurrency $ \f -> update (\c -> c { paymentCurrency = f c.paymentCurrency })
-          , renderCurrency "Price Currency" commercial.priceCurrency $ \f -> update (\c -> c { priceCurrency = f c.priceCurrency })
+          , renderCurrency
+              "Payment Currency"
+              commercial.paymentCurrency
+              $ \f -> update (\c -> c { paymentCurrency = f c.paymentCurrency })
+          , renderCurrency
+              "Price Currency"
+              commercial.priceCurrency
+              $ \f -> update (\c -> c { priceCurrency = f c.priceCurrency })
           ]
           [ HH.label
               [ HP.for "of-commercial", HP.class_ Css.button ]
