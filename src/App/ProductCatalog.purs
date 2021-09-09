@@ -69,8 +69,7 @@ render state =
         [ HH.h2_ [ HH.text "Catalogs" ]
         , HH.div
             [ HP.classes [ Css.flex, Css.two, Css.three500, Css.five800, Css.one1000 ] ]
-            [ prodCatLink "Sinch Cloud" "v1alpha1/examples/product-catalog.cloud.json"
-            , prodCatLink "Normalized Example" "v1alpha1/examples/product-catalog.cloud.normalized.json"
+            [ prodCatLink "Normalized Example" "v1alpha1/examples/product-catalog.normalized.json"
             ]
         ]
     , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
