@@ -502,11 +502,15 @@ render state =
     , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
     , Widgets.modal "of-json" "Order Form JSON"
         [ HH.pre_
-            [ HH.code_ [ HH.text $ fromMaybe "Cannot produce JSON" $ toJson sof.orderForm ]
+            [ HH.code_ [ HH.text $ fromMaybe errMsg $ toJson sof.orderForm ]
             ]
         ]
         []
     ]
+    where
+    errMsg =
+      "Cannot produce JSON. You need to select a customer\n\
+           \price currency and a price book for each order section."
 
   renderContent = defRender state renderOrderForm
 
