@@ -252,7 +252,7 @@ render state =
 
     renderProductConfig product cfgIdx config =
       maybe []
-        ( renderConfigSchema
+        ( renderConfigSchema cfgIdx
             ( \field value ->
                 OrderLineSetConfig
                   { sectionIndex: secIdx
@@ -267,12 +267,19 @@ render state =
         product.configSchema
 
   renderConfigSchema ::
+    Int ->
     (String -> SS.ConfigValue -> Action) ->
     Map String SS.ConfigValue ->
     Map String SS.ConfigSchemaEntry ->
     Array (H.ComponentHTML Action Slots m)
-  renderConfigSchema onChange config = A.concatMap renderEntry <<< Map.toUnfoldable
+  renderConfigSchema idx onChange config = wrap <<< A.concatMap renderEntry <<< Map.toUnfoldable
     where
+    wrap entries =
+      [ HH.fieldset_
+          $ [ HH.legend_ [ HH.text $ "Instance " <> show (idx + 1) ] ]
+          <> entries
+      ]
+
     mact = maybe NoOp
 
     opt :: forall a b. (a -> b) -> Maybe a -> Array b
@@ -829,14 +836,14 @@ handleAction = case _ of
     in
       H.modify_
         $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
-  OrderLineSetConfig { sectionIndex, orderLineIndex, field, value } ->
+  OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, field, value } ->
     let
       updateValue :: OrderLine -> OrderLine
       updateValue ol =
         ol
           { configs =
             fromMaybe [ Map.singleton field value ]
-              $ A.modifyAt 0 (Map.insert field value) ol.configs
+              $ A.modifyAt configIndex (Map.insert field value) ol.configs
           }
 
       updateOrderLine :: OrderSection -> OrderSection
