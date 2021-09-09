@@ -5,7 +5,7 @@
 let
   inputs = {
 
-    "aff" = pkgs.stdenv.mkDerivation {
+    "aff" = pkgs.stdenvNoCC.mkDerivation {
       name = "aff";
       version = "v6.0.0";
       src = pkgs.fetchgit {
@@ -17,7 +17,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "affjax" = pkgs.stdenv.mkDerivation {
+    "affjax" = pkgs.stdenvNoCC.mkDerivation {
       name = "affjax";
       version = "v12.0.0";
       src = pkgs.fetchgit {
@@ -29,7 +29,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "argonaut" = pkgs.stdenv.mkDerivation {
+    "argonaut" = pkgs.stdenvNoCC.mkDerivation {
       name = "argonaut";
       version = "v8.0.0";
       src = pkgs.fetchgit {
@@ -41,7 +41,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "argonaut-codecs" = pkgs.stdenv.mkDerivation {
+    "argonaut-codecs" = pkgs.stdenvNoCC.mkDerivation {
       name = "argonaut-codecs";
       version = "v8.1.0";
       src = pkgs.fetchgit {
@@ -54,7 +54,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "argonaut-core" = pkgs.stdenv.mkDerivation {
+    "argonaut-core" = pkgs.stdenvNoCC.mkDerivation {
       name = "argonaut-core";
       version = "v6.0.0";
       src = pkgs.fetchgit {
@@ -67,7 +67,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "argonaut-traversals" = pkgs.stdenv.mkDerivation {
+    "argonaut-traversals" = pkgs.stdenvNoCC.mkDerivation {
       name = "argonaut-traversals";
       version = "v9.0.0";
       src = pkgs.fetchgit {
@@ -80,7 +80,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "arraybuffer-types" = pkgs.stdenv.mkDerivation {
+    "arraybuffer-types" = pkgs.stdenvNoCC.mkDerivation {
       name = "arraybuffer-types";
       version = "v3.0.1";
       src = pkgs.fetchgit {
@@ -93,7 +93,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "arrays" = pkgs.stdenv.mkDerivation {
+    "arrays" = pkgs.stdenvNoCC.mkDerivation {
       name = "arrays";
       version = "v6.0.1";
       src = pkgs.fetchgit {
@@ -105,7 +105,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "avar" = pkgs.stdenv.mkDerivation {
+    "avar" = pkgs.stdenvNoCC.mkDerivation {
       name = "avar";
       version = "v4.0.0";
       src = pkgs.fetchgit {
@@ -117,7 +117,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "bifunctors" = pkgs.stdenv.mkDerivation {
+    "bifunctors" = pkgs.stdenvNoCC.mkDerivation {
       name = "bifunctors";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -129,7 +129,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "catenable-lists" = pkgs.stdenv.mkDerivation {
+    "catenable-lists" = pkgs.stdenvNoCC.mkDerivation {
       name = "catenable-lists";
       version = "v6.0.1";
       src = pkgs.fetchgit {
@@ -141,7 +141,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "console" = pkgs.stdenv.mkDerivation {
+    "console" = pkgs.stdenvNoCC.mkDerivation {
       name = "console";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -153,7 +153,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "const" = pkgs.stdenv.mkDerivation {
+    "const" = pkgs.stdenvNoCC.mkDerivation {
       name = "const";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -165,7 +165,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "contravariant" = pkgs.stdenv.mkDerivation {
+    "contravariant" = pkgs.stdenvNoCC.mkDerivation {
       name = "contravariant";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -177,7 +177,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "control" = pkgs.stdenv.mkDerivation {
+    "control" = pkgs.stdenvNoCC.mkDerivation {
       name = "control";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -189,7 +189,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "datetime" = pkgs.stdenv.mkDerivation {
+    "datetime" = pkgs.stdenvNoCC.mkDerivation {
       name = "datetime";
       version = "v5.0.2";
       src = pkgs.fetchgit {
@@ -201,7 +201,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "debug" = pkgs.stdenv.mkDerivation {
+    "debug" = pkgs.stdenvNoCC.mkDerivation {
       name = "debug";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -213,7 +213,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "distributive" = pkgs.stdenv.mkDerivation {
+    "distributive" = pkgs.stdenvNoCC.mkDerivation {
       name = "distributive";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -225,7 +225,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "dom-indexed" = pkgs.stdenv.mkDerivation {
+    "dom-indexed" = pkgs.stdenvNoCC.mkDerivation {
       name = "dom-indexed";
       version = "v8.0.0";
       src = pkgs.fetchgit {
@@ -238,7 +238,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "effect" = pkgs.stdenv.mkDerivation {
+    "effect" = pkgs.stdenvNoCC.mkDerivation {
       name = "effect";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -250,7 +250,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "either" = pkgs.stdenv.mkDerivation {
+    "either" = pkgs.stdenvNoCC.mkDerivation {
       name = "either";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -262,7 +262,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "enums" = pkgs.stdenv.mkDerivation {
+    "enums" = pkgs.stdenvNoCC.mkDerivation {
       name = "enums";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -274,7 +274,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "exceptions" = pkgs.stdenv.mkDerivation {
+    "exceptions" = pkgs.stdenvNoCC.mkDerivation {
       name = "exceptions";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -286,7 +286,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "exists" = pkgs.stdenv.mkDerivation {
+    "exists" = pkgs.stdenvNoCC.mkDerivation {
       name = "exists";
       version = "v5.1.0";
       src = pkgs.fetchgit {
@@ -298,7 +298,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "foldable-traversable" = pkgs.stdenv.mkDerivation {
+    "foldable-traversable" = pkgs.stdenvNoCC.mkDerivation {
       name = "foldable-traversable";
       version = "v5.0.1";
       src = pkgs.fetchgit {
@@ -311,7 +311,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "foreign" = pkgs.stdenv.mkDerivation {
+    "foreign" = pkgs.stdenvNoCC.mkDerivation {
       name = "foreign";
       version = "v6.0.1";
       src = pkgs.fetchgit {
@@ -323,7 +323,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "foreign-object" = pkgs.stdenv.mkDerivation {
+    "foreign-object" = pkgs.stdenvNoCC.mkDerivation {
       name = "foreign-object";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -335,7 +335,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "fork" = pkgs.stdenv.mkDerivation {
+    "fork" = pkgs.stdenvNoCC.mkDerivation {
       name = "fork";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -347,7 +347,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "form-urlencoded" = pkgs.stdenv.mkDerivation {
+    "form-urlencoded" = pkgs.stdenvNoCC.mkDerivation {
       name = "form-urlencoded";
       version = "v6.0.2";
       src = pkgs.fetchgit {
@@ -360,7 +360,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "free" = pkgs.stdenv.mkDerivation {
+    "free" = pkgs.stdenvNoCC.mkDerivation {
       name = "free";
       version = "v6.0.1";
       src = pkgs.fetchgit {
@@ -372,7 +372,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "freeap" = pkgs.stdenv.mkDerivation {
+    "freeap" = pkgs.stdenvNoCC.mkDerivation {
       name = "freeap";
       version = "v6.0.0";
       src = pkgs.fetchgit {
@@ -384,7 +384,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "functions" = pkgs.stdenv.mkDerivation {
+    "functions" = pkgs.stdenvNoCC.mkDerivation {
       name = "functions";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -396,7 +396,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "functors" = pkgs.stdenv.mkDerivation {
+    "functors" = pkgs.stdenvNoCC.mkDerivation {
       name = "functors";
       version = "v4.1.1";
       src = pkgs.fetchgit {
@@ -408,7 +408,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "gen" = pkgs.stdenv.mkDerivation {
+    "gen" = pkgs.stdenvNoCC.mkDerivation {
       name = "gen";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -420,7 +420,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "halogen" = pkgs.stdenv.mkDerivation {
+    "halogen" = pkgs.stdenvNoCC.mkDerivation {
       name = "halogen";
       version = "v6.1.2";
       src = pkgs.fetchgit {
@@ -432,7 +432,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "halogen-subscriptions" = pkgs.stdenv.mkDerivation {
+    "halogen-subscriptions" = pkgs.stdenvNoCC.mkDerivation {
       name = "halogen-subscriptions";
       version = "v1.0.0";
       src = pkgs.fetchgit {
@@ -445,7 +445,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "halogen-vdom" = pkgs.stdenv.mkDerivation {
+    "halogen-vdom" = pkgs.stdenvNoCC.mkDerivation {
       name = "halogen-vdom";
       version = "v7.0.1";
       src = pkgs.fetchgit {
@@ -458,7 +458,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "http-methods" = pkgs.stdenv.mkDerivation {
+    "http-methods" = pkgs.stdenvNoCC.mkDerivation {
       name = "http-methods";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -471,7 +471,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "identity" = pkgs.stdenv.mkDerivation {
+    "identity" = pkgs.stdenvNoCC.mkDerivation {
       name = "identity";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -483,7 +483,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "integers" = pkgs.stdenv.mkDerivation {
+    "integers" = pkgs.stdenvNoCC.mkDerivation {
       name = "integers";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -495,7 +495,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "invariant" = pkgs.stdenv.mkDerivation {
+    "invariant" = pkgs.stdenvNoCC.mkDerivation {
       name = "invariant";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -507,7 +507,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "js-date" = pkgs.stdenv.mkDerivation {
+    "js-date" = pkgs.stdenvNoCC.mkDerivation {
       name = "js-date";
       version = "v7.0.0";
       src = pkgs.fetchgit {
@@ -519,7 +519,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "js-uri" = pkgs.stdenv.mkDerivation {
+    "js-uri" = pkgs.stdenvNoCC.mkDerivation {
       name = "js-uri";
       version = "v2.0.0";
       src = pkgs.fetchgit {
@@ -531,7 +531,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "lazy" = pkgs.stdenv.mkDerivation {
+    "lazy" = pkgs.stdenvNoCC.mkDerivation {
       name = "lazy";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -543,7 +543,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "lists" = pkgs.stdenv.mkDerivation {
+    "lists" = pkgs.stdenvNoCC.mkDerivation {
       name = "lists";
       version = "v6.0.1";
       src = pkgs.fetchgit {
@@ -555,7 +555,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "math" = pkgs.stdenv.mkDerivation {
+    "math" = pkgs.stdenvNoCC.mkDerivation {
       name = "math";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -567,7 +567,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "maybe" = pkgs.stdenv.mkDerivation {
+    "maybe" = pkgs.stdenvNoCC.mkDerivation {
       name = "maybe";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -579,7 +579,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "media-types" = pkgs.stdenv.mkDerivation {
+    "media-types" = pkgs.stdenvNoCC.mkDerivation {
       name = "media-types";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -592,7 +592,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "newtype" = pkgs.stdenv.mkDerivation {
+    "newtype" = pkgs.stdenvNoCC.mkDerivation {
       name = "newtype";
       version = "v4.0.0";
       src = pkgs.fetchgit {
@@ -604,7 +604,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "nonempty" = pkgs.stdenv.mkDerivation {
+    "nonempty" = pkgs.stdenvNoCC.mkDerivation {
       name = "nonempty";
       version = "v6.0.0";
       src = pkgs.fetchgit {
@@ -616,7 +616,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "now" = pkgs.stdenv.mkDerivation {
+    "now" = pkgs.stdenvNoCC.mkDerivation {
       name = "now";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -628,7 +628,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "nullable" = pkgs.stdenv.mkDerivation {
+    "nullable" = pkgs.stdenvNoCC.mkDerivation {
       name = "nullable";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -640,7 +640,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "numbers" = pkgs.stdenv.mkDerivation {
+    "numbers" = pkgs.stdenvNoCC.mkDerivation {
       name = "numbers";
       version = "v8.0.0";
       src = pkgs.fetchgit {
@@ -652,7 +652,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "ordered-collections" = pkgs.stdenv.mkDerivation {
+    "ordered-collections" = pkgs.stdenvNoCC.mkDerivation {
       name = "ordered-collections";
       version = "v2.0.1";
       src = pkgs.fetchgit {
@@ -665,7 +665,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "orders" = pkgs.stdenv.mkDerivation {
+    "orders" = pkgs.stdenvNoCC.mkDerivation {
       name = "orders";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -677,7 +677,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "parallel" = pkgs.stdenv.mkDerivation {
+    "parallel" = pkgs.stdenvNoCC.mkDerivation {
       name = "parallel";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -689,7 +689,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "partial" = pkgs.stdenv.mkDerivation {
+    "partial" = pkgs.stdenvNoCC.mkDerivation {
       name = "partial";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -701,7 +701,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "prelude" = pkgs.stdenv.mkDerivation {
+    "prelude" = pkgs.stdenvNoCC.mkDerivation {
       name = "prelude";
       version = "v5.0.1";
       src = pkgs.fetchgit {
@@ -713,7 +713,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "profunctor" = pkgs.stdenv.mkDerivation {
+    "profunctor" = pkgs.stdenvNoCC.mkDerivation {
       name = "profunctor";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -725,7 +725,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "profunctor-lenses" = pkgs.stdenv.mkDerivation {
+    "profunctor-lenses" = pkgs.stdenvNoCC.mkDerivation {
       name = "profunctor-lenses";
       version = "v7.0.1";
       src = pkgs.fetchgit {
@@ -738,7 +738,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "psci-support" = pkgs.stdenv.mkDerivation {
+    "psci-support" = pkgs.stdenvNoCC.mkDerivation {
       name = "psci-support";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -750,7 +750,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "record" = pkgs.stdenv.mkDerivation {
+    "record" = pkgs.stdenvNoCC.mkDerivation {
       name = "record";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -762,7 +762,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "refs" = pkgs.stdenv.mkDerivation {
+    "refs" = pkgs.stdenvNoCC.mkDerivation {
       name = "refs";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -774,7 +774,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "routing" = pkgs.stdenv.mkDerivation {
+    "routing" = pkgs.stdenvNoCC.mkDerivation {
       name = "routing";
       version = "v10.0.1";
       src = pkgs.fetchgit {
@@ -786,7 +786,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "safe-coerce" = pkgs.stdenv.mkDerivation {
+    "safe-coerce" = pkgs.stdenvNoCC.mkDerivation {
       name = "safe-coerce";
       version = "v1.0.0";
       src = pkgs.fetchgit {
@@ -798,7 +798,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "semirings" = pkgs.stdenv.mkDerivation {
+    "semirings" = pkgs.stdenvNoCC.mkDerivation {
       name = "semirings";
       version = "v6.0.0";
       src = pkgs.fetchgit {
@@ -810,7 +810,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "simple-ajax" = pkgs.stdenv.mkDerivation {
+    "simple-ajax" = pkgs.stdenvNoCC.mkDerivation {
       name = "simple-ajax";
       version = "v4.0.0";
       src = pkgs.fetchgit {
@@ -822,7 +822,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "st" = pkgs.stdenv.mkDerivation {
+    "st" = pkgs.stdenvNoCC.mkDerivation {
       name = "st";
       version = "v5.0.1";
       src = pkgs.fetchgit {
@@ -834,7 +834,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "strings" = pkgs.stdenv.mkDerivation {
+    "strings" = pkgs.stdenvNoCC.mkDerivation {
       name = "strings";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -846,7 +846,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "tailrec" = pkgs.stdenv.mkDerivation {
+    "tailrec" = pkgs.stdenvNoCC.mkDerivation {
       name = "tailrec";
       version = "v5.0.1";
       src = pkgs.fetchgit {
@@ -858,7 +858,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "transformers" = pkgs.stdenv.mkDerivation {
+    "transformers" = pkgs.stdenvNoCC.mkDerivation {
       name = "transformers";
       version = "v5.1.0";
       src = pkgs.fetchgit {
@@ -870,7 +870,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "tuples" = pkgs.stdenv.mkDerivation {
+    "tuples" = pkgs.stdenvNoCC.mkDerivation {
       name = "tuples";
       version = "v6.0.1";
       src = pkgs.fetchgit {
@@ -882,7 +882,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "type-equality" = pkgs.stdenv.mkDerivation {
+    "type-equality" = pkgs.stdenvNoCC.mkDerivation {
       name = "type-equality";
       version = "v4.0.0";
       src = pkgs.fetchgit {
@@ -894,7 +894,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "typelevel-prelude" = pkgs.stdenv.mkDerivation {
+    "typelevel-prelude" = pkgs.stdenvNoCC.mkDerivation {
       name = "typelevel-prelude";
       version = "v6.0.0";
       src = pkgs.fetchgit {
@@ -906,7 +906,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "unfoldable" = pkgs.stdenv.mkDerivation {
+    "unfoldable" = pkgs.stdenvNoCC.mkDerivation {
       name = "unfoldable";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -918,7 +918,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "unsafe-coerce" = pkgs.stdenv.mkDerivation {
+    "unsafe-coerce" = pkgs.stdenvNoCC.mkDerivation {
       name = "unsafe-coerce";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -930,7 +930,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "unsafe-reference" = pkgs.stdenv.mkDerivation {
+    "unsafe-reference" = pkgs.stdenvNoCC.mkDerivation {
       name = "unsafe-reference";
       version = "v4.0.0";
       src = pkgs.fetchgit {
@@ -943,7 +943,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "validation" = pkgs.stdenv.mkDerivation {
+    "validation" = pkgs.stdenvNoCC.mkDerivation {
       name = "validation";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -955,7 +955,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "variant" = pkgs.stdenv.mkDerivation {
+    "variant" = pkgs.stdenvNoCC.mkDerivation {
       name = "variant";
       version = "v7.0.3";
       src = pkgs.fetchgit {
@@ -967,7 +967,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-clipboard" = pkgs.stdenv.mkDerivation {
+    "web-clipboard" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-clipboard";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -979,7 +979,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-dom" = pkgs.stdenv.mkDerivation {
+    "web-dom" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-dom";
       version = "v5.0.0";
       src = pkgs.fetchgit {
@@ -991,7 +991,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-events" = pkgs.stdenv.mkDerivation {
+    "web-events" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-events";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -1003,7 +1003,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-file" = pkgs.stdenv.mkDerivation {
+    "web-file" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-file";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -1015,7 +1015,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-html" = pkgs.stdenv.mkDerivation {
+    "web-html" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-html";
       version = "v3.1.0";
       src = pkgs.fetchgit {
@@ -1027,7 +1027,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-storage" = pkgs.stdenv.mkDerivation {
+    "web-storage" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-storage";
       version = "v4.0.0";
       src = pkgs.fetchgit {
@@ -1039,7 +1039,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-touchevents" = pkgs.stdenv.mkDerivation {
+    "web-touchevents" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-touchevents";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -1052,7 +1052,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-uievents" = pkgs.stdenv.mkDerivation {
+    "web-uievents" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-uievents";
       version = "v3.0.0";
       src = pkgs.fetchgit {
@@ -1064,7 +1064,7 @@ let
       installPhase = "ln -s $src $out";
     };
 
-    "web-xhr" = pkgs.stdenv.mkDerivation {
+    "web-xhr" = pkgs.stdenvNoCC.mkDerivation {
       name = "web-xhr";
       version = "v4.1.0";
       src = pkgs.fetchgit {
@@ -1126,7 +1126,7 @@ in rec {
 
   mkBuildProjectOutput = { src, purs }:
 
-    pkgs.stdenv.mkDerivation {
+    pkgs.stdenvNoCC.mkDerivation {
       name = "build-project-output";
       src = src;
 
@@ -1144,7 +1144,7 @@ in rec {
 
   mkBuildProjectBundle = { name, src, purs }:
 
-    pkgs.stdenv.mkDerivation {
+    pkgs.stdenvNoCC.mkDerivation {
       inherit name src;
 
       buildInputs = [ purs ];

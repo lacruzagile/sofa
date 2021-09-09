@@ -1,4 +1,4 @@
-{ pkgs ? import ../nix/packages.nix }:
+{ pkgs ? import ../nix/packages.nix { } }:
 
 pkgs.mkShellNoCC {
   name = "nix-shell-for-purssmartspec";
