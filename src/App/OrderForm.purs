@@ -18,6 +18,7 @@ import Data.SmartSpec (skuCode, solutionProducts)
 import Data.SmartSpec as SS
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
+import Debug (spyWith)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -69,16 +70,20 @@ type OrderSection
 
 type OrderLine
   = { product :: SS.Product
-    , charge :: SS.Charge
+    , charge :: Maybe SS.Charge
     , quantity :: Int
     , configs :: Array (Map String SS.ConfigValue)
     }
 
+-- type Charge
+--   = { chargeType :: SS.ChargeType
+--     , charge :: SS.Charge
+--     }
 type PriceBook
   = { id :: String
     , name :: String
     , version :: String
-    , rateCards :: Maybe (Array SS.RateCard)
+    , rateCards :: Maybe (Map String SS.RateCard) -- ^ Maybe a map from SKU to rate cards.
     }
 
 data Action
@@ -229,7 +234,7 @@ render state =
           <> renderProductConfigs product ol.configs
     where
     body subBody =
-      HH.div [ HP.classes [ Css.orderSection ] ]
+      HH.div [ HP.classes [ Css.orderLine ] ]
         $ [ HH.a
               [ HP.class_ Css.close
               , HE.onClick \_ -> RemoveOrderLine { sectionIndex: secIdx, orderLineIndex: olIdx }
@@ -533,19 +538,22 @@ toJson orderForm = do
   pure $ stringifyWithIndent 2
     $ encodeJson
     $ SS.OrderForm
-        { id: "ORDER-1"
-        , customer
+        { id: ""
         , status: SS.OsInDraft
+        , customer
         , sections
         }
   where
-  toOrderLine ol =
-    SS.OrderLine
-      { sku: SS.SkuCode $ _.sku $ unwrap $ ol.product
-      , charge: ol.charge
-      , quantity: ol.quantity
-      , configs: ol.configs
-      }
+  toOrderLine :: OrderLine -> Maybe SS.OrderLine
+  toOrderLine ol = do
+    ch <- ol.charge
+    pure
+      $ SS.OrderLine
+          { sku: SS.SkuCode $ _.sku $ unwrap $ ol.product
+          , charge: ch
+          , quantity: ol.quantity
+          , configs: ol.configs
+          }
 
   toPriceBookRef pb =
     SS.PriceBookRef
@@ -558,7 +566,7 @@ toJson orderForm = do
   toOrderSection os = do
     solutionURI <- _.uri $ unwrap $ os.solution
     basePriceBook <- toPriceBookRef <$> os.priceBook
-    orderLines <- sequence $ map (map toOrderLine) os.orderLines
+    orderLines <- sequence $ map (toOrderLine =<< _) os.orderLines
     pure $ SS.OrderSection { solutionURI, basePriceBook, orderLines }
 
 loadCatalog ::
@@ -606,6 +614,105 @@ mkDefaultConfig (SS.Product p) = maybe Map.empty mkDefaults p.configSchema
     SS.CseObject _ -> Nothing
     SS.CseOneOf _ -> Nothing
 
+calcSubTotal :: OrderSection -> OrderSection
+calcSubTotal os =
+  os
+    { orderLines = orderLines'
+    , summary = sumOrderLines orderLines'
+    }
+  where
+  orderLines' = map (map (updateOrderLineCharge os.priceBook)) os.orderLines
+
+  updateOrderLineCharge :: Maybe PriceBook -> OrderLine -> OrderLine
+  updateOrderLineCharge mpb ol =
+    fromMaybe ol
+      $ (\pb -> ol { charge = lookupCharge ol.product pb })
+      <$> mpb
+
+  lookupCharge :: SS.Product -> PriceBook -> Maybe SS.Charge
+  lookupCharge (SS.Product product) pb = do
+    rateCards <- pb.rateCards
+    SS.RateCard rateCard <- Map.lookup product.sku rateCards
+    pure rateCard.charge
+
+  sumOrderLines :: Array (Maybe OrderLine) -> SS.OrderSectionSummary
+  sumOrderLines = toOrderSectionSummary <<< A.foldl (\a b -> plus a (conv b)) nil
+
+  conv :: Maybe OrderLine -> { u :: Number, m :: Number, o :: Number }
+  conv Nothing = nil
+
+  conv (Just ol) =
+    let
+      result = maybe nil (calcCharge ol.product) ol.charge
+    in
+      { u: Int.toNumber ol.quantity * result.u
+      , m: Int.toNumber ol.quantity * result.m
+      , o: Int.toNumber ol.quantity * result.o
+      }
+
+  plus a b = { u: a.u + b.u, m: a.m + b.m, o: a.o + b.o }
+
+  nil = { u: 0.0, m: 0.0, o: 0.0 }
+
+  calcCharge :: SS.Product -> SS.Charge -> { u :: Number, m :: Number, o :: Number }
+  calcCharge product = case _ of
+    SS.ChargeSimple c -> maybe nil (mkChargeSummary (simplePriceToAmount 1 c)) $ chargeType c.unit product
+    SS.ChargeMixed c -> spyWith "Mixed charges not supported at the moment" (\_ -> c) nil
+    SS.ChargeArray cs -> A.foldl (\a b -> plus a (calcCharge product b)) nil cs
+
+  toOrderSectionSummary :: { u :: Number, m :: Number, o :: Number } -> SS.OrderSectionSummary
+  toOrderSectionSummary { u, m, o } =
+    SS.OrderSectionSummary
+      { estimatedUsageSubTotal: u
+      , monthlySubTotal: m
+      , onetimeSubTotal: o
+      }
+
+  mkChargeSummary :: Number -> SS.ChargeType -> { u :: Number, m :: Number, o :: Number }
+  mkChargeSummary c = case _ of
+    SS.ChargeTypeOnetime -> { u: 0.0, m: 0.0, o: c }
+    SS.ChargeTypeMonthly -> { u: 0.0, m: c, o: 0.0 }
+    SS.ChargeTypeUsage -> { u: c, m: 0.0, o: 0.0 }
+
+  chargeType (SS.ChargeUnitRef unit) (SS.Product { chargeUnits }) =
+    map (\(SS.ChargeUnit u) -> u.chargeType)
+      $ A.find (\(SS.ChargeUnit u) -> u.id == unit.unitID)
+      $ chargeUnits
+
+  priceInSegment :: Int -> Array SS.PricePerSegment -> Number
+  priceInSegment q = maybe 0.0 (\(SS.PricePerSegment p) -> p.listPrice) <<< A.head <<< A.filter isInSegment
+    where
+    isInSegment (SS.PricePerSegment p) = p.minimum <= q && maybe true (q < _) p.exclusiveMaximum
+
+  simplePriceToAmount q c = case c.price of
+    SS.SimplePriceSegmented (SS.Price ps) -> priceInSegment q ps
+    SS.SimplePriceByDim _ -> 0.0
+
+calcTotal :: OrderForm -> OrderForm
+calcTotal orderForm = orderForm { summary = SS.OrderSummary $ sumOrderSecs orderForm.sections }
+  where
+  sumOrderSecs = A.foldl (\a b -> plus a (conv b)) nil
+
+  conv Nothing = nil
+
+  conv (Just { summary: SS.OrderSectionSummary os }) =
+    { estimatedUsageTotal: os.estimatedUsageSubTotal
+    , monthlyTotal: os.monthlySubTotal
+    , onetimeTotal: os.onetimeSubTotal
+    }
+
+  plus a b =
+    { estimatedUsageTotal: a.estimatedUsageTotal + b.estimatedUsageTotal
+    , monthlyTotal: a.monthlyTotal + b.monthlyTotal
+    , onetimeTotal: a.onetimeTotal + b.onetimeTotal
+    }
+
+  nil =
+    { estimatedUsageTotal: 0.0
+    , monthlyTotal: 0.0
+    , onetimeTotal: 0.0
+    }
+
 handleAction ::
   forall slots output m.
   MonadAff m => Action -> H.HalogenM State Action slots output m Unit
@@ -629,6 +736,8 @@ handleAction = case _ of
 
             SS.ProductCatalog pc = st.productCatalog
 
+            rateCardMap = Map.fromFoldable <<< map (\rc@(SS.RateCard rc') -> Tuple (skuCode rc'.sku) rc)
+
             mkPriceBooks c = do
               SS.Solution sol <- A.fromFoldable $ Map.values pc.solutions
               SS.PriceBook pb <- sol.priceBooks
@@ -639,7 +748,7 @@ handleAction = case _ of
                     [ { id: pb.id
                       , name: pb.name
                       , version: pbv.version
-                      , rateCards: pbc.rateCards
+                      , rateCards: rateCardMap <$> pbc.rateCards
                       }
                     ]
                 ]
@@ -691,14 +800,16 @@ handleAction = case _ of
       $ map \st ->
           let
             setPriceBook :: Maybe OrderSection -> Maybe OrderSection
-            setPriceBook = map (\section -> section { priceBook = priceBook })
+            setPriceBook = map (\section -> calcSubTotal section { priceBook = priceBook })
           in
             st
-              { orderForm
-                { sections =
-                  fromMaybe st.orderForm.sections
-                    $ modifyAt sectionIndex setPriceBook st.orderForm.sections
-                }
+              { orderForm =
+                calcTotal
+                  st.orderForm
+                    { sections =
+                      fromMaybe st.orderForm.sections
+                        $ modifyAt sectionIndex setPriceBook st.orderForm.sections
+                    }
               }
   RemoveSection { sectionIndex } ->
     H.modify_
@@ -729,51 +840,36 @@ handleAction = case _ of
       removeOrderLine =
         map
           ( \section ->
-              section
-                { orderLines =
-                  fromMaybe section.orderLines
-                    $ A.deleteAt orderLineIndex section.orderLines
-                }
+              calcSubTotal
+                section
+                  { orderLines = fromMaybe section.orderLines $ A.deleteAt orderLineIndex section.orderLines
+                  }
           )
     in
       H.modify_
         $ map \st ->
             st
-              { orderForm
-                { sections =
-                  fromMaybe st.orderForm.sections (modifyAt sectionIndex removeOrderLine st.orderForm.sections)
-                }
+              { orderForm =
+                calcTotal
+                  st.orderForm
+                    { sections =
+                      fromMaybe st.orderForm.sections (modifyAt sectionIndex removeOrderLine st.orderForm.sections)
+                    }
               }
   OrderLineSetProduct { sectionIndex, orderLineIndex, sku } ->
     let
+      mkOrderLine :: SS.Product -> OrderLine
       mkOrderLine product =
-        { product: product
-        , charge:
-            SS.ChargeSimple
-              { unit: SS.ChargeUnitRef { unitID: "UID", product: Nothing }
-              , price:
-                  SS.SimplePriceSegmented
-                    $ SS.Price
-                        [ SS.PricePerSegment
-                            { minimum: 0
-                            , exclusiveMaximum: Nothing
-                            , listPrice: 0.0
-                            , salesPrice: 0.0
-                            , discount: Nothing
-                            }
-                        ]
-              , segmentation: Nothing
-              , termOfPriceChangeInDays: 0
-              , monthlyMinimum: 0.0
-              }
+        { product
+        , charge: Nothing
         , quantity: 1
         , configs: [ mkDefaultConfig product ]
         }
 
-      updateOrderLine :: SS.Product -> Map String SS.Product -> Maybe OrderLine -> OrderLine
-      updateOrderLine prod _solProds = case _ of
-        Nothing -> mkOrderLine prod
-        Just _ol -> mkOrderLine prod
+      updateOrderLine :: SS.Product -> Maybe OrderLine -> OrderLine
+      updateOrderLine product = case _ of
+        Nothing -> mkOrderLine product
+        Just _ol -> mkOrderLine product
 
       -- | Build order lines for all required product options.
       requiredOptions :: SS.Product -> Map String SS.Product -> Array (Maybe OrderLine)
@@ -785,24 +881,25 @@ handleAction = case _ of
 
           requiredProds = A.mapMaybe (requiredSkuCode >=> (\o -> Map.lookup o solProds)) <$> p.options
         in
-          maybe [] (map Just <<< map mkOrderLine) requiredProds
+          maybe [] (map (Just <<< mkOrderLine)) requiredProds
 
       updateOrderSection :: OrderSection -> OrderSection
       updateOrderSection section =
         let
           solProds = solutionProducts section.solution
         in
-          section
-            { orderLines =
-              maybe
-                section.orderLines
-                (\(Tuple product ls) -> ls <> requiredOptions product solProds)
-                ( do
-                    product <- Map.lookup (skuCode sku) solProds
-                    ls <- modifyAt orderLineIndex (Just <<< updateOrderLine product solProds) section.orderLines
-                    pure $ Tuple product ls
-                )
-            }
+          calcSubTotal
+            section
+              { orderLines =
+                maybe
+                  section.orderLines
+                  (\(Tuple product ls) -> ls <> requiredOptions product solProds)
+                  ( do
+                      product <- Map.lookup (skuCode sku) solProds
+                      ls <- modifyAt orderLineIndex (Just <<< updateOrderLine product) section.orderLines
+                      pure $ Tuple product ls
+                  )
+              }
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
       updateSections sections =
@@ -811,7 +908,7 @@ handleAction = case _ of
           $ sections
     in
       H.modify_
-        $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
+        $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
   OrderLineSetQuantity { sectionIndex, orderLineIndex, quantity } ->
     let
       -- Creates a new array of product configurations. The list is a truncation
@@ -831,12 +928,13 @@ handleAction = case _ of
 
       updateOrderLine :: OrderSection -> OrderSection
       updateOrderLine section =
-        section
-          { orderLines =
-            fromMaybe
-              section.orderLines
-              (modifyAt orderLineIndex (map updateQuantity) section.orderLines)
-          }
+        calcSubTotal
+          section
+            { orderLines =
+              fromMaybe
+                section.orderLines
+                (modifyAt orderLineIndex (map updateQuantity) section.orderLines)
+            }
 
       updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
       updateSections sections =
@@ -845,7 +943,7 @@ handleAction = case _ of
           $ sections
     in
       H.modify_
-        $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
+        $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
   OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, field, value } ->
     let
       updateValue :: OrderLine -> OrderLine

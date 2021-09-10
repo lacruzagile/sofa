@@ -10,5 +10,6 @@ pkgs.mkShellNoCC {
     purescript
     purty
     spago
+    spago2nix
   ];
 }

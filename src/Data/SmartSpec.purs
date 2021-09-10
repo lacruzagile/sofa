@@ -667,6 +667,8 @@ data ChargeType
   | ChargeTypeMonthly
   | ChargeTypeUsage
 
+derive instance eqChargeType :: Eq ChargeType
+
 instance showChargeType :: Show ChargeType where
   show = case _ of
     ChargeTypeOnetime -> "Onetime"

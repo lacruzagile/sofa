@@ -17,6 +17,9 @@ tabBody = ClassName "tabbody"
 orderSection :: ClassName
 orderSection = ClassName "ordersection"
 
+orderLine :: ClassName
+orderLine = ClassName "orderline"
+
 addOrderLine :: ClassName
 addOrderLine = ClassName "addorderline"
 

@@ -201,6 +201,18 @@ let
       installPhase = "ln -s $src $out";
     };
 
+    "debug" = pkgs.stdenv.mkDerivation {
+      name = "debug";
+      version = "v5.0.0";
+      src = pkgs.fetchgit {
+        url = "https://github.com/garyb/purescript-debug.git";
+        rev = "144305842dba81169a93b3a3cc75429d5c8389e9";
+        sha256 = "09j69bgrq8nzw1l3aj1hka3y5ycmcsn9dlgf22k5ifrd74iic60y";
+      };
+      phases = "installPhase";
+      installPhase = "ln -s $src $out";
+    };
+
     "distributive" = pkgs.stdenv.mkDerivation {
       name = "distributive";
       version = "v5.0.0";
@@ -733,18 +745,6 @@ let
         url = "https://github.com/purescript/purescript-psci-support.git";
         rev = "f26fe8266a63494080476333e22f971404ea8846";
         sha256 = "16vhf8hapd7rcgmafmjpiq7smhzdh3300f2idk1q4kk01yxn8ddj";
-      };
-      phases = "installPhase";
-      installPhase = "ln -s $src $out";
-    };
-
-    "random" = pkgs.stdenv.mkDerivation {
-      name = "random";
-      version = "v5.0.0";
-      src = pkgs.fetchgit {
-        url = "https://github.com/purescript/purescript-random.git";
-        rev = "3e02da113c7afbac37ea4e16188c39d3057314d5";
-        sha256 = "1v6ykgp8jmx488hq8mgb0l0sf1nyhjs6wq0w279iyibk9jxc6nib";
       };
       phases = "installPhase";
       installPhase = "ln -s $src $out";
