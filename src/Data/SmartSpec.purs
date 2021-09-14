@@ -69,6 +69,7 @@ module Data.SmartSpec
   , UnitRef(..)
   , Uri(..)
   , Validity(..)
+  , configSchemaEntryDescription
   , configSchemaEntryTitle
   , productUnits
   , skuCode
@@ -775,6 +776,16 @@ configSchemaEntryTitle = case _ of
   CseString x -> x.title
   CseRegex x -> x.title
   CseConst x -> x.title
+  CseArray _x -> Nothing
+  CseObject _x -> Nothing
+  CseOneOf _x -> Nothing
+
+configSchemaEntryDescription :: ConfigSchemaEntry -> Maybe String
+configSchemaEntryDescription = case _ of
+  CseInteger x -> x.description
+  CseString x -> x.description
+  CseRegex x -> x.description
+  CseConst x -> x.description
   CseArray _x -> Nothing
   CseObject _x -> Nothing
   CseOneOf _x -> Nothing

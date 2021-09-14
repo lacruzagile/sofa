@@ -337,10 +337,17 @@ render state =
 
     renderEntry (Tuple key schemaEntry) =
       [ HH.label_
-          [ HH.text $ fromMaybe key $ SS.configSchemaEntryTitle schemaEntry
+          [ withDescription $ HH.text $ fromMaybe key $ SS.configSchemaEntryTitle schemaEntry
           , renderSchemaEntry (onChange key) (Map.lookup key config) schemaEntry
           ]
       ]
+      where
+      tooltip label text =
+        HH.span
+          [ HP.attr (H.AttrName "data-tooltip") text, HP.class_ Css.tooltipTop ]
+          [ label, HH.sup_ [ HH.a_ [ HH.text "?" ] ] ]
+
+      withDescription label = maybe label (tooltip label) $ SS.configSchemaEntryDescription schemaEntry
 
   renderSection ::
     StateOrderForm ->

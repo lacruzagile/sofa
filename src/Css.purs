@@ -140,3 +140,6 @@ dangerous = ClassName "dangerous"
 
 dull :: ClassName
 dull = ClassName "dull"
+
+tooltipTop :: ClassName
+tooltipTop = ClassName "tooltip-top"
