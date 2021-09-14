@@ -5,6 +5,9 @@ module Data.SmartSpec
   , BillingOption(..)
   , Charge(..)
   , ChargeType(..)
+  , ChargeUnit(..)
+  , ChargeUnitMap
+  , ChargeUnitRef(..)
   , Commercial(..)
   , ConfigSchemaEntry(..)
   , ConfigSchemaEntryMeta
@@ -15,7 +18,7 @@ module Data.SmartSpec
   , Customer(..)
   , Date(..)
   , DateTime(..)
-  , DefaultPriceByUnit(..)
+  , DefaultPricePerUnit(..)
   , DimValue(..)
   , Discount(..)
   , LegalEntity(..)
@@ -35,8 +38,8 @@ module Data.SmartSpec
   , PriceByUnit(..)
   , PriceOverride(..)
   , PriceSegmentation(..)
-  , PriceSegmentationByUnit(..)
-  , PricesPerDimByUnit(..)
+  , PriceSegmentationPerUnit(..)
+  , PriceByUnitPerDim(..)
   , Product(..)
   , ProductCatalog(..)
   , ProductCategory(..)
@@ -56,7 +59,7 @@ module Data.SmartSpec
   , RuleStage(..)
   , SalesforceAccountRef(..)
   , Segment(..)
-  , SegmentPrice(..)
+  , PricePerSegment(..)
   , SegmentationModel(..)
   , SegmentationPeriod(..)
   , Seller(..)
@@ -64,17 +67,14 @@ module Data.SmartSpec
   , SimplePrice(..)
   , Sku(..)
   , Solution(..)
-  , SpecUnit(..)
-  , SpecUnitMap
-  , UnitRef(..)
   , Uri(..)
   , Validity(..)
+  , chargeUnitLabel
   , configSchemaEntryDescription
   , configSchemaEntryTitle
-  , productUnits
+  , productChargeUnits
   , skuCode
   , solutionProducts
-  , specUnitLabel
   ) where
 
 import Prelude
@@ -131,7 +131,6 @@ newtype ProductCatalog
   = ProductCatalog
   { name :: Maybe String
   , description :: Maybe String
-  , rules :: Array Rule
   , solutions :: Map String Solution
   }
 
@@ -140,7 +139,6 @@ instance decodeJsonProductCatalog :: DecodeJson ProductCatalog where
     o <- decodeJson json
     name <- o .:? "name"
     description <- o .:? "description"
-    rules <- o .:? "rules" .!= []
     solutionsObj :: FO.Object Solution <- o .: "solutions"
     let
       solutions = Map.fromFoldable (FO.toUnfoldable solutionsObj :: Array _)
@@ -148,7 +146,6 @@ instance decodeJsonProductCatalog :: DecodeJson ProductCatalog where
       $ ProductCatalog
           { name
           , description
-          , rules
           , solutions
           }
 
@@ -271,7 +268,7 @@ newtype PriceBook
   { id :: String
   , name :: String
   , description :: Maybe String
-  , versions :: Array PriceBookVersion
+  , byVersion :: Array PriceBookVersion
   }
 
 derive instance newtypePriceBook :: Newtype PriceBook _
@@ -314,17 +311,17 @@ instance encodeJsonPriceBookCurrency :: EncodeJson PriceBookCurrency where
 -- TODO: Assert non-negative.
 data Charge
   = ChargeSimple
-    { unit :: UnitRef
+    { unit :: ChargeUnitRef
     , price :: SimplePrice
     , segmentation :: Maybe PriceSegmentation
     , termOfPriceChangeInDays :: Int
     , monthlyMinimum :: Number
     }
   | ChargeMixed
-    { units :: Array UnitRef
-    , priceSegmentations :: Array PriceSegmentationByUnit
-    , defaultPrices :: Array DefaultPriceByUnit
-    , pricesPerDim :: Array PricesPerDimByUnit
+    { units :: Array ChargeUnitRef
+    , segmentationByUnit :: Array PriceSegmentationPerUnit
+    , defaultPriceByUnit :: Array DefaultPricePerUnit
+    , priceByUnitByDim :: Array PriceByUnitPerDim
     , monthlyMinimum :: Number
     , termOfPriceChangeInDays :: Int
     }
@@ -356,17 +353,17 @@ instance decodeJsonCharge :: DecodeJson Charge where
     rccMixed j = do
       o <- decodeJson j
       units <- o .: "units"
-      priceSegmentations <- o .:? "priceSegmentations" .!= []
-      defaultPrices <- o .:? "defaultPrices" .!= []
-      pricesPerDim <- o .: "pricesPerDim"
+      segmentationByUnit <- o .:? "segmentationByUnit" .!= []
+      defaultPriceByUnit <- o .:? "defaultPriceByUnit" .!= []
+      priceByUnitByDim <- o .: "priceByUnitByDim"
       monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       pure
         $ ChargeMixed
             { units
-            , priceSegmentations
-            , defaultPrices
-            , pricesPerDim
+            , segmentationByUnit
+            , defaultPriceByUnit
+            , priceByUnitByDim
             , monthlyMinimum
             , termOfPriceChangeInDays
             }
@@ -446,8 +443,8 @@ instance encodeJsonDiscount :: EncodeJson Discount where
       { amount: x
       }
 
-newtype SegmentPrice
-  = SegmentPrice
+newtype PricePerSegment
+  = PricePerSegment
   { minimum :: Int
   , exclusiveMaximum :: Maybe Int
   , listPrice :: Number
@@ -455,7 +452,7 @@ newtype SegmentPrice
   , discount :: Maybe Discount
   }
 
-instance decodeJsonSegmentPrice :: DecodeJson SegmentPrice where
+instance decodeJsonPricePerSegment :: DecodeJson PricePerSegment where
   decodeJson json = do
     o <- decodeJson json
     minimum <- o .: "minimum"
@@ -473,7 +470,7 @@ instance decodeJsonSegmentPrice :: DecodeJson SegmentPrice where
         pure { listPrice, salesPrice, discount }
     p <- basicPrice <|> discountedPrice
     pure
-      $ SegmentPrice
+      $ PricePerSegment
           { minimum
           , exclusiveMaximum
           , listPrice: p.listPrice
@@ -481,12 +478,12 @@ instance decodeJsonSegmentPrice :: DecodeJson SegmentPrice where
           , discount: p.discount
           }
 
-instance encodeJsonSegmentPrice :: EncodeJson SegmentPrice where
-  encodeJson (SegmentPrice x) = encodeJson x
+instance encodeJsonPricePerSegment :: EncodeJson PricePerSegment where
+  encodeJson (PricePerSegment x) = encodeJson x
 
 newtype PriceSegmentation
   = PriceSegmentation
-  { segmentUnit :: UnitRef
+  { unit :: ChargeUnitRef
   , period :: SegmentationPeriod
   , model :: SegmentationModel
   , segments :: Array Segment
@@ -498,17 +495,17 @@ instance decodeJsonPriceSegmentation :: DecodeJson PriceSegmentation where
 instance encodeJsonPriceSegmentation :: EncodeJson PriceSegmentation where
   encodeJson (PriceSegmentation x) = encodeJson x
 
-newtype PriceSegmentationByUnit
-  = PriceSegmentationByUnit
-  { unit :: UnitRef
+newtype PriceSegmentationPerUnit
+  = PriceSegmentationPerUnit
+  { unit :: ChargeUnitRef
   , segmentation :: PriceSegmentation
   }
 
-instance decodeJsonPriceSegmentationByUnit :: DecodeJson PriceSegmentationByUnit where
-  decodeJson json = PriceSegmentationByUnit <$> decodeJson json
+instance decodeJsonPriceSegmentationPerUnit :: DecodeJson PriceSegmentationPerUnit where
+  decodeJson json = PriceSegmentationPerUnit <$> decodeJson json
 
-instance encodeJsonPriceSegmentationByUnit :: EncodeJson PriceSegmentationByUnit where
-  encodeJson (PriceSegmentationByUnit x) = encodeJson x
+instance encodeJsonPriceSegmentationPerUnit :: EncodeJson PriceSegmentationPerUnit where
+  encodeJson (PriceSegmentationPerUnit x) = encodeJson x
 
 newtype RateCard
   = RateCard
@@ -525,14 +522,14 @@ instance encodeJsonRateCard :: EncodeJson RateCard where
   encodeJson (RateCard x) = encodeJson x
 
 newtype Price
-  = Price (Array SegmentPrice)
+  = Price (Array PricePerSegment)
 
 instance decodeJsonPrice :: DecodeJson Price where
   decodeJson json = fixed <|> segmented
     where
     mkSingleton p =
       Price
-        [ SegmentPrice
+        [ PricePerSegment
             { minimum: 0
             , exclusiveMaximum: Nothing
             , listPrice: p
@@ -591,39 +588,39 @@ instance decodeJsonSegmentationModel :: DecodeJson SegmentationModel where
 instance encodeJsonSegmentationModel :: EncodeJson SegmentationModel where
   encodeJson = encodeJson <<< show
 
-newtype DefaultPriceByUnit
-  = DefaultPriceByUnit
-  { unit :: UnitRef
+newtype DefaultPricePerUnit
+  = DefaultPricePerUnit
+  { unit :: ChargeUnitRef
   , price :: Number
   }
 
-instance decodeJsonDefaultPriceByUnit :: DecodeJson DefaultPriceByUnit where
-  decodeJson json = DefaultPriceByUnit <$> decodeJson json
+instance decodeJsonDefaultPricePerUnit :: DecodeJson DefaultPricePerUnit where
+  decodeJson json = DefaultPricePerUnit <$> decodeJson json
 
-instance encodeJsonDefaultPriceByUnit :: EncodeJson DefaultPriceByUnit where
-  encodeJson (DefaultPriceByUnit x) = encodeJson x
+instance encodeJsonDefaultPricePerUnit :: EncodeJson DefaultPricePerUnit where
+  encodeJson (DefaultPricePerUnit x) = encodeJson x
 
-newtype PricesPerDimByUnit
-  = PricesPerDimByUnit
+newtype PriceByUnitPerDim
+  = PriceByUnitPerDim
   { dim :: DimValue
   , prices :: Array PriceByUnit
   , monthlyMinimum :: Number
   }
 
-instance decodeJsonPricesPerDimByUnit :: DecodeJson PricesPerDimByUnit where
+instance decodeJsonPriceByUnitPerDim :: DecodeJson PriceByUnitPerDim where
   decodeJson json = do
     o <- decodeJson json
     dim <- o .: "dim"
     prices <- o .: "prices"
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
-    pure $ PricesPerDimByUnit { dim, prices, monthlyMinimum }
+    pure $ PriceByUnitPerDim { dim, prices, monthlyMinimum }
 
-instance encodeJsonPricesPerDimByUnit :: EncodeJson PricesPerDimByUnit where
-  encodeJson (PricesPerDimByUnit x) = encodeJson x
+instance encodeJsonPriceByUnitPerDim :: EncodeJson PriceByUnitPerDim where
+  encodeJson (PriceByUnitPerDim x) = encodeJson x
 
 newtype PriceByUnit
   = PriceByUnit
-  { unit :: UnitRef
+  { unit :: ChargeUnitRef
   , price :: Price
   }
 
@@ -635,13 +632,13 @@ instance decodeJsonPriceByUnit :: DecodeJson PriceByUnit where
 instance encodeJsonPriceByUnit :: EncodeJson PriceByUnit where
   encodeJson (PriceByUnit x) = encodeJson x
 
-newtype UnitRef
-  = UnitRef { unitID :: String, product :: Maybe ProductRef }
+newtype ChargeUnitRef
+  = ChargeUnitRef { unitID :: String, product :: Maybe ProductRef }
 
-derive instance newtypeUnitRef :: Newtype UnitRef _
+derive instance newtypeChargeUnitRef :: Newtype ChargeUnitRef _
 
-instance decodeJsonUnitRef :: DecodeJson UnitRef where
-  decodeJson json = UnitRef <$> plainID <|> full
+instance decodeJsonChargeUnitRef :: DecodeJson ChargeUnitRef where
+  decodeJson json = ChargeUnitRef <$> plainID <|> full
     where
     plainID = (\id -> { unitID: id, product: Nothing }) <$> decodeJson json
 
@@ -649,10 +646,10 @@ instance decodeJsonUnitRef :: DecodeJson UnitRef where
       o <- decodeJson json
       unitID <- o .: "unitID"
       product <- o .: "product"
-      pure $ UnitRef { unitID, product }
+      pure $ ChargeUnitRef { unitID, product }
 
-instance encodeJsonUnitRef :: EncodeJson UnitRef where
-  encodeJson (UnitRef x) = case x.product of
+instance encodeJsonChargeUnitRef :: EncodeJson ChargeUnitRef where
+  encodeJson (ChargeUnitRef x) = case x.product of
     Nothing -> encodeJson x.unitID
     Just _ -> encodeJson x
 
@@ -842,8 +839,8 @@ instance decodeJsonProductVariable :: DecodeJson ProductVariable where
 instance encodeJsonProductVariable :: EncodeJson ProductVariable where
   encodeJson (ProductVariable x) = encodeJson x
 
-newtype SpecUnit
-  = SpecUnit
+newtype ChargeUnit
+  = ChargeUnit
   { id :: String
   , name :: Maybe String
   , description :: Maybe String
@@ -852,19 +849,35 @@ newtype SpecUnit
   , reportDimSchemas :: Maybe (Array ConfigSchemaEntry)
   }
 
-instance decodeJsonSpecUnit :: DecodeJson SpecUnit where
-  decodeJson = map SpecUnit <<< decodeJson
+instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
+  decodeJson json = do
+    o <- decodeJson json
+    id <- o .: "id"
+    name <- o .:? "name"
+    description <- o .:? "description"
+    chargeType <- o .:? "chargeType" .!= ChargeTypeUsage
+    priceDimSchema <- o .:? "priceDimSchema"
+    reportDimSchemas <- o .:? "reportDimSchemas"
+    pure
+      $ ChargeUnit
+          { id
+          , name
+          , description
+          , chargeType
+          , priceDimSchema
+          , reportDimSchemas
+          }
 
-instance encodeJsonSpecUnit :: EncodeJson SpecUnit where
-  encodeJson (SpecUnit x) = encodeJson x
+instance encodeJsonChargeUnit :: EncodeJson ChargeUnit where
+  encodeJson (ChargeUnit x) = encodeJson x
 
-type SpecUnitMap
-  = Map String SpecUnit
+type ChargeUnitMap
+  = Map String ChargeUnit
 
 -- | A suitable label for a unit. Uses the unit name, if available, otherwise
 -- | its identifier.
-specUnitLabel :: SpecUnit -> String
-specUnitLabel (SpecUnit { id, name }) = fromMaybe id name
+chargeUnitLabel :: ChargeUnit -> String
+chargeUnitLabel (ChargeUnit { id, name }) = fromMaybe id name
 
 newtype Product
   = Product
@@ -876,7 +889,7 @@ newtype Product
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
   , variables :: Maybe (Array ProductVariable)
-  , units :: Array SpecUnit
+  , chargeUnits :: Array ChargeUnit
   , rules :: Maybe (Array Rule)
   }
 
@@ -897,7 +910,7 @@ instance decodeJsonProduct :: DecodeJson Product where
     options <- o .:? "options"
     features <- o .:? "features"
     variables <- o .:? "variables"
-    units <- o .: "units"
+    chargeUnits <- o .: "chargeUnits"
     rules <- o .:? "rules"
     pure
       $ Product
@@ -909,16 +922,20 @@ instance decodeJsonProduct :: DecodeJson Product where
           , options
           , features
           , variables
-          , units
+          , chargeUnits
           , rules
           }
 
 instance encodeJsonProduct :: EncodeJson Product where
   encodeJson (Product x) = encodeJson x
 
--- | Produces a map from unit ID to the unit itself.
-productUnits :: Product -> SpecUnitMap
-productUnits = Map.fromFoldable <<< map (\u@(SpecUnit { id }) -> Tuple id u) <<< _.units <<< unwrap
+-- | Produces a map from unit ID to the charge unit itself.
+productChargeUnits :: Product -> ChargeUnitMap
+productChargeUnits =
+  Map.fromFoldable
+    <<< map (\u@(ChargeUnit { id }) -> Tuple id u)
+    <<< _.chargeUnits
+    <<< unwrap
 
 data Platform
   = PlatformACL
@@ -1075,7 +1092,7 @@ data Sku
     , name :: String
     , description :: Maybe String
     , productCategory :: ProductCategory
-    , platform :: Platform
+    , platform :: Maybe Platform
     }
 
 instance decodeJsonSku :: DecodeJson Sku where
@@ -1089,7 +1106,7 @@ instance decodeJsonSku :: DecodeJson Sku where
       name <- o .: "name"
       description <- o .:? "description"
       productCategory <- o .: "productCategory"
-      platform <- o .: "platform"
+      platform <- o .:? "platform"
       pure
         $ Sku
             { code

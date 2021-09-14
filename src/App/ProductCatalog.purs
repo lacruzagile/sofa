@@ -9,7 +9,6 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.Route as Route
-import Data.SmartSpec (productUnits)
 import Data.SmartSpec as SS
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..), uncurry)
@@ -200,17 +199,17 @@ render state =
       [ HH.dl_ $ dataItem "SKU" p.sku
           <> opt (dataItem "Name") p.name
           <> opt (dataItem "Description") p.description
-          <> opt (dataItemRaw "Attributes" <<< configValues) p.attr
+          <> opt (dataItemRaw "Attributes" <<< renderConfigValues) p.attr
           <> opt (dataItemRaw "Configuration Schema" <<< configSchema) p.configSchema
           <> productOptions p.options
           <> opt (dataItem "Features" <<< const "TODO") p.features
           <> opt (dataItem "Variables" <<< const "TODO") p.variables
-          <> dataItemRaw "Units" (specUnits p.units)
+          <> dataItemRaw "Units" (renderSpecUnits p.chargeUnits)
           <> opt (dataItem "Rules" <<< const "TODO") p.rules
       ]
 
-  specUnit :: SS.SpecUnit -> H.ComponentHTML Action slots m
-  specUnit (SS.SpecUnit u) =
+  renderSpecUnit :: SS.ChargeUnit -> H.ComponentHTML Action slots m
+  renderSpecUnit (SS.ChargeUnit u) =
     HH.dl_
       $ dataItem "Id" u.id
       <> opt (dataItem "Name") u.name
@@ -218,21 +217,21 @@ render state =
       <> dataItem "Charge Type" (show u.chargeType)
       <> opt (dataItemRaw "Price Dimension Schema" <<< configSchemaEntry) u.priceDimSchema
 
-  specUnits :: Array SS.SpecUnit -> H.ComponentHTML Action slots m
-  specUnits = blockList <<< map (HH.li_ <<< singleton <<< specUnit)
+  renderSpecUnits :: Array SS.ChargeUnit -> H.ComponentHTML Action slots m
+  renderSpecUnits = blockList <<< map (HH.li_ <<< singleton <<< renderSpecUnit)
 
-  configValues :: Map String SS.ConfigValue -> H.ComponentHTML Action slots m
-  configValues = HH.dl_ <<< concatMap (uncurry entry) <<< Map.toUnfoldable
+  renderConfigValues :: Map String SS.ConfigValue -> H.ComponentHTML Action slots m
+  renderConfigValues = HH.dl_ <<< concatMap (uncurry entry) <<< Map.toUnfoldable
     where
     entry k v = dataItem k (show v)
 
-  simplePrice :: SS.SpecUnitMap -> SS.UnitRef -> SS.SimplePrice -> H.ComponentHTML Action slots m
-  simplePrice unitMap unit = case _ of
-    SS.SimplePriceSegmented p -> pricesPerDim unitMap (singleton unit) (conv' p)
-    SS.SimplePriceByDim p -> pricesPerDim unitMap (singleton unit) (map conv p)
+  renderSimplePrice :: SS.ChargeUnitMap -> SS.ChargeUnitRef -> SS.SimplePrice -> H.ComponentHTML Action slots m
+  renderSimplePrice unitMap unit = case _ of
+    SS.SimplePriceSegmented p -> renderPriceByUnitPerDim unitMap (singleton unit) (conv' p)
+    SS.SimplePriceByDim p -> renderPriceByUnitPerDim unitMap (singleton unit) (map conv p)
     where
     conv (SS.PriceByDim p) =
-      SS.PricesPerDimByUnit
+      SS.PriceByUnitPerDim
         { dim: p.dim
         , prices: singleton $ SS.PriceByUnit { price: p.price, unit }
         , monthlyMinimum: 0.0
@@ -240,33 +239,33 @@ render state =
 
     conv' price =
       singleton
-        $ SS.PricesPerDimByUnit
+        $ SS.PriceByUnitPerDim
             { dim: SS.DimValue SS.CvNull
             , prices: singleton $ SS.PriceByUnit { unit, price }
             , monthlyMinimum: 0.0
             }
 
-  segmentation :: SS.PriceSegmentation -> H.ComponentHTML Action slots m
-  segmentation (SS.PriceSegmentation p) =
+  renderSegmentation :: SS.PriceSegmentation -> H.ComponentHTML Action slots m
+  renderSegmentation (SS.PriceSegmentation p) =
     HH.dl_
-      $ dataItem "Segment Unit" (showUnitRef p.segmentUnit)
+      $ dataItem "Segment Unit" (showChargeUnitRef p.unit)
       <> dataItem "Period" (show p.period)
       <> dataItem "Model" (show p.model)
       <> dataItemRaw "Segments" (HH.ul_ $ segment <$> p.segments)
     where
     segment s = HH.li_ [ HH.text $ showSegment s ]
 
-  priceSegmentationByUnit :: SS.PriceSegmentationByUnit -> H.ComponentHTML Action slots m
-  priceSegmentationByUnit (SS.PriceSegmentationByUnit p) =
+  renderPriceSegmentationPerUnit :: SS.PriceSegmentationPerUnit -> H.ComponentHTML Action slots m
+  renderPriceSegmentationPerUnit (SS.PriceSegmentationPerUnit p) =
     HH.dl_
-      $ dataItem "Unit" (showUnitRef p.unit)
-      <> dataItemRaw "Segmentation" (segmentation p.segmentation)
+      $ dataItem "Unit" (showChargeUnitRef p.unit)
+      <> dataItemRaw "Segmentation" (renderSegmentation p.segmentation)
 
-  priceSegmentationsByUnit :: Array SS.PriceSegmentationByUnit -> H.ComponentHTML Action slots m
-  priceSegmentationsByUnit = HH.ul_ <<< map (HH.li_ <<< singleton <<< priceSegmentationByUnit)
+  renderPriceSegmentationsByUnit :: Array SS.PriceSegmentationPerUnit -> H.ComponentHTML Action slots m
+  renderPriceSegmentationsByUnit = HH.ul_ <<< map (HH.li_ <<< singleton <<< renderPriceSegmentationPerUnit)
 
-  defaultPrices :: Array SS.DefaultPriceByUnit -> H.ComponentHTML Action slots m
-  defaultPrices ps =
+  renderDefaultPrices :: Array SS.DefaultPricePerUnit -> H.ComponentHTML Action slots m
+  renderDefaultPrices ps =
     HH.table_
       $ [ HH.tr_
             [ HH.th_ [ HH.text "Unit" ]
@@ -275,18 +274,18 @@ render state =
         ]
       <> map mkRow ps
     where
-    mkRow (SS.DefaultPriceByUnit p) =
+    mkRow (SS.DefaultPricePerUnit p) =
       HH.tr_
-        [ HH.td_ [ HH.text $ showUnitRef p.unit ]
+        [ HH.td_ [ HH.text $ showChargeUnitRef p.unit ]
         , HH.td_ [ HH.text $ show p.price ]
         ]
 
-  pricesPerDim ::
-    SS.SpecUnitMap ->
-    Array SS.UnitRef ->
-    Array SS.PricesPerDimByUnit ->
+  renderPriceByUnitPerDim ::
+    SS.ChargeUnitMap ->
+    Array SS.ChargeUnitRef ->
+    Array SS.PriceByUnitPerDim ->
     H.ComponentHTML Action slots m
-  pricesPerDim unitMap unitRefs ppd =
+  renderPriceByUnitPerDim unitMap unitRefs ppd =
     HH.table_
       $ [ HH.tr_
             [ HH.th [ HP.colSpan $ length dims ] [ HH.text "Dimension" ]
@@ -297,21 +296,21 @@ render state =
         ]
       <> map priceRow ppd
     where
-    priceRow (SS.PricesPerDimByUnit p) =
+    priceRow (SS.PriceByUnitPerDim p) =
       HH.tr_
         $ map (HH.td_ <<< singleton <<< HH.text)
         $ dimVals p.dim
         <> priceVals p.prices
         <> [ show p.monthlyMinimum ]
 
-    units = mapMaybe (\(SS.UnitRef u) -> Map.lookup u.unitID unitMap) unitRefs
+    units = mapMaybe (\(SS.ChargeUnitRef u) -> Map.lookup u.unitID unitMap) unitRefs
 
-    unitLabels = SS.specUnitLabel <$> units
+    unitLabels = SS.chargeUnitLabel <$> units
 
     -- Fatalistically assume that there is at least one unit defined, then
     -- fatalistically assume that all units use the same dimensions.
     dims = case head units of
-      Just (SS.SpecUnit { priceDimSchema: Just (SS.CseObject o) }) -> fromFoldable $ Map.keys $ o.properties
+      Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> fromFoldable $ Map.keys $ o.properties
       _ -> [ "" ]
 
     dimVals :: SS.DimValue -> Array String
@@ -320,7 +319,7 @@ render state =
       SS.DimValue v -> [ show v ]
 
     showSegmentedPrice :: SS.Price -> String
-    showSegmentedPrice (SS.Price p) = joinWith ", " $ map showSegmentPrice p
+    showSegmentedPrice (SS.Price p) = joinWith ", " $ map showPricePerSegment p
 
     priceVal :: SS.PriceByUnit -> String
     priceVal (SS.PriceByUnit { price }) = showSegmentedPrice price
@@ -328,46 +327,46 @@ render state =
     priceVals :: Array SS.PriceByUnit -> Array String
     priceVals = map priceVal <<< sortBy (comparing (_.unitID <<< unwrap <<< _.unit <<< unwrap))
 
-  rateCardCharge :: SS.SpecUnitMap -> SS.Charge -> H.ComponentHTML Action slots m
-  rateCardCharge unitMap = case _ of
+  renderRateCardCharge :: SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action slots m
+  renderRateCardCharge unitMap = case _ of
     SS.ChargeSimple r ->
-      HH.dl_ $ dataItemRaw "Price" (simplePrice unitMap r.unit r.price)
-        <> opt (dataItemRaw "Segmentation" <<< segmentation) r.segmentation
+      HH.dl_ $ dataItemRaw "Price" (renderSimplePrice unitMap r.unit r.price)
+        <> opt (dataItemRaw "Segmentation" <<< renderSegmentation) r.segmentation
         <> dataItem "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
         <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
     SS.ChargeMixed r ->
-      HH.dl_ $ optArr (dataItemRaw "Price Segmentations" <<< priceSegmentationsByUnit) r.priceSegmentations
-        <> optArr (dataItemRaw "Default Prices" <<< defaultPrices) r.defaultPrices
-        <> dataItemRaw "Prices per Dimension" (pricesPerDim unitMap r.units r.pricesPerDim)
+      HH.dl_ $ optArr (dataItemRaw "Price Segmentations" <<< renderPriceSegmentationsByUnit) r.segmentationByUnit
+        <> optArr (dataItemRaw "Default Prices" <<< renderDefaultPrices) r.defaultPriceByUnit
+        <> dataItemRaw "Prices per Dimension" (renderPriceByUnitPerDim unitMap r.units r.priceByUnitByDim)
         <> dataItem "Monthly Minimum" (show r.monthlyMinimum)
         <> dataItem "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
-    SS.ChargeArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ rateCardCharge unitMap r ]) $ rs
+    SS.ChargeArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ renderRateCardCharge unitMap r ]) $ rs
 
-  rateCard :: SS.SpecUnitMap -> SS.RateCard -> H.ComponentHTML Action slots m
-  rateCard unitMap (SS.RateCard r) =
+  renderRateCard :: SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action slots m
+  renderRateCard unitMap (SS.RateCard r) =
     HH.li_ $ dataItemRaw "SKU" (renderSku r.sku)
       <> opt (dataItem "Name") r.name
       <> opt (dataItem "Description") r.description
-      <> dataItemRaw "Charge" (rateCardCharge unitMap r.charge)
+      <> dataItemRaw "Charge" (renderRateCardCharge unitMap r.charge)
 
-  rateCards :: Map String SS.SpecUnitMap -> Array SS.RateCard -> H.ComponentHTML Action slots m
-  rateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> rateCard (fromMaybe Map.empty $ Map.lookup (showSkuCode sku) prodMap) rc)
+  renderRateCards :: Map String SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action slots m
+  renderRateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard (fromMaybe Map.empty $ Map.lookup (showSkuCode sku) prodMap) rc)
 
-  currency :: SS.Currency -> String
-  currency (SS.Currency c) =
+  renderCurrency :: SS.Currency -> String
+  renderCurrency (SS.Currency c) =
     c.code
       <> maybe "" (\c' -> "\"" <> c' <> "\"") c.country
 
-  renderPriceBookCurrency :: Map String SS.SpecUnitMap -> SS.PriceBookCurrency -> H.ComponentHTML Action slots m
+  renderPriceBookCurrency :: Map String SS.ChargeUnitMap -> SS.PriceBookCurrency -> H.ComponentHTML Action slots m
   renderPriceBookCurrency prodMap (SS.PriceBookCurrency p) =
     HH.li_
       [ HH.dl_
-          ( dataItem "Currency" (currency p.currency)
-              <> opt (dataItemRaw "Rate Cards" <<< rateCards prodMap) p.rateCards
+          ( dataItem "Currency" (renderCurrency p.currency)
+              <> opt (dataItemRaw "Rate Cards" <<< renderRateCards prodMap) p.rateCards
           )
       ]
 
-  renderPriceBookVersion :: Map String SS.SpecUnitMap -> SS.PriceBookVersion -> H.ComponentHTML Action slots m
+  renderPriceBookVersion :: Map String SS.ChargeUnitMap -> SS.PriceBookVersion -> H.ComponentHTML Action slots m
   renderPriceBookVersion prodMap (SS.PriceBookVersion p) =
     HH.li_
       [ HH.dl_
@@ -376,14 +375,14 @@ render state =
           )
       ]
 
-  renderPrice :: Map String SS.SpecUnitMap -> SS.PriceBook -> H.ComponentHTML Action slots m
+  renderPrice :: Map String SS.ChargeUnitMap -> SS.PriceBook -> H.ComponentHTML Action slots m
   renderPrice prodMap (SS.PriceBook p) =
     HH.li_
       [ HH.dl_
           ( dataItem "ID" p.id
               <> dataItem "Name" p.name
               <> opt (dataItem "Description") p.description
-              <> (dataItemRaw "Versions" $ HH.ul_ $ map (renderPriceBookVersion prodMap) p.versions)
+              <> (dataItemRaw "Versions" $ HH.ul_ $ map (renderPriceBookVersion prodMap) p.byVersion)
           )
       ]
 
@@ -427,7 +426,7 @@ render state =
     where
     prodMap =
       Map.fromFoldable
-        $ map (\p@(SS.Product { sku }) -> Tuple sku (productUnits p))
+        $ map (\p@(SS.Product { sku }) -> Tuple sku (SS.productChargeUnits p))
         $ sol.products
 
   productCatalog (SS.ProductCatalog pc) =
@@ -445,16 +444,16 @@ showSkuCode = case _ of
   SS.SkuCode c -> c
   SS.Sku s -> s.code
 
-showUnitRef :: SS.UnitRef -> String
-showUnitRef (SS.UnitRef unit) =
+showChargeUnitRef :: SS.ChargeUnitRef -> String
+showChargeUnitRef (SS.ChargeUnitRef unit) =
   unit.unitID
     <> (maybe "" (\p -> " [" <> showProductRef p <> "]") unit.product)
 
 showProductRef :: SS.ProductRef -> String
 showProductRef (SS.ProductRef p) = showSkuCode p.sku <> (maybe "" (\s -> " [" <> show s <> "]") p.solutionURI)
 
-showSegmentPrice :: SS.SegmentPrice -> String
-showSegmentPrice (SS.SegmentPrice p) = case p.discount of
+showPricePerSegment :: SS.PricePerSegment -> String
+showPricePerSegment (SS.PricePerSegment p) = case p.discount of
   Nothing -> noDiscount
   Just d -> discount d
   where

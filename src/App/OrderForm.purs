@@ -632,9 +632,9 @@ handleAction = case _ of
             mkPriceBooks c = do
               SS.Solution sol <- A.fromFoldable $ Map.values pc.solutions
               SS.PriceBook pb <- sol.priceBooks
-              SS.PriceBookVersion pbv <- pb.versions
+              SS.PriceBookVersion pbv <- pb.byVersion
               SS.PriceBookCurrency pbc <- pbv.byCurrency
-              if (pbc.currency == c) then
+              if pbc.currency == c then
                 [ Tuple sol.id
                     [ { id: pb.id
                       , name: pb.name
@@ -750,11 +750,11 @@ handleAction = case _ of
         { product: product
         , charge:
             SS.ChargeSimple
-              { unit: SS.UnitRef { unitID: "UID", product: Nothing }
+              { unit: SS.ChargeUnitRef { unitID: "UID", product: Nothing }
               , price:
                   SS.SimplePriceSegmented
                     $ SS.Price
-                        [ SS.SegmentPrice
+                        [ SS.PricePerSegment
                             { minimum: 0
                             , exclusiveMaximum: Nothing
                             , listPrice: 0.0
