@@ -2,25 +2,15 @@ module Data.Route (Route(..), routes, href) where
 
 import Prelude
 import Control.Alternative ((<|>))
-import Data.Array (catMaybes)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..), fromJust)
 import Data.Show.Generic (genericShow)
-import Data.String (joinWith)
-import Data.Tuple (Tuple(..))
 import Halogen.HTML.Properties as HP
-import JSURI (encodeURIComponent)
-import Partial.Unsafe (unsafePartial)
-import Routing.Match (Match, end, lit, param, root)
+import Routing.Match (Match, end, lit, root)
 
 data Route
   = Home
   | OrderForm
-    { catalogUri :: Maybe String
-    }
   | ProductCatalog
-    { catalogUri :: Maybe String
-    }
 
 derive instance genericRoute :: Generic Route _
 
@@ -36,32 +26,15 @@ routes = root *> (home <|> orderForm <|> productCatalog)
   where
   home = Home <$ end
 
-  orderForm = OrderForm <$> (orderForm1 <|> orderForm2)
+  orderForm = OrderForm <$ lit "order-form" <* end
 
-  orderForm1 = { catalogUri: Nothing } <$ lit "order-form" <* end
-
-  orderForm2 = (\u -> { catalogUri: Just u }) <$> (lit "order-form" *> param "url" <* end)
-
-  productCatalog = ProductCatalog <$> (prodCat1 <|> prodCat2)
-
-  prodCat1 = { catalogUri: Nothing } <$ lit "product-catalog" <* end
-
-  prodCat2 = (\u -> { catalogUri: Just u }) <$> (lit "product-catalog" *> param "url" <* end)
+  productCatalog = ProductCatalog <$ lit "product-catalog" <* end
 
 rawHref :: Route -> String
 rawHref = case _ of
   Home -> "/"
-  OrderForm s -> "/order-form" <> urlParam s
-  ProductCatalog s -> "/product-catalog" <> urlParam s
-  where
-  urlParam s = params $ catMaybes [ Tuple "url" <$> s.catalogUri ]
-
-  params :: Array (Tuple String String) -> String
-  params [] = ""
-
-  params ps = "?" <> joinWith "&" (map (\(Tuple k v) -> k <> "=" <> uriEncode v) ps)
-
-  uriEncode s = unsafePartial $ fromJust $ encodeURIComponent s
+  OrderForm -> "/order-form"
+  ProductCatalog -> "/product-catalog"
 
 href :: forall r i. Route -> HP.IProp ( href :: String | r ) i
 href route = HP.href $ "#" <> rawHref route

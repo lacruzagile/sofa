@@ -72,14 +72,14 @@ render state =
     $ case state.route of
         Nothing -> slotHome
         Just Route.Home -> slotHome
-        Just (Route.OrderForm s) -> slotOrderForm s
-        Just (Route.ProductCatalog s) -> slotProductCatalog s
+        Just Route.OrderForm -> slotOrderForm
+        Just Route.ProductCatalog -> slotProductCatalog
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
-  slotOrderForm s = HH.slot_ OrderForm.proxy unit OrderForm.component s.catalogUri
+  slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component absurd
 
-  slotProductCatalog s = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component s.catalogUri
+  slotProductCatalog = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component absurd
 
 navbar ::
   forall slot. State -> HH.HTML slot Action -> HH.HTML slot Action
@@ -103,17 +103,13 @@ navbar state body =
             [ HH.text "🍔" ]
         , HH.div [ HP.class_ Css.menu ]
             [ navbarItem Route.Home "🏠 Home"
-            , navbarItem routeProductCatalog "Product Catalog"
-            , navbarItem routeOrderForm "Order Form"
+            , navbarItem Route.ProductCatalog "Product Catalog"
+            , navbarItem Route.OrderForm "Order Form"
             ]
         ]
     , HH.main [ HP.class_ (H.ClassName "content") ] [ body ]
     ]
   where
-  routeProductCatalog = Route.ProductCatalog { catalogUri: Nothing }
-
-  routeOrderForm = Route.OrderForm { catalogUri: Nothing }
-
   navbarItemClasses route =
     [ Css.pseudo, Css.button ]
       <> if state.route == Just route then [ Css.active ] else []

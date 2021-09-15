@@ -8,7 +8,6 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
-import Data.Route as Route
 import Data.SmartSpec as SS
 import Data.String (joinWith)
 import Data.Tuple (Tuple(..), uncurry)
@@ -24,10 +23,6 @@ type Slot id
 proxy :: Proxy "productCatalog"
 proxy = Proxy
 
--- Takes as input a product catalog URL.
-type Input
-  = Maybe String
-
 type State
   = Loadable SS.ProductCatalog
 
@@ -37,8 +32,8 @@ data Action
   | LoadProductCatalog String
 
 component ::
-  forall query output m.
-  MonadAff m => H.Component query Input output m
+  forall query input output m.
+  MonadAff m => H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -48,39 +43,18 @@ component =
           H.defaultEval
             { handleAction = handleAction
             , initialize = initialize
-            , receive = receive
             }
     }
 
-initialState :: Input -> State
-initialState = maybe Idle ToLoad
+initialState :: forall input. input -> State
+initialState = const Idle
 
 initialize :: Maybe Action
-initialize = Just CheckToLoad
-
-receive :: Input -> Maybe Action
-receive = Just <<< maybe ClearState LoadProductCatalog
+initialize = Just $ LoadProductCatalog "v1alpha1/examples/product-catalog.normalized.json"
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
-render state =
-  HH.section [ HP.classes [ Css.flex, Css.five ] ]
-    [ HH.aside [ HP.classes [ Css.full, Css.fifth1000, Css.sideMenu ] ]
-        [ HH.h2_ [ HH.text "Catalogs" ]
-        , HH.div
-            [ HP.classes [ Css.flex, Css.two, Css.three500, Css.five800, Css.one1000 ] ]
-            [ prodCatLink "Normalized Example" "v1alpha1/examples/product-catalog.normalized.json"
-            ]
-        ]
-    , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] content
-    ]
+render state = HH.section_ [ HH.article_ content ]
   where
-  prodCatLink txt uri =
-    HH.a
-      [ HP.classes [ Css.button, Css.success ]
-      , Route.href $ Route.ProductCatalog { catalogUri: Just uri }
-      ]
-      [ HH.text txt ]
-
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
   opt = maybe []
 
@@ -397,7 +371,7 @@ render state =
         ]
     ]
 
-  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Select a product catalog to display…" ] ]
+  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Idle …" ] ]
 
   loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
 

@@ -13,7 +13,6 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (unwrap)
-import Data.Route as Route
 import Data.SmartSpec (skuCode, solutionProducts)
 import Data.SmartSpec as SS
 import Data.Traversable (sequence, traverse)
@@ -32,10 +31,6 @@ type Slot id
 
 proxy :: Proxy "orderForm"
 proxy = Proxy
-
--- Takes as input a product catalog URL.
-type Input
-  = Maybe String
 
 type Slots
   = ( customer :: Customer.Slot Unit )
@@ -111,8 +106,8 @@ data Action
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
 
 component ::
-  forall query output m.
-  MonadAff m => H.Component query Input output m
+  forall query input output m.
+  MonadAff m => H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -122,39 +117,18 @@ component =
           H.defaultEval
             { handleAction = handleAction
             , initialize = initialize
-            , receive = receive
             }
     }
 
-initialState :: Input -> State
-initialState = maybe Idle ToLoad
+initialState :: forall input. input -> State
+initialState = const Idle
 
 initialize :: Maybe Action
-initialize = Just CheckToLoad
-
-receive :: Input -> Maybe Action
-receive = Just <<< maybe ClearState LoadProductCatalog
+initialize = Just $ LoadProductCatalog "v1alpha1/examples/product-catalog.normalized.json"
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
-render state =
-  HH.section [ HP.classes [ Css.flex, Css.five ] ]
-    [ HH.aside [ HP.classes [ Css.full, Css.fifth1000, Css.sideMenu ] ]
-        [ HH.h2_ [ HH.text "Catalogs" ]
-        , HH.div
-            [ HP.classes [ Css.flex, Css.two, Css.three500, Css.five800, Css.one1000 ] ]
-            [ orderFormLink "Normalized Example" "v1alpha1/examples/product-catalog.normalized.json"
-            ]
-        ]
-    , HH.article [ HP.classes [ Css.full, Css.fourFifth1000 ] ] renderContent
-    ]
+render state = HH.section_ [ HH.article_ renderContent ]
   where
-  orderFormLink txt uri =
-    HH.a
-      [ HP.classes [ Css.button, Css.success ]
-      , Route.href $ Route.OrderForm { catalogUri: Just uri }
-      ]
-      [ HH.text txt ]
-
   error err =
     [ HH.div [ HP.class_ Css.card ]
         [ HH.header_
@@ -166,7 +140,7 @@ render state =
         ]
     ]
 
-  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Select a product catalog to open its order form…" ] ]
+  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Idle …" ] ]
 
   loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
 
