@@ -123,6 +123,9 @@ five = ClassName "five"
 five800 :: ClassName
 five800 = ClassName "five-800"
 
+threeFifth1000 :: ClassName
+threeFifth1000 = ClassName "three-fifth-1000"
+
 fourFifth1000 :: ClassName
 fourFifth1000 = ClassName "four-fifth-1000"
 

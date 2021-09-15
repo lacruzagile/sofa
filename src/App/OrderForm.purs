@@ -1,6 +1,7 @@
 module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
+import App.Charge as Charge
 import App.OrderForm.Customer as Customer
 import Control.Alternative ((<|>))
 import Css as Css
@@ -33,7 +34,8 @@ proxy :: Proxy "orderForm"
 proxy = Proxy
 
 type Slots
-  = ( customer :: Customer.Slot Unit )
+  = ( charge :: Charge.Slot
+    , customer :: Customer.Slot Unit )
 
 type State
   = Loadable StateOrderForm
@@ -156,6 +158,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Loaded dat -> rend dat
     Error err -> error err
 
+  renderCharge :: String -> SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
+  renderCharge label unitMap charge =
+    HH.slot Charge.proxy label Charge.component {unitMap, charge} (\_ -> NoOp)
+
+  renderChargeModal :: Int -> Int -> SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
+  renderChargeModal secIdx olIdx unitMap charge =
+    HH.div_
+      [ HH.label [ HP.for label, HP.class_ Css.button ] [ HH.text "Charge" ]
+      , Widgets.modal label "Charge" [ renderCharge label unitMap charge ] []
+      ]
+    where
+    label = "of-charge-" <> show secIdx <> "-" <> show olIdx
+
   renderOrderLine ::
     SS.Solution ->
     Int ->
@@ -180,8 +195,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
         SS.Product product = ol.product
       in
         body
-          $ [ HH.div [ HP.classes [ Css.flex, Css.four ] ]
-                [ HH.label [ HP.classes [ Css.full, Css.threeFourth1000 ] ]
+          $ [ HH.div [ HP.classes [ Css.flex, Css.five ] ]
+                [ HH.label [ HP.classes [ Css.full, Css.threeFifth1000 ] ]
                     [ HH.text "Product"
                     , HH.input
                         [ HP.type_ HP.InputText
@@ -189,7 +204,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         , HP.value product.sku
                         ]
                     ]
-                , HH.label [ HP.classes [ Css.full, Css.fourth1000 ] ]
+                , HH.label [ HP.classes [ Css.full, Css.fifth1000 ] ]
                     [ HH.text "Quantity"
                     , HH.input
                         [ HP.type_ HP.InputNumber
@@ -202,6 +217,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
                               , quantity: fromMaybe 0 $ Int.fromString input
                               }
                         ]
+                    ]
+                , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
+                    [ maybe (HH.text "No charge") (renderChargeModal secIdx olIdx (SS.productChargeUnits ol.product)) ol.charge
                     ]
                 ]
             ]
@@ -355,7 +373,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         priceBookOpts = priceBookOptions sec.priceBook priceBooks
 
         priceBookSel = case sof.currency of
-          Nothing -> "No currency selected"
+          Nothing -> "No price currency selected"
           Just (SS.Currency { code }) ->
             if A.null priceBookOpts then
               "No price books for " <> code
