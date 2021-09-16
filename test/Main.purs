@@ -19,13 +19,13 @@ test name run = do
 
 smartSpecPricePerSegmentJsonCheck :: Effect Unit
 smartSpecPricePerSegmentJsonCheck =
-  test "Test EncodeJson/DecodeJson on PricePerSegment" $
-    quickCheck \(x :: SS.PricePerSegment) -> case decodeJson (encodeJson x) of
-      Right decoded ->
-        decoded == x
-          <?> ( " x = "
-                <> show x
-                <> ", decoded = "
-                <> show decoded
-            )
-      Left err -> false <?> printJsonDecodeError err
+  test "Test EncodeJson/DecodeJson on PricePerSegment"
+    $ quickCheck \(x :: SS.PricePerSegment) -> case decodeJson (encodeJson x) of
+        Right decoded ->
+          decoded == x
+            <?> ( " x = "
+                  <> show x
+                  <> ", decoded = "
+                  <> show decoded
+              )
+        Left err -> false <?> printJsonDecodeError err

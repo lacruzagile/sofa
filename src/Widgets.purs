@@ -1,9 +1,34 @@
-module Widgets (tabbed2, Tab(..), modal) where
+module Widgets (withTooltip, TooltipDirection(..), tabbed2, Tab(..), modal) where
 
 import Prelude
+import Css as Css
+import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Css as Css
+
+data TooltipDirection
+  = Top
+  | Bottom
+  | Left
+  | Right
+
+-- | Creates a span with a tooltip text.
+withTooltip ::
+  forall slot action.
+  TooltipDirection ->
+  String ->
+  HH.HTML slot action ->
+  HH.HTML slot action
+withTooltip direction tooltipText body =
+  HH.span
+    [ HP.attr (H.AttrName "data-tooltip") tooltipText, cls ]
+    [ body, HH.sup_ [ HH.text "?" ] ]
+  where
+  cls = case direction of
+    Top -> HP.class_ Css.tooltipTop
+    Bottom -> HP.classes []
+    Left -> HP.class_ Css.tooltipLeft
+    Right -> HP.class_ Css.tooltipRight
 
 -- Other stuff.
 type Tab slot action

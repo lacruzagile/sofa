@@ -23,6 +23,9 @@ orderLine = ClassName "orderline"
 addOrderLine :: ClassName
 addOrderLine = ClassName "addorderline"
 
+charge :: ClassName
+charge = ClassName "charge"
+
 sideMenu :: ClassName
 sideMenu = ClassName "sidemenu"
 
@@ -123,6 +126,12 @@ five = ClassName "five"
 five800 :: ClassName
 five800 = ClassName "five-800"
 
+twoFifth :: ClassName
+twoFifth = ClassName "two-fifth"
+
+threeFifth :: ClassName
+threeFifth = ClassName "three-fifth"
+
 threeFifth1000 :: ClassName
 threeFifth1000 = ClassName "three-fifth-1000"
 
@@ -149,3 +158,9 @@ dull = ClassName "dull"
 
 tooltipTop :: ClassName
 tooltipTop = ClassName "tooltip-top"
+
+tooltipLeft :: ClassName
+tooltipLeft = ClassName "tooltip-left"
+
+tooltipRight :: ClassName
+tooltipRight = ClassName "tooltip-right"

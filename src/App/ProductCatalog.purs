@@ -23,7 +23,7 @@ proxy :: Proxy "productCatalog"
 proxy = Proxy
 
 type Slots
-  = ( charge :: Charge.Slot )
+  = ( charge :: Charge.Slot Unit )
 
 type State
   = Loadable SS.ProductCatalog
@@ -55,7 +55,7 @@ initialState = const Idle
 initialize :: Maybe Action
 initialize = Just $ LoadProductCatalog "v1alpha1/examples/product-catalog.normalized.json"
 
-render :: forall m. State -> H.ComponentHTML Action Slots m
+render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ content ]
   where
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
@@ -197,7 +197,10 @@ render state = HH.section_ [ HH.article_ content ]
     entry k v = dataItem k (show v)
 
   renderRateCardCharge :: SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
-  renderRateCardCharge unitMap charge = HH.slot Charge.proxy "charge" Charge.component { unitMap, charge } (\_ -> NoOp)
+  renderRateCardCharge unitMap charge =
+    HH.slot Charge.proxy unit Charge.component
+      { unitMap, charge }
+      (\_ -> NoOp)
 
   renderRateCard :: SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
   renderRateCard unitMap (SS.RateCard r) =

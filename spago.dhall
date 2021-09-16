@@ -26,12 +26,11 @@ to generate this file without the comments in this block.
   , "foreign-object"
   , "halogen"
   , "integers"
-  , "js-uri"
   , "maybe"
   , "newtype"
   , "nonempty"
+  , "numbers"
   , "ordered-collections"
-  , "partial"
   , "prelude"
   , "psci-support"
   , "quickcheck"
@@ -40,6 +39,7 @@ to generate this file without the comments in this block.
   , "strings"
   , "tuples"
   , "variant"
+  , "web-events"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

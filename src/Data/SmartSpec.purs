@@ -28,9 +28,7 @@ module Data.SmartSpec
   , OrderForm(..)
   , OrderLine(..)
   , OrderSection(..)
-  , OrderSectionSummary(..)
   , OrderStatus(..)
-  , OrderSummary(..)
   , Platform(..)
   , Price(..)
   , PriceBook(..)
@@ -548,6 +546,8 @@ derive instance genericPricePerSegment :: Generic PricePerSegment _
 
 derive instance eqPricePerSegment :: Eq PricePerSegment
 
+derive instance newtypePricePerSegment :: Newtype PricePerSegment _
+
 instance showPricePerSegment :: Show PricePerSegment where
   show = genericShow
 
@@ -659,6 +659,8 @@ instance encodeJsonRateCard :: EncodeJson RateCard where
 newtype Price
   = Price (Array PricePerSegment)
 
+derive instance newtypePrice :: Newtype Price _
+
 instance decodeJsonPrice :: DecodeJson Price where
   decodeJson json = fixed <|> custom <|> segmented
     where
@@ -691,7 +693,9 @@ instance decodeJsonPrice :: DecodeJson Price where
                 }
             ]
 
-    segmented = Price <$> decodeJson json
+    segmented = (Price <<< sortSegments) <$> decodeJson json
+
+    sortSegments = A.sortBy $ comparing (_.minimum <<< unwrap)
 
 instance encodeJsonPrice :: EncodeJson Price where
   encodeJson (Price x) = encodeJson x
@@ -764,7 +768,12 @@ instance decodeJsonPriceByUnitPerDim :: DecodeJson PriceByUnitPerDim where
     dim <- o .: "dim"
     prices <- o .: "prices"
     monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
-    pure $ PriceByUnitPerDim { dim, prices, monthlyMinimum }
+    pure
+      $ PriceByUnitPerDim
+          { dim
+          , prices: A.sortBy (comparing (_.unitID <<< unwrap <<< _.unit <<< unwrap)) prices
+          , monthlyMinimum
+          }
 
 instance encodeJsonPriceByUnitPerDim :: EncodeJson PriceByUnitPerDim where
   encodeJson (PriceByUnitPerDim x) = encodeJson x
@@ -1001,6 +1010,8 @@ newtype ChargeUnit
   , priceDimSchema :: Maybe ConfigSchemaEntry
   , reportDimSchemas :: Maybe (Array ConfigSchemaEntry)
   }
+
+derive instance newtypeChargeUnit :: Newtype ChargeUnit _
 
 instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
   decodeJson json = do
@@ -1736,32 +1747,6 @@ instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
 
 instance encodeOrderStatus :: EncodeJson OrderStatus where
   encodeJson = encodeJson <<< show
-
-newtype OrderSummary
-  = OrderSummary
-  { estimatedUsageTotal :: Number
-  , monthlyTotal :: Number
-  , onetimeTotal :: Number
-  }
-
-instance decodeJsonOrderSummary :: DecodeJson OrderSummary where
-  decodeJson json = OrderSummary <$> decodeJson json
-
-instance encodeJsonOrderSummary :: EncodeJson OrderSummary where
-  encodeJson (OrderSummary x) = encodeJson x
-
-newtype OrderSectionSummary
-  = OrderSectionSummary
-  { estimatedUsageSubTotal :: Number
-  , monthlySubTotal :: Number
-  , onetimeSubTotal :: Number
-  }
-
-instance decodeJsonOrderSectionSummary :: DecodeJson OrderSectionSummary where
-  decodeJson json = OrderSectionSummary <$> decodeJson json
-
-instance encodeJsonOrderSectionSummary :: EncodeJson OrderSectionSummary where
-  encodeJson (OrderSectionSummary x) = encodeJson x
 
 newtype Segment
   = Segment
