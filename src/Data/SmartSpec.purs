@@ -22,6 +22,8 @@ module Data.SmartSpec
   , DefaultPricePerUnit(..)
   , DimValue(..)
   , Discount(..)
+  , DiscountPerDim(..)
+  , DiscountProfilePerUnit(..)
   , LegalEntity(..)
   , OrderForm(..)
   , OrderLine(..)
@@ -37,10 +39,12 @@ module Data.SmartSpec
   , PriceBookVersion(..)
   , PriceByDim(..)
   , PriceByUnit(..)
+  , PriceByUnitPerDim(..)
+  , PriceDimGroupRef(..)
   , PriceOverride(..)
+  , PricePerSegment(..)
   , PriceSegmentation(..)
   , PriceSegmentationPerUnit(..)
-  , PriceByUnitPerDim(..)
   , Product(..)
   , ProductCatalog(..)
   , ProductCategory(..)
@@ -60,7 +64,6 @@ module Data.SmartSpec
   , RuleStage(..)
   , SalesforceAccountRef(..)
   , Segment(..)
-  , PricePerSegment(..)
   , SegmentationModel(..)
   , SegmentationPeriod(..)
   , Seller(..)
@@ -81,13 +84,19 @@ import Prelude
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (~>))
 import Data.Array as A
+import Data.Array.NonEmpty (fromNonEmpty)
 import Data.Either (Either(..))
+import Data.Generic.Rep (class Generic)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
+import Data.NonEmpty ((:|))
+import Data.Show.Generic (genericShow)
 import Data.Tuple (Tuple(..))
 import Foreign.Object as FO
+import Test.QuickCheck (class Arbitrary, arbitrary)
+import Test.QuickCheck.Gen as QC
 
 type Uri
   = String
@@ -489,6 +498,13 @@ data Discount
   = DiscountPercentage Number
   | DiscountAbsolute Number
 
+derive instance genericDiscount :: Generic Discount _
+
+derive instance eqDiscount :: Eq Discount
+
+instance showDiscount :: Show Discount where
+  show = genericShow
+
 instance decodeJsonDiscount :: DecodeJson Discount where
   decodeJson json = percentage <|> absolute
     where
@@ -512,14 +528,28 @@ instance encodeJsonDiscount :: EncodeJson Discount where
       { amount: x
       }
 
+instance arbDiscount :: Arbitrary Discount where
+  arbitrary = QC.oneOf $ fromNonEmpty $ genPercentage :| [ genAbsolute ]
+    where
+    genPercentage = DiscountPercentage <$> QC.choose 0.0 100.0
+
+    genAbsolute = DiscountAbsolute <$> QC.choose (-100.0) 0.0
+
 newtype PricePerSegment
   = PricePerSegment
   { minimum :: Int
   , exclusiveMaximum :: Maybe Int
   , listPrice :: Number
-  , salesPrice :: Number
+  , salesPrice :: Maybe Number
   , discount :: Maybe Discount
   }
+
+derive instance genericPricePerSegment :: Generic PricePerSegment _
+
+derive instance eqPricePerSegment :: Eq PricePerSegment
+
+instance showPricePerSegment :: Show PricePerSegment where
+  show = genericShow
 
 instance decodeJsonPricePerSegment :: DecodeJson PricePerSegment where
   decodeJson json = do
@@ -529,15 +559,15 @@ instance decodeJsonPricePerSegment :: DecodeJson PricePerSegment where
     let
       basicPrice = do
         p <- o .: "price"
-        pure { listPrice: p, salesPrice: p, discount: Nothing }
+        pure { listPrice: p, salesPrice: Nothing, discount: Nothing }
 
-      discountedPrice = do
+      customPrice = do
         po <- o .: "price"
         listPrice <- po .: "listPrice"
         salesPrice <- po .: "salesPrice"
-        discount <- po .: "discount"
+        discount <- po .:? "discount"
         pure { listPrice, salesPrice, discount }
-    p <- basicPrice <|> discountedPrice
+    p <- basicPrice <|> customPrice
     pure
       $ PricePerSegment
           { minimum
@@ -548,7 +578,43 @@ instance decodeJsonPricePerSegment :: DecodeJson PricePerSegment where
           }
 
 instance encodeJsonPricePerSegment :: EncodeJson PricePerSegment where
-  encodeJson (PricePerSegment x) = encodeJson x
+  encodeJson (PricePerSegment pps) = json
+    where
+    json
+      | isNothing pps.discount && isNothing pps.salesPrice =
+        encodeJson
+          { minimum: pps.minimum
+          , exclusiveMaximum: pps.exclusiveMaximum
+          , price: pps.listPrice
+          }
+
+    json
+      | otherwise =
+        encodeJson
+          { minimum: pps.minimum
+          , exclusiveMaximum: pps.exclusiveMaximum
+          , price:
+              { listPrice: pps.listPrice
+              , salesPrice: pps.salesPrice
+              , discount: pps.discount
+              }
+          }
+
+instance arbPricePerSegment :: Arbitrary PricePerSegment where
+  arbitrary = do
+    minimum <- arbitrary
+    exclusiveMaximum <- arbitrary
+    listPrice <- arbitrary
+    salesPrice <- arbitrary
+    discount <- arbitrary
+    pure
+      $ PricePerSegment
+          { minimum
+          , exclusiveMaximum
+          , listPrice
+          , salesPrice
+          , discount
+          }
 
 newtype PriceSegmentation
   = PriceSegmentation
@@ -594,7 +660,7 @@ newtype Price
   = Price (Array PricePerSegment)
 
 instance decodeJsonPrice :: DecodeJson Price where
-  decodeJson json = fixed <|> segmented
+  decodeJson json = fixed <|> custom <|> segmented
     where
     mkSingleton p =
       Price
@@ -602,12 +668,28 @@ instance decodeJsonPrice :: DecodeJson Price where
             { minimum: 0
             , exclusiveMaximum: Nothing
             , listPrice: p
-            , salesPrice: p
+            , salesPrice: Nothing
             , discount: Nothing
             }
         ]
 
     fixed = mkSingleton <$> decodeJson json
+
+    custom = do
+      o <- decodeJson json
+      listPrice <- o .: "listPrice"
+      salesPrice <- o .: "salesPrice"
+      discount <- o .:? "discount"
+      pure
+        $ Price
+            [ PricePerSegment
+                { minimum: 0
+                , exclusiveMaximum: Nothing
+                , listPrice
+                , salesPrice: Just salesPrice
+                , discount
+                }
+            ]
 
     segmented = Price <$> decodeJson json
 
@@ -949,6 +1031,20 @@ type ChargeUnitMap
 -- | its identifier.
 chargeUnitLabel :: ChargeUnit -> String
 chargeUnitLabel (ChargeUnit { id, name }) = fromMaybe id name
+
+data PriceDimSchema
+  = PriceDimSchema ConfigSchemaEntry
+  | PriceDimSchemaSuperGroup PriceDimSuperGroupRef
+
+instance decodeJsonPriceDimSchema :: DecodeJson PriceDimSchema where
+  decodeJson json =
+    (PriceDimSchema <$> decodeJson json)
+      <|> (PriceDimSchemaSuperGroup <$> decodeJson json)
+
+instance encodeJsonPriceDimSchema :: EncodeJson PriceDimSchema where
+  encodeJson = case _ of
+    PriceDimSchema x -> encodeJson x
+    PriceDimSchemaSuperGroup x -> encodeJson x
 
 newtype Product
   = Product
@@ -1483,9 +1579,10 @@ instance encodeJsonAsset :: EncodeJson Asset where
 
 newtype PriceOverride
   = PriceOverride
-  { basePriceBookRef :: PriceBookRef
+  { basePriceBook :: PriceBookRef
   , charge :: Charge
   , validity :: Validity
+  , discountProfileByUnit :: Maybe (Array DiscountProfilePerUnit)
   }
 
 instance decodeJsonPriceOverride :: DecodeJson PriceOverride where
@@ -1493,6 +1590,62 @@ instance decodeJsonPriceOverride :: DecodeJson PriceOverride where
 
 instance encodeJsonPriceOverride :: EncodeJson PriceOverride where
   encodeJson (PriceOverride x) = encodeJson x
+
+newtype DiscountProfilePerUnit
+  = DiscountProfilePerUnit
+  { unit :: ChargeUnitRef
+  , defaultDiscount :: Maybe Discount
+  , discountByDim :: Maybe (Array DiscountPerDim)
+  }
+
+instance decodeJsonDiscountProfilePerUnit :: DecodeJson DiscountProfilePerUnit where
+  decodeJson json = DiscountProfilePerUnit <$> decodeJson json
+
+instance encodeJsonDiscountProfilePerUnit :: EncodeJson DiscountProfilePerUnit where
+  encodeJson (DiscountProfilePerUnit x) = encodeJson x
+
+data DiscountPerDim
+  = DiscountPerDim
+    { dim :: DimValue
+    , discount :: Discount
+    }
+  | DiscountPerDimGroup
+    { dimGroup :: PriceDimGroupRef
+    , discount :: Discount
+    }
+
+instance decodeJsonDiscountPerDim :: DecodeJson DiscountPerDim where
+  decodeJson json =
+    (DiscountPerDim <$> decodeJson json)
+      <|> (DiscountPerDimGroup <$> decodeJson json)
+
+instance encodeJsonDiscountPerDim :: EncodeJson DiscountPerDim where
+  encodeJson = case _ of
+    DiscountPerDim x -> encodeJson x
+    DiscountPerDimGroup x -> encodeJson x
+
+newtype PriceDimGroupRef
+  = PriceDimGroupRef
+  { priceDimGroupID :: String
+  , priceDimSuperGroupID :: String
+  }
+
+instance decodeJsonPriceDimGroupRef :: DecodeJson PriceDimGroupRef where
+  decodeJson json = PriceDimGroupRef <$> decodeJson json
+
+instance encodeJsonPriceDimGroupRef :: EncodeJson PriceDimGroupRef where
+  encodeJson (PriceDimGroupRef x) = encodeJson x
+
+newtype PriceDimSuperGroupRef
+  = PriceDimSuperGroupRef
+  { priceDimSuperGroupID :: String
+  }
+
+instance decodeJsonPriceDimSuperGroupRef :: DecodeJson PriceDimSuperGroupRef where
+  decodeJson json = PriceDimSuperGroupRef <$> decodeJson json
+
+instance encodeJsonPriceDimSuperGroupRef :: EncodeJson PriceDimSuperGroupRef where
+  encodeJson (PriceDimSuperGroupRef x) = encodeJson x
 
 newtype PriceBookRef
   = PriceBookRef

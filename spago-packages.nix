@@ -543,6 +543,18 @@ let
       installPhase = "ln -s $src $out";
     };
 
+    "lcg" = pkgs.stdenvNoCC.mkDerivation {
+      name = "lcg";
+      version = "v3.0.0";
+      src = pkgs.fetchgit {
+        url = "https://github.com/purescript/purescript-lcg.git";
+        rev = "8fb2eb16bbba2cee1d115a6729659ac649da811b";
+        sha256 = "04r9bmx9kc3jqx59hh9yqqkl95mf869la9as5h36jv85ynn464dx";
+      };
+      phases = "installPhase";
+      installPhase = "ln -s $src $out";
+    };
+
     "lists" = pkgs.stdenvNoCC.mkDerivation {
       name = "lists";
       version = "v6.0.1";
@@ -745,6 +757,30 @@ let
         url = "https://github.com/purescript/purescript-psci-support.git";
         rev = "f26fe8266a63494080476333e22f971404ea8846";
         sha256 = "16vhf8hapd7rcgmafmjpiq7smhzdh3300f2idk1q4kk01yxn8ddj";
+      };
+      phases = "installPhase";
+      installPhase = "ln -s $src $out";
+    };
+
+    "quickcheck" = pkgs.stdenvNoCC.mkDerivation {
+      name = "quickcheck";
+      version = "v7.1.0";
+      src = pkgs.fetchgit {
+        url = "https://github.com/purescript/purescript-quickcheck.git";
+        rev = "990fa1cf14b48b827d9b2d115b1c6977c4b0a76d";
+        sha256 = "1dxchng3r2mad0505a0c7cc35vs1f7y2xb5i13p59jpdz6ijqa9k";
+      };
+      phases = "installPhase";
+      installPhase = "ln -s $src $out";
+    };
+
+    "random" = pkgs.stdenvNoCC.mkDerivation {
+      name = "random";
+      version = "v5.0.0";
+      src = pkgs.fetchgit {
+        url = "https://github.com/purescript/purescript-random.git";
+        rev = "3e02da113c7afbac37ea4e16188c39d3057314d5";
+        sha256 = "1v6ykgp8jmx488hq8mgb0l0sf1nyhjs6wq0w279iyibk9jxc6nib";
       };
       phases = "installPhase";
       installPhase = "ln -s $src $out";
