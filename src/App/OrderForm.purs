@@ -35,7 +35,8 @@ proxy = Proxy
 
 type Slots
   = ( charge :: Charge.Slot
-    , customer :: Customer.Slot Unit )
+    , customer :: Customer.Slot Unit
+    )
 
 type State
   = Loadable StateOrderForm
@@ -159,8 +160,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Error err -> error err
 
   renderCharge :: String -> SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
-  renderCharge label unitMap charge =
-    HH.slot Charge.proxy label Charge.component {unitMap, charge} (\_ -> NoOp)
+  renderCharge label unitMap charge = HH.slot Charge.proxy label Charge.component { unitMap, charge } (\_ -> NoOp)
 
   renderChargeModal :: Int -> Int -> SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
   renderChargeModal secIdx olIdx unitMap charge =
@@ -647,10 +647,13 @@ calcSubTotal os =
   nil = { u: 0.0, m: 0.0, o: 0.0 }
 
   calcCharge :: SS.Product -> SS.Charge -> { u :: Number, m :: Number, o :: Number }
-  calcCharge product = case _ of
-    SS.ChargeSimple c -> maybe nil (mkChargeSummary (simplePriceToAmount 1 c)) $ chargeType c.unit product
-    SS.ChargeMixed c -> spyWith "Mixed charges not supported at the moment" (\_ -> c) nil
-    SS.ChargeArray cs -> A.foldl (\a b -> plus a (calcCharge product b)) nil cs
+  calcCharge product (SS.ChargeArray cs) = A.foldl (\a b -> plus a (calcChargeElem b)) nil cs
+    where
+    priceToAmount (SS.PriceByUnit p) = maybe nil (mkChargeSummary (priceInSegment' 1 p.price)) $ chargeType p.unit product
+
+    priceByUnitToAmount (SS.PriceByUnitPerDim p) = A.foldl (\a b -> plus a (priceToAmount b)) nil p.prices
+
+    calcChargeElem (SS.ChargeElement c) = A.foldl (\a b -> plus a (priceByUnitToAmount b)) nil c.priceByUnitByDim
 
   toOrderSectionSummary :: { u :: Number, m :: Number, o :: Number } -> SS.OrderSectionSummary
   toOrderSectionSummary { u, m, o } =
@@ -671,15 +674,19 @@ calcSubTotal os =
       $ A.find (\(SS.ChargeUnit u) -> u.id == unit.unitID)
       $ chargeUnits
 
+  priceInSegment' :: Int -> SS.Price -> Number
+  priceInSegment' q (SS.Price segments) = maybe 0.0 (\(SS.PricePerSegment p) -> p.listPrice) $ A.head $ A.filter isInSegment $ segments
+    where
+    isInSegment (SS.PricePerSegment p) = p.minimum <= q && maybe true (q < _) p.exclusiveMaximum
+
   priceInSegment :: Int -> Array SS.PricePerSegment -> Number
   priceInSegment q = maybe 0.0 (\(SS.PricePerSegment p) -> p.listPrice) <<< A.head <<< A.filter isInSegment
     where
     isInSegment (SS.PricePerSegment p) = p.minimum <= q && maybe true (q < _) p.exclusiveMaximum
 
-  simplePriceToAmount q c = case c.price of
-    SS.SimplePriceSegmented (SS.Price ps) -> priceInSegment q ps
-    SS.SimplePriceByDim _ -> 0.0
-
+-- simplePriceToAmount q c = case c.price of
+--   SS.SimplePriceSegmented (SS.Price ps) -> priceInSegment q ps
+--   SS.SimplePriceByDim _ -> 0.0
 calcTotal :: OrderForm -> OrderForm
 calcTotal orderForm = orderForm { summary = SS.OrderSummary $ sumOrderSecs orderForm.sections }
   where

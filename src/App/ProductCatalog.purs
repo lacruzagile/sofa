@@ -197,8 +197,7 @@ render state = HH.section_ [ HH.article_ content ]
     entry k v = dataItem k (show v)
 
   renderRateCardCharge :: SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
-  renderRateCardCharge unitMap charge =
-    HH.slot Charge.proxy "charge" Charge.component {unitMap, charge} (\_ -> NoOp)
+  renderRateCardCharge unitMap charge = HH.slot Charge.proxy "charge" Charge.component { unitMap, charge } (\_ -> NoOp)
 
   renderRateCard :: SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
   renderRateCard unitMap (SS.RateCard r) =
@@ -206,7 +205,6 @@ render state = HH.section_ [ HH.article_ content ]
       <> opt (dataItem "Name") r.name
       <> opt (dataItem "Description") r.description
       <> dataItemRaw "Charge" (renderRateCardCharge unitMap r.charge)
-                              -- renderRateCardCharge unitMap r.charge)
 
   renderRateCards :: Map String SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action Slots m
   renderRateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard (fromMaybe Map.empty $ Map.lookup (showSkuCode sku) prodMap) rc)

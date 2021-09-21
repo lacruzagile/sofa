@@ -46,22 +46,8 @@ initialState = identity
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render { unitMap, charge } = case charge of
-  SS.ChargeSimple r ->
-    HH.dl_ $ renderDataItem "Price" (renderSimplePrice r.unit r.price)
-      <> opt (renderDataItem "Segmentation" <<< renderSegmentation) r.segmentation
-      <> renderDataItemString "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
-      <> renderDataItemString "Monthly Minimum" (show r.monthlyMinimum)
-  SS.ChargeMixed r ->
-    HH.dl_ $ optArr (renderDataItem "Price Segmentations" <<< renderPriceSegmentationsByUnit) r.segmentationByUnit
-      <> optArr (renderDataItem "Default Prices" <<< renderDefaultPrices) r.defaultPriceByUnit
-      <> renderDataItem "Prices per Dimension" (renderPriceByUnitPerDim r.units r.priceByUnitByDim)
-      <> renderDataItemString "Monthly Minimum" (show r.monthlyMinimum)
-      <> renderDataItemString "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
-  SS.ChargeArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ renderRateCardCharge r ]) $ rs
+  SS.ChargeArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ renderChargeElement r ]) $ rs
   where
-  opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
-  opt = maybe []
-
   -- Apply the given function if array is non-empty, otherwise return empty array.
   optArr :: forall a b. (Array a -> Array b) -> Array a -> Array b
   optArr f = case _ of
@@ -74,26 +60,6 @@ render { unitMap, charge } = case charge of
     ]
 
   renderDataItemString label value = renderDataItem label $ HH.text value
-
-  renderSimplePrice :: SS.ChargeUnitRef -> SS.SimplePrice -> H.ComponentHTML Action slots m
-  renderSimplePrice unit = case _ of
-    SS.SimplePriceSegmented p -> renderPriceByUnitPerDim (A.singleton unit) (conv' p)
-    SS.SimplePriceByDim p -> renderPriceByUnitPerDim (A.singleton unit) (map conv p)
-    where
-    conv (SS.PriceByDim p) =
-      SS.PriceByUnitPerDim
-        { dim: p.dim
-        , prices: A.singleton $ SS.PriceByUnit { price: p.price, unit }
-        , monthlyMinimum: 0.0
-        }
-
-    conv' price =
-      A.singleton
-        $ SS.PriceByUnitPerDim
-            { dim: SS.DimValue SS.CvNull
-            , prices: A.singleton $ SS.PriceByUnit { unit, price }
-            , monthlyMinimum: 0.0
-            }
 
   renderPriceByUnitPerDim ::
     Array SS.ChargeUnitRef ->
@@ -176,20 +142,13 @@ render { unitMap, charge } = case charge of
         , HH.td_ [ HH.text $ show p.price ]
         ]
 
-  renderRateCardCharge :: SS.Charge -> H.ComponentHTML Action slots m
-  renderRateCardCharge = case _ of
-    SS.ChargeSimple r ->
-      HH.dl_ $ renderDataItem "Price" (renderSimplePrice r.unit r.price)
-        <> opt (renderDataItem "Segmentation" <<< renderSegmentation) r.segmentation
-        <> renderDataItemString "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
-        <> renderDataItemString "Monthly Minimum" (show r.monthlyMinimum)
-    SS.ChargeMixed r ->
-      HH.dl_ $ optArr (renderDataItem "Price Segmentations" <<< renderPriceSegmentationsByUnit) r.segmentationByUnit
-        <> optArr (renderDataItem "Default Prices" <<< renderDefaultPrices) r.defaultPriceByUnit
-        <> renderDataItem "Prices per Dimension" (renderPriceByUnitPerDim r.units r.priceByUnitByDim)
-        <> renderDataItemString "Monthly Minimum" (show r.monthlyMinimum)
-        <> renderDataItemString "Term of Price Change" (show r.termOfPriceChangeInDays <> " days")
-    SS.ChargeArray rs -> HH.ol_ <<< map (\r -> HH.li_ [ renderRateCardCharge r ]) $ rs
+  renderChargeElement :: SS.ChargeElement -> H.ComponentHTML Action slots m
+  renderChargeElement (SS.ChargeElement c) =
+    HH.dl_ $ optArr (renderDataItem "Price Segmentations" <<< renderPriceSegmentationsByUnit) c.segmentationByUnit
+      <> optArr (renderDataItem "Default Prices" <<< renderDefaultPrices) c.defaultPriceByUnit
+      <> renderDataItem "Prices per Dimension" (renderPriceByUnitPerDim c.units c.priceByUnitByDim)
+      <> renderDataItemString "Monthly Minimum" (show c.monthlyMinimum)
+      <> renderDataItemString "Term of Price Change" (show c.termOfPriceChangeInDays <> " days")
 
 showChargeUnitRef :: SS.ChargeUnitRef -> String
 showChargeUnitRef (SS.ChargeUnitRef unit) =

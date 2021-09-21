@@ -4,6 +4,7 @@ module Data.SmartSpec
   , BillingAccountRef(..)
   , BillingOption(..)
   , Charge(..)
+  , ChargeElement(..)
   , ChargeType(..)
   , ChargeUnit(..)
   , ChargeUnitMap
@@ -64,7 +65,6 @@ module Data.SmartSpec
   , SegmentationPeriod(..)
   , Seller(..)
   , Severity(..)
-  , SimplePrice(..)
   , Sku(..)
   , Solution(..)
   , Uri(..)
@@ -80,11 +80,11 @@ module Data.SmartSpec
 import Prelude
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (~>))
-import Data.Argonaut.Decode.Decoders (decodeArray)
+import Data.Array as A
 import Data.Either (Either(..))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple(..))
 import Foreign.Object as FO
@@ -309,45 +309,64 @@ instance encodeJsonPriceBookCurrency :: EncodeJson PriceBookCurrency where
   encodeJson (PriceBookCurrency x) = encodeJson x
 
 -- TODO: Assert non-negative.
-data Charge
-  = ChargeSimple
-    { unit :: ChargeUnitRef
-    , price :: SimplePrice
-    , segmentation :: Maybe PriceSegmentation
-    , termOfPriceChangeInDays :: Int
-    , monthlyMinimum :: Number
-    }
-  | ChargeMixed
-    { units :: Array ChargeUnitRef
-    , segmentationByUnit :: Array PriceSegmentationPerUnit
-    , defaultPriceByUnit :: Array DefaultPricePerUnit
-    , priceByUnitByDim :: Array PriceByUnitPerDim
-    , monthlyMinimum :: Number
-    , termOfPriceChangeInDays :: Int
-    }
-  | ChargeArray (Array Charge)
+newtype Charge
+  = ChargeArray (Array ChargeElement)
 
 instance decodeJsonCharge :: DecodeJson Charge where
-  decodeJson json = rccElement json <|> rccArray json
+  decodeJson json = rccElement <|> rccArray
     where
-    rccElement j = rccSimple j <|> rccMixed j
+    rccElement = (ChargeArray <<< A.singleton) <$> decodeJson json
 
-    rccArray j = ChargeArray <$> decodeArray rccElement j
+    rccArray = ChargeArray <$> decodeJson json
 
+instance encodeJsonCharge :: EncodeJson Charge where
+  encodeJson = case _ of
+    ChargeArray [ x ] -> encodeJson x
+    ChargeArray xs -> encodeJson xs
+
+newtype ChargeElement
+  = ChargeElement
+  { units :: Array ChargeUnitRef
+  , segmentationByUnit :: Array PriceSegmentationPerUnit
+  , defaultPriceByUnit :: Array DefaultPricePerUnit
+  , priceByUnitByDim :: Array PriceByUnitPerDim
+  , monthlyMinimum :: Number
+  , termOfPriceChangeInDays :: Int
+  }
+
+instance decodeJsonChargeElement :: DecodeJson ChargeElement where
+  decodeJson json = rccSimple json <|> rccMixed json
+    where
     rccSimple j = do
       o <- decodeJson j
       unit <- o .: "unit"
-      price <- o .: "price"
+      SimplePrice pricesByDim <- o .: "price"
       segmentation <- o .:? "segmentation"
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
+      let
+        toPriceByUnitByDim (PriceByDim p) =
+          PriceByUnitPerDim
+            { dim: p.dim
+            , prices:
+                [ PriceByUnit
+                    { unit, price: p.price
+                    }
+                ]
+            , monthlyMinimum: p.monthlyMinimum
+            }
       pure
-        $ ChargeSimple
-            { unit
-            , price
-            , segmentation
-            , termOfPriceChangeInDays
+        $ ChargeElement
+            { units: [ unit ]
+            , segmentationByUnit:
+                maybe
+                  []
+                  (\s -> [ PriceSegmentationPerUnit { segmentation: s, unit } ])
+                  segmentation
+            , defaultPriceByUnit: []
+            , priceByUnitByDim: map toPriceByUnitByDim pricesByDim
             , monthlyMinimum
+            , termOfPriceChangeInDays
             }
 
     rccMixed j = do
@@ -359,7 +378,7 @@ instance decodeJsonCharge :: DecodeJson Charge where
       monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       pure
-        $ ChargeMixed
+        $ ChargeElement
             { units
             , segmentationByUnit
             , defaultPriceByUnit
@@ -368,26 +387,76 @@ instance decodeJsonCharge :: DecodeJson Charge where
             , termOfPriceChangeInDays
             }
 
-instance encodeJsonCharge :: EncodeJson Charge where
+instance encodeJsonChargeElement :: EncodeJson ChargeElement where
   encodeJson = case _ of
-    ChargeSimple x -> encodeJson x
-    ChargeMixed x -> encodeJson x
-    ChargeArray x -> encodeJson x
+    ChargeElement
+      { units: [ unit ]
+    , segmentationByUnit: [ PriceSegmentationPerUnit { segmentation } ]
+    , defaultPriceByUnit: []
+    , priceByUnitByDim
+    , monthlyMinimum
+    , termOfPriceChangeInDays
+    } ->
+      encodeJson
+        { unit
+        , price: SimplePrice $ A.mapMaybe simplePrice priceByUnitByDim
+        , segmentation
+        , termOfPriceChangeInDays
+        , monthlyMinimum
+        }
+    ChargeElement
+      { units: [ unit ]
+    , segmentationByUnit: []
+    , defaultPriceByUnit: []
+    , priceByUnitByDim
+    , monthlyMinimum
+    , termOfPriceChangeInDays
+    } ->
+      encodeJson
+        { unit
+        , price: SimplePrice $ A.mapMaybe simplePrice priceByUnitByDim
+        , termOfPriceChangeInDays
+        , monthlyMinimum
+        }
+    ChargeElement x -> encodeJson x
+    where
+    simplePrice = case _ of
+      PriceByUnitPerDim
+        { dim
+      , prices: [ PriceByUnit { price } ]
+      , monthlyMinimum
+      } -> Just $ PriceByDim { dim, price, monthlyMinimum }
+      _ -> Nothing
 
-data SimplePrice
-  = SimplePriceSegmented Price
-  | SimplePriceByDim (Array PriceByDim)
+newtype SimplePrice
+  = SimplePrice (Array PriceByDim)
 
 instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
   decodeJson json = segmented <|> byDim
     where
-    segmented = SimplePriceSegmented <$> decodeJson json
+    segmented = do
+      price <- decodeJson json
+      pure
+        $ SimplePrice
+            [ PriceByDim
+                { dim: DimValue CvNull
+                , price
+                , monthlyMinimum: 0.0
+                }
+            ]
 
-    byDim = SimplePriceByDim <$> decodeJson json
+    byDim = SimplePrice <$> decodeJson json
 
 instance encodeJsonSimplePrice :: EncodeJson SimplePrice where
-  encodeJson (SimplePriceSegmented x) = encodeJson x
-  encodeJson (SimplePriceByDim x) = encodeJson x
+  encodeJson ( SimplePrice
+      [ PriceByDim
+      { dim: DimValue CvNull
+    , price: price
+    , monthlyMinimum: 0.0
+    }
+    ]
+  ) = encodeJson price
+  encodeJson (SimplePrice x) = encodeJson x
 
 newtype DimValue
   = DimValue ConfigValue
