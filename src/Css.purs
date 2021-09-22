@@ -23,6 +23,12 @@ orderLine = ClassName "orderline"
 addOrderLine :: ClassName
 addOrderLine = ClassName "addorderline"
 
+orderLineConfig :: ClassName
+orderLineConfig = ClassName "orderlineconfig"
+
+addOrderLineConfig :: ClassName
+addOrderLineConfig = ClassName "addorderlineconfig"
+
 charge :: ClassName
 charge = ClassName "charge"
 

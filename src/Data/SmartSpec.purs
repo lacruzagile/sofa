@@ -956,6 +956,8 @@ data ConfigValue
   | CvObject (Map String ConfigValue)
   | CvNull
 
+derive instance eqConfigValue :: Eq ConfigValue
+
 instance showConfigValue :: Show ConfigValue where
   show = case _ of
     CvInteger v -> show v

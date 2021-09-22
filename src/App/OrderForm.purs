@@ -117,12 +117,18 @@ data Action
   | OrderLineSetQuantity
     { sectionIndex :: Int, orderLineIndex :: Int, quantity :: Int
     }
+  | OrderLineAddConfig OrderLineIndex
   | OrderLineSetConfig
     { sectionIndex :: Int
     , orderLineIndex :: Int
     , configIndex :: Int
     , field :: String
     , value :: SS.ConfigValue
+    }
+  | OrderLineRemoveConfig
+    { sectionIndex :: Int
+    , orderLineIndex :: Int
+    , configIndex :: Int
     }
   | OrderLineSetCharge { sectionIndex :: Int, orderLineIndex :: Int, charge :: SS.Charge }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
@@ -271,7 +277,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     $ renderChargeModal olIdx (SS.productChargeUnits ol.product) ol.charge
                 ]
             ]
-          <> renderProductConfigs product ol.configs
+          <> ( if isJust product.configSchema then
+                renderProductConfigs product ol.configs <> renderAddProductConfig
+              else
+                []
+            )
     where
     body subBody =
       HH.div [ HP.classes [ Css.orderLine ] ]
@@ -292,37 +302,65 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , sku: SS.SkuCode sku
         }
 
-    renderProductConfigs product = A.concat <<< A.mapWithIndex (renderProductConfig product)
+    renderProductConfigs product configs =
+      let
+        allowRemove = A.length configs > 1
+      in
+        A.concat $ A.mapWithIndex (renderProductConfig allowRemove product) configs
 
-    renderProductConfig product cfgIdx config =
+    renderProductConfig allowRemove product cfgIdx config =
       maybe []
-        ( renderConfigSchema cfgIdx
-            ( \field value ->
-                OrderLineSetConfig
-                  { sectionIndex: olIdx.sectionIndex
-                  , orderLineIndex: olIdx.orderLineIndex
-                  , configIndex: cfgIdx
-                  , field
-                  , value
-                  }
-            )
-            config
+        ( A.singleton
+            <<< renderConfigSchema allowRemove olIdx cfgIdx
+                ( \field value ->
+                    OrderLineSetConfig
+                      { sectionIndex: olIdx.sectionIndex
+                      , orderLineIndex: olIdx.orderLineIndex
+                      , configIndex: cfgIdx
+                      , field
+                      , value
+                      }
+                )
+                config
         )
         product.configSchema
 
+    renderAddProductConfig =
+      [ HH.div [ HP.class_ Css.orderLineConfig ]
+          [ HH.button
+              [ HP.class_ Css.addOrderLineConfig, HE.onClick \_ -> OrderLineAddConfig olIdx ]
+              [ HH.text "+" ]
+          ]
+      ]
+
   renderConfigSchema ::
+    Boolean ->
+    OrderLineIndex ->
     Int ->
     (String -> SS.ConfigValue -> Action) ->
     Map String SS.ConfigValue ->
     Map String SS.ConfigSchemaEntry ->
-    Array (H.ComponentHTML Action Slots m)
-  renderConfigSchema idx onChange config = wrap <<< A.concatMap renderEntry <<< Map.toUnfoldable
+    H.ComponentHTML Action Slots m
+  renderConfigSchema allowRemove olIdx cfgIdx onChange config = wrap <<< A.concatMap renderEntry <<< Map.toUnfoldable
     where
     wrap entries =
-      [ HH.fieldset_
-          $ [ HH.legend_ [ HH.text $ "Instance " <> show (idx + 1) ] ]
-          <> entries
-      ]
+      HH.div [ HP.classes [ Css.orderLineConfig ] ]
+        $ ( if allowRemove then
+              [ HH.a
+                  [ HP.class_ Css.close
+                  , HE.onClick \_ ->
+                      OrderLineRemoveConfig
+                        { sectionIndex: olIdx.sectionIndex
+                        , orderLineIndex: olIdx.orderLineIndex
+                        , configIndex: cfgIdx
+                        }
+                  ]
+                  [ HH.text "×" ]
+              ]
+            else
+              []
+          )
+        <> entries
 
     mact = maybe NoOp
 
@@ -346,7 +384,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.CseString c
         | not (A.null c.enum) ->
           let
-            props e = [ HP.selected (Just e == c.default) ]
+            props e =
+              [ HP.selected
+                  ( value == Just (SS.CvString e)
+                      || (value == Nothing && Just e == c.default)
+                  )
+              ]
 
             onIndexChange i = case A.index c.enum (i - 1) of
               Nothing -> NoOp
@@ -945,20 +988,8 @@ handleAction = case _ of
         $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
   OrderLineSetQuantity { sectionIndex, orderLineIndex, quantity } ->
     let
-      -- Creates a new array of product configurations. The list is a truncation
-      -- or extension of the old one such that its length matches the quantity
-      -- variable. If the array needs to be extended then it is extended by
-      -- empty configurations.
-      mkConfigs product oldConfigs =
-        A.take quantity oldConfigs
-          <> A.replicate (quantity - A.length oldConfigs) (mkDefaultConfig product)
-
       updateQuantity :: OrderLine -> OrderLine
-      updateQuantity ol =
-        ol
-          { quantity = quantity
-          , configs = mkConfigs ol.product ol.configs
-          }
+      updateQuantity ol = ol { quantity = quantity }
 
       updateOrderLine :: OrderSection -> OrderSection
       updateOrderLine section =
@@ -978,6 +1009,59 @@ handleAction = case _ of
     in
       H.modify_
         $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
+  OrderLineAddConfig { sectionIndex, orderLineIndex } ->
+    let
+      updateConfigs :: OrderLine -> OrderLine
+      updateConfigs ol = ol { configs = ol.configs <> [ mkDefaultConfig ol.product ] }
+
+      updateOrderLine :: OrderSection -> OrderSection
+      updateOrderLine section =
+        section
+          { orderLines =
+            fromMaybe
+              section.orderLines
+              (modifyAt orderLineIndex (map updateConfigs) section.orderLines)
+          }
+
+      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
+      updateSections sections =
+        fromMaybe sections
+          $ modifyAt sectionIndex (map updateOrderLine)
+          $ sections
+    in
+      H.modify_
+        $ map \st -> st { orderForm = st.orderForm { sections = updateSections st.orderForm.sections } }
+  OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } ->
+    let
+      -- | Remove the configuration entry. If this is the last entry then we
+      -- | ignore the request.
+      updateConfigs :: OrderLine -> OrderLine
+      updateConfigs ol =
+        ol
+          { configs =
+            if A.length ol.configs == 1 then
+              ol.configs
+            else
+              fromMaybe ol.configs $ A.deleteAt configIndex ol.configs
+          }
+
+      updateOrderLine :: OrderSection -> OrderSection
+      updateOrderLine section =
+        section
+          { orderLines =
+            fromMaybe
+              section.orderLines
+              (modifyAt orderLineIndex (map updateConfigs) section.orderLines)
+          }
+
+      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
+      updateSections sections =
+        fromMaybe sections
+          $ modifyAt sectionIndex (map updateOrderLine)
+          $ sections
+    in
+      H.modify_
+        $ map \st -> st { orderForm = st.orderForm { sections = updateSections st.orderForm.sections } }
   OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, field, value } ->
     let
       updateValue :: OrderLine -> OrderLine
