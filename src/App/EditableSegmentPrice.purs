@@ -4,6 +4,7 @@ import Prelude
 import Data.Array as A
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Number as Number
+import Data.Number.Format (fixed, toStringWith)
 import Data.SmartSpec as SS
 import Data.String (Pattern(..), stripSuffix)
 import Effect.Aff.Class (class MonadAff)
@@ -84,8 +85,8 @@ render state = case state.editState of
     where
     price =
       maybe
-        (HH.text $ show $ p.listPrice)
-        (HH.span [ HP.style "color:red" ] <<< A.singleton <<< HH.text <<< show)
+        (HH.text $ showMonetary $ p.listPrice)
+        (HH.span [ HP.style "color:red" ] <<< A.singleton <<< HH.text <<< showMonetary)
         p.salesPrice
 
     segment = HH.text $ " [" <> show p.minimum <> "," <> maybe "∞" show p.exclusiveMaximum <> ")"
@@ -95,6 +96,9 @@ render state = case state.editState of
     showDiscount = case _ of
       SS.DiscountPercentage d -> show d <> "%"
       SS.DiscountAbsolute d -> show d
+
+showMonetary :: Number -> String
+showMonetary = toStringWith (fixed 2)
 
 handleAction ::
   forall m.

@@ -15,6 +15,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
+import Data.Number.Format (toStringWith, fixed)
 import Data.SmartSpec (skuCode, solutionProducts)
 import Data.SmartSpec as SS
 import Data.Traversable (sequence, traverse)
@@ -541,10 +542,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Just (SS.Currency { code: "" }) -> HH.text "N/A"
     Just (SS.Currency c) ->
       if amount.listPrice == amount.salesPrice then
-        HH.text $ show (unwrap amount.listPrice) <> " " <> c.code
+        HH.text $ showMonetary amount.listPrice <> " " <> c.code
       else
-        Widgets.withTooltip Widgets.Top ("Without discounts: " <> show (unwrap amount.listPrice))
-          $ HH.span [ HP.style "color:red" ] [ HH.text $ show (unwrap amount.salesPrice) ]
+        Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
+          $ HH.span_
+              [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.salesPrice ]
+              , HH.text " "
+              , HH.text c.code
+              ]
 
   renderCustomer :: H.ComponentHTML Action Slots m
   renderCustomer =
@@ -574,6 +579,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
            \price currency and a price book for each order section."
 
   renderContent = defRender state renderOrderForm
+
+showMonetary :: Additive Number -> String
+showMonetary (Additive n) = toStringWith (fixed 2) n
 
 toJson :: OrderForm -> Maybe String
 toJson orderForm = do
