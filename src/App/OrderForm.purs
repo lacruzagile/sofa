@@ -795,6 +795,33 @@ calcTotal orderForm = orderForm { summary = SubTotal $ sumOrderSecs orderForm.se
 
   conv = maybe mempty (\{ summary: SubTotal os } -> os)
 
+-- | Helper function to modify an indexed order line.
+modifyOrderLine :: Int -> Int -> StateOrderForm -> (OrderLine -> OrderLine) -> StateOrderForm
+modifyOrderLine secIdx olIdx state updateOrderLine =
+  state
+    { orderForm = updateOrderForm state.orderForm
+    }
+  where
+  updateOrderForm :: OrderForm -> OrderForm
+  updateOrderForm orderForm =
+    calcTotal
+      $ orderForm { sections = updateSections orderForm.sections }
+
+  updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
+  updateSections sections =
+    fromMaybe sections
+      $ modifyAt secIdx (map updateOrderLines)
+      $ sections
+
+  updateOrderLines :: OrderSection -> OrderSection
+  updateOrderLines section =
+    calcSubTotal
+      $ section
+          { orderLines =
+            fromMaybe section.orderLines
+              $ modifyAt olIdx (map updateOrderLine) section.orderLines
+          }
+
 handleAction ::
   forall slots output m.
   MonadAff m => Action -> H.HalogenM State Action slots output m Unit
@@ -988,55 +1015,22 @@ handleAction = case _ of
         $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
   OrderLineSetQuantity { sectionIndex, orderLineIndex, quantity } ->
     let
-      updateQuantity :: OrderLine -> OrderLine
-      updateQuantity ol = ol { quantity = quantity }
-
-      updateOrderLine :: OrderSection -> OrderSection
-      updateOrderLine section =
-        calcSubTotal
-          section
-            { orderLines =
-              fromMaybe
-                section.orderLines
-                (modifyAt orderLineIndex (map updateQuantity) section.orderLines)
-            }
-
-      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
-      updateSections sections =
-        fromMaybe sections
-          $ modifyAt sectionIndex (map updateOrderLine)
-          $ sections
+      updateOrderLine :: OrderLine -> OrderLine
+      updateOrderLine ol = ol { quantity = quantity }
     in
-      H.modify_
-        $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
+      H.modify_ $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineAddConfig { sectionIndex, orderLineIndex } ->
     let
-      updateConfigs :: OrderLine -> OrderLine
-      updateConfigs ol = ol { configs = ol.configs <> [ mkDefaultConfig ol.product ] }
-
-      updateOrderLine :: OrderSection -> OrderSection
-      updateOrderLine section =
-        section
-          { orderLines =
-            fromMaybe
-              section.orderLines
-              (modifyAt orderLineIndex (map updateConfigs) section.orderLines)
-          }
-
-      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
-      updateSections sections =
-        fromMaybe sections
-          $ modifyAt sectionIndex (map updateOrderLine)
-          $ sections
+      updateOrderLine :: OrderLine -> OrderLine
+      updateOrderLine ol = ol { configs = ol.configs <> [ mkDefaultConfig ol.product ] }
     in
-      H.modify_
-        $ map \st -> st { orderForm = st.orderForm { sections = updateSections st.orderForm.sections } }
+      H.modify_ $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } ->
     let
       -- | Remove the configuration entry. If this is the last entry then we
       -- | ignore the request.
-      updateConfigs :: OrderLine -> OrderLine
-      updateConfigs ol =
+      updateOrderLine :: OrderLine -> OrderLine
+      updateOrderLine ol =
         ol
           { configs =
             if A.length ol.configs == 1 then
@@ -1044,70 +1038,20 @@ handleAction = case _ of
             else
               fromMaybe ol.configs $ A.deleteAt configIndex ol.configs
           }
-
-      updateOrderLine :: OrderSection -> OrderSection
-      updateOrderLine section =
-        section
-          { orderLines =
-            fromMaybe
-              section.orderLines
-              (modifyAt orderLineIndex (map updateConfigs) section.orderLines)
-          }
-
-      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
-      updateSections sections =
-        fromMaybe sections
-          $ modifyAt sectionIndex (map updateOrderLine)
-          $ sections
     in
-      H.modify_
-        $ map \st -> st { orderForm = st.orderForm { sections = updateSections st.orderForm.sections } }
+      H.modify_ $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, field, value } ->
     let
-      updateValue :: OrderLine -> OrderLine
-      updateValue ol =
+      updateOrderLine :: OrderLine -> OrderLine
+      updateOrderLine ol =
         ol
           { configs =
             fromMaybe [ Map.singleton field value ]
               $ A.modifyAt configIndex (Map.insert field value) ol.configs
           }
-
-      updateOrderLine :: OrderSection -> OrderSection
-      updateOrderLine section =
-        section
-          { orderLines =
-            fromMaybe
-              section.orderLines
-              (modifyAt orderLineIndex (map updateValue) section.orderLines)
-          }
-
-      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
-      updateSections sections =
-        fromMaybe sections
-          $ modifyAt sectionIndex (map updateOrderLine)
-          $ sections
     in
       H.modify_
-        $ map \st -> st { orderForm { sections = updateSections st.orderForm.sections } }
+        $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineSetCharge { sectionIndex, orderLineIndex, charge } ->
-    let
-      updateValue :: OrderLine -> OrderLine
-      updateValue ol = ol { charge = Just charge }
-
-      updateOrderLine :: OrderSection -> OrderSection
-      updateOrderLine section =
-        calcSubTotal
-          $ section
-              { orderLines =
-                fromMaybe section.orderLines
-                  $ modifyAt orderLineIndex (map updateValue) section.orderLines
-              }
-
-      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
-      updateSections sections =
-        fromMaybe sections
-          $ modifyAt sectionIndex (map updateOrderLine)
-          $ sections
-    in
-      H.modify_
-        $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
+    H.modify_
+      $ map \st -> modifyOrderLine sectionIndex orderLineIndex st (_ { charge = Just charge })
