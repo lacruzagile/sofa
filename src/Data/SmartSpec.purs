@@ -24,6 +24,7 @@ module Data.SmartSpec
   , Discount(..)
   , DiscountPerDim(..)
   , DiscountProfilePerUnit(..)
+  , EstimatedVWAPPerUnit(..)
   , LegalEntity(..)
   , OrderForm(..)
   , OrderLine(..)
@@ -337,6 +338,7 @@ newtype ChargeElement
   , segmentationByUnit :: Array PriceSegmentationPerUnit
   , defaultPriceByUnit :: Array DefaultPricePerUnit
   , priceByUnitByDim :: Array PriceByUnitPerDim
+  , estimatedVWAPByUnit :: Array EstimatedVWAPPerUnit
   , monthlyMinimum :: Number
   , termOfPriceChangeInDays :: Int
   }
@@ -348,6 +350,7 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
       o <- decodeJson j
       unit <- o .: "unit"
       SimplePrice pricesByDim <- o .: "price"
+      estimatedVWAP <- o .:? "estimatedVWAP"
       segmentation <- o .:? "segmentation"
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
@@ -372,6 +375,7 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
                   segmentation
             , defaultPriceByUnit: []
             , priceByUnitByDim: map toPriceByUnitByDim pricesByDim
+            , estimatedVWAPByUnit: maybe [] A.singleton estimatedVWAP
             , monthlyMinimum
             , termOfPriceChangeInDays
             }
@@ -382,6 +386,7 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
       segmentationByUnit <- o .:? "segmentationByUnit" .!= []
       defaultPriceByUnit <- o .:? "defaultPriceByUnit" .!= []
       priceByUnitByDim <- o .: "priceByUnitByDim"
+      estimatedVWAPByUnit <- o .:? "estimatedVWAPByUnit" .!= []
       monthlyMinimum <- o .:? "monthlyMinimum" .!= 0.0
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       pure
@@ -390,6 +395,7 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
             , segmentationByUnit
             , defaultPriceByUnit
             , priceByUnitByDim
+            , estimatedVWAPByUnit
             , monthlyMinimum
             , termOfPriceChangeInDays
             }
@@ -743,9 +749,22 @@ instance decodeJsonSegmentationModel :: DecodeJson SegmentationModel where
 instance encodeJsonSegmentationModel :: EncodeJson SegmentationModel where
   encodeJson = encodeJson <<< show
 
+newtype EstimatedVWAPPerUnit
+  = EstimatedVWAPPerUnit
+  { unit :: ChargeUnitRef
+  , price :: Number
+  }
+
+instance decodeJsonEstimatedVWAPPerUnit :: DecodeJson EstimatedVWAPPerUnit where
+  decodeJson json = EstimatedVWAPPerUnit <$> decodeJson json
+
+instance encodeJsonEstimatedVWAPPerUnit :: EncodeJson EstimatedVWAPPerUnit where
+  encodeJson (EstimatedVWAPPerUnit x) = encodeJson x
+
 newtype DefaultPricePerUnit
   = DefaultPricePerUnit
   { unit :: ChargeUnitRef
+  , currency :: Maybe Currency
   , price :: Number
   }
 
