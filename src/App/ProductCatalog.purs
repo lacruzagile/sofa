@@ -171,7 +171,8 @@ render state = HH.section_ [ HH.article_ content ]
           <> opt (dataItem "Name") p.name
           <> opt (dataItem "Description") p.description
           <> opt (dataItemRaw "Attributes" <<< renderConfigValues) p.attr
-          <> opt (dataItemRaw "Configuration Schema" <<< configSchema) p.configSchema
+          <> opt (dataItemRaw "Order Configuration Schema" <<< configSchema) p.orderConfigSchema
+          <> opt (dataItemRaw "Asset Configuration Schema" <<< configSchemaEntry) p.assetConfigSchema
           <> productOptions p.options
           <> opt (dataItem "Features" <<< const "TODO") p.features
           <> opt (dataItem "Variables" <<< const "TODO") p.variables

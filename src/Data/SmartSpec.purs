@@ -1065,7 +1065,8 @@ newtype Product
   , name :: Maybe String
   , description :: Maybe String
   , attr :: Maybe (Map String ConfigValue)
-  , configSchema :: Maybe (Map String ConfigSchemaEntry)
+  , orderConfigSchema :: Maybe (Map String ConfigSchemaEntry)
+  , assetConfigSchema :: Maybe ConfigSchemaEntry
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
   , variables :: Maybe (Array ProductVariable)
@@ -1082,11 +1083,12 @@ instance decodeJsonProduct :: DecodeJson Product where
     name <- o .:? "name"
     description <- o .:? "description"
     attrObj :: Maybe (FO.Object ConfigValue) <- o .:? "attr"
-    configSchemaObj :: Maybe (FO.Object ConfigSchemaEntry) <- o .:? "configSchema"
+    orderConfigSchemaObj :: Maybe (FO.Object ConfigSchemaEntry) <- o .:? "orderConfigSchema"
     let
       attr = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> attrObj
 
-      configSchema = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> configSchemaObj
+      orderConfigSchema = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> orderConfigSchemaObj
+    assetConfigSchema <- o .:? "assetConfigSchema"
     options <- o .:? "options"
     features <- o .:? "features"
     variables <- o .:? "variables"
@@ -1098,7 +1100,8 @@ instance decodeJsonProduct :: DecodeJson Product where
           , name
           , description
           , attr
-          , configSchema
+          , orderConfigSchema
+          , assetConfigSchema
           , options
           , features
           , variables

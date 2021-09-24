@@ -277,7 +277,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     $ renderChargeModal olIdx (SS.productChargeUnits ol.product) ol.charge
                 ]
             ]
-          <> ( if isJust product.configSchema then
+          <> ( if isJust product.orderConfigSchema then
                 renderProductConfigs product ol.configs <> renderAddProductConfig
               else
                 []
@@ -323,7 +323,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 )
                 config
         )
-        product.configSchema
+        product.orderConfigSchema
 
     renderAddProductConfig =
       [ HH.div [ HP.class_ Css.orderLineConfig ]
@@ -691,7 +691,7 @@ loadCatalog url = do
   H.modify_ \_ -> res
 
 mkDefaultConfig :: SS.Product -> Map String SS.ConfigValue
-mkDefaultConfig (SS.Product p) = maybe Map.empty mkDefaults p.configSchema
+mkDefaultConfig (SS.Product p) = maybe Map.empty mkDefaults p.orderConfigSchema
   where
   mkDefaults = Map.mapMaybe mkDefault
 
