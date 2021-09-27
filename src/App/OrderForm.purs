@@ -537,7 +537,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             HH.option
               [ HP.selected (Just pb.id == map _.id curPriceBook)
               ]
-              [ HH.text $ pb.id <> " (" <> pb.version <> ")" ]
+              [ HH.text $ pb.name <> " (" <> pb.version <> ")" ]
         )
 
     sectionOrderLines sol orderLines = [ HH.div_ $ A.mapWithIndex renderOrderLine' orderLines ]
