@@ -8,11 +8,15 @@ import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (modifyAt, snoc)
 import Data.Array as A
+import Data.Either (Either(..), either)
+import Data.Estimate (Estimate(..))
+import Data.Estimate as Est
 import Data.Int as Int
+import Data.List.Lazy as List
 import Data.Loadable (Loadable(..), getJson)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
 import Data.Number.Format (toStringWith, fixed)
@@ -50,22 +54,33 @@ type StateOrderForm
     }
 
 type SubTotalEntry
-  = { listPrice :: Additive Number
-    , salesPrice :: Additive Number
+  = { listPrice :: Estimate (Additive Number)
+    , salesPrice :: Estimate (Additive Number)
     }
 
 newtype SubTotal
   = SubTotal
-  { usage :: SubTotalEntry -- ^ Estimated usage price.
+  { onetime :: SubTotalEntry -- ^ Onetime price.
   , monthly :: SubTotalEntry -- ^ Monthly price.
-  , onetime :: SubTotalEntry -- ^ Onetime price.
+  , quarterly :: SubTotalEntry -- ^ Quarterly price.
+  , usage :: SubTotalEntry -- ^ Estimated usage price.
+  , segment :: SubTotalEntry -- ^ Monthly segment price.
+  , quarterlySegment :: SubTotalEntry -- ^ Quarterly segment price.
   }
 
 instance semigroupSubTotal :: Semigroup SubTotal where
   append (SubTotal a) (SubTotal b) = SubTotal $ a <> b
 
 instance monoidSubTotal :: Monoid SubTotal where
-  mempty = SubTotal { usage: mempty, monthly: mempty, onetime: mempty }
+  mempty =
+    SubTotal
+      { onetime: mempty
+      , monthly: mempty
+      , quarterly: mempty
+      , usage: mempty
+      , segment: mempty
+      , quarterlySegment: mempty
+      }
 
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
@@ -87,9 +102,12 @@ type OrderSection
 type OrderLine
   = { product :: SS.Product
     , charge :: Maybe SS.Charge
-    , quantity :: Int
+    , quantity :: QuantityMap
     , configs :: Array (Map String SS.ConfigValue)
     }
+
+type QuantityMap
+  = Charge.QuantityMap
 
 type PriceBook
   = { id :: String
@@ -113,9 +131,6 @@ data Action
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
   | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.SkuCode }
-  | OrderLineSetQuantity
-    { sectionIndex :: Int, orderLineIndex :: Int, quantity :: Int
-    }
   | OrderLineAddConfig OrderLineIndex
   | OrderLineSetConfig
     { sectionIndex :: Int
@@ -129,7 +144,12 @@ data Action
     , orderLineIndex :: Int
     , configIndex :: Int
     }
-  | OrderLineSetCharge { sectionIndex :: Int, orderLineIndex :: Int, charge :: SS.Charge }
+  | OrderLineSetCharge
+    { sectionIndex :: Int
+    , orderLineIndex :: Int
+    , charge :: SS.Charge
+    , quantity :: QuantityMap
+    }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
 
 component ::
@@ -183,24 +203,31 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Loaded dat -> rend dat
     Error err -> error err
 
-  renderCharge :: OrderLineIndex -> SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
-  renderCharge olIdx unitMap charge =
+  renderCharge ::
+    OrderLineIndex ->
+    SS.ChargeUnitMap ->
+    QuantityMap ->
+    SS.Charge ->
+    H.ComponentHTML Action Slots m
+  renderCharge olIdx unitMap quantity charge =
     HH.slot Charge.proxy olIdx Charge.component
-      { unitMap, charge }
-      ( \c ->
+      { unitMap, charge, quantity }
+      ( \result ->
           OrderLineSetCharge
             { sectionIndex: olIdx.sectionIndex
             , orderLineIndex: olIdx.orderLineIndex
-            , charge: c
+            , charge: result.charge
+            , quantity: result.quantity
             }
       )
 
   renderChargeModal ::
     OrderLineIndex ->
     SS.ChargeUnitMap ->
+    QuantityMap ->
     Maybe SS.Charge ->
     Array (H.ComponentHTML Action Slots m)
-  renderChargeModal olIdx unitMap = maybe noCharge withCharge
+  renderChargeModal olIdx unitMap quantity = maybe noCharge withCharge
     where
     chargeText = HH.text "Charge"
 
@@ -220,7 +247,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HP.for modalLabel, HP.class_ Css.button, noMargin ]
             [ chargeText ]
         , Widgets.modal modalLabel "Charge"
-            [ renderCharge olIdx unitMap charge ]
+            [ renderCharge olIdx unitMap quantity charge ]
             []
         ]
 
@@ -250,7 +277,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         body
           $ [ HH.div [ HP.classes [ Css.flex, Css.five ] ]
-                [ HH.label [ HP.classes [ Css.full, Css.threeFifth1000 ] ]
+                [ HH.label [ HP.classes [ Css.full, Css.fourFifth1000 ] ]
                     [ HH.text "Product"
                     , HH.input
                         [ HP.type_ HP.InputText
@@ -258,22 +285,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         , HP.value (show product.sku)
                         ]
                     ]
-                , HH.label [ HP.classes [ Css.threeFifth, Css.fifth1000 ] ]
-                    [ HH.text "Quantity"
-                    , HH.input
-                        [ HP.type_ HP.InputNumber
-                        , HP.min 1.0
-                        , HP.value $ show ol.quantity
-                        , HE.onValueChange \input ->
-                            OrderLineSetQuantity
-                              { sectionIndex: olIdx.sectionIndex
-                              , orderLineIndex: olIdx.orderLineIndex
-                              , quantity: fromMaybe 0 $ Int.fromString input
-                              }
-                        ]
-                    ]
-                , HH.div [ HP.classes [ Css.twoFifth, Css.fifth1000 ] ]
-                    $ renderChargeModal olIdx (SS.productChargeUnits ol.product) ol.charge
+                , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
+                    $ renderChargeModal olIdx (SS.productChargeUnits ol.product) ol.quantity ol.charge
                 ]
             ]
           <> ( if isJust product.orderConfigSchema then
@@ -635,8 +648,65 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderContent = defRender state renderOrderForm
 
-showMonetary :: Additive Number -> String
-showMonetary (Additive n) = toStringWith (fixed 2) n
+showMonetary :: Estimate (Additive Number) -> String
+showMonetary = showEst <<< map (\(Additive n) -> toStringWith (fixed 2) n)
+  where
+  showEst = case _ of
+    Exact s -> s
+    Estimate s -> "~" <> s
+
+-- fromQuantity :: Array SS.OrderLineQuantity -> QuantityMap
+-- fromQuantity = List.foldl accumulate Map.empty <<< unravel
+--   where
+--   unravel olqs = do
+--     SS.OrderLineQuantity olq <- List.fromFoldable olqs
+--     let
+--       SS.QuantityPerUnit { dim, quantityPerUnit } = olq.perUnit
+--     SS.QuantityPerUnit { unit: unitRef, quantity: SS.Quantity qpss } <- List.fromFoldable quantityPerUnit
+--     SS.QuantityPerSegment qps <- List.fromFoldable qpss
+--     let
+--       segment = SS.Segment { minimum: qps.minimum, exclusiveMaximum: qps.exclusiveMaximum }
+--     pure $ { dim, unitRef, segment, quantity: qps.quantity }
+--   accumulate acc { dim, unitRef, segment, quantity } =
+--     let
+--       singletonUnit _ = Map.singleton unitRef (singletonSegment unit)
+--       singletonSegment _ = Map.singleton segment quantity
+--       insertUnit = Just <<< maybe' singletonUnit (Map.alter insertSegment unitRef)
+--       insertSegment = Just <<< maybe' singletonSegment (Map.insert segment quantity)
+--     in
+--       Map.alter insertUnit dim acc
+toQuantity :: QuantityMap -> Array SS.QuantityPerUnit
+toQuantity quantityMap =
+  let
+    toList :: forall k v. Map k v -> List.List (Tuple k v)
+    toList = Map.toUnfoldable
+
+    transform :: forall k v a. (Tuple k v -> a) -> Map k v -> Array a
+    transform f = A.fromFoldable <<< map f <<< toList
+
+    r1 :: Tuple SS.ChargeUnitRef (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SS.QuantityPerUnit
+    r1 (Tuple unitRef unitMap) = case unitMap of
+      Left quantity ->
+        SS.QuantityPerUnit
+          { unit: unitRef
+          , quantity: Est.toValue quantity
+          , estimated: Est.isEstimate quantity
+          }
+      Right dimMap ->
+        SS.QuantityByDimPerUnit
+          { unit: unitRef
+          , quantityByDim: transform r2 dimMap
+          }
+
+    r2 :: Tuple SS.DimValue (Estimate Int) -> SS.QuantityPerDim
+    r2 (Tuple dim quantity) =
+      SS.QuantityPerDim
+        { dim
+        , quantity: Est.toValue quantity
+        , estimated: Est.isEstimate quantity
+        }
+  in
+    transform r1 quantityMap
 
 toJson :: OrderForm -> Maybe String
 toJson orderForm = do
@@ -658,7 +728,7 @@ toJson orderForm = do
       $ SS.OrderLine
           { sku: _.sku $ unwrap $ ol.product
           , charge: ch
-          , quantity: ol.quantity
+          , quantity: toQuantity ol.quantity
           , configs: ol.configs
           }
 
@@ -725,14 +795,23 @@ calcSubTotal os =
   where
   orderLines' = map (map (updateOrderLineCharge os.priceBook)) os.orderLines
 
-  -- | Sets the order line charge from the given price book. If the order line
-  -- | already has a charge, then it is returned unchanged.
+  -- | Sets the order line charge and default quantity from the given price
+  -- | book. If the order line already has a charge, then it is returned
+  -- | unchanged.
   updateOrderLineCharge :: Maybe PriceBook -> OrderLine -> OrderLine
   updateOrderLineCharge mpb ol
     | isJust ol.charge = ol
     | otherwise =
       fromMaybe ol
-        $ (\pb -> ol { charge = lookupCharge ol.product pb })
+        $ ( \pb ->
+              let
+                charge = lookupCharge ol.product pb
+              in
+                ol
+                  { charge = charge
+                  , quantity = mkDefaultQuantity charge
+                  }
+          )
         <$> mpb
 
   lookupCharge :: SS.Product -> PriceBook -> Maybe SS.Charge
@@ -741,64 +820,81 @@ calcSubTotal os =
     SS.RateCard rateCard <- Map.lookup product.sku rateCards
     pure rateCard.charge
 
+  mkDefaultQuantity :: Maybe SS.Charge -> QuantityMap
+  mkDefaultQuantity Nothing = Map.empty
+
+  mkDefaultQuantity (Just (SS.ChargeArray ces)) = List.foldl accumulate Map.empty $ unravelled
+    where
+    unravelled = do
+      SS.ChargeElement ce <- List.fromFoldable ces
+      SS.PriceByUnitPerDim { prices } <- List.fromFoldable ce.priceByUnitByDim
+      SS.PriceByUnit { unit: unitRef } <- List.fromFoldable prices
+      pure $ { unitRef, quantity: Exact 1 }
+
+    accumulate acc { unitRef, quantity } = Map.alter (Just <<< Left <<< const quantity) unitRef acc
+
   sumOrderLines :: Array (Maybe OrderLine) -> SubTotal
   sumOrderLines = A.foldl (\a b -> a <> (conv b)) mempty
 
   conv :: Maybe OrderLine -> SubTotal
-  conv Nothing = mempty
+  conv mol =
+    fromMaybe mempty
+      $ do
+          ol <- mol
+          charge <- ol.charge
+          pure $ calcCharge ol.product ol.quantity charge
 
-  conv (Just ol) =
-    let
-      (SubTotal result) = maybe mempty (calcCharge ol.product) ol.charge
-
-      scale = map (Int.toNumber ol.quantity * _)
-    in
-      SubTotal
-        { usage:
-            { listPrice: scale result.usage.listPrice
-            , salesPrice: scale result.usage.salesPrice
-            }
-        , monthly:
-            { listPrice: scale result.monthly.listPrice
-            , salesPrice: scale result.monthly.salesPrice
-            }
-        , onetime:
-            { listPrice: scale result.onetime.listPrice
-            , salesPrice: scale result.onetime.salesPrice
-            }
-        }
-
-  calcCharge :: SS.Product -> SS.Charge -> SubTotal
-  calcCharge product (SS.ChargeArray cs) = A.foldl (\a b -> a <> calcChargeElem b) mempty cs
+  calcCharge :: SS.Product -> QuantityMap -> SS.Charge -> SubTotal
+  calcCharge product quantityMap (SS.ChargeArray cs) = A.foldl (\a b -> a <> calcChargeElem b) mempty cs
     where
-    priceToAmount (SS.PriceByUnit p) =
-      maybe mempty (mkChargeSummary (priceInSegment 1 p.price))
-        $ chargeType p.unit product
+    priceToAmount dim (SS.PriceByUnit p) =
+      let
+        quantity = do
+          dimMap <- Map.lookup p.unit quantityMap
+          either (Just <<< identity) (Map.lookup dim) dimMap
+      in
+        maybe mempty (mkChargeSummary $ priceInSegment quantity p.price)
+          $ chargeType p.unit product
 
-    priceByUnitToAmount (SS.PriceByUnitPerDim p) = A.foldl (\a b -> a <> priceToAmount b) mempty p.prices
+    priceByUnitToAmount (SS.PriceByUnitPerDim p) = A.foldl (\a b -> a <> priceToAmount p.dim b) mempty p.prices
 
     calcChargeElem (SS.ChargeElement c) = A.foldl (\a b -> a <> priceByUnitToAmount b) mempty c.priceByUnitByDim
 
   mkChargeSummary :: SubTotalEntry -> SS.ChargeType -> SubTotal
   mkChargeSummary c = case _ of
-    SS.ChargeTypeOnetime -> SubTotal { usage: mempty, monthly: mempty, onetime: c }
-    SS.ChargeTypeMonthly -> SubTotal { usage: mempty, monthly: c, onetime: mempty }
-    SS.ChargeTypeUsage -> SubTotal { usage: c, monthly: mempty, onetime: mempty }
+    SS.ChargeTypeOnetime -> SubTotal $ zero { onetime = c }
+    SS.ChargeTypeMonthly -> SubTotal $ zero { monthly = c }
+    SS.ChargeTypeQuarterly -> SubTotal $ zero { quarterly = c }
+    SS.ChargeTypeUsage -> SubTotal $ zero { usage = c }
+    SS.ChargeTypeSegment -> SubTotal $ zero { segment = c }
+    SS.ChargeTypeQuarterlySegment -> SubTotal $ zero { quarterlySegment = c }
+    where
+    SubTotal zero = mempty
 
   chargeType (SS.ChargeUnitRef unit) (SS.Product { chargeUnits }) =
     map (\(SS.ChargeUnit u) -> u.chargeType)
       $ A.find (\(SS.ChargeUnit u) -> u.id == unit.unitID)
       $ chargeUnits
 
-  priceInSegment :: Int -> SS.Price -> SubTotalEntry
-  priceInSegment q (SS.Price segments) = maybe mempty getValue $ A.head $ A.filter isInSegment $ segments
+  priceInSegment :: Maybe (Estimate Int) -> SS.Price -> SubTotalEntry
+  priceInSegment quantity (SS.Price segments) = A.foldl (\a b -> a <> calcSegmentPrice b) mempty segments
     where
-    getValue (SS.PricePerSegment p) =
-      maybe { listPrice: Additive p.listPrice, salesPrice: Additive p.listPrice }
-        (\sp -> { listPrice: Additive p.listPrice, salesPrice: Additive sp })
-        p.salesPrice
-
-    isInSegment (SS.PricePerSegment p) = p.minimum <= q && maybe true (q < _) p.exclusiveMaximum
+    calcSegmentPrice (SS.PricePerSegment p) =
+      let
+        q = maybe (Exact 0.0) (map Int.toNumber) quantity
+      in
+        maybe'
+          ( \_ ->
+              { listPrice: Additive <<< (p.listPrice * _) <$> q
+              , salesPrice: Additive <<< (p.listPrice * _) <$> q
+              }
+          )
+          ( \sp ->
+              { listPrice: Additive <<< (p.listPrice * _) <$> q
+              , salesPrice: Additive <<< (sp * _) <$> q
+              }
+          )
+          p.salesPrice
 
 calcTotal :: OrderForm -> OrderForm
 calcTotal orderForm = orderForm { summary = SubTotal $ sumOrderSecs orderForm.sections }
@@ -978,7 +1074,7 @@ handleAction = case _ of
       mkOrderLine product =
         { product
         , charge: Nothing
-        , quantity: 1
+        , quantity: Map.empty
         , configs: mkDefaultConfigs product
         }
 
@@ -1025,12 +1121,6 @@ handleAction = case _ of
     in
       H.modify_
         $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
-  OrderLineSetQuantity { sectionIndex, orderLineIndex, quantity } ->
-    let
-      updateOrderLine :: OrderLine -> OrderLine
-      updateOrderLine ol = ol { quantity = quantity }
-    in
-      H.modify_ $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineAddConfig { sectionIndex, orderLineIndex } ->
     let
       updateOrderLine :: OrderLine -> OrderLine
@@ -1064,6 +1154,11 @@ handleAction = case _ of
     in
       H.modify_
         $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
-  OrderLineSetCharge { sectionIndex, orderLineIndex, charge } ->
+  OrderLineSetCharge { sectionIndex, orderLineIndex, charge, quantity } ->
     H.modify_
-      $ map \st -> modifyOrderLine sectionIndex orderLineIndex st (_ { charge = Just charge })
+      $ map \st ->
+          modifyOrderLine sectionIndex orderLineIndex st
+            _
+              { charge = Just charge
+              , quantity = quantity
+              }

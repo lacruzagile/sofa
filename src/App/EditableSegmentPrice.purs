@@ -66,7 +66,6 @@ render state = case state.editState of
     HH.a
       [ HP.href "javascript:void(0);", HE.onClick \_ -> SetEditing ]
       $ renderPricePerSegment state.price
-      <> [ HH.sup_ [ HH.small_ [ HH.text "🖊" ] ] ]
   Editing value ->
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
@@ -95,10 +94,10 @@ render state = case state.editState of
 
     showDiscount = case _ of
       SS.DiscountPercentage d -> show d <> "%"
-      SS.DiscountAbsolute d -> show d
+      SS.DiscountAbsolute d -> showMonetary d
 
 showMonetary :: Number -> String
-showMonetary = toStringWith (fixed 2)
+showMonetary = toStringWith (fixed 3)
 
 handleAction ::
   forall m.

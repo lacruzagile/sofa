@@ -61,7 +61,7 @@ render state = HH.section_ [ HH.article_ content ]
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
   opt = maybe []
 
-  blockList = HH.ul [ HP.class_ Css.blocklist ]
+  blockList = HH.ul [ HP.class_ Css.blocklisthl ]
 
   dataItem label value =
     [ HH.dt_ [ HH.text label ]
@@ -189,7 +189,7 @@ render state = HH.section_ [ HH.article_ content ]
   renderRateCardCharge :: SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
   renderRateCardCharge unitMap charge =
     HH.slot Charge.proxy unit Charge.component
-      { unitMap, charge }
+      { unitMap, charge, quantity: Map.empty }
       (\_ -> NoOp)
 
   renderRateCard :: SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m

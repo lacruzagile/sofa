@@ -11,6 +11,12 @@ hblock = ClassName "hblock"
 blocklist :: ClassName
 blocklist = ClassName "blocklist"
 
+blocklisthl :: ClassName
+blocklisthl = ClassName "blocklisthl"
+
+priceList :: ClassName
+priceList = ClassName "pricelist"
+
 tabBody :: ClassName
 tabBody = ClassName "tabbody"
 
