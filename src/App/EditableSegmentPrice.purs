@@ -64,7 +64,7 @@ render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state = case state.editState of
   Viewing ->
     HH.a
-      [ HE.onClick \_ -> SetEditing ]
+      [ HP.href "javascript:void(0);", HE.onClick \_ -> SetEditing ]
       $ renderPricePerSegment state.price
       <> [ HH.sup_ [ HH.small_ [ HH.text "🖊" ] ] ]
   Editing value ->
