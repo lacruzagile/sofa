@@ -109,6 +109,7 @@ render { unitMap, charge } = case charge of
     -- fatalistically assume that all units use the same dimensions.
     dims = case A.head units of
       Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ Map.keys o.properties
+      Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
       _ -> []
 
     dimVals :: SS.DimValue -> Array String
