@@ -249,27 +249,20 @@ instance encodeJsonRule :: EncodeJson Rule where
   encodeJson (Rule x) = encodeJson x
 
 newtype Currency
-  = Currency { code :: String, country :: Maybe String }
+  = Currency String
 
 derive instance eqCurrency :: Eq Currency
 
 derive instance newtypeCurrency :: Newtype Currency _
 
-instance decodeJsonCurrency :: DecodeJson Currency where
-  decodeJson json = plainCode <|> currency
-    where
-    plainCode = (\code -> Currency { code, country: Nothing }) <$> decodeJson json
+instance showCurrency :: Show Currency where
+  show (Currency code) = code
 
-    currency = do
-      o <- decodeJson json
-      code <- o .: "code"
-      country <- o .:? "country" .!= Nothing
-      pure $ Currency { code, country }
+instance decodeJsonCurrency :: DecodeJson Currency where
+  decodeJson json = Currency <$> decodeJson json
 
 instance encodeJsonCurrency :: EncodeJson Currency where
-  encodeJson (Currency x) = case x.country of
-    Nothing -> encodeJson x.code
-    Just _ -> encodeJson x
+  encodeJson (Currency code) = encodeJson code
 
 newtype PriceBook
   = PriceBook

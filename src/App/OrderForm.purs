@@ -465,7 +465,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
         priceBookSel = case sof.currency of
           Nothing -> "No price currency selected"
-          Just (SS.Currency { code }) ->
+          Just (SS.Currency code) ->
             if A.null priceBookOpts then
               "No price books for " <> code
             else
@@ -582,16 +582,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderWithCurrency :: Maybe SS.Currency -> SubTotalEntry -> H.ComponentHTML Action Slots m
   renderWithCurrency currency amount = case currency of
     Nothing -> HH.text "N/A"
-    Just (SS.Currency { code: "" }) -> HH.text "N/A"
-    Just (SS.Currency c) ->
+    Just (SS.Currency "") -> HH.text "N/A"
+    Just (SS.Currency code) ->
       if amount.listPrice == amount.salesPrice then
-        HH.text $ showMonetary amount.listPrice <> " " <> c.code
+        HH.text $ showMonetary amount.listPrice <> " " <> code
       else
         Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
           $ HH.span_
               [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.salesPrice ]
               , HH.text " "
-              , HH.text c.code
+              , HH.text code
               ]
 
   renderCustomer :: H.ComponentHTML Action Slots m

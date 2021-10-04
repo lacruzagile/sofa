@@ -60,8 +60,8 @@ render st =
                       SS.Commercial
                         { billingOption: SS.Prepay
                         , contractTerm: SS.Ongoing
-                        , paymentCurrency: SS.Currency { code: "", country: Nothing }
-                        , priceCurrency: SS.Currency { code: "", country: Nothing }
+                        , paymentCurrency: SS.Currency ""
+                        , priceCurrency: SS.Currency ""
                         }
                   , purchaser:
                       SS.Purchaser
@@ -128,30 +128,18 @@ render st =
 
   renderReturnCustomer _c = [ HH.text "Return customers are unsupported at the moment" ]
 
-  renderCurrency legend (SS.Currency currency) update =
-    let
-      update' f = update \(SS.Currency oldCurrency) -> SS.Currency $ f oldCurrency
-    in
-      HH.fieldset_
-        [ HH.legend_ [ HH.text legend ]
-        , HH.div [ HP.class_ Css.two ]
-            [ HH.input
-                [ HP.type_ HP.InputText
-                , HP.required true
-                , HP.pattern "[A-Z]{3}"
-                , HP.placeholder "Currency (e.g. EUR)"
-                , HE.onValueChange \v -> update' _ { code = v }
-                , HP.value currency.code
-                ]
-            , HH.input
-                $ [ HP.type_ HP.InputText
-                  , HP.pattern countryPattern
-                  , HP.placeholder "Country (e.g. DE, US-AL)"
-                  , HE.onValueChange \v -> update' _ { country = if v == "" then Nothing else Just v }
-                  ]
-                <> maybe [] (A.singleton <<< HP.value) currency.country
-            ]
-        ]
+  renderCurrency legend (SS.Currency code) update =
+    HH.div_
+      [ HH.label_ [ HH.text legend ]
+      , HH.input
+          [ HP.type_ HP.InputText
+          , HP.required true
+          , HP.pattern "[A-Z]{3}"
+          , HP.placeholder "Currency (e.g. EUR)"
+          , HE.onValueChange $ \c -> update \(SS.Currency _) -> SS.Currency c
+          , HP.value code
+          ]
+      ]
 
   renderCommercial (SS.Commercial commercial) =
     let
@@ -205,14 +193,16 @@ render st =
                       [ HH.text "Fixed" ]
                   ]
               ]
-          , renderCurrency
-              "Payment Currency"
-              commercial.paymentCurrency
-              $ \f -> update (\c -> c { paymentCurrency = f c.paymentCurrency })
-          , renderCurrency
-              "Price Currency"
-              commercial.priceCurrency
-              $ \f -> update (\c -> c { priceCurrency = f c.priceCurrency })
+          , HH.div [ HP.classes [ Css.flex, Css.two ] ]
+              [ renderCurrency
+                  "Payment Currency"
+                  commercial.paymentCurrency
+                  $ \f -> update (\c -> c { paymentCurrency = f c.paymentCurrency })
+              , renderCurrency
+                  "Price Currency"
+                  commercial.priceCurrency
+                  $ \f -> update (\c -> c { priceCurrency = f c.priceCurrency })
+              ]
           ]
           [ HH.label
               [ HP.for "of-commercial", HP.class_ Css.button ]

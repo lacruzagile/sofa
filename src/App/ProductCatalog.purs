@@ -213,16 +213,11 @@ render state = HH.section_ [ HH.article_ content ]
   renderRateCards :: Map String SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action Slots m
   renderRateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard (fromMaybe Map.empty $ Map.lookup (showSkuCode sku) prodMap) rc)
 
-  renderCurrency :: SS.Currency -> String
-  renderCurrency (SS.Currency c) =
-    c.code
-      <> maybe "" (\c' -> "\"" <> c' <> "\"") c.country
-
   renderPriceBookCurrency :: Map String SS.ChargeUnitMap -> SS.PriceBookCurrency -> H.ComponentHTML Action Slots m
   renderPriceBookCurrency prodMap (SS.PriceBookCurrency p) =
     HH.li_
       [ HH.dl_
-          ( dataItem "Currency" (renderCurrency p.currency)
+          ( dataItem "Currency" (show p.currency)
               <> opt (dataItemRaw "Rate Cards" <<< renderRateCards prodMap) p.rateCards
           )
       ]
