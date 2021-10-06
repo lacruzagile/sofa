@@ -81,7 +81,7 @@ module Data.SmartSpec
 
 import Prelude
 import Control.Alternative ((<|>))
-import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (~>))
+import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (~>), (~>?))
 import Data.Array as A
 import Data.Array.NonEmpty (fromNonEmpty)
 import Data.Either (Either(..))
@@ -1693,7 +1693,11 @@ instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
   decodeJson json = PriceBookRef <$> decodeJson json
 
 instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
-  encodeJson (PriceBookRef x) = encodeJson x
+  encodeJson (PriceBookRef x) =
+    ("priceBookId" := x.priceBookID)
+      ~> ("version" := x.version)
+      ~> ((\uri -> "solutionURI" := uri) <$> x.solutionURI)
+      ~>? jsonEmptyObject
 
 newtype SalesforceAccountRef
   = SalesforceAccountRef
