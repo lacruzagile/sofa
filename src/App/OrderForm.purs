@@ -690,8 +690,8 @@ loadCatalog url = do
         <$> productCatalog
   H.modify_ \_ -> res
 
-mkDefaultConfig :: SS.Product -> Map String SS.ConfigValue
-mkDefaultConfig (SS.Product p) = maybe Map.empty mkDefaults p.orderConfigSchema
+mkDefaultConfigs :: SS.Product -> Array (Map String SS.ConfigValue)
+mkDefaultConfigs (SS.Product p) = maybe [] (A.singleton <<< mkDefaults) p.orderConfigSchema
   where
   mkDefaults = Map.mapMaybe mkDefault
 
@@ -967,7 +967,7 @@ handleAction = case _ of
         { product
         , charge: Nothing
         , quantity: 1
-        , configs: [ mkDefaultConfig product ]
+        , configs: mkDefaultConfigs product
         }
 
       updateOrderLine :: SS.Product -> Maybe OrderLine -> OrderLine
@@ -1022,7 +1022,7 @@ handleAction = case _ of
   OrderLineAddConfig { sectionIndex, orderLineIndex } ->
     let
       updateOrderLine :: OrderLine -> OrderLine
-      updateOrderLine ol = ol { configs = ol.configs <> [ mkDefaultConfig ol.product ] }
+      updateOrderLine ol = ol { configs = ol.configs <> mkDefaultConfigs ol.product }
     in
       H.modify_ $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } ->
