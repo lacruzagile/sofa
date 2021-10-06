@@ -49,6 +49,8 @@ render st =
     , HH.div [ HP.class_ Css.one ] (renderCustomerDetails st)
     ]
   where
+  countryPattern = "[A-Z]{2}(-[0-9A-Z]{1,3})?"
+
   renderSelectCustomerType =
     [ HH.button
         [ HE.onClick \_ ->
@@ -143,8 +145,8 @@ render st =
                 ]
             , HH.input
                 $ [ HP.type_ HP.InputText
-                  , HP.pattern "[A-Z]{2}"
-                  , HP.placeholder "Country (e.g. DE)"
+                  , HP.pattern countryPattern
+                  , HP.placeholder "Country (e.g. DE, US-AL)"
                   , HE.onValueChange \v -> update' _ { country = if v == "" then Nothing else Just v }
                   ]
                 <> maybe [] (A.singleton <<< HP.value) currency.country
@@ -279,8 +281,8 @@ render st =
                 , HH.input
                     [ HP.type_ HP.InputText
                     , HP.required true
-                    , HP.placeholder "DE"
-                    , HP.pattern "[A-Z]{2}"
+                    , HP.pattern countryPattern
+                    , HP.placeholder "Country (e.g. DE, US-AL)"
                     , HP.value purchaser.country
                     , HE.onValueChange \v -> update _ { country = v }
                     ]
@@ -364,9 +366,9 @@ render st =
                 [ HH.text "Legal Entity Country"
                 , HH.input
                     $ [ HP.type_ HP.InputText
-                      , HP.placeholder "DE"
+                      , HP.pattern countryPattern
+                      , HP.placeholder "Country (e.g. DE, US-AL)"
                       , HP.required true
-                      , HP.pattern "[A-Z]{2}"
                       ]
                     <> legalEntityProps (\le -> le.country) (\le v -> le { country = v })
                 ]
