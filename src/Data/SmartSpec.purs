@@ -1298,11 +1298,11 @@ data Sku
     }
 
 instance decodeJsonSku :: DecodeJson Sku where
-  decodeJson json = skuCode <|> productOption
+  decodeJson json = decodeSkuCode <|> decodeSku
     where
-    skuCode = SkuCode <$> decodeJson json
+    decodeSkuCode = SkuCode <$> decodeJson json
 
-    productOption = do
+    decodeSku = do
       o <- decodeJson json
       code <- o .: "code"
       name <- o .: "name"
@@ -1344,11 +1344,11 @@ data ProductOption
     }
 
 instance decodeJsonProductOption :: DecodeJson ProductOption where
-  decodeJson json = skuCode <|> productOption
+  decodeJson json = decodeProdOptSkuCode <|> decodeProductOption
     where
-    skuCode = ProdOptSkuCode <$> decodeJson json
+    decodeProdOptSkuCode = ProdOptSkuCode <$> decodeJson json
 
-    productOption = do
+    decodeProductOption = do
       o <- decodeJson json
       name <- o .:? "name"
       sku <- o .: "sku"
