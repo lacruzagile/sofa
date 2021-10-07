@@ -2,7 +2,6 @@ module App.OrderForm.Customer (Slot, Output, proxy, component) where
 
 import Prelude
 import Css as Css
-import Data.Array as A
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
 import Effect.Aff.Class (class MonadAff)
@@ -65,7 +64,7 @@ render st =
                         }
                   , purchaser:
                       SS.Purchaser
-                        { address: SS.Address {}
+                        { address: SS.Address ""
                         , contacts:
                             { primary: SS.Contact { email: "", name: "", phone: "" }
                             , finance: SS.Contact { email: "", name: "", phone: "" }
@@ -86,7 +85,7 @@ render st =
                         , legalEntity:
                             SS.LegalEntity
                               { name: ""
-                              , address: SS.Address {}
+                              , address: SS.Address ""
                               , country: ""
                               }
                         }
@@ -210,7 +209,15 @@ render st =
           ]
       ]
 
-  renderAddress = [ HH.fieldset_ [ HH.legend_ [ HH.text "Address" ], HH.textarea [ HP.placeholder "Address" ] ] ]
+  renderAddress onValueChange =
+    [ HH.fieldset_
+        [ HH.legend_ [ HH.text "Address" ]
+        , HH.textarea
+            [ HP.placeholder "Address"
+            , HE.onValueChange onValueChange
+            ]
+        ]
+    ]
 
   renderContact label (SS.Contact contact) update =
     let
@@ -314,7 +321,7 @@ render st =
                 purchaser.contacts.finance
                 $ \f -> update (\c -> c { contacts { finance = f c.contacts.finance } })
             ]
-              <> renderAddress
+              <> renderAddress (\v -> update (_ { address = SS.Address v }))
           )
           [ HH.label
               [ HP.for "of-purchaser", HP.class_ Css.button ]
@@ -373,6 +380,18 @@ render st =
                 $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
             ]
               <> renderAddress
+                  ( \v ->
+                      update
+                        ( \s ->
+                            s
+                              { legalEntity =
+                                let
+                                  SS.LegalEntity le = s.legalEntity
+                                in
+                                  SS.LegalEntity $ le { address = SS.Address v }
+                              }
+                        )
+                  )
           )
           [ HH.label
               [ HP.for "of-seller", HP.class_ Css.button ]

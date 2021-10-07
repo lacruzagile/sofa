@@ -1468,7 +1468,7 @@ instance encodeJsonCommercial :: EncodeJson Commercial where
   encodeJson (Commercial x) = encodeJson x
 
 newtype Address
-  = Address {}
+  = Address String
 
 instance decodeJsonAddress :: DecodeJson Address where
   decodeJson json = Address <$> decodeJson json
