@@ -493,7 +493,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 ]
             ]
           <> sectionOrderLines sec.solution sec.orderLines
-          <> [ HH.div [ HP.class_ Css.orderSection ]
+          <> [ HH.div [ HP.class_ Css.orderLine ]
                 [ HH.button
                     [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
                     [ HH.text "+" ]
@@ -553,7 +553,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
       $ [ HH.h3_ [ HH.text "Sections" ]
         ]
       <> A.mapWithIndex (renderSection sof) secs
-      <> [ HH.button [ HE.onClick \_ -> AddSection ] [ HH.text "Add Section" ] ]
+      <> [ HH.div [ HP.class_ Css.orderSection ]
+            [ HH.button
+                [ HP.class_ Css.addSection, HE.onClick \_ -> AddSection ]
+                [ HH.text "+" ]
+            ]
+        ]
 
   renderOrderSectionSummary :: Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSectionSummary currency (SubTotal summary) =
