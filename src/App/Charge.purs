@@ -181,12 +181,7 @@ showChargeUnitRef (SS.ChargeUnitRef unit) =
     <> (maybe "" (\p -> " [" <> showProductRef p <> "]") unit.product)
 
 showProductRef :: SS.ProductRef -> String
-showProductRef (SS.ProductRef p) = showSkuCode p.sku <> (maybe "" (\s -> " [" <> show s <> "]") p.solutionURI)
-
-showSkuCode :: SS.Sku -> String
-showSkuCode = case _ of
-  SS.SkuCode c -> c
-  SS.Sku s -> s.code
+showProductRef (SS.ProductRef p) = show p.sku <> (maybe "" (\s -> " [" <> show s <> "]") p.solutionURI)
 
 showSegment :: SS.Segment -> String
 showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "" show s.exclusiveMaximum <> ")"

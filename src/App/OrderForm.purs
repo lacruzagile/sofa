@@ -16,7 +16,6 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
 import Data.Number.Format (toStringWith, fixed)
-import Data.SmartSpec (skuCode, solutionProducts)
 import Data.SmartSpec as SS
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
@@ -96,7 +95,7 @@ type PriceBook
   = { id :: String
     , name :: String
     , version :: String
-    , rateCards :: Maybe (Map String SS.RateCard) -- ^ Maybe a map from SKU to rate cards.
+    , rateCards :: Maybe (Map SS.SkuCode SS.RateCard) -- ^ Maybe a map from SKU to rate cards.
     }
 
 type OrderLineIndex
@@ -113,7 +112,7 @@ data Action
   | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
-  | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.Sku }
+  | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.SkuCode }
   | OrderLineSetQuantity
     { sectionIndex :: Int, orderLineIndex :: Int, quantity :: Int
     }
@@ -256,7 +255,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     , HH.input
                         [ HP.type_ HP.InputText
                         , HP.disabled true
-                        , HP.value product.sku
+                        , HP.value (show product.sku)
                         ]
                     ]
                 , HH.label [ HP.classes [ Css.threeFifth, Css.fifth1000 ] ]
@@ -293,7 +292,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
         <> subBody
 
-    products = map (\(SS.Product p) -> HH.option [ HP.value p.sku ] [ HH.text p.sku ]) sol.products
+    products =
+      map
+        ( \(SS.Product p) ->
+            let
+              sku = show p.sku
+            in
+              HH.option [ HP.value sku ] [ HH.text sku ]
+        )
+        sol.products
 
     actionSetProduct sku =
       OrderLineSetProduct
@@ -649,7 +656,7 @@ toJson orderForm = do
     ch <- ol.charge
     pure
       $ SS.OrderLine
-          { sku: SS.SkuCode $ _.sku $ unwrap $ ol.product
+          { sku: _.sku $ unwrap $ ol.product
           , charge: ch
           , quantity: ol.quantity
           , configs: ol.configs
@@ -850,7 +857,7 @@ handleAction = case _ of
 
             SS.ProductCatalog pc = st.productCatalog
 
-            rateCardMap = Map.fromFoldable <<< map (\rc@(SS.RateCard rc') -> Tuple (skuCode rc'.sku) rc)
+            rateCardMap = Map.fromFoldable <<< map (\rc@(SS.RateCard rc') -> Tuple rc'.sku rc)
 
             mkPriceBooks c = do
               SS.Solution sol <- A.fromFoldable $ Map.values pc.solutions
@@ -981,12 +988,12 @@ handleAction = case _ of
         Just _ol -> mkOrderLine product
 
       -- | Build order lines for all required product options.
-      requiredOptions :: SS.Product -> Map String SS.Product -> Array (Maybe OrderLine)
+      requiredOptions :: SS.Product -> Map SS.SkuCode SS.Product -> Array (Maybe OrderLine)
       requiredOptions (SS.Product p) solProds =
         let
           requiredSkuCode = case _ of
             SS.ProdOptSkuCode _ -> Nothing
-            SS.ProductOption po -> if po.required then Just (skuCode po.sku) else Nothing
+            SS.ProductOption po -> if po.required then Just po.sku else Nothing
 
           requiredProds = A.mapMaybe (requiredSkuCode >=> (\o -> Map.lookup o solProds)) <$> p.options
         in
@@ -995,7 +1002,7 @@ handleAction = case _ of
       updateOrderSection :: OrderSection -> OrderSection
       updateOrderSection section =
         let
-          solProds = solutionProducts section.solution
+          solProds = SS.solutionProducts section.solution
         in
           calcSubTotal
             section
@@ -1004,7 +1011,7 @@ handleAction = case _ of
                   section.orderLines
                   (\(Tuple product ls) -> ls <> requiredOptions product solProds)
                   ( do
-                      product <- Map.lookup (skuCode sku) solProds
+                      product <- Map.lookup sku solProds
                       ls <- modifyAt orderLineIndex (Just <<< updateOrderLine product) section.orderLines
                       pure $ Tuple product ls
                   )

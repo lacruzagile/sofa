@@ -67,7 +67,7 @@ module Data.SmartSpec
   , SegmentationPeriod(..)
   , Seller(..)
   , Severity(..)
-  , Sku(..)
+  , SkuCode(..)
   , Solution(..)
   , Uri(..)
   , Validity(..)
@@ -75,7 +75,6 @@ module Data.SmartSpec
   , configSchemaEntryDescription
   , configSchemaEntryTitle
   , productChargeUnits
-  , skuCode
   , solutionProducts
   ) where
 
@@ -128,7 +127,7 @@ instance decodeJsonSolution :: DecodeJson Solution where
 instance encodeJsonSolution :: EncodeJson Solution where
   encodeJson (Solution x) = encodeJson x
 
-solutionProducts :: Solution -> Map String Product
+solutionProducts :: Solution -> Map SkuCode Product
 solutionProducts =
   Map.fromFoldable
     <<< map (\p@(Product { sku }) -> Tuple sku p)
@@ -643,7 +642,7 @@ instance encodeJsonPriceSegmentationPerUnit :: EncodeJson PriceSegmentationPerUn
 
 newtype RateCard
   = RateCard
-  { sku :: Sku
+  { sku :: SkuCode
   , name :: Maybe String
   , description :: Maybe String
   , charge :: Charge
@@ -826,7 +825,7 @@ instance encodeJsonChargeUnitRef :: EncodeJson ChargeUnitRef where
     Just _ -> encodeJson x
 
 newtype ProductRef
-  = ProductRef { sku :: Sku, solutionURI :: Maybe Uri }
+  = ProductRef { sku :: SkuCode, solutionURI :: Maybe Uri }
 
 instance decodeJsonProductRef :: DecodeJson ProductRef where
   decodeJson = map ProductRef <<< decodeJson
@@ -1073,7 +1072,9 @@ instance encodeJsonPriceDimSchema :: EncodeJson PriceDimSchema where
 
 newtype Product
   = Product
-  { sku :: String
+  { sku :: SkuCode
+  , productCategory :: ProductCategory
+  , platform :: Maybe Platform
   , name :: Maybe String
   , description :: Maybe String
   , attr :: Maybe (Map String ConfigValue)
@@ -1092,6 +1093,8 @@ instance decodeJsonProduct :: DecodeJson Product where
   decodeJson json = do
     o <- decodeJson json
     sku <- o .: "sku"
+    productCategory <- o .: "productCategory"
+    platform <- o .:? "platform"
     name <- o .:? "name"
     description <- o .:? "description"
     attrObj :: Maybe (FO.Object ConfigValue) <- o .:? "attr"
@@ -1109,6 +1112,8 @@ instance decodeJsonProduct :: DecodeJson Product where
     pure
       $ Product
           { sku
+          , productCategory
+          , platform
           , name
           , description
           , attr
@@ -1280,58 +1285,34 @@ instance decodeJsonProductCategory :: DecodeJson ProductCategory where
 instance encodeJsonProductCategory :: EncodeJson ProductCategory where
   encodeJson = encodeJson <<< show
 
-data Sku
+newtype SkuCode
   = SkuCode String
-  | Sku
-    { code :: String
-    , name :: String
-    , description :: Maybe String
-    , productCategory :: ProductCategory
-    , platform :: Maybe Platform
-    }
 
-instance decodeJsonSku :: DecodeJson Sku where
-  decodeJson json = decodeSkuCode <|> decodeSku
-    where
-    decodeSkuCode = SkuCode <$> decodeJson json
+derive instance eqSkuCode :: Eq SkuCode
 
-    decodeSku = do
-      o <- decodeJson json
-      code <- o .: "code"
-      name <- o .: "name"
-      description <- o .:? "description"
-      productCategory <- o .: "productCategory"
-      platform <- o .:? "platform"
-      pure
-        $ Sku
-            { code
-            , name
-            , description
-            , productCategory
-            , platform
-            }
+derive instance ordSkuCode :: Ord SkuCode
 
-instance encodeJsonSku :: EncodeJson Sku where
+instance showSkuCode :: Show SkuCode where
+  show (SkuCode code) = code
+
+instance decodeJsonSkuCode :: DecodeJson SkuCode where
+  decodeJson json = SkuCode <$> decodeJson json
+
+instance encodeJsonSkuCode :: EncodeJson SkuCode where
   encodeJson (SkuCode x) = encodeJson x
-  encodeJson (Sku x) = encodeJson x
-
-skuCode :: Sku -> String
-skuCode (SkuCode code) = code
-
-skuCode (Sku { code }) = code
 
 data ProductOption
   = ProdOptSkuCode String
   | ProductOption
-    { sku :: Sku
+    { sku :: SkuCode
     , name :: Maybe String
     , required :: Boolean
     , quoteLineVisible :: Boolean
     , quantity :: Int
     , minQuantity :: Int
     , maxQuantity :: Int
-    , requiredOptions :: Maybe (Array Sku)
-    , excludeOptions :: Maybe (Array Sku)
+    , requiredOptions :: Maybe (Array SkuCode)
+    , excludeOptions :: Maybe (Array SkuCode)
     , selectedByDefault :: Boolean
     , type_ :: ProductOptionType
     }
@@ -1591,7 +1572,7 @@ instance encodeJsonDateTime :: EncodeJson DateTime where
 -- TODO: Add `configs`
 newtype Asset
   = Asset
-  { sku :: Sku
+  { sku :: SkuCode
   -- , configs :: Array ConfigValue
   , billingAccount :: BillingAccountRef
   , createTime :: DateTime
@@ -1783,7 +1764,7 @@ instance encodeJsonSegment :: EncodeJson Segment where
 
 newtype OrderLine
   = OrderLine
-  { sku :: Sku
+  { sku :: SkuCode
   , charge :: Charge
   , quantity :: Int
   , configs :: Array (Map String ConfigValue)

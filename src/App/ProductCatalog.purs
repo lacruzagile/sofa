@@ -73,26 +73,13 @@ render state = HH.section_ [ HH.article_ content ]
     , HH.dd_ [ value ]
     ]
 
-  renderSku :: SS.Sku -> H.ComponentHTML Action Slots m
-  renderSku = case _ of
-    SS.SkuCode s ->
-      HH.dl [ HP.class_ Css.hblock ]
-        $ dataItem "Code" s
-    SS.Sku s ->
-      HH.dl [ HP.class_ Css.hblock ]
-        $ dataItem "Code" s.code
-        <> dataItem "Name" s.name
-        <> opt (dataItem "Description") s.description
-        <> dataItem "Product Category" (show s.productCategory)
-        <> dataItem "Platform" (show s.platform)
-
   productOption :: SS.ProductOption -> H.ComponentHTML Action Slots m
   productOption (SS.ProdOptSkuCode s) = HH.li_ [ HH.text s ]
 
   productOption (SS.ProductOption po) =
     HH.li_
       [ HH.dl_
-          ( dataItemRaw "SKU" (renderSku po.sku)
+          ( dataItem "SKU" (show po.sku)
               <> opt (dataItem "Name") po.name
               <> dataItem "Required" (show po.required)
               <> dataItem "Quote Line Visible" (show po.quoteLineVisible)
@@ -167,7 +154,9 @@ render state = HH.section_ [ HH.article_ content ]
   product :: SS.Product -> H.ComponentHTML Action Slots m
   product (SS.Product p) =
     HH.li_
-      [ HH.dl_ $ dataItem "SKU" p.sku
+      [ HH.dl_ $ dataItem "SKU" (show p.sku)
+          <> dataItem "Product Category" (show p.productCategory)
+          <> opt (dataItem "Platform" <<< show) p.platform
           <> opt (dataItem "Name") p.name
           <> opt (dataItem "Description") p.description
           <> opt (dataItemRaw "Attributes" <<< renderConfigValues) p.attr
@@ -205,15 +194,15 @@ render state = HH.section_ [ HH.article_ content ]
 
   renderRateCard :: SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
   renderRateCard unitMap (SS.RateCard r) =
-    HH.li_ $ dataItemRaw "SKU" (renderSku r.sku)
+    HH.li_ $ dataItem "SKU" (show r.sku)
       <> opt (dataItem "Name") r.name
       <> opt (dataItem "Description") r.description
       <> dataItemRaw "Charge" (renderRateCardCharge unitMap r.charge)
 
-  renderRateCards :: Map String SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action Slots m
-  renderRateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard (fromMaybe Map.empty $ Map.lookup (showSkuCode sku) prodMap) rc)
+  renderRateCards :: Map SS.SkuCode SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action Slots m
+  renderRateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard (fromMaybe Map.empty $ Map.lookup sku prodMap) rc)
 
-  renderPriceBookCurrency :: Map String SS.ChargeUnitMap -> SS.PriceBookCurrency -> H.ComponentHTML Action Slots m
+  renderPriceBookCurrency :: Map SS.SkuCode SS.ChargeUnitMap -> SS.PriceBookCurrency -> H.ComponentHTML Action Slots m
   renderPriceBookCurrency prodMap (SS.PriceBookCurrency p) =
     HH.li_
       [ HH.dl_
@@ -222,7 +211,7 @@ render state = HH.section_ [ HH.article_ content ]
           )
       ]
 
-  renderPriceBookVersion :: Map String SS.ChargeUnitMap -> SS.PriceBookVersion -> H.ComponentHTML Action Slots m
+  renderPriceBookVersion :: Map SS.SkuCode SS.ChargeUnitMap -> SS.PriceBookVersion -> H.ComponentHTML Action Slots m
   renderPriceBookVersion prodMap (SS.PriceBookVersion p) =
     HH.li_
       [ HH.dl_
@@ -231,7 +220,7 @@ render state = HH.section_ [ HH.article_ content ]
           )
       ]
 
-  renderPrice :: Map String SS.ChargeUnitMap -> SS.PriceBook -> H.ComponentHTML Action Slots m
+  renderPrice :: Map SS.SkuCode SS.ChargeUnitMap -> SS.PriceBook -> H.ComponentHTML Action Slots m
   renderPrice prodMap (SS.PriceBook p) =
     HH.li_
       [ HH.dl_
@@ -294,11 +283,6 @@ render state = HH.section_ [ HH.article_ content ]
     ]
 
   content = defRender state productCatalog
-
-showSkuCode :: SS.Sku -> String
-showSkuCode = case _ of
-  SS.SkuCode c -> c
-  SS.Sku s -> s.code
 
 showCseTypeName :: SS.ConfigSchemaEntry -> String
 showCseTypeName = case _ of
