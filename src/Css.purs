@@ -47,6 +47,9 @@ sideMenu = ClassName "sidemenu"
 landing :: ClassName
 landing = ClassName "landing"
 
+subTotal :: ClassName
+subTotal = ClassName "subtotal"
+
 -- Picnic CSS
 brand :: ClassName
 brand = ClassName "brand"

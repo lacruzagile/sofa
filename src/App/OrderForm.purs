@@ -63,7 +63,7 @@ newtype SubTotal
   { onetime :: SubTotalEntry -- ^ Onetime price.
   , monthly :: SubTotalEntry -- ^ Monthly price.
   , quarterly :: SubTotalEntry -- ^ Quarterly price.
-  , usage :: SubTotalEntry -- ^ Estimated usage price.
+  , usage :: SubTotalEntry -- ^ Usage price.
   , segment :: SubTotalEntry -- ^ Monthly segment price.
   , quarterlySegment :: SubTotalEntry -- ^ Quarterly segment price.
   }
@@ -571,27 +571,33 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
 
   renderOrderSectionSummary :: Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSectionSummary currency (SubTotal summary) =
-    let
-      price = renderWithCurrency currency
-    in
-      HH.div [ HP.classes [ Css.flex, Css.four ] ]
-        [ HH.div_ [ HH.strong_ [ HH.text "Sub-totals" ] ]
-        , HH.div_ [ HH.text "Estimated usage: ", price summary.usage ]
-        , HH.div_ [ HH.text "Monthly: ", price summary.monthly ]
-        , HH.div_ [ HH.text "Onetime: ", price summary.onetime ]
-        ]
+  renderOrderSectionSummary = renderSubTotal "Sub-totals"
 
   renderOrderSummary :: Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSummary currency (SubTotal summary) =
+  renderOrderSummary = renderSubTotal "Totals"
+
+  renderSubTotal :: String -> Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
+  renderSubTotal title currency (SubTotal summary) =
     let
       price = renderWithCurrency currency
+
+      ifNonZero e
+        | e == mempty = const []
+        | otherwise = A.singleton
     in
-      HH.div [ HP.classes [ Css.flex, Css.four ] ]
-        [ HH.div_ [ HH.strong_ [ HH.text "Totals" ] ]
-        , HH.div_ [ HH.text "Estimated usage: ", price summary.usage ]
-        , HH.div_ [ HH.text "Monthly: ", price summary.monthly ]
-        , HH.div_ [ HH.text "Onetime: ", price summary.onetime ]
+      HH.table [ HP.class_ Css.subTotal ]
+        [ HH.tr_
+            $ [ HH.th [ HP.rowSpan 2 ] [ HH.text title ] ]
+            <> ifNonZero summary.usage (HH.th_ [ HH.text "Usage" ])
+            <> ifNonZero summary.monthly (HH.th_ [ HH.text "Monthly" ])
+            <> ifNonZero summary.quarterly (HH.th_ [ HH.text "Quarterly" ])
+            <> ifNonZero summary.onetime (HH.th_ [ HH.text "Onetime" ])
+        , HH.tr_
+            $ []
+            <> ifNonZero summary.usage (HH.td_ [ price summary.usage ])
+            <> ifNonZero summary.monthly (HH.td_ [ price summary.monthly ])
+            <> ifNonZero summary.quarterly (HH.td_ [ price summary.quarterly ])
+            <> ifNonZero summary.onetime (HH.td_ [ price summary.onetime ])
         ]
 
   renderWithCurrency :: Maybe SS.Currency -> SubTotalEntry -> H.ComponentHTML Action Slots m
