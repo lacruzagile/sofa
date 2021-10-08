@@ -2,7 +2,9 @@ module Data.SmartSpec
   ( Address(..)
   , Asset(..)
   , BillingAccountRef(..)
+  , BillingCurrency(..)
   , BillingOption(..)
+  , ChargeCurrency(..)
   , ChargeElement(..)
   , ChargeType(..)
   , ChargeUnit(..)
@@ -36,6 +38,7 @@ module Data.SmartSpec
   , OrderSection(..)
   , OrderStatus(..)
   , Orders(..)
+  , PaymentCurrency(..)
   , Platform(..)
   , Price(..)
   , PriceBook(..)
@@ -49,6 +52,7 @@ module Data.SmartSpec
   , PricePerUnit(..)
   , PriceSegmentation(..)
   , PriceSegmentationPerUnit(..)
+  , PricingCurrency(..)
   , Product(..)
   , ProductCatalog(..)
   , ProductCategory(..)
@@ -106,8 +110,8 @@ import Data.Show.Generic (genericShow)
 import Data.String as S
 import Data.String.Regex as Re
 import Data.String.Regex.Unsafe (unsafeRegex)
-import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
+import Data.Traversable (sequence, traverse)
+import Data.Tuple (Tuple(..), fst, snd)
 import Foreign.Object as FO
 import Test.QuickCheck (class Arbitrary, arbitrary)
 import Test.QuickCheck.Gen as QC
@@ -334,6 +338,57 @@ instance decodeJsonCurrency :: DecodeJson Currency where
 
 derive newtype instance encodeJsonCurrency :: EncodeJson Currency
 
+-- | The billing currency. This is the currency that is used for the purchaser's invoice. It is always the same as the pricing currency and is therefore an alias.
+type BillingCurrency
+  = PricingCurrency
+
+-- | The payment currency. This is the currency that the purchaser actually use to pay their invoice.
+newtype PaymentCurrency
+  = PaymentCurrency Currency
+
+derive instance newtypePaymentCurrency :: Newtype PaymentCurrency _
+
+derive newtype instance eqPaymentCurrency :: Eq PaymentCurrency
+
+derive newtype instance showPaymentCurrency :: Show PaymentCurrency
+
+derive newtype instance decodeJsonPaymentCurrency :: DecodeJson PaymentCurrency
+
+derive newtype instance encodeJsonPaymentCurrency :: EncodeJson PaymentCurrency
+
+-- | The pricing currency. This is the currency that the billing process
+-- | (rating, invoicing) is based on. For a price book, the rate cards are
+-- | grouped together by the pricing currency.
+newtype PricingCurrency
+  = PricingCurrency Currency
+
+derive instance newtypePricingCurrency :: Newtype PricingCurrency _
+
+derive newtype instance eqPricingCurrency :: Eq PricingCurrency
+
+derive newtype instance showPricingCurrency :: Show PricingCurrency
+
+derive newtype instance decodeJsonPricingCurrency :: DecodeJson PricingCurrency
+
+derive newtype instance encodeJsonPricingCurrency :: EncodeJson PricingCurrency
+
+-- | The charge currency. This is the currency that is used for charges within a
+-- | rate card.
+newtype ChargeCurrency
+  = ChargeCurrency Currency
+
+derive instance ordChargeCurrency :: Ord ChargeCurrency
+
+derive instance newtypeChargeCurrency :: Newtype ChargeCurrency _
+
+derive newtype instance eqChargeCurrency :: Eq ChargeCurrency
+
+derive newtype instance showChargeCurrency :: Show ChargeCurrency
+
+derive newtype instance decodeJsonChargeCurrency :: DecodeJson ChargeCurrency
+
+derive newtype instance encodeJsonChargeCurrency :: EncodeJson ChargeCurrency
+
 newtype PriceBook
   = PriceBook
   { id :: String
@@ -363,7 +418,7 @@ derive newtype instance encodeJsonPriceBookVersion :: EncodeJson PriceBookVersio
 
 newtype PriceBookCurrency
   = PriceBookCurrency
-  { currency :: Currency
+  { currency :: PricingCurrency
   , rateCards :: Maybe (Array RateCard)
   }
 
@@ -407,6 +462,7 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
       o <- decodeJson j
       unit <- o .: "unit"
       description <- o .:? "description"
+      currency <- o .:? "currency"
       SimplePrice pricesByDim <- o .: "price"
       estimatedWAP <- o .:? "estimatedWAP"
       segmentation <- o .:? "segmentation"
@@ -419,7 +475,7 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
             , prices:
                 [ PricePerUnit
                     { unit
-                    , currency: Nothing
+                    , currency
                     , price: p.price
                     }
                 ]
@@ -483,44 +539,53 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
             }
 
 instance encodeJsonChargeElement :: EncodeJson ChargeElement where
-  encodeJson = case _ of
-    ChargeElement
-      { units: [ unit ]
-    , segmentationByUnit: [ PriceSegmentationPerUnit { segmentation } ]
+  encodeJson (ChargeElement x) = case x of
+    { units: [ unitID ]
+    , description
+    , segmentationByUnit
     , defaultPriceByUnit: []
     , priceByUnitByDim
     , periodMinimum
     , termOfPriceChangeInDays
     } ->
-      encodeJson
-        { unit
-        , price: SimplePrice $ A.mapMaybe simplePrice priceByUnitByDim
-        , segmentation
-        , termOfPriceChangeInDays
-        , periodMinimum
-        }
-    ChargeElement
-      { units: [ unit ]
-    , segmentationByUnit: []
-    , defaultPriceByUnit: []
-    , priceByUnitByDim
-    , periodMinimum
-    , termOfPriceChangeInDays
-    } ->
-      encodeJson
-        { unit
-        , price: SimplePrice $ A.mapMaybe simplePrice priceByUnitByDim
-        , termOfPriceChangeInDays
-        , periodMinimum
-        }
-    ChargeElement x -> encodeJson x
+      let
+        mCurrencyPrice = map A.unzip <$> sequence $ map (simplePrice unitID) priceByUnitByDim
+
+        mcurrency = (toCurrency <<< A.nub <<< fst) <$> mCurrencyPrice
+
+        toCurrency = case _ of
+          [ c ] -> Just (Just c)
+          [] -> Just Nothing
+          _ -> Nothing
+
+        mprice = snd <$> mCurrencyPrice
+
+        msegmentation = case segmentationByUnit of
+          [ PriceSegmentationPerUnit { segmentation } ] -> Just (Just segmentation)
+          [] -> Just Nothing
+          _ -> Nothing
+      in
+        case mprice, mcurrency, msegmentation of
+          -- SimpleCharge
+          Just price, Just currency, Just segmentation ->
+            ("unit" := unit)
+              ~> (("description" := _) <$> description)
+              ~>? (("currency" := _) <$> currency)
+              ~>? ("price" := price)
+              ~> (("segmentation" := _) <$> segmentation)
+              ~>? ("termOfPriceChangeInDays" := termOfPriceChangeInDays)
+              ~> ("periodMinimum" := periodMinimum)
+              ~> jsonEmptyObject
+          _, _, _ -> encodeJson x
+    _ -> encodeJson x
     where
-    simplePrice = case _ of
+    simplePrice unitID = case _ of
       PriceByUnitPerDim
         { dim
-      , prices: [ PricePerUnit { price } ]
+      , prices: [ PricePerUnit { unit: unitID', currency, price } ]
       , periodMinimum
-      } -> Just $ PricePerDim { dim, price, periodMinimum }
+      }
+        | unitID == unitID' -> Just $ Tuple currency (PricePerDim { dim, price, periodMinimum })
       _ -> Nothing
 
 newtype SimplePrice
@@ -847,7 +912,7 @@ derive newtype instance encodeJsonEstimatedWAPPerUnit :: EncodeJson EstimatedWAP
 newtype DefaultPricePerUnit
   = DefaultPricePerUnit
   { unit :: ChargeUnitID
-  , currency :: Maybe Currency
+  , currency :: Maybe ChargeCurrency
   , price :: Number
   }
 
@@ -881,7 +946,7 @@ instance encodeJsonPriceByUnitPerDim :: EncodeJson PriceByUnitPerDim where
 newtype PricePerUnit
   = PricePerUnit
   { unit :: ChargeUnitID
-  , currency :: Maybe Currency
+  , currency :: Maybe ChargeCurrency
   , price :: Price
   }
 
@@ -1528,8 +1593,8 @@ newtype Commercial
   = Commercial
   { billingOption :: BillingOption
   , contractTerm :: ContractTerm
-  , paymentCurrency :: Currency
-  , priceCurrency :: Currency
+  , paymentCurrency :: PaymentCurrency
+  , billingCurrency :: BillingCurrency
   }
 
 derive newtype instance decodeJsonCommercial :: DecodeJson Commercial

@@ -9,6 +9,7 @@ import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Newtype (unwrap)
 import Data.SmartSpec as SS
 import Data.Tuple (Tuple(..), uncurry)
 import Effect.Aff.Class (class MonadAff)
@@ -186,30 +187,33 @@ render state = HH.section_ [ HH.article_ content ]
     where
     entry k v = dataItem k (show v)
 
-  renderRateCardCharges :: SS.ChargeUnitMap -> SS.Charges -> H.ComponentHTML Action Slots m
-  renderRateCardCharges unitMap charges =
+  renderRateCardCharges :: SS.ChargeCurrency -> SS.ChargeUnitMap -> SS.Charges -> H.ComponentHTML Action Slots m
+  renderRateCardCharges defaultCurrency unitMap charges =
     HH.slot Charge.proxy unit Charge.component
-      { unitMap, charges, quantity: Map.empty }
+      { unitMap, defaultCurrency, charges, quantity: Map.empty }
       (\_ -> NoOp)
 
-  renderRateCard :: SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
-  renderRateCard unitMap (SS.RateCard r) =
+  renderRateCard :: SS.ChargeCurrency -> SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
+  renderRateCard defaultCurrency unitMap (SS.RateCard r) =
     HH.li_ $ dataItem "SKU" (show r.sku)
       <> opt (dataItem "Name") r.name
       <> opt (dataItem "Description") r.description
-      <> dataItemRaw "Charges" (renderRateCardCharges unitMap r.charges)
+      <> dataItemRaw "Charges" (renderRateCardCharges defaultCurrency unitMap r.charges)
 
-  renderRateCards :: Map SS.SkuCode SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action Slots m
-  renderRateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard (fromMaybe Map.empty $ Map.lookup sku prodMap) rc)
+  renderRateCards :: SS.ChargeCurrency -> Map SS.SkuCode SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action Slots m
+  renderRateCards defaultCurrency prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard defaultCurrency (fromMaybe Map.empty $ Map.lookup sku prodMap) rc)
 
   renderPriceBookCurrency :: Map SS.SkuCode SS.ChargeUnitMap -> SS.PriceBookCurrency -> H.ComponentHTML Action Slots m
   renderPriceBookCurrency prodMap (SS.PriceBookCurrency p) =
-    HH.li_
-      [ HH.dl_
-          ( dataItem "Currency" (show p.currency)
-              <> opt (dataItemRaw "Rate Cards" <<< renderRateCards prodMap) p.rateCards
-          )
-      ]
+    let
+      defaultCurrency = SS.ChargeCurrency (unwrap p.currency)
+    in
+      HH.li_
+        [ HH.dl_
+            ( dataItem "Currency" (show p.currency)
+                <> opt (dataItemRaw "Rate Cards" <<< renderRateCards defaultCurrency prodMap) p.rateCards
+            )
+        ]
 
   renderPriceBookVersion :: Map SS.SkuCode SS.ChargeUnitMap -> SS.PriceBookVersion -> H.ComponentHTML Action Slots m
   renderPriceBookVersion prodMap (SS.PriceBookVersion p) =

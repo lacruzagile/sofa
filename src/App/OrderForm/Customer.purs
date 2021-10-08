@@ -6,7 +6,8 @@ import Css as Css
 import Data.Array as A
 import Data.Loadable (Loadable(..))
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Newtype (unwrap)
+import Data.Newtype (class Newtype, unwrap)
+import Data.Set (Set)
 import Data.SmartSpec as SS
 import Data.String as S
 import Data.String.Regex as Re
@@ -76,8 +77,8 @@ render st =
                       SS.Commercial
                         { billingOption: SS.Prepay
                         , contractTerm: SS.Ongoing
-                        , paymentCurrency: SS.Currency ""
-                        , priceCurrency: SS.Currency ""
+                        , paymentCurrency: SS.PaymentCurrency (SS.Currency "")
+                        , billingCurrency: SS.PricingCurrency (SS.Currency "")
                         }
                   , purchaser:
                       SS.Purchaser
@@ -139,7 +140,14 @@ render st =
 
   renderReturnCustomer _c = [ HH.text "Return customers are unsupported at the moment" ]
 
-  renderCurrency legend (SS.Currency code) update =
+  renderCurrency ::
+    forall currency.
+    Newtype currency SS.Currency =>
+    String ->
+    currency ->
+    (SS.Currency -> Action) ->
+    H.ComponentHTML Action slots m
+  renderCurrency legend currency update =
     HH.div_
       [ HH.label_ [ HH.text legend ]
       , HH.input
@@ -147,18 +155,30 @@ render st =
           , HP.required true
           , HP.pattern "[A-Z]{3}"
           , HP.placeholder "Currency (e.g. EUR)"
-          , HE.onValueChange $ \c -> update \(SS.Currency _) -> SS.Currency c
-          , HP.value code
+          , HE.onValueChange $ \c -> update (SS.Currency c)
+          , HP.value (let SS.Currency code = unwrap currency in code)
           ]
       ]
 
-  renderCurrencySelect legend (SS.Currency code) availableCurrencies update =
+  renderCurrencySelect ::
+    forall currency.
+    Newtype currency SS.Currency =>
+    String ->
+    currency ->
+    Set SS.Currency ->
+    (SS.Currency -> Action) ->
+    H.ComponentHTML Action slots m
+  renderCurrencySelect legend currency availableCurrencies update =
     let
-      mkOption (SS.Currency c) = HH.option [ HP.value c, HP.selected $ code == c ] [ HH.text c ]
+      mkOption c =
+        let
+          str = show c
+        in
+          HH.option [ HP.value str, HP.selected $ c == unwrap currency ] [ HH.text str ]
     in
       HH.div_
         [ HH.label_ [ HH.text legend ]
-        , HH.select [ HE.onValueChange $ \c -> update \(SS.Currency _) -> SS.Currency c ]
+        , HH.select [ HE.onValueChange $ \c -> update (SS.Currency c) ]
             $ [ HH.option
                   [ HP.value "", HP.disabled true, HP.selected true ]
                   [ HH.text
@@ -227,12 +247,12 @@ render st =
               [ renderCurrency
                   "Payment Currency"
                   commercial.paymentCurrency
-                  $ \f -> update (\c -> c { paymentCurrency = f c.paymentCurrency })
+                  $ \currency -> update (\c -> c { paymentCurrency = SS.PaymentCurrency currency })
               , renderCurrencySelect
-                  "Price Currency"
-                  commercial.priceCurrency
+                  "Billing Currency"
+                  commercial.billingCurrency
                   (maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity)
-                  $ \f -> update (\c -> c { priceCurrency = f c.priceCurrency })
+                  $ \currency -> update (\c -> c { billingCurrency = SS.PricingCurrency currency })
               ]
           ]
           [ HH.label
@@ -592,13 +612,19 @@ handleAction = case _ of
       H.modify
         $ \st ->
             let
-              setPriceCurrency currency = case _ of
+              setBillingCurrency currency = case _ of
                 Just (SS.NewCustomer c) ->
                   Just $ SS.NewCustomer
                     $ let
                         SS.Commercial commercial = c.commercial
                       in
-                        c { commercial = SS.Commercial $ commercial { priceCurrency = currency } }
+                        c
+                          { commercial =
+                            SS.Commercial
+                              $ commercial
+                                  { billingCurrency = SS.PricingCurrency currency
+                                  }
+                          }
                 c -> c
 
               setSeller s = case _ of
@@ -608,7 +634,7 @@ handleAction = case _ of
               st
                 { legalEntity = Just $ SS.LegalEntity le
                 , customer =
-                  setPriceCurrency le.defaultBankCurrency
+                  setBillingCurrency le.defaultBankCurrency
                     $ setSeller
                         { name: le.registeredName
                         , address: le.address

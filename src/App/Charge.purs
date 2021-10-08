@@ -23,7 +23,6 @@ import Data.Newtype (unwrap)
 import Data.Number.Format (fixed, toStringWith)
 import Data.SmartSpec (DimValue)
 import Data.SmartSpec as SS
-import Data.SubTotal (SubTotalEntry)
 import Data.SubTotal as SubTotal
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -52,6 +51,7 @@ type QuantityIndex
 
 type Input
   = { unitMap :: SS.ChargeUnitMap
+    , defaultCurrency :: SS.ChargeCurrency
     , charges :: SS.Charges
     , quantity :: QuantityMap
     }
@@ -61,6 +61,7 @@ type Output
 
 type State
   = { unitMap :: SS.ChargeUnitMap
+    , defaultCurrency :: SS.ChargeCurrency
     , charges :: SS.Charges
     , quantity :: QuantityMap
     , aggregatedQuantity :: AggregatedQuantityMap
@@ -104,13 +105,14 @@ component =
 initialState :: Input -> State
 initialState input =
   { unitMap: input.unitMap
+  , defaultCurrency: input.defaultCurrency
   , charges: input.charges
   , quantity: input.quantity
   , aggregatedQuantity: aggregateQuantity input.quantity
   }
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
-render { unitMap, charges, quantity, aggregatedQuantity } = case charges of
+render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } = case charges of
   SS.Charges rs ->
     HH.ul [ HP.class_ Css.blocklist ] <<< A.mapWithIndex (\i r -> HH.li_ [ renderChargeElement i r ])
       $ rs
@@ -197,7 +199,7 @@ render { unitMap, charges, quantity, aggregatedQuantity } = case charges of
 
     renderTotalPrice unitID = renderTotalPrice' $ calc $ Map.lookup unitID quantity
       where
-      calc :: Maybe (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SubTotalEntry
+      calc :: Maybe (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SubTotal.IndexedSubTotalEntry
       calc Nothing = mempty
 
       calc (Just (Left _)) = mempty
@@ -210,14 +212,16 @@ render { unitMap, charges, quantity, aggregatedQuantity } = case charges of
               SS.ChargeElement ce <- List.fromFoldable c
               SS.PriceByUnitPerDim pbupd <- List.fromFoldable ce.priceByUnitByDim
               SS.PricePerUnit p <- List.fromFoldable pbupd.prices
+              let
+                currency = fromMaybe defaultCurrency p.currency
               guard $ p.unit == unitID
               case Map.lookup pbupd.dim dimMap of
                 Nothing -> mempty
-                Just q -> pure $ SubTotal.calcSubTotalEntry q SS.SegmentationModelTiered p.price -- TODO: Use correct segmentation model.
+                Just q -> pure $ SubTotal.calcIndexedSubTotalEntry q SS.SegmentationModelTiered currency p.price -- TODO: Use correct segmentation model.
 
-      renderTotalPrice' :: SubTotalEntry -> Array (H.ComponentHTML Action Slots m)
+      renderTotalPrice' :: SubTotal.IndexedSubTotalEntry -> Array (H.ComponentHTML Action Slots m)
       renderTotalPrice' tot =
-        [ HH.li_ [ HH.text "Total price: ", SubTotal.renderSubTotalEntry (Just $ SS.Currency "EUR") tot ] -- TODO: Use correct currency.
+        [ HH.li_ [ HH.text "Total price: ", SubTotal.renderIndexedSubTotalEntry tot ]
         ]
 
     showMonetary :: Estimate Number -> String

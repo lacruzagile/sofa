@@ -1,9 +1,15 @@
 module Data.SubTotal
-  ( SubTotal(..)
+  ( IndexedSubTotalEntry(..)
+  , SubTotal(..)
   , SubTotalEntry(..)
+  , calcIndexedSubTotalEntry
   , calcSubTotal
   , calcSubTotalEntry
+  , isEmpty
+  , renderIndexedSubTotalEntry
   , renderSubTotalEntry
+  , toCurrencies
+  , toSubTotalEntry
   ) where
 
 import Prelude
@@ -11,10 +17,14 @@ import Data.Array as A
 import Data.Estimate (Estimate(..))
 import Data.Estimate as Est
 import Data.Int as Int
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Number.Format (toStringWith, fixed)
-import Data.SmartSpec (ChargeType(..), Currency(..), Price(..), PricePerSegment(..), SegmentationModel(..))
+import Data.Set (Set)
+import Data.SmartSpec (ChargeCurrency, ChargeType(..), Price(..), PricePerSegment(..), SegmentationModel(..))
+import Data.Tuple (uncurry)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -25,15 +35,24 @@ type SubTotalEntry
     , salesPrice :: Estimate (Additive Number)
     }
 
+newtype IndexedSubTotalEntry
+  = IndexedSubTotalEntry (Map ChargeCurrency SubTotalEntry)
+
+instance semigroupIndexedSubTotalEntry :: Semigroup IndexedSubTotalEntry where
+  append (IndexedSubTotalEntry a) (IndexedSubTotalEntry b) = IndexedSubTotalEntry $ Map.unionWith (<>) a b
+
+instance monoidIndexedSubTotalEntry :: Monoid IndexedSubTotalEntry where
+  mempty = IndexedSubTotalEntry Map.empty
+
 -- | A sub-total price.
 newtype SubTotal
   = SubTotal
-  { onetime :: SubTotalEntry -- ^ Onetime price.
-  , monthly :: SubTotalEntry -- ^ Monthly price.
-  , quarterly :: SubTotalEntry -- ^ Quarterly price.
-  , usage :: SubTotalEntry -- ^ Usage price.
-  , segment :: SubTotalEntry -- ^ Monthly segment price.
-  , quarterlySegment :: SubTotalEntry -- ^ Quarterly segment price.
+  { onetime :: IndexedSubTotalEntry -- ^ Onetime price.
+  , monthly :: IndexedSubTotalEntry -- ^ Monthly price.
+  , quarterly :: IndexedSubTotalEntry -- ^ Quarterly price.
+  , usage :: IndexedSubTotalEntry -- ^ Usage price.
+  , segment :: IndexedSubTotalEntry -- ^ Monthly segment price.
+  , quarterlySegment :: IndexedSubTotalEntry -- ^ Quarterly segment price.
   }
 
 derive newtype instance semigroupSubTotal :: Semigroup SubTotal
@@ -41,13 +60,17 @@ derive newtype instance semigroupSubTotal :: Semigroup SubTotal
 derive newtype instance monoidSubTotal :: Monoid SubTotal
 
 -- | Calculates the sub-total entry using the given information.
-calcSubTotal :: Estimate Int -> SegmentationModel -> ChargeType -> Price -> SubTotal
-calcSubTotal quantity segmentationModel chargeType =
-  mkSubTotal chargeType
+calcSubTotal :: Estimate Int -> SegmentationModel -> ChargeType -> ChargeCurrency -> Price -> SubTotal
+calcSubTotal quantity segmentationModel chargeType currency = mkSubTotal chargeType <<< calcIndexedSubTotalEntry quantity segmentationModel currency
+
+calcIndexedSubTotalEntry :: Estimate Int -> SegmentationModel -> ChargeCurrency -> Price -> IndexedSubTotalEntry
+calcIndexedSubTotalEntry quantity segmentationModel currency =
+  IndexedSubTotalEntry
+    <<< Map.singleton currency
     <<< calcSubTotalEntry quantity segmentationModel
 
 -- Create a `SubTotal` value for the given entry using the given charge type.
-mkSubTotal :: ChargeType -> SubTotalEntry -> SubTotal
+mkSubTotal :: ChargeType -> IndexedSubTotalEntry -> SubTotal
 mkSubTotal chargeType entry = case chargeType of
   ChargeTypeOnetime -> SubTotal $ zero { onetime = entry }
   ChargeTypeMonthly -> SubTotal $ zero { monthly = entry }
@@ -123,26 +146,44 @@ scaleEntryBy pps quantity =
     , salesPrice: Additive $ q * pps.salesPrice
     }
 
+toCurrencies :: IndexedSubTotalEntry -> Set ChargeCurrency
+toCurrencies (IndexedSubTotalEntry es) = Map.keys es
+
+isEmpty :: IndexedSubTotalEntry -> Boolean
+isEmpty (IndexedSubTotalEntry es) = Map.isEmpty es
+
+toSubTotalEntry :: ChargeCurrency -> IndexedSubTotalEntry -> Maybe SubTotalEntry
+toSubTotalEntry currency (IndexedSubTotalEntry es) = Map.lookup currency es
+
 -- | Render a sub-total entry.
 renderSubTotalEntry ::
   forall action slots m.
   Monad m =>
-  Maybe Currency ->
+  ChargeCurrency ->
   SubTotalEntry ->
   H.ComponentHTML action slots m
-renderSubTotalEntry currency amount = case currency of
-  Nothing -> HH.text "N/A"
-  Just (Currency "") -> HH.text "N/A"
-  Just (Currency code) ->
-    if amount.listPrice == amount.salesPrice then
-      HH.text $ showMonetary amount.listPrice <> " " <> code
-    else
-      Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
-        $ HH.span_
-            [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.salesPrice ]
-            , HH.text " "
-            , HH.text code
-            ]
+renderSubTotalEntry currencyCode amount =
+  if amount.listPrice == amount.salesPrice then
+    HH.text $ showMonetary amount.listPrice <> " " <> show currencyCode
+  else
+    Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
+      $ HH.span_
+          [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.salesPrice ]
+          , HH.text " "
+          , HH.text (show currencyCode)
+          ]
+
+-- | Render a sub-total entry.
+renderIndexedSubTotalEntry ::
+  forall action slots m.
+  Monad m =>
+  IndexedSubTotalEntry ->
+  H.ComponentHTML action slots m
+renderIndexedSubTotalEntry (IndexedSubTotalEntry subTotEntries) =
+  HH.span_
+    $ A.intersperse (HH.text ", ")
+    $ uncurry renderSubTotalEntry
+    <$> Map.toUnfoldable subTotEntries
 
 showMonetary :: Estimate (Additive Number) -> String
 showMonetary = showEst <<< map (\(Additive n) -> toStringWith (fixed 2) n)

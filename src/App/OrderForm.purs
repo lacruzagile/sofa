@@ -19,8 +19,9 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (unwrap)
+import Data.Set as Set
 import Data.SmartSpec as SS
-import Data.SubTotal (SubTotal(..))
+import Data.SubTotal (SubTotal(..), toCurrencies, toSubTotalEntry)
 import Data.SubTotal as SubTotal
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
@@ -52,7 +53,7 @@ data State
 
 type StateOrderForm
   = { productCatalog :: SS.ProductCatalog
-    , currency :: Maybe SS.Currency
+    , currency :: Maybe SS.PricingCurrency
     , priceBooks :: Map String (Array PriceBook)
     -- ^ Map from solution name to price books in the current currency.
     , orderForm :: OrderForm
@@ -89,6 +90,7 @@ type PriceBook
   = { id :: String
     , name :: String
     , version :: String
+    , currency :: SS.ChargeCurrency -- ^ The default charge currency.
     , rateCards :: Maybe (Map SS.SkuCode SS.RateCard) -- ^ Maybe a map from SKU to rate cards.
     }
 
@@ -152,12 +154,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderCharges ::
     OrderLineIndex ->
     SS.ChargeUnitMap ->
+    SS.ChargeCurrency ->
     QuantityMap ->
     SS.Charges ->
     H.ComponentHTML Action Slots m
-  renderCharges olIdx unitMap quantity charges =
+  renderCharges olIdx unitMap defaultCurrency quantity charges =
     HH.slot Charge.proxy olIdx Charge.component
-      { unitMap, charges, quantity }
+      { unitMap, defaultCurrency, charges, quantity }
       ( \result ->
           OrderLineSetCharge
             { sectionIndex: olIdx.sectionIndex
@@ -170,10 +173,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderChargeModal ::
     OrderLineIndex ->
     SS.ChargeUnitMap ->
+    SS.ChargeCurrency ->
     QuantityMap ->
     Maybe SS.Charges ->
     Array (H.ComponentHTML Action Slots m)
-  renderChargeModal olIdx unitMap quantity = maybe noCharges withCharges
+  renderChargeModal olIdx unitMap defaultCurrency quantity = maybe noCharges withCharges
     where
     chargeText = HH.text "Charge"
 
@@ -193,7 +197,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HP.for modalLabel, HP.class_ Css.button, noMargin ]
             [ chargeText ]
         , Widgets.modal modalLabel "Charge"
-            [ renderCharges olIdx unitMap quantity charges ]
+            [ renderCharges olIdx unitMap defaultCurrency quantity charges ]
             []
         ]
 
@@ -201,10 +205,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrderLine ::
     SS.Solution ->
+    SS.ChargeCurrency ->
     OrderLineIndex ->
     Maybe OrderLine ->
     H.ComponentHTML Action Slots m
-  renderOrderLine (SS.Solution sol) olIdx = case _ of
+  renderOrderLine (SS.Solution sol) defaultCurrency olIdx = case _ of
     Nothing ->
       body
         [ HH.label_
@@ -232,7 +237,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         ]
                     ]
                 , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
-                    $ renderChargeModal olIdx (SS.productChargeUnits ol.product) ol.quantity ol.charges
+                    $ renderChargeModal olIdx (SS.productChargeUnits ol.product) defaultCurrency ol.quantity ol.charges
                 ]
             ]
           <> ( if isJust product.orderConfigSchema then
@@ -445,9 +450,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
         priceBookSel = case sof.currency of
           Nothing -> "No price currency selected"
-          Just (SS.Currency code) ->
+          Just priceCurrency ->
             if A.null priceBookOpts then
-              "No price books for " <> code
+              "No price books for " <> show priceCurrency
             else
               "Please choose a price book"
       in
@@ -478,10 +483,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
                     [ HH.text "+" ]
                 ]
-            , renderOrderSectionSummary sof.currency sec.summary
+            , renderOrderSectionSummary sec.summary
             ]
     where
     SS.ProductCatalog pc = sof.productCatalog
+
+    defaultCurrency = maybe (SS.ChargeCurrency (SS.Currency "FIX")) (SS.ChargeCurrency <<< unwrap) sof.currency
 
     body subBody =
       HH.div [ HP.class_ Css.orderSection ]
@@ -522,7 +529,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     sectionOrderLines sol orderLines = [ HH.div_ $ A.mapWithIndex renderOrderLine' orderLines ]
       where
-      renderOrderLine' olIdx = renderOrderLine sol { sectionIndex: secIdx, orderLineIndex: olIdx }
+      renderOrderLine' olIdx = renderOrderLine sol defaultCurrency { sectionIndex: secIdx, orderLineIndex: olIdx }
 
   renderSections ::
     StateOrderForm ->
@@ -540,35 +547,54 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
 
-  renderOrderSectionSummary :: Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
+  renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSectionSummary = renderSubTotal "Sub-totals"
 
-  renderOrderSummary :: Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
+  renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSummary = renderSubTotal "Totals"
 
-  renderSubTotal :: String -> Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
-  renderSubTotal title currency (SubTotal summary) =
+  renderSubTotal :: String -> SubTotal -> H.ComponentHTML Action Slots m
+  renderSubTotal title (SubTotal summary) =
     let
-      price = SubTotal.renderSubTotalEntry currency
+      price = SubTotal.renderSubTotalEntry
 
-      ifNonZero e
-        | e == mempty = const []
-        | otherwise = A.singleton
+      currencies =
+        A.fromFoldable
+          $ Set.unions
+              [ toCurrencies summary.usage
+              , toCurrencies summary.monthly
+              , toCurrencies summary.quarterly
+              , toCurrencies summary.onetime
+              ]
+
+      th sumry name = if SubTotal.isEmpty sumry then [] else [ HH.th_ [ HH.text name ] ]
+
+      td sumry =
+        if SubTotal.isEmpty sumry then
+          const []
+        else
+          let
+            td' currency s = [ HH.td_ [ price currency s ] ]
+          in
+            \currency -> td' currency $ fromMaybe mempty $ toSubTotalEntry currency sumry
+
+      renderRow currency =
+        HH.tr_
+          $ []
+          <> td summary.usage currency
+          <> td summary.monthly currency
+          <> td summary.quarterly currency
+          <> td summary.onetime currency
     in
       HH.table [ HP.class_ Css.subTotal ]
-        [ HH.tr_
-            $ [ HH.th [ HP.rowSpan 2 ] [ HH.text title ] ]
-            <> ifNonZero summary.usage (HH.th_ [ HH.text "Usage" ])
-            <> ifNonZero summary.monthly (HH.th_ [ HH.text "Monthly" ])
-            <> ifNonZero summary.quarterly (HH.th_ [ HH.text "Quarterly" ])
-            <> ifNonZero summary.onetime (HH.th_ [ HH.text "Onetime" ])
-        , HH.tr_
-            $ []
-            <> ifNonZero summary.usage (HH.td_ [ price summary.usage ])
-            <> ifNonZero summary.monthly (HH.td_ [ price summary.monthly ])
-            <> ifNonZero summary.quarterly (HH.td_ [ price summary.quarterly ])
-            <> ifNonZero summary.onetime (HH.td_ [ price summary.onetime ])
-        ]
+        $ [ HH.tr_
+              $ [ HH.th [ HP.rowSpan (1 + A.length currencies) ] [ HH.text title ] ]
+              <> th summary.usage "Usage"
+              <> th summary.monthly "Monthly"
+              <> th summary.quarterly "Quarterly"
+              <> th summary.onetime "Onetime"
+          ]
+        <> map renderRow currencies
 
   renderCustomer :: Maybe SS.Customer -> H.ComponentHTML Action Slots m
   renderCustomer customer =
@@ -581,7 +607,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderForm sof =
     [ renderCustomer sof.orderForm.customer
     , renderSections sof sof.orderForm.sections
-    , renderOrderSummary sof.currency sof.orderForm.summary
+    , renderOrderSummary sof.orderForm.summary
     , HH.hr_
     , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
     , Widgets.modal "of-json" "Order Form JSON"
@@ -764,6 +790,8 @@ calcSubTotal os =
     , summary = sumOrderLines orderLines'
     }
   where
+  defaultCurrency = maybe (SS.ChargeCurrency (SS.Currency "FIX")) _.currency os.priceBook
+
   orderLines' = map (map (updateOrderLineCharges os.priceBook)) os.orderLines
 
   -- | Sets the order line charge and default quantity from the given price
@@ -805,7 +833,7 @@ calcSubTotal os =
     accumulate acc { unitID, quantity } = Map.alter (Just <<< Left <<< const quantity) unitID acc
 
   sumOrderLines :: Array (Maybe OrderLine) -> SubTotal
-  sumOrderLines = A.foldl (\a b -> a <> (conv b)) mempty
+  sumOrderLines = A.foldl (\a b -> a <> conv b) mempty
 
   conv :: Maybe OrderLine -> SubTotal
   conv mol =
@@ -820,11 +848,13 @@ calcSubTotal os =
     where
     priceToAmount dim (SS.PricePerUnit p) =
       let
+        currency = fromMaybe defaultCurrency p.currency
+
         quantity = do
           dimMap <- Map.lookup p.unit quantityMap
           either (Just <<< identity) (Map.lookup dim) dimMap
       in
-        SubTotal.calcSubTotal <$> quantity <*> pure SS.SegmentationModelTiered <*> chargeType p.unit product <*> pure p.price
+        SubTotal.calcSubTotal <$> quantity <*> pure SS.SegmentationModelTiered <*> chargeType p.unit product <*> pure currency <*> pure p.price
 
     priceByUnitToAmount (SS.PriceByUnitPerDim p) = A.foldl (\a b -> a <> priceToAmount p.dim b) mempty p.prices
 
@@ -837,11 +867,11 @@ calcSubTotal os =
       $ chargeUnits
 
 calcTotal :: OrderForm -> OrderForm
-calcTotal orderForm = orderForm { summary = SubTotal $ sumOrderSecs orderForm.sections }
+calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
   where
-  sumOrderSecs = A.foldl (\a b -> a <> (conv b)) mempty
+  sumOrderSecs = A.foldl (\a b -> a <> conv b) mempty
 
-  conv = maybe mempty (\{ summary: SubTotal os } -> os)
+  conv = maybe mempty (\{ summary } -> summary)
 
 -- | Helper function to modify an indexed order line.
 modifyOrderLine :: Int -> Int -> StateOrderForm -> (OrderLine -> OrderLine) -> StateOrderForm
@@ -885,9 +915,9 @@ loadExisting (SS.OrderForm orderForm) = do
   convertOrderForm :: SS.ProductCatalog -> StateOrderForm
   convertOrderForm productCatalog =
     let
-      currency = toCurrency orderForm.customer
+      currency = toPricingCurrency orderForm.customer
 
-      priceBooks = mkPriceBooks productCatalog orderForm.customer
+      priceBooks = mkPriceBooks productCatalog currency
     in
       { productCatalog
       , currency
@@ -939,16 +969,16 @@ modifyInitialized f =
         Initialized st -> Initialized (f <$> st)
         initializing -> initializing
 
-toCurrency :: SS.Customer -> Maybe SS.Currency
-toCurrency = case _ of
+toPricingCurrency :: SS.Customer -> Maybe SS.PricingCurrency
+toPricingCurrency = case _ of
   SS.NewCustomer cust -> case cust.commercial of
-    SS.Commercial comm -> Just comm.priceCurrency
+    SS.Commercial { billingCurrency } -> Just billingCurrency
   _ -> Nothing
 
 -- | Assemble a map from solution ID to its associated price books. The price
--- | books are limited to the currency of the given customer.
-mkPriceBooks :: SS.ProductCatalog -> SS.Customer -> Map String (Array PriceBook)
-mkPriceBooks (SS.ProductCatalog pc) customer = maybe Map.empty (Map.fromFoldableWith (<>) <<< mkPriceBookPairs) $ toCurrency customer
+-- | books are limited to the given pricing currency.
+mkPriceBooks :: SS.ProductCatalog -> Maybe SS.PricingCurrency -> Map String (Array PriceBook)
+mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>) <<< mkPriceBookPairs)
   where
   rateCardMap = Map.fromFoldable <<< map (\rc@(SS.RateCard rc') -> Tuple rc'.sku rc)
 
@@ -962,6 +992,7 @@ mkPriceBooks (SS.ProductCatalog pc) customer = maybe Map.empty (Map.fromFoldable
           [ { id: pb.id
             , name: pb.name
             , version: pbv.version
+            , currency: SS.ChargeCurrency (unwrap c)
             , rateCards: rateCardMap <$> pbc.rateCards
             }
           ]
@@ -984,9 +1015,9 @@ handleAction = case _ of
     modifyInitialized
       $ \st ->
           let
-            currency = toCurrency customer
+            currency = toPricingCurrency customer
 
-            priceBooks = mkPriceBooks st.productCatalog customer
+            priceBooks = mkPriceBooks st.productCatalog currency
           in
             st
               { currency = currency
