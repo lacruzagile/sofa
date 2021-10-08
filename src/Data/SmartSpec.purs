@@ -49,7 +49,6 @@ module Data.SmartSpec
   , ProductCatalog(..)
   , ProductCategory(..)
   , ProductFeature(..)
-  , ProductInstance(..)
   , ProductOption(..)
   , ProductOptionType(..)
   , ProductRef(..)
@@ -127,8 +126,7 @@ instance decodeJsonSolution :: DecodeJson Solution where
     priceBooks <- o .: "priceBooks"
     pure $ Solution { id, uri, name, description, rules, products, priceBooks }
 
-instance encodeJsonSolution :: EncodeJson Solution where
-  encodeJson (Solution x) = encodeJson x
+derive newtype instance encodeJsonSolution :: EncodeJson Solution
 
 solutionProducts :: Solution -> Map SkuCode Product
 solutionProducts =
@@ -232,8 +230,7 @@ instance decodeJsonRuleConditionExpr :: DecodeJson RuleConditionExpr where
     expr <- o .: "expr"
     pure $ RuleConditionExpr { type_, expr }
 
-instance encodeJsonRuleConditionExpr :: EncodeJson RuleConditionExpr where
-  encodeJson (RuleConditionExpr x) = encodeJson x
+derive newtype instance encodeJsonRuleConditionExpr :: EncodeJson RuleConditionExpr
 
 newtype Rule
   = Rule
@@ -244,11 +241,9 @@ newtype Rule
   , conditions :: Array RuleConditionExpr
   }
 
-instance decodeJsonRule :: DecodeJson Rule where
-  decodeJson json = Rule <$> decodeJson json
+derive newtype instance decodeJsonRule :: DecodeJson Rule
 
-instance encodeJsonRule :: EncodeJson Rule where
-  encodeJson (Rule x) = encodeJson x
+derive newtype instance encodeJsonRule :: EncodeJson Rule
 
 newtype Currency
   = Currency String
@@ -260,11 +255,9 @@ derive instance newtypeCurrency :: Newtype Currency _
 instance showCurrency :: Show Currency where
   show (Currency code) = code
 
-instance decodeJsonCurrency :: DecodeJson Currency where
-  decodeJson json = Currency <$> decodeJson json
+derive newtype instance decodeJsonCurrency :: DecodeJson Currency
 
-instance encodeJsonCurrency :: EncodeJson Currency where
-  encodeJson (Currency code) = encodeJson code
+derive newtype instance encodeJsonCurrency :: EncodeJson Currency
 
 newtype PriceBook
   = PriceBook
@@ -276,11 +269,9 @@ newtype PriceBook
 
 derive instance newtypePriceBook :: Newtype PriceBook _
 
-instance decodeJsonPriceBook :: DecodeJson PriceBook where
-  decodeJson json = PriceBook <$> decodeJson json
+derive newtype instance decodeJsonPriceBook :: DecodeJson PriceBook
 
-instance encodeJsonPriceBook :: EncodeJson PriceBook where
-  encodeJson (PriceBook x) = encodeJson x
+derive newtype instance encodeJsonPriceBook :: EncodeJson PriceBook
 
 newtype PriceBookVersion
   = PriceBookVersion
@@ -291,11 +282,9 @@ newtype PriceBookVersion
 
 derive instance newtypePriceBookVersion :: Newtype PriceBookVersion _
 
-instance decodeJsonPriceBookVersion :: DecodeJson PriceBookVersion where
-  decodeJson json = PriceBookVersion <$> decodeJson json
+derive newtype instance decodeJsonPriceBookVersion :: DecodeJson PriceBookVersion
 
-instance encodeJsonPriceBookVersion :: EncodeJson PriceBookVersion where
-  encodeJson (PriceBookVersion x) = encodeJson x
+derive newtype instance encodeJsonPriceBookVersion :: EncodeJson PriceBookVersion
 
 newtype PriceBookCurrency
   = PriceBookCurrency
@@ -305,11 +294,9 @@ newtype PriceBookCurrency
 
 derive instance newtypePriceBookCurrency :: Newtype PriceBookCurrency _
 
-instance decodeJsonPriceBookCurrency :: DecodeJson PriceBookCurrency where
-  decodeJson json = PriceBookCurrency <$> decodeJson json
+derive newtype instance decodeJsonPriceBookCurrency :: DecodeJson PriceBookCurrency
 
-instance encodeJsonPriceBookCurrency :: EncodeJson PriceBookCurrency where
-  encodeJson (PriceBookCurrency x) = encodeJson x
+derive newtype instance encodeJsonPriceBookCurrency :: EncodeJson PriceBookCurrency
 
 newtype Charge
   = ChargeArray (Array ChargeElement)
@@ -474,14 +461,11 @@ derive instance eqDimValue :: Eq DimValue
 
 derive instance ordDimValue :: Ord DimValue
 
-instance showDimValue :: Show DimValue where
-  show = genericShow
+derive newtype instance showDimValue :: Show DimValue
 
-instance decodeJsonDimValue :: DecodeJson DimValue where
-  decodeJson json = DimValue <$> decodeJson json
+derive newtype instance decodeJsonDimValue :: DecodeJson DimValue
 
-instance encodeJsonDimValue :: EncodeJson DimValue where
-  encodeJson (DimValue x) = encodeJson x
+derive newtype instance encodeJsonDimValue :: EncodeJson DimValue
 
 newtype PriceByDim
   = PriceByDim
@@ -498,8 +482,7 @@ instance decodeJsonPriceByDim :: DecodeJson PriceByDim where
     periodMinimum <- o .:? "periodMinimum" .!= 0.0
     pure $ PriceByDim { dim, price, periodMinimum }
 
-instance encodeJsonPriceByDim :: EncodeJson PriceByDim where
-  encodeJson (PriceByDim x) = encodeJson x
+derive newtype instance encodeJsonPriceByDim :: EncodeJson PriceByDim
 
 data Discount
   = DiscountPercentage Number
@@ -557,8 +540,7 @@ derive instance eqPricePerSegment :: Eq PricePerSegment
 
 derive instance newtypePricePerSegment :: Newtype PricePerSegment _
 
-instance showPricePerSegment :: Show PricePerSegment where
-  show = genericShow
+derive newtype instance showPricePerSegment :: Show PricePerSegment
 
 instance decodeJsonPricePerSegment :: DecodeJson PricePerSegment where
   decodeJson json = do
@@ -633,11 +615,9 @@ newtype PriceSegmentation
   , segments :: Array Segment
   }
 
-instance decodeJsonPriceSegmentation :: DecodeJson PriceSegmentation where
-  decodeJson json = PriceSegmentation <$> decodeJson json
+derive newtype instance decodeJsonPriceSegmentation :: DecodeJson PriceSegmentation
 
-instance encodeJsonPriceSegmentation :: EncodeJson PriceSegmentation where
-  encodeJson (PriceSegmentation x) = encodeJson x
+derive newtype instance encodeJsonPriceSegmentation :: EncodeJson PriceSegmentation
 
 newtype PriceSegmentationPerUnit
   = PriceSegmentationPerUnit
@@ -645,11 +625,9 @@ newtype PriceSegmentationPerUnit
   , segmentation :: PriceSegmentation
   }
 
-instance decodeJsonPriceSegmentationPerUnit :: DecodeJson PriceSegmentationPerUnit where
-  decodeJson json = PriceSegmentationPerUnit <$> decodeJson json
+derive newtype instance decodeJsonPriceSegmentationPerUnit :: DecodeJson PriceSegmentationPerUnit
 
-instance encodeJsonPriceSegmentationPerUnit :: EncodeJson PriceSegmentationPerUnit where
-  encodeJson (PriceSegmentationPerUnit x) = encodeJson x
+derive newtype instance encodeJsonPriceSegmentationPerUnit :: EncodeJson PriceSegmentationPerUnit
 
 newtype RateCard
   = RateCard
@@ -659,11 +637,9 @@ newtype RateCard
   , charge :: Charge
   }
 
-instance decodeJsonRateCard :: DecodeJson RateCard where
-  decodeJson json = RateCard <$> decodeJson json
+derive newtype instance decodeJsonRateCard :: DecodeJson RateCard
 
-instance encodeJsonRateCard :: EncodeJson RateCard where
-  encodeJson (RateCard x) = encodeJson x
+derive newtype instance encodeJsonRateCard :: EncodeJson RateCard
 
 newtype Price
   = Price (Array PricePerSegment)
@@ -706,8 +682,7 @@ instance decodeJsonPrice :: DecodeJson Price where
 
     sortSegments = A.sortBy $ comparing (_.minimum <<< unwrap)
 
-instance encodeJsonPrice :: EncodeJson Price where
-  encodeJson (Price x) = encodeJson x
+derive newtype instance encodeJsonPrice :: EncodeJson Price
 
 data SegmentationPeriod
   = SegmentationPeriodMonthly
@@ -790,11 +765,9 @@ newtype EstimatedWAPPerUnit
 
 derive instance newtypeEstimatedWAPPerUnit :: Newtype EstimatedWAPPerUnit _
 
-instance decodeJsonEstimatedWAPPerUnit :: DecodeJson EstimatedWAPPerUnit where
-  decodeJson json = EstimatedWAPPerUnit <$> decodeJson json
+derive newtype instance decodeJsonEstimatedWAPPerUnit :: DecodeJson EstimatedWAPPerUnit
 
-instance encodeJsonEstimatedWAPPerUnit :: EncodeJson EstimatedWAPPerUnit where
-  encodeJson (EstimatedWAPPerUnit x) = encodeJson x
+derive newtype instance encodeJsonEstimatedWAPPerUnit :: EncodeJson EstimatedWAPPerUnit
 
 newtype DefaultPricePerUnit
   = DefaultPricePerUnit
@@ -803,11 +776,9 @@ newtype DefaultPricePerUnit
   , price :: Number
   }
 
-instance decodeJsonDefaultPricePerUnit :: DecodeJson DefaultPricePerUnit where
-  decodeJson json = DefaultPricePerUnit <$> decodeJson json
+derive newtype instance decodeJsonDefaultPricePerUnit :: DecodeJson DefaultPricePerUnit
 
-instance encodeJsonDefaultPricePerUnit :: EncodeJson DefaultPricePerUnit where
-  encodeJson (DefaultPricePerUnit x) = encodeJson x
+derive newtype instance encodeJsonDefaultPricePerUnit :: EncodeJson DefaultPricePerUnit
 
 newtype PriceByUnitPerDim
   = PriceByUnitPerDim
@@ -840,11 +811,9 @@ newtype PriceByUnit
 
 derive instance newtypePriceByUnit :: Newtype PriceByUnit _
 
-instance decodeJsonPriceByUnit :: DecodeJson PriceByUnit where
-  decodeJson = map PriceByUnit <<< decodeJson
+derive newtype instance decodeJsonPriceByUnit :: DecodeJson PriceByUnit
 
-instance encodeJsonPriceByUnit :: EncodeJson PriceByUnit where
-  encodeJson (PriceByUnit x) = encodeJson x
+derive newtype instance encodeJsonPriceByUnit :: EncodeJson PriceByUnit
 
 newtype ChargeUnitRef
   = ChargeUnitRef { unitID :: String, product :: Maybe ProductRef }
@@ -857,8 +826,7 @@ derive instance ordChargeUnitRef :: Ord ChargeUnitRef
 
 derive instance newtypeChargeUnitRef :: Newtype ChargeUnitRef _
 
-instance showChargeUnitRef :: Show ChargeUnitRef where
-  show = genericShow
+derive newtype instance showChargeUnitRef :: Show ChargeUnitRef
 
 instance decodeJsonChargeUnitRef :: DecodeJson ChargeUnitRef where
   decodeJson json = ChargeUnitRef <$> plainID <|> full
@@ -885,14 +853,11 @@ derive instance eqProductRef :: Eq ProductRef
 
 derive instance ordProductRef :: Ord ProductRef
 
-instance showProductRef :: Show ProductRef where
-  show = genericShow
+derive newtype instance showProductRef :: Show ProductRef
 
-instance decodeJsonProductRef :: DecodeJson ProductRef where
-  decodeJson = map ProductRef <<< decodeJson
+derive newtype instance decodeJsonProductRef :: DecodeJson ProductRef
 
-instance encodeJsonProductRef :: EncodeJson ProductRef where
-  encodeJson (ProductRef x) = encodeJson x
+derive newtype instance encodeJsonProductRef :: EncodeJson ProductRef
 
 data ChargeType
   = ChargeTypeOnetime
@@ -1080,11 +1045,9 @@ newtype ProductVariable
   { name :: String, path :: String
   }
 
-instance decodeJsonProductVariable :: DecodeJson ProductVariable where
-  decodeJson = map ProductVariable <<< decodeJson
+derive newtype instance decodeJsonProductVariable :: DecodeJson ProductVariable
 
-instance encodeJsonProductVariable :: EncodeJson ProductVariable where
-  encodeJson (ProductVariable x) = encodeJson x
+derive newtype instance encodeJsonProductVariable :: EncodeJson ProductVariable
 
 newtype ChargeUnit
   = ChargeUnit
@@ -1117,8 +1080,7 @@ instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
           , reportDimSchemas
           }
 
-instance encodeJsonChargeUnit :: EncodeJson ChargeUnit where
-  encodeJson (ChargeUnit x) = encodeJson x
+derive newtype instance encodeJsonChargeUnit :: EncodeJson ChargeUnit
 
 type ChargeUnitMap
   = Map String ChargeUnit
@@ -1131,11 +1093,9 @@ chargeUnitLabel (ChargeUnit { id, name }) = fromMaybe id name
 newtype PriceDimSchema
   = PriceDimSchema ConfigSchemaEntry
 
-instance decodeJsonPriceDimSchema :: DecodeJson PriceDimSchema where
-  decodeJson json = PriceDimSchema <$> decodeJson json
+derive newtype instance decodeJsonPriceDimSchema :: DecodeJson PriceDimSchema
 
-instance encodeJsonPriceDimSchema :: EncodeJson PriceDimSchema where
-  encodeJson (PriceDimSchema x) = encodeJson x
+derive newtype instance encodeJsonPriceDimSchema :: EncodeJson PriceDimSchema
 
 newtype Product
   = Product
@@ -1193,8 +1153,7 @@ instance decodeJsonProduct :: DecodeJson Product where
           , rules
           }
 
-instance encodeJsonProduct :: EncodeJson Product where
-  encodeJson (Product x) = encodeJson x
+derive newtype instance encodeJsonProduct :: EncodeJson Product
 
 -- | Produces a map from unit ID to the charge unit itself.
 productChargeUnits :: Product -> ChargeUnitMap
@@ -1370,11 +1329,9 @@ derive instance ordSkuCode :: Ord SkuCode
 instance showSkuCode :: Show SkuCode where
   show (SkuCode code) = code
 
-instance decodeJsonSkuCode :: DecodeJson SkuCode where
-  decodeJson json = SkuCode <$> decodeJson json
+derive newtype instance decodeJsonSkuCode :: DecodeJson SkuCode
 
-instance encodeJsonSkuCode :: EncodeJson SkuCode where
-  encodeJson (SkuCode x) = encodeJson x
+derive newtype instance encodeJsonSkuCode :: EncodeJson SkuCode
 
 data ProductOption
   = ProdOptSkuCode String
@@ -1459,11 +1416,9 @@ newtype ProductFeature
   , options :: Maybe (Array Json)
   }
 
-instance decodeJsonProductFeature :: DecodeJson ProductFeature where
-  decodeJson json = ProductFeature <$> decodeJson json
+derive newtype instance decodeJsonProductFeature :: DecodeJson ProductFeature
 
-instance encodeJsonProductFeature :: EncodeJson ProductFeature where
-  encodeJson (ProductFeature x) = encodeJson x
+derive newtype instance encodeJsonProductFeature :: EncodeJson ProductFeature
 
 data BillingOption
   = Prepay
@@ -1517,20 +1472,16 @@ newtype Commercial
   , priceCurrency :: Currency
   }
 
-instance decodeJsonCommercial :: DecodeJson Commercial where
-  decodeJson json = Commercial <$> decodeJson json
+derive newtype instance decodeJsonCommercial :: DecodeJson Commercial
 
-instance encodeJsonCommercial :: EncodeJson Commercial where
-  encodeJson (Commercial x) = encodeJson x
+derive newtype instance encodeJsonCommercial :: EncodeJson Commercial
 
 newtype Address
   = Address String
 
-instance decodeJsonAddress :: DecodeJson Address where
-  decodeJson json = Address <$> decodeJson json
+derive newtype instance decodeJsonAddress :: DecodeJson Address
 
-instance encodeJsonAddress :: EncodeJson Address where
-  encodeJson (Address x) = encodeJson x
+derive newtype instance encodeJsonAddress :: EncodeJson Address
 
 newtype Contact
   = Contact
@@ -1539,11 +1490,9 @@ newtype Contact
   , phone :: String
   }
 
-instance decodeJsonContact :: DecodeJson Contact where
-  decodeJson json = Contact <$> decodeJson json
+derive newtype instance decodeJsonContact :: DecodeJson Contact
 
-instance encodeJsonContact :: EncodeJson Contact where
-  encodeJson (Contact x) = encodeJson x
+derive newtype instance encodeJsonContact :: EncodeJson Contact
 
 newtype Purchaser
   = Purchaser
@@ -1556,11 +1505,9 @@ newtype Purchaser
   , website :: Uri
   }
 
-instance decodeJsonPurchaser :: DecodeJson Purchaser where
-  decodeJson json = Purchaser <$> decodeJson json
+derive newtype instance decodeJsonPurchaser :: DecodeJson Purchaser
 
-instance encodeJsonPurchaser :: EncodeJson Purchaser where
-  encodeJson (Purchaser x) = encodeJson x
+derive newtype instance encodeJsonPurchaser :: EncodeJson Purchaser
 
 newtype LegalEntity
   = LegalEntity
@@ -1569,11 +1516,9 @@ newtype LegalEntity
   , country :: String
   }
 
-instance decodeJsonLegalEntity :: DecodeJson LegalEntity where
-  decodeJson json = LegalEntity <$> decodeJson json
+derive newtype instance decodeJsonLegalEntity :: DecodeJson LegalEntity
 
-instance encodeJsonLegalEntity :: EncodeJson LegalEntity where
-  encodeJson (LegalEntity x) = encodeJson x
+derive newtype instance encodeJsonLegalEntity :: EncodeJson LegalEntity
 
 newtype Seller
   = Seller
@@ -1581,22 +1526,18 @@ newtype Seller
   , legalEntity :: LegalEntity
   }
 
-instance decodeJsonSeller :: DecodeJson Seller where
-  decodeJson json = Seller <$> decodeJson json
+derive newtype instance decodeJsonSeller :: DecodeJson Seller
 
-instance encodeJsonSeller :: EncodeJson Seller where
-  encodeJson (Seller x) = encodeJson x
+derive newtype instance encodeJsonSeller :: EncodeJson Seller
 
 newtype BillingAccountRef
   = BillingAccountRef
   { billingAccountID :: String
   }
 
-instance decodeJsonBillingAccountRef :: DecodeJson BillingAccountRef where
-  decodeJson json = BillingAccountRef <$> decodeJson json
+derive newtype instance decodeJsonBillingAccountRef :: DecodeJson BillingAccountRef
 
-instance encodeJsonBillingAccountRef :: EncodeJson BillingAccountRef where
-  encodeJson (BillingAccountRef x) = encodeJson x
+derive newtype instance encodeJsonBillingAccountRef :: EncodeJson BillingAccountRef
 
 data ReturnCustomerCommercial
   = RccCommercial Commercial
@@ -1627,22 +1568,12 @@ instance decodeJsonValidity :: DecodeJson Validity where
 instance encodeJsonValidity :: EncodeJson Validity where
   encodeJson (Validity x) = encodeJson x
 
-newtype ProductInstance
-  = ProductInstance
-  {
-  }
-
-instance decodeJsonProductInstance :: DecodeJson ProductInstance where
-  decodeJson json = ProductInstance <$> decodeJson json
-
 newtype DateTime
   = DateTime String
 
-instance decodeDateTime :: DecodeJson DateTime where
-  decodeJson json = DateTime <$> decodeJson json
+derive newtype instance decodeDateTime :: DecodeJson DateTime
 
-instance encodeJsonDateTime :: EncodeJson DateTime where
-  encodeJson (DateTime x) = encodeJson x
+derive newtype instance encodeJsonDateTime :: EncodeJson DateTime
 
 -- TODO: Add `configs`
 newtype Asset
@@ -1655,11 +1586,9 @@ newtype Asset
   , priceOverrides :: Array PriceOverride
   }
 
-instance decodeJsonAsset :: DecodeJson Asset where
-  decodeJson json = Asset <$> decodeJson json
+derive newtype instance decodeJsonAsset :: DecodeJson Asset
 
-instance encodeJsonAsset :: EncodeJson Asset where
-  encodeJson (Asset x) = encodeJson x
+derive newtype instance encodeJsonAsset :: EncodeJson Asset
 
 newtype PriceOverride
   = PriceOverride
@@ -1669,11 +1598,9 @@ newtype PriceOverride
   , discountProfileByUnit :: Maybe (Array DiscountProfilePerUnit)
   }
 
-instance decodeJsonPriceOverride :: DecodeJson PriceOverride where
-  decodeJson json = PriceOverride <$> decodeJson json
+derive newtype instance decodeJsonPriceOverride :: DecodeJson PriceOverride
 
-instance encodeJsonPriceOverride :: EncodeJson PriceOverride where
-  encodeJson (PriceOverride x) = encodeJson x
+derive newtype instance encodeJsonPriceOverride :: EncodeJson PriceOverride
 
 newtype DiscountProfilePerUnit
   = DiscountProfilePerUnit
@@ -1682,11 +1609,9 @@ newtype DiscountProfilePerUnit
   , discountByDim :: Maybe (Array DiscountPerDim)
   }
 
-instance decodeJsonDiscountProfilePerUnit :: DecodeJson DiscountProfilePerUnit where
-  decodeJson json = DiscountProfilePerUnit <$> decodeJson json
+derive newtype instance decodeJsonDiscountProfilePerUnit :: DecodeJson DiscountProfilePerUnit
 
-instance encodeJsonDiscountProfilePerUnit :: EncodeJson DiscountProfilePerUnit where
-  encodeJson (DiscountProfilePerUnit x) = encodeJson x
+derive newtype instance encodeJsonDiscountProfilePerUnit :: EncodeJson DiscountProfilePerUnit
 
 newtype DiscountPerDim
   = DiscountPerDim
@@ -1694,11 +1619,9 @@ newtype DiscountPerDim
   , discount :: Discount
   }
 
-instance decodeJsonDiscountPerDim :: DecodeJson DiscountPerDim where
-  decodeJson json = DiscountPerDim <$> decodeJson json
+derive newtype instance decodeJsonDiscountPerDim :: DecodeJson DiscountPerDim
 
-instance encodeJsonDiscountPerDim :: EncodeJson DiscountPerDim where
-  encodeJson (DiscountPerDim x) = encodeJson x
+derive newtype instance encodeJsonDiscountPerDim :: EncodeJson DiscountPerDim
 
 newtype PriceBookRef
   = PriceBookRef
@@ -1707,8 +1630,7 @@ newtype PriceBookRef
   , solutionURI :: Maybe Uri
   }
 
-instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
-  decodeJson json = PriceBookRef <$> decodeJson json
+derive newtype instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef
 
 instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
   encodeJson (PriceBookRef x) =
@@ -1722,11 +1644,9 @@ newtype SalesforceAccountRef
   { salesforceAccountID :: String
   }
 
-instance decodeJsonSalesforceAccountRef :: DecodeJson SalesforceAccountRef where
-  decodeJson json = SalesforceAccountRef <$> decodeJson json
+derive newtype instance decodeJsonSalesforceAccountRef :: DecodeJson SalesforceAccountRef
 
-instance encodeJsonSalesforceAccountRef :: EncodeJson SalesforceAccountRef where
-  encodeJson (SalesforceAccountRef x) = encodeJson x
+derive newtype instance encodeJsonSalesforceAccountRef :: EncodeJson SalesforceAccountRef
 
 newtype ReturnCustomerData
   = ReturnCustomerData
@@ -1734,11 +1654,9 @@ newtype ReturnCustomerData
   , salesforceAccountRef :: SalesforceAccountRef
   }
 
-instance decodeJsonReturnCustomerData :: DecodeJson ReturnCustomerData where
-  decodeJson json = ReturnCustomerData <$> decodeJson json
+derive newtype instance decodeJsonReturnCustomerData :: DecodeJson ReturnCustomerData
 
-instance encodeJsonReturnCustomerData :: EncodeJson ReturnCustomerData where
-  encodeJson (ReturnCustomerData x) = encodeJson x
+derive newtype instance encodeJsonReturnCustomerData :: EncodeJson ReturnCustomerData
 
 data Customer
   = NewCustomer
@@ -1804,11 +1722,9 @@ derive instance eqSegment :: Eq Segment
 
 derive instance ordSegment :: Ord Segment
 
-instance decodeJsonSegment :: DecodeJson Segment where
-  decodeJson json = Segment <$> decodeJson json
+derive newtype instance decodeJsonSegment :: DecodeJson Segment
 
-instance encodeJsonSegment :: EncodeJson Segment where
-  encodeJson (Segment x) = encodeJson x
+derive newtype instance encodeJsonSegment :: EncodeJson Segment
 
 newtype QuantityPerDim
   = QuantityPerDim
@@ -1825,8 +1741,7 @@ instance decodeJsonQuantityPerDim :: DecodeJson QuantityPerDim where
     estimated <- o .:? "estimated" .!= false
     pure $ QuantityPerDim { dim, quantity, estimated }
 
-instance encodeJsonQuantityPerDim :: EncodeJson QuantityPerDim where
-  encodeJson (QuantityPerDim x) = encodeJson x
+derive newtype instance encodeJsonQuantityPerDim :: EncodeJson QuantityPerDim
 
 data QuantityPerUnit
   = QuantityPerUnit
@@ -1908,11 +1823,9 @@ newtype OrderSection
   , orderLines :: Array OrderLine
   }
 
-instance decodeJsonOrderSection :: DecodeJson OrderSection where
-  decodeJson json = OrderSection <$> decodeJson json
+derive newtype instance decodeJsonOrderSection :: DecodeJson OrderSection
 
-instance encodeJsonOrderSection :: EncodeJson OrderSection where
-  encodeJson (OrderSection x) = encodeJson x
+derive newtype instance encodeJsonOrderSection :: EncodeJson OrderSection
 
 newtype OrderForm
   = OrderForm
@@ -1922,8 +1835,6 @@ newtype OrderForm
   , sections :: Array OrderSection
   }
 
-instance decodeJsonOrderForm :: DecodeJson OrderForm where
-  decodeJson json = OrderForm <$> decodeJson json
+derive newtype instance decodeJsonOrderForm :: DecodeJson OrderForm
 
-instance encodeJsonOrderForm :: EncodeJson OrderForm where
-  encodeJson (OrderForm x) = encodeJson x
+derive newtype instance encodeJsonOrderForm :: EncodeJson OrderForm

@@ -68,19 +68,9 @@ newtype SubTotal
   , quarterlySegment :: SubTotalEntry -- ^ Quarterly segment price.
   }
 
-instance semigroupSubTotal :: Semigroup SubTotal where
-  append (SubTotal a) (SubTotal b) = SubTotal $ a <> b
+derive newtype instance semigroupSubTotal :: Semigroup SubTotal
 
-instance monoidSubTotal :: Monoid SubTotal where
-  mempty =
-    SubTotal
-      { onetime: mempty
-      , monthly: mempty
-      , quarterly: mempty
-      , usage: mempty
-      , segment: mempty
-      , quarterlySegment: mempty
-      }
+derive newtype instance monoidSubTotal :: Monoid SubTotal
 
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
