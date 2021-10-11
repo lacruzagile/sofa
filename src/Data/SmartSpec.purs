@@ -32,6 +32,7 @@ module Data.SmartSpec
   , OrderLine(..)
   , OrderSection(..)
   , OrderStatus(..)
+  , Orders(..)
   , Platform(..)
   , Price(..)
   , PriceBook(..)
@@ -1809,7 +1810,9 @@ instance decodeJsonOrderLine :: DecodeJson OrderLine where
     sku <- o .: "sku"
     charge <- o .: "charge"
     quantity <- decodeQuantity =<< o .: "quantity"
-    configs <- o .:? "configs" .!= []
+    configObjs :: Array (FO.Object ConfigValue) <- o .:? "configs" .!= []
+    let
+      configs = map (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) configObjs
     pure $ OrderLine { sku, charge, quantity, configs }
     where
     decodeQuantity qJson =
@@ -1847,3 +1850,14 @@ newtype OrderForm
 derive newtype instance decodeJsonOrderForm :: DecodeJson OrderForm
 
 derive newtype instance encodeJsonOrderForm :: EncodeJson OrderForm
+
+newtype Orders
+  = Orders
+  { items :: Array OrderForm
+  , page :: Int
+  , last :: Boolean
+  }
+
+derive newtype instance decodeJsonOrders :: DecodeJson Orders
+
+derive newtype instance encodeJsonOrders :: EncodeJson Orders

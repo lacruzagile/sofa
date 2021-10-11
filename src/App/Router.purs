@@ -4,6 +4,7 @@ import Prelude
 import App.Home as Home
 import App.ProductCatalog as ProductCatalog
 import App.OrderForm as OrderForm
+import App.Orders as Orders
 import Css as Css
 import Data.Maybe (Maybe(..))
 import Data.Route (Route)
@@ -35,6 +36,7 @@ type Slots
   = ( home :: Home.Slot Unit
     , productCatalog :: ProductCatalog.Slot Unit
     , orderForm :: OrderForm.Slot Unit
+    , orders :: Orders.Slot Unit
     )
 
 data Query a
@@ -73,11 +75,14 @@ render state =
         Nothing -> slotHome
         Just Route.Home -> slotHome
         Just Route.OrderForm -> slotOrderForm
+        Just Route.Orders -> slotOrders
         Just Route.ProductCatalog -> slotProductCatalog
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
   slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component absurd
+
+  slotOrders = HH.slot_ Orders.proxy unit Orders.component absurd
 
   slotProductCatalog = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component absurd
 
@@ -104,6 +109,7 @@ navbar state body =
         , HH.div [ HP.class_ Css.menu ]
             [ navbarItem Route.Home "🏠 Home"
             , navbarItem Route.ProductCatalog "Product Catalog"
+            , navbarItem Route.Orders "Orders"
             , navbarItem Route.OrderForm "Order Form"
             ]
         ]

@@ -10,6 +10,7 @@ import Routing.Match (Match, end, lit, root)
 data Route
   = Home
   | OrderForm
+  | Orders
   | ProductCatalog
 
 derive instance genericRoute :: Generic Route _
@@ -22,11 +23,13 @@ instance showRoute :: Show Route where
   show = genericShow
 
 routes :: Match Route
-routes = root *> (home <|> orderForm <|> productCatalog)
+routes = root *> (home <|> orderForm <|> orders <|> productCatalog)
   where
   home = Home <$ end
 
   orderForm = OrderForm <$ lit "order-form" <* end
+
+  orders = Orders <$ lit "orders" <* end
 
   productCatalog = ProductCatalog <$ lit "product-catalog" <* end
 
@@ -34,6 +37,7 @@ rawHref :: Route -> String
 rawHref = case _ of
   Home -> "/"
   OrderForm -> "/order-form"
+  Orders -> "/orders"
   ProductCatalog -> "/product-catalog"
 
 href :: forall r i. Route -> HP.IProp ( href :: String | r ) i
