@@ -31,7 +31,6 @@ type State
 data Action
   = NoOp
   | ClearState
-  | CheckToLoad
   | LoadProductCatalog String
 
 component ::
@@ -253,7 +252,6 @@ render state = HH.section_ [ HH.article_ content ]
     Array (H.ComponentHTML Action Slots m)
   defRender s rend = case s of
     Idle -> idle
-    ToLoad _ -> idle
     Loading -> loading
     Loaded dat -> rend dat
     Error err -> error err
@@ -300,11 +298,6 @@ handleAction ::
 handleAction = case _ of
   NoOp -> pure unit
   ClearState -> H.put Idle
-  CheckToLoad -> do
-    state <- H.get
-    case state of
-      ToLoad url -> loadCatalog url
-      _ -> pure unit
   LoadProductCatalog url -> loadCatalog url
   where
   loadCatalog url = do

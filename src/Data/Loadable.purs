@@ -13,7 +13,6 @@ import Simple.Ajax as AJX
 -- | an error message.
 data Loadable a
   = Idle
-  | ToLoad String -- ^ Waiting to load the given URL.
   | Loaded a
   | Loading
   | Error String
@@ -21,14 +20,12 @@ data Loadable a
 instance functorLoadable :: Functor Loadable where
   map f = case _ of
     Idle -> Idle
-    ToLoad url -> ToLoad url
     Loaded x -> Loaded $ f x
     Loading -> Loading
     Error err -> Error err
 
 instance applyLoadable :: Apply Loadable where
   apply Idle _ = Idle
-  apply (ToLoad url) _ = ToLoad url
   apply (Loaded f) r = f <$> r
   apply Loading _ = Loading
   apply (Error err) _ = Error err
@@ -38,7 +35,6 @@ instance applicationLoadable :: Applicative Loadable where
 
 instance bindLoadable :: Bind Loadable where
   bind Idle _ = Idle
-  bind (ToLoad url) _ = ToLoad url
   bind (Loaded x) f = f x
   bind Loading _ = Loading
   bind (Error err) _ = Error err
