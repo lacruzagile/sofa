@@ -18,7 +18,6 @@ to generate this file without the comments in this block.
   , "arrays"
   , "console"
   , "control"
-  , "debug"
   , "effect"
   , "either"
   , "foldable-traversable"
