@@ -165,7 +165,7 @@ render { unitMap, charge, quantity, aggregatedQuantity } = case charge of
           <> [ HH.td_ [ HH.text "" ] ]
       ]
 
-    footerQuantityVal (SS.PriceByUnit { unit: unitRef }) = case Map.lookup unitRef aggregatedQuantity of
+    footerQuantityVal (SS.PricePerUnit { unit: unitRef }) = case Map.lookup unitRef aggregatedQuantity of
       Nothing -> HH.text ""
       Just q ->
         HH.ul [ HP.class_ Css.priceList ]
@@ -203,7 +203,7 @@ render { unitMap, charge, quantity, aggregatedQuantity } = case charge of
                 SS.ChargeArray c = charge
               SS.ChargeElement ce <- List.fromFoldable c
               SS.PriceByUnitPerDim pbupd <- List.fromFoldable ce.priceByUnitByDim
-              SS.PriceByUnit p <- List.fromFoldable pbupd.prices
+              SS.PricePerUnit p <- List.fromFoldable pbupd.prices
               guard $ p.unit == unitRef
               case Map.lookup pbupd.dim dimMap of
                 Nothing -> mempty
@@ -301,7 +301,7 @@ render { unitMap, charge, quantity, aggregatedQuantity } = case charge of
         Left _ -> Nothing
         Right dimMap -> Map.lookup dim dimMap
 
-    priceQuantityVal :: SS.DimValue -> Int -> Int -> SS.PriceByUnit -> H.ComponentHTML Action Slots m
+    priceQuantityVal :: SS.DimValue -> Int -> Int -> SS.PricePerUnit -> H.ComponentHTML Action Slots m
     priceQuantityVal dim dimIdx unitIdx pbu =
       HH.ul [ HP.class_ Css.priceList ]
         $ [ HH.li [ HP.style "border-bottom:1px solid darkgray" ]
@@ -311,7 +311,8 @@ render { unitMap, charge, quantity, aggregatedQuantity } = case charge of
           ]
         <> A.mapWithIndex priceQuantityValEntry ps
       where
-      SS.PriceByUnit { unit: unitRef, price: (SS.Price ps) } = pbu
+      -- TODO: Use currency.
+      SS.PricePerUnit { unit: unitRef, price: (SS.Price ps) } = pbu
 
       idx priceIdx = { chargeIdx, dimIdx, unitIdx, priceIdx }
 
@@ -404,7 +405,7 @@ handleAction = case _ of
     let
       updatePrice p@(SS.Price p') = fromMaybe p $ SS.Price <$> A.modifyAt priceIdx (\_ -> pps) p'
 
-      updatePriceByUnit (SS.PriceByUnit p) = SS.PriceByUnit $ p { price = updatePrice p.price }
+      updatePriceByUnit (SS.PricePerUnit p) = SS.PricePerUnit $ p { price = updatePrice p.price }
 
       updatePriceByUnitPerDim p@(SS.PriceByUnitPerDim p') =
         fromMaybe p
@@ -468,5 +469,5 @@ unitDims unitRef (SS.ChargeArray ces) = unravelled
   unravelled = do
     SS.ChargeElement ce <- List.fromFoldable ces
     SS.PriceByUnitPerDim { dim, prices } <- List.fromFoldable ce.priceByUnitByDim
-    SS.PriceByUnit { unit: unitRef' } <- List.fromFoldable prices
+    SS.PricePerUnit { unit: unitRef' } <- List.fromFoldable prices
     if unitRef == unitRef' then mempty else pure dim

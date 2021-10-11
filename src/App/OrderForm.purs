@@ -824,7 +824,7 @@ calcSubTotal os =
     unravelled = do
       SS.ChargeElement ce <- List.fromFoldable ces
       SS.PriceByUnitPerDim { prices } <- List.fromFoldable ce.priceByUnitByDim
-      SS.PriceByUnit { unit: unitRef } <- List.fromFoldable prices
+      SS.PricePerUnit { unit: unitRef } <- List.fromFoldable prices
       pure $ { unitRef, quantity: Exact 1 }
 
     accumulate acc { unitRef, quantity } = Map.alter (Just <<< Left <<< const quantity) unitRef acc
@@ -843,7 +843,7 @@ calcSubTotal os =
   calcCharge :: SS.Product -> QuantityMap -> SS.Charge -> SubTotal
   calcCharge product quantityMap (SS.ChargeArray cs) = A.foldl (\a b -> a <> calcChargeElem b) mempty cs
     where
-    priceToAmount dim (SS.PriceByUnit p) =
+    priceToAmount dim (SS.PricePerUnit p) =
       let
         quantity = do
           dimMap <- Map.lookup p.unit quantityMap

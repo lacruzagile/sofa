@@ -38,11 +38,11 @@ module Data.SmartSpec
   , PriceBookCurrency(..)
   , PriceBookRef(..)
   , PriceBookVersion(..)
-  , PriceByDim(..)
-  , PriceByUnit(..)
   , PriceByUnitPerDim(..)
   , PriceOverride(..)
+  , PricePerDim(..)
   , PricePerSegment(..)
+  , PricePerUnit(..)
   , PriceSegmentation(..)
   , PriceSegmentationPerUnit(..)
   , Product(..)
@@ -336,12 +336,14 @@ instance decodeJsonChargeElement :: DecodeJson ChargeElement where
       termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       periodMinimum <- o .:? "periodMinimum" .!= 0.0
       let
-        toPriceByUnitByDim (PriceByDim p) =
+        toPriceByUnitByDim (PricePerDim p) =
           PriceByUnitPerDim
             { dim: p.dim
             , prices:
-                [ PriceByUnit
-                    { unit, price: p.price
+                [ PricePerUnit
+                    { unit
+                    , currency: Nothing
+                    , price: p.price
                     }
                 ]
             , periodMinimum: p.periodMinimum
@@ -417,13 +419,13 @@ instance encodeJsonChargeElement :: EncodeJson ChargeElement where
     simplePrice = case _ of
       PriceByUnitPerDim
         { dim
-      , prices: [ PriceByUnit { price } ]
+      , prices: [ PricePerUnit { price } ]
       , periodMinimum
-      } -> Just $ PriceByDim { dim, price, periodMinimum }
+      } -> Just $ PricePerDim { dim, price, periodMinimum }
       _ -> Nothing
 
 newtype SimplePrice
-  = SimplePrice (Array PriceByDim)
+  = SimplePrice (Array PricePerDim)
 
 instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
   decodeJson json = segmented <|> byDim
@@ -432,7 +434,7 @@ instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
       price <- decodeJson json
       pure
         $ SimplePrice
-            [ PriceByDim
+            [ PricePerDim
                 { dim: DimValue CvNull
                 , price
                 , periodMinimum: 0.0
@@ -443,7 +445,7 @@ instance decodeJsonSimplePrice :: DecodeJson SimplePrice where
 
 instance encodeJsonSimplePrice :: EncodeJson SimplePrice where
   encodeJson ( SimplePrice
-      [ PriceByDim
+      [ PricePerDim
       { dim: DimValue CvNull
     , price: price
     , periodMinimum: 0.0
@@ -467,22 +469,22 @@ derive newtype instance decodeJsonDimValue :: DecodeJson DimValue
 
 derive newtype instance encodeJsonDimValue :: EncodeJson DimValue
 
-newtype PriceByDim
-  = PriceByDim
+newtype PricePerDim
+  = PricePerDim
   { dim :: DimValue
   , price :: Price
   , periodMinimum :: Number
   }
 
-instance decodeJsonPriceByDim :: DecodeJson PriceByDim where
+instance decodeJsonPricePerDim :: DecodeJson PricePerDim where
   decodeJson json = do
     o <- decodeJson json
     dim <- o .: "dim"
     price <- o .: "price"
     periodMinimum <- o .:? "periodMinimum" .!= 0.0
-    pure $ PriceByDim { dim, price, periodMinimum }
+    pure $ PricePerDim { dim, price, periodMinimum }
 
-derive newtype instance encodeJsonPriceByDim :: EncodeJson PriceByDim
+derive newtype instance encodeJsonPricePerDim :: EncodeJson PricePerDim
 
 data Discount
   = DiscountPercentage Number
@@ -569,27 +571,19 @@ instance decodeJsonPricePerSegment :: DecodeJson PricePerSegment where
           }
 
 instance encodeJsonPricePerSegment :: EncodeJson PricePerSegment where
-  encodeJson (PricePerSegment pps) = json
+  encodeJson (PricePerSegment pps) =
+    ("minimum" := pps.minimum)
+      ~> ((\x -> "exclusiveMaximum" := x) <$> pps.exclusiveMaximum)
+      ~>? ("price" := price)
+      ~> jsonEmptyObject
     where
-    json
-      | isNothing pps.discount && isNothing pps.salesPrice =
-        encodeJson
-          { minimum: pps.minimum
-          , exclusiveMaximum: pps.exclusiveMaximum
-          , price: pps.listPrice
-          }
-
-    json
+    price
+      | isNothing pps.discount && isNothing pps.salesPrice = encodeJson pps.listPrice
       | otherwise =
-        encodeJson
-          { minimum: pps.minimum
-          , exclusiveMaximum: pps.exclusiveMaximum
-          , price:
-              { listPrice: pps.listPrice
-              , salesPrice: pps.salesPrice
-              , discount: pps.discount
-              }
-          }
+        ("listPrice" := pps.listPrice)
+          ~> ((\x -> "salesPrice" := x) <$> pps.salesPrice)
+          ~>? ((\x -> "discount" := x) <$> pps.discount)
+          ~>? jsonEmptyObject
 
 instance arbPricePerSegment :: Arbitrary PricePerSegment where
   arbitrary = do
@@ -783,7 +777,7 @@ derive newtype instance encodeJsonDefaultPricePerUnit :: EncodeJson DefaultPrice
 newtype PriceByUnitPerDim
   = PriceByUnitPerDim
   { dim :: DimValue
-  , prices :: Array PriceByUnit
+  , prices :: Array PricePerUnit
   , periodMinimum :: Number
   }
 
@@ -803,17 +797,23 @@ instance decodeJsonPriceByUnitPerDim :: DecodeJson PriceByUnitPerDim where
 instance encodeJsonPriceByUnitPerDim :: EncodeJson PriceByUnitPerDim where
   encodeJson (PriceByUnitPerDim x) = encodeJson x
 
-newtype PriceByUnit
-  = PriceByUnit
+newtype PricePerUnit
+  = PricePerUnit
   { unit :: ChargeUnitRef
+  , currency :: Maybe Currency
   , price :: Price
   }
 
-derive instance newtypePriceByUnit :: Newtype PriceByUnit _
+derive instance newtypePricePerUnit :: Newtype PricePerUnit _
 
-derive newtype instance decodeJsonPriceByUnit :: DecodeJson PriceByUnit
+derive newtype instance decodeJsonPricePerUnit :: DecodeJson PricePerUnit
 
-derive newtype instance encodeJsonPriceByUnit :: EncodeJson PriceByUnit
+instance encodeJsonPricePerUnit :: EncodeJson PricePerUnit where
+  encodeJson (PricePerUnit ppu) =
+    ("unit" := ppu.unit)
+      ~> ((\x -> "currency" := x) <$> ppu.currency)
+      ~>? ("price" := ppu.price)
+      ~> jsonEmptyObject
 
 newtype ChargeUnitRef
   = ChargeUnitRef { unitID :: String, product :: Maybe ProductRef }
@@ -1634,7 +1634,7 @@ derive newtype instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef
 
 instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
   encodeJson (PriceBookRef x) =
-    ("priceBookId" := x.priceBookID)
+    ("priceBookID" := x.priceBookID)
       ~> ("version" := x.version)
       ~> ((\uri -> "solutionURI" := uri) <$> x.solutionURI)
       ~>? jsonEmptyObject
@@ -1724,7 +1724,11 @@ derive instance ordSegment :: Ord Segment
 
 derive newtype instance decodeJsonSegment :: DecodeJson Segment
 
-derive newtype instance encodeJsonSegment :: EncodeJson Segment
+instance encodeJsonSegment :: EncodeJson Segment where
+  encodeJson (Segment { minimum, exclusiveMaximum }) =
+    ("minimum" := minimum)
+      ~> ((\x -> "exclusiveMaximum" := x) <$> exclusiveMaximum)
+      ~>? jsonEmptyObject
 
 newtype QuantityPerDim
   = QuantityPerDim
@@ -1741,7 +1745,12 @@ instance decodeJsonQuantityPerDim :: DecodeJson QuantityPerDim where
     estimated <- o .:? "estimated" .!= false
     pure $ QuantityPerDim { dim, quantity, estimated }
 
-derive newtype instance encodeJsonQuantityPerDim :: EncodeJson QuantityPerDim
+instance encodeJsonQuantityPerDim :: EncodeJson QuantityPerDim where
+  encodeJson (QuantityPerDim qpd) =
+    ("dim" := qpd.dim)
+      ~> ("quantity" := qpd.quantity)
+      ~> (if qpd.estimated then Just ("estimated" := qpd.estimated) else Nothing)
+      ~>? jsonEmptyObject
 
 data QuantityPerUnit
   = QuantityPerUnit
