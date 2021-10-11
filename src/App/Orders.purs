@@ -1,28 +1,12 @@
 module App.Orders (Slot, proxy, component) where
 
 import Prelude
-import App.Charge as Charge
-import App.OrderForm.Customer as Customer
-import Control.Alternative ((<|>))
+import App.OrderForm as OrderForm
 import Css as Css
-import Data.Argonaut (encodeJson, stringifyWithIndent)
-import Data.Array (modifyAt, snoc)
-import Data.Array as A
-import Data.Either (Either(..), either)
-import Data.Estimate (Estimate(..))
-import Data.Estimate as Est
-import Data.Int as Int
-import Data.List.Lazy as List
 import Data.Loadable (Loadable(..), getJson)
-import Data.Map (Map)
-import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
-import Data.Monoid.Additive (Additive(..))
-import Data.Newtype (unwrap)
-import Data.Number.Format (toStringWith, fixed)
+import Data.Maybe (Maybe(..))
 import Data.SmartSpec as SS
 import Data.String as S
-import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -30,7 +14,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
-import Widgets as Widgets
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -38,13 +21,22 @@ type Slot id
 proxy :: Proxy "orders"
 proxy = Proxy
 
+type Slots
+  = ( orderForm :: OrderForm.Slot Unit
+    )
+
 type State
-  = Loadable SS.Orders
+  = Loadable
+      { orders :: SS.Orders
+      , selected :: Maybe SS.OrderForm
+      }
 
 data Action
   = NoOp
   | ClearState
   | LoadOrders String
+  | OpenOrder SS.OrderForm
+  | CloseOrder
 
 component ::
   forall query input output m.
@@ -67,7 +59,7 @@ initialState = const Idle
 initialize :: Maybe Action
 initialize = Just $ LoadOrders "v1alpha1/examples/orders.json"
 
-render :: forall slots m. MonadAff m => State -> H.ComponentHTML Action slots m
+render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
   error err =
@@ -88,21 +80,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
   defRender ::
     forall a.
     Loadable a ->
-    (a -> Array (H.ComponentHTML Action slots m)) ->
-    Array (H.ComponentHTML Action slots m)
+    (a -> Array (H.ComponentHTML Action Slots m)) ->
+    Array (H.ComponentHTML Action Slots m)
   defRender s rend = case s of
     Idle -> idle
     Loading -> loading
     Loaded dat -> rend dat
     Error err -> error err
 
-  renderOrder :: SS.OrderForm -> H.ComponentHTML Action slots m
-  renderOrder (SS.OrderForm o) =
+  renderOrder :: SS.OrderForm -> H.ComponentHTML Action Slots m
+  renderOrder orderForm@(SS.OrderForm o) =
     HH.tr_
       [ HH.td_ [ HH.text $ showID o.id ]
       , HH.td_ [ HH.text $ show o.status ]
       , HH.td_ [ HH.text purchaser ]
       , HH.td_ [ HH.text seller ]
+      , HH.td_ [ HH.button [ HE.onClick \_ -> OpenOrder orderForm ] [ HH.text "Open" ] ]
       ]
     where
     Tuple purchaser seller = case o.customer of
@@ -112,19 +105,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
       } -> Tuple p s
       _ -> Tuple "?" "?"
 
-  renderOrders :: SS.Orders -> Array (H.ComponentHTML Action slots m)
-  renderOrders (SS.Orders os) =
-    [ HH.h1_ [ HH.text "Orders" ]
-    , HH.table_
-        $ [ HH.tr_
-              [ HH.th_ [ HH.text "ID" ]
-              , HH.th_ [ HH.text "Status" ]
-              , HH.th_ [ HH.text "Purchaser" ]
-              , HH.th_ [ HH.text "Seller" ]
-              ]
-          ]
-        <> map renderOrder os.items
-    ]
+  renderOrders :: { orders :: SS.Orders, selected :: Maybe SS.OrderForm } -> Array (H.ComponentHTML Action Slots m)
+  renderOrders { orders: SS.Orders os, selected } = case selected of
+    Just orderForm ->
+      [ HH.button [ HE.onClick \_ -> CloseOrder ] [ HH.text "← Back" ]
+      , HH.slot_ OrderForm.proxy unit OrderForm.component (Just orderForm)
+      ]
+    Nothing ->
+      [ HH.h1_ [ HH.text "Orders" ]
+      , HH.table_
+          $ [ HH.tr_
+                [ HH.th_ [ HH.text "ID" ]
+                , HH.th_ [ HH.text "Status" ]
+                , HH.th_ [ HH.text "Purchaser" ]
+                , HH.th_ [ HH.text "Seller" ]
+                , HH.th_ [ HH.text "Action" ]
+                ]
+            ]
+          <> map renderOrder os.items
+      ]
 
   renderContent = defRender state renderOrders
 
@@ -138,13 +137,6 @@ showID id =
     else
       id
 
-showMonetary :: Estimate (Additive Number) -> String
-showMonetary = showEst <<< map (\(Additive n) -> toStringWith (fixed 2) n)
-  where
-  showEst = case _ of
-    Exact s -> s
-    Estimate s -> "~" <> s
-
 loadOrders ::
   forall slots output m.
   MonadAff m =>
@@ -153,7 +145,7 @@ loadOrders ::
 loadOrders url = do
   H.modify_ \_ -> Loading
   orders <- H.liftAff $ getJson url
-  H.modify_ \_ -> orders
+  H.modify_ \_ -> (\os -> { orders: os, selected: Nothing }) <$> orders
 
 handleAction ::
   forall slots output m.
@@ -162,3 +154,5 @@ handleAction = case _ of
   NoOp -> pure unit
   ClearState -> H.put Idle
   LoadOrders url -> loadOrders url
+  OpenOrder orderForm -> H.modify_ $ map \st -> st { selected = Just orderForm }
+  CloseOrder -> H.modify_ $ map \st -> st { selected = Nothing }

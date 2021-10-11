@@ -42,8 +42,12 @@ type Slots
     , customer :: Customer.Slot Unit
     )
 
-type State
-  = Loadable StateOrderForm
+type Input
+  = Maybe SS.OrderForm
+
+data State
+  = Initializing SS.OrderForm
+  | Initialized (Loadable StateOrderForm)
 
 type StateOrderForm
   = { productCatalog :: SS.ProductCatalog
@@ -111,8 +115,7 @@ type OrderLineIndex
 
 data Action
   = NoOp
-  | ClearState
-  | LoadProductCatalog String
+  | Initialize
   | SetCustomer SS.Customer
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
@@ -142,8 +145,8 @@ data Action
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
 
 component ::
-  forall query input output m.
-  MonadAff m => H.Component query input output m
+  forall query output m.
+  MonadAff m => H.Component query Input output m
 component =
   H.mkComponent
     { initialState
@@ -156,41 +159,15 @@ component =
             }
     }
 
-initialState :: forall input. input -> State
-initialState = const Idle
+initialState :: Input -> State
+initialState = maybe (Initialized Idle) Initializing
 
 initialize :: Maybe Action
-initialize = Just $ LoadProductCatalog "v1alpha1/examples/product-catalog.normalized.json"
+initialize = Just Initialize
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
-  error err =
-    [ HH.div [ HP.class_ Css.card ]
-        [ HH.header_
-            [ HH.h3_ [ HH.text "Error" ]
-            ]
-        , HH.footer_
-            [ HH.text err
-            ]
-        ]
-    ]
-
-  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Idle …" ] ]
-
-  loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
-
-  defRender ::
-    forall a.
-    Loadable a ->
-    (a -> Array (H.ComponentHTML Action Slots m)) ->
-    Array (H.ComponentHTML Action Slots m)
-  defRender s rend = case s of
-    Idle -> idle
-    Loading -> loading
-    Loaded dat -> rend dat
-    Error err -> error err
-
   renderCharge ::
     OrderLineIndex ->
     SS.ChargeUnitMap ->
@@ -613,17 +590,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
               , HH.text code
               ]
 
-  renderCustomer :: H.ComponentHTML Action Slots m
-  renderCustomer =
+  renderCustomer :: Maybe SS.Customer -> H.ComponentHTML Action Slots m
+  renderCustomer customer =
     HH.div_
       [ HH.h3_ [ HH.text "Customer" ]
-      , HH.slot Customer.proxy unit Customer.component unit SetCustomer
+      , HH.slot Customer.proxy unit Customer.component customer SetCustomer
       ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
-    [ HH.h1_ [ HH.text "Order Form" ]
-    , renderCustomer
+    [ renderCustomer sof.orderForm.customer
     , renderSections sof sof.orderForm.sections
     , renderOrderSummary sof.currency sof.orderForm.summary
     , HH.hr_
@@ -640,7 +616,38 @@ render state = HH.section_ [ HH.article_ renderContent ]
       "Cannot produce JSON. You need to select a customer\n\
            \price currency and a price book for each order section."
 
-  renderContent = defRender state renderOrderForm
+  error err =
+    [ HH.div [ HP.class_ Css.card ]
+        [ HH.header_
+            [ HH.h3_ [ HH.text "Error" ]
+            ]
+        , HH.footer_
+            [ HH.text err
+            ]
+        ]
+    ]
+
+  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Idle …" ] ]
+
+  loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
+
+  defRender ::
+    forall a.
+    Loadable a ->
+    (a -> Array (H.ComponentHTML Action Slots m)) ->
+    Array (H.ComponentHTML Action Slots m)
+  defRender s rend = case s of
+    Idle -> idle
+    Loading -> loading
+    Loaded dat -> rend dat
+    Error err -> error err
+
+  renderContent :: Array (H.ComponentHTML Action Slots m)
+  renderContent =
+    [ HH.h1_ [ HH.text "Order Form" ] ]
+      <> case state of
+          Initializing _ -> []
+          Initialized state' -> defRender state' renderOrderForm
 
 showMonetary :: Estimate (Additive Number) -> String
 showMonetary = showEst <<< map (\(Additive n) -> toStringWith (fixed 2) n)
@@ -649,26 +656,21 @@ showMonetary = showEst <<< map (\(Additive n) -> toStringWith (fixed 2) n)
     Exact s -> s
     Estimate s -> "~" <> s
 
--- fromQuantity :: Array SS.OrderLineQuantity -> QuantityMap
--- fromQuantity = List.foldl accumulate Map.empty <<< unravel
---   where
---   unravel olqs = do
---     SS.OrderLineQuantity olq <- List.fromFoldable olqs
---     let
---       SS.QuantityPerUnit { dim, quantityPerUnit } = olq.perUnit
---     SS.QuantityPerUnit { unit: unitRef, quantity: SS.Quantity qpss } <- List.fromFoldable quantityPerUnit
---     SS.QuantityPerSegment qps <- List.fromFoldable qpss
---     let
---       segment = SS.Segment { minimum: qps.minimum, exclusiveMaximum: qps.exclusiveMaximum }
---     pure $ { dim, unitRef, segment, quantity: qps.quantity }
---   accumulate acc { dim, unitRef, segment, quantity } =
---     let
---       singletonUnit _ = Map.singleton unitRef (singletonSegment unit)
---       singletonSegment _ = Map.singleton segment quantity
---       insertUnit = Just <<< maybe' singletonUnit (Map.alter insertSegment unitRef)
---       insertSegment = Just <<< maybe' singletonSegment (Map.insert segment quantity)
---     in
---       Map.alter insertUnit dim acc
+fromQuantity :: Array SS.QuantityPerUnit -> QuantityMap
+fromQuantity = Map.unions <<< map fromQuantityPerUnit
+  where
+  toEst quantity estimated
+    | estimated = Estimate quantity
+    | otherwise = Exact quantity
+
+  fromQuantityPerUnit qpu = case qpu of
+    SS.QuantityPerUnit { unit, quantity, estimated } -> Map.singleton unit (Left $ toEst quantity estimated)
+    SS.QuantityByDimPerUnit { unit, quantityByDim } -> Map.singleton unit (Right $ fromQuantityByDim quantityByDim)
+
+  fromQuantityByDim = Map.fromFoldable <<< map fromQuantityPerDim
+
+  fromQuantityPerDim (SS.QuantityPerDim { dim, quantity, estimated }) = Tuple dim (toEst quantity estimated)
+
 toQuantity :: QuantityMap -> Array SS.QuantityPerUnit
 toQuantity quantityMap =
   let
@@ -746,7 +748,7 @@ loadCatalog ::
   String ->
   H.HalogenM State Action slots output m Unit
 loadCatalog url = do
-  H.modify_ \_ -> Loading
+  H.put $ Initialized Loading
   productCatalog <- H.liftAff $ getJson url
   let
     res =
@@ -764,7 +766,7 @@ loadCatalog url = do
           }
       )
         <$> productCatalog
-  H.modify_ \_ -> res
+  H.put $ Initialized res
 
 mkDefaultConfigs :: SS.Product -> Array (Map String SS.ConfigValue)
 mkDefaultConfigs (SS.Product p) = maybe [] (A.singleton <<< mkDefaults) p.orderConfigSchema
@@ -924,44 +926,123 @@ modifyOrderLine secIdx olIdx state updateOrderLine =
               $ modifyAt olIdx (map updateOrderLine) section.orderLines
           }
 
+loadExisting ::
+  forall slots output m.
+  MonadAff m =>
+  SS.OrderForm ->
+  H.HalogenM State Action slots output m Unit
+loadExisting (SS.OrderForm orderForm) = do
+  H.put $ Initialized Loading
+  productCatalog <- H.liftAff $ getJson "v1alpha1/examples/product-catalog.normalized.json"
+  let
+    result = convertOrderForm <$> productCatalog
+  H.put $ Initialized result
+  where
+  convertOrderForm :: SS.ProductCatalog -> StateOrderForm
+  convertOrderForm productCatalog =
+    let
+      currency = toCurrency orderForm.customer
+
+      priceBooks = mkPriceBooks productCatalog orderForm.customer
+    in
+      { productCatalog
+      , currency
+      , priceBooks
+      , orderForm:
+          calcTotal
+            { id: Just orderForm.id
+            , customer: Just orderForm.customer
+            , status: Just orderForm.status
+            , summary: mempty
+            , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
+            }
+      }
+
+  convertOrderSection :: SS.ProductCatalog -> Map String (Array PriceBook) -> SS.OrderSection -> Maybe OrderSection
+  convertOrderSection (SS.ProductCatalog { solutions }) pbs (SS.OrderSection s) = do
+    solution <- List.find (\(SS.Solution { uri }) -> Just s.solutionURI == uri) $ Map.values solutions
+    let
+      SS.PriceBookRef pbRef = s.basePriceBook
+
+      SS.Solution sol = solution
+
+      priceBook = A.find (\pb -> pb.id == pbRef.priceBookID) =<< Map.lookup sol.id pbs
+    pure
+      $ calcSubTotal
+          { solution
+          , priceBook
+          , orderLines: map (convertOrderLine solution) s.orderLines
+          , summary: mempty
+          }
+
+  convertOrderLine (SS.Solution solution) (SS.OrderLine l) = do
+    product <- List.find (\(SS.Product { sku }) -> l.sku == sku) $ solution.products
+    pure
+      { product
+      , charge: Just l.charge
+      , quantity: fromQuantity l.quantity
+      , configs: l.configs
+      }
+
+modifyInitialized ::
+  forall slots output m.
+  MonadAff m =>
+  (StateOrderForm -> StateOrderForm) ->
+  H.HalogenM State Action slots output m Unit
+modifyInitialized f =
+  H.modify_
+    $ case _ of
+        Initialized st -> Initialized (f <$> st)
+        initializing -> initializing
+
+toCurrency :: SS.Customer -> Maybe SS.Currency
+toCurrency = case _ of
+  SS.NewCustomer cust -> case cust.commercial of
+    SS.Commercial comm -> Just comm.priceCurrency
+  _ -> Nothing
+
+-- | Assemble a map from solution ID to its associated price books. The price
+-- | books are limited to the currency of the given customer.
+mkPriceBooks :: SS.ProductCatalog -> SS.Customer -> Map String (Array PriceBook)
+mkPriceBooks (SS.ProductCatalog pc) customer = maybe Map.empty (Map.fromFoldableWith (<>) <<< mkPriceBookPairs) $ toCurrency customer
+  where
+  rateCardMap = Map.fromFoldable <<< map (\rc@(SS.RateCard rc') -> Tuple rc'.sku rc)
+
+  mkPriceBookPairs c = do
+    SS.Solution sol <- A.fromFoldable $ Map.values pc.solutions
+    SS.PriceBook pb <- sol.priceBooks
+    SS.PriceBookVersion pbv <- pb.byVersion
+    SS.PriceBookCurrency pbc <- pbv.byCurrency
+    if pbc.currency == c then
+      [ Tuple sol.id
+          [ { id: pb.id
+            , name: pb.name
+            , version: pbv.version
+            , rateCards: rateCardMap <$> pbc.rateCards
+            }
+          ]
+      ]
+    else
+      []
+
 handleAction ::
   forall slots output m.
   MonadAff m => Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   NoOp -> pure unit
-  ClearState -> H.put Idle
-  LoadProductCatalog url -> loadCatalog url
+  Initialize -> do
+    st <- H.get
+    case st of
+      Initializing orderForm -> loadExisting orderForm
+      Initialized Idle -> loadCatalog "v1alpha1/examples/product-catalog.normalized.json"
+      _ -> pure unit
   SetCustomer customer ->
-    H.modify_
-      $ map \st ->
+    modifyInitialized
+      $ \st ->
           let
-            currency = case customer of
-              SS.NewCustomer cust -> case cust.commercial of
-                SS.Commercial comm -> Just comm.priceCurrency
-              _ -> Nothing
+            currency = toCurrency customer
 
-            SS.ProductCatalog pc = st.productCatalog
-
-            rateCardMap = Map.fromFoldable <<< map (\rc@(SS.RateCard rc') -> Tuple rc'.sku rc)
-
-            mkPriceBooks c = do
-              SS.Solution sol <- A.fromFoldable $ Map.values pc.solutions
-              SS.PriceBook pb <- sol.priceBooks
-              SS.PriceBookVersion pbv <- pb.byVersion
-              SS.PriceBookCurrency pbc <- pbv.byCurrency
-              if pbc.currency == c then
-                [ Tuple sol.id
-                    [ { id: pb.id
-                      , name: pb.name
-                      , version: pbv.version
-                      , rateCards: rateCardMap <$> pbc.rateCards
-                      }
-                    ]
-                ]
-              else
-                []
-
-            priceBooks = maybe Map.empty (Map.fromFoldableWith (<>) <<< mkPriceBooks) currency
+            priceBooks = mkPriceBooks st.productCatalog customer
           in
             st
               { currency = currency
@@ -969,12 +1050,12 @@ handleAction = case _ of
               , orderForm = st.orderForm { customer = Just customer }
               }
   AddSection ->
-    H.modify_
-      $ map \st ->
+    modifyInitialized
+      $ \st ->
           st { orderForm { sections = snoc st.orderForm.sections Nothing } }
   SectionSetSolution { sectionIndex, solutionId } ->
-    H.modify_
-      $ map \st ->
+    modifyInitialized
+      $ \st ->
           let
             SS.ProductCatalog pc = st.productCatalog
           in
@@ -997,8 +1078,8 @@ handleAction = case _ of
                 }
               }
   SectionSetPriceBook { sectionIndex, priceBook } ->
-    H.modify_
-      $ map \st ->
+    modifyInitialized
+      $ \st ->
           let
             setPriceBook :: Maybe OrderSection -> Maybe OrderSection
             setPriceBook = map (\section -> calcSubTotal section { priceBook = priceBook })
@@ -1013,8 +1094,8 @@ handleAction = case _ of
                     }
               }
   RemoveSection { sectionIndex } ->
-    H.modify_
-      $ map \st ->
+    modifyInitialized
+      $ \st ->
           st
             { orderForm
               { sections =
@@ -1027,8 +1108,8 @@ handleAction = case _ of
       addOrderLine :: Maybe OrderSection -> Maybe OrderSection
       addOrderLine = map (\section -> section { orderLines = snoc section.orderLines Nothing })
     in
-      H.modify_
-        $ map \st ->
+      modifyInitialized
+        $ \st ->
             st
               { orderForm
                 { sections =
@@ -1047,8 +1128,8 @@ handleAction = case _ of
                   }
           )
     in
-      H.modify_
-        $ map \st ->
+      modifyInitialized
+        $ \st ->
             st
               { orderForm =
                 calcTotal
@@ -1108,14 +1189,14 @@ handleAction = case _ of
           $ modifyAt sectionIndex (map updateOrderSection)
           $ sections
     in
-      H.modify_
-        $ map \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
+      modifyInitialized
+        $ \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
   OrderLineAddConfig { sectionIndex, orderLineIndex } ->
     let
       updateOrderLine :: OrderLine -> OrderLine
       updateOrderLine ol = ol { configs = ol.configs <> mkDefaultConfigs ol.product }
     in
-      H.modify_ $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
+      modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } ->
     let
       -- | Remove the configuration entry. If this is the last entry then we
@@ -1130,7 +1211,7 @@ handleAction = case _ of
               fromMaybe ol.configs $ A.deleteAt configIndex ol.configs
           }
     in
-      H.modify_ $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
+      modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, field, value } ->
     let
       updateOrderLine :: OrderLine -> OrderLine
@@ -1141,11 +1222,11 @@ handleAction = case _ of
               $ A.modifyAt configIndex (Map.insert field value) ol.configs
           }
     in
-      H.modify_
-        $ map \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
+      modifyInitialized
+        $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineSetCharge { sectionIndex, orderLineIndex, charge, quantity } ->
-    H.modify_
-      $ map \st ->
+    modifyInitialized
+      $ \st ->
           modifyOrderLine sectionIndex orderLineIndex st
             _
               { charge = Just charge

@@ -18,6 +18,9 @@ type Slot id
 proxy :: Proxy "customer"
 proxy = Proxy
 
+type Input
+  = State
+
 type Output
   = SS.Customer
 
@@ -29,8 +32,8 @@ data Action
   | UpdateCustomer (SS.Customer -> SS.Customer)
 
 component ::
-  forall query input m.
-  MonadAff m => H.Component query input Output m
+  forall query m.
+  MonadAff m => H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
@@ -38,8 +41,8 @@ component =
     , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
 
-initialState :: forall input. input -> State
-initialState _ = Nothing
+initialState :: Input -> State
+initialState = identity
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render st =

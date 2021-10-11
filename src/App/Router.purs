@@ -80,7 +80,7 @@ render state =
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
-  slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component absurd
+  slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component Nothing
 
   slotOrders = HH.slot_ Orders.proxy unit Orders.component absurd
 
