@@ -17,12 +17,7 @@ data Loadable a
   | Loading
   | Error String
 
-instance functorLoadable :: Functor Loadable where
-  map f = case _ of
-    Idle -> Idle
-    Loaded x -> Loaded $ f x
-    Loading -> Loading
-    Error err -> Error err
+derive instance functorLoadable :: Functor Loadable
 
 instance applyLoadable :: Apply Loadable where
   apply Idle _ = Idle
