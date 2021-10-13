@@ -23,6 +23,8 @@ import Data.Newtype (unwrap)
 import Data.Number.Format (fixed, toStringWith)
 import Data.SmartSpec (DimValue)
 import Data.SmartSpec as SS
+import Data.SubTotal (SubTotalEntry)
+import Data.SubTotal as SubTotal
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -192,12 +194,13 @@ render { unitMap, charge, quantity, aggregatedQuantity } = case charge of
 
     renderTotalPrice unitRef = renderTotalPrice' $ calc $ Map.lookup unitRef quantity
       where
-      calc Nothing = Exact 0.0
+      calc :: Maybe (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SubTotalEntry
+      calc Nothing = mempty
 
-      calc (Just (Left _)) = Exact 0.0
+      calc (Just (Left _)) = mempty
 
       calc (Just (Right dimMap)) =
-        map (\(Additive n) -> n) $ fold
+        fold
           $ do
               let
                 SS.ChargeArray c = charge
@@ -207,37 +210,12 @@ render { unitMap, charge, quantity, aggregatedQuantity } = case charge of
               guard $ p.unit == unitRef
               case Map.lookup pbupd.dim dimMap of
                 Nothing -> mempty
-                Just q -> pure $ calcTotal q p.price
+                Just q -> pure $ SubTotal.calcSubTotalEntry q SS.SegmentationModelTiered p.price -- TODO: Use correct segmentation model.
 
+      renderTotalPrice' :: SubTotalEntry -> Array (H.ComponentHTML Action Slots m)
       renderTotalPrice' tot =
-        [ HH.li_ [ HH.text "Total price: ", HH.text $ showMonetary tot ]
+        [ HH.li_ [ HH.text "Total price: ", SubTotal.renderSubTotalEntry (Just $ SS.Currency "EUR") tot ] -- TODO: Use correct currency.
         ]
-
-    calcTotal :: Estimate Int -> SS.Price -> Estimate (Additive Number)
-    calcTotal quant (SS.Price pricePerSegment) =
-      (\tot -> (Additive <<< const tot) <$> quant)
-        $ A.foldl accTot 0.0
-        $ A.takeWhile ge pricePerSegment
-      where
-      q = Est.toValue quant
-
-      toPrice pps = fromMaybe pps.listPrice pps.salesPrice
-
-      accTot :: Number -> SS.PricePerSegment -> Number
-      accTot acc (SS.PricePerSegment pps) = case pps.exclusiveMaximum of
-        Just exmax
-          | exmax <= q ->
-            let
-              segmentSize = (fromMaybe 0 pps.exclusiveMaximum - 1) - pps.minimum
-            in
-              acc + Int.toNumber segmentSize * toPrice pps
-        _ ->
-          let
-            qInSegment = if pps.minimum == 0 then q else q - pps.minimum + 1
-          in
-            acc + Int.toNumber qInSegment * toPrice pps
-
-      ge (SS.PricePerSegment pps) = Est.toValue quant >= pps.minimum
 
     showMonetary :: Estimate Number -> String
     showMonetary = showEst <<< map (\n -> toStringWith (fixed 3) n)

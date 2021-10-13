@@ -1,7 +1,6 @@
 module App.EditableSegmentPrice (Slot, Input(..), proxy, component) where
 
 import Prelude
-import Data.Array as A
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Number as Number
 import Data.Number.Format (fixed, toStringWith)
@@ -82,11 +81,9 @@ render state = case state.editState of
     Nothing -> [ price, segment ]
     Just d -> [ price, discount d, segment ]
     where
-    price =
-      maybe
-        (HH.text $ showMonetary $ p.listPrice)
-        (HH.span [ HP.style "color:red" ] <<< A.singleton <<< HH.text <<< showMonetary)
-        p.salesPrice
+    price = case p.discount of
+      Nothing -> HH.text $ showMonetary p.listPrice
+      Just _ -> HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary p.salesPrice ]
 
     segment = HH.text $ " [" <> show p.minimum <> "," <> maybe "∞" show p.exclusiveMaximum <> ")"
 
@@ -114,8 +111,8 @@ handleAction = case _ of
                   in
                     case p of
                       { discount: Just (SS.DiscountPercentage percent) } -> show percent <> "%"
-                      { salesPrice: Just salesPrice } -> show salesPrice
-                      { listPrice } -> show listPrice
+                      { discount: Just (SS.DiscountAbsolute _) } -> show p.salesPrice
+                      _ -> show p.listPrice
             }
   SetViewing event -> do
     H.liftEffect $ Event.preventDefault event
@@ -132,23 +129,23 @@ handleAction = case _ of
                     in
                       SS.PricePerSegment
                         $ case Number.fromString c of
-                            Nothing -> p { salesPrice = Nothing, discount = Nothing }
+                            Nothing -> p { salesPrice = p.listPrice, discount = Nothing }
                             Just n ->
                               let
                                 isPercent = isJust (stripSuffix (Pattern "%") c)
                               in
                                 if isPercent && n /= 0.0 then
                                   p
-                                    { salesPrice = Just $ p.listPrice - p.listPrice * (n / 100.0)
+                                    { salesPrice = p.listPrice - p.listPrice * (n / 100.0)
                                     , discount = Just $ SS.DiscountPercentage n
                                     }
                                 else if not isPercent && n /= p.listPrice then
                                   p
-                                    { salesPrice = Just n
+                                    { salesPrice = n
                                     , discount = Just $ SS.DiscountAbsolute $ n - p.listPrice
                                     }
                                 else
-                                  p { salesPrice = Nothing, discount = Nothing }
+                                  p { salesPrice = p.listPrice, discount = Nothing }
               , editState = Viewing
               }
     H.raise st'.price

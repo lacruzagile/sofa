@@ -533,7 +533,7 @@ newtype PricePerSegment
   { minimum :: Int
   , exclusiveMaximum :: Maybe Int
   , listPrice :: Number
-  , salesPrice :: Maybe Number
+  , salesPrice :: Number
   , discount :: Maybe Discount
   }
 
@@ -553,7 +553,7 @@ instance decodeJsonPricePerSegment :: DecodeJson PricePerSegment where
     let
       basicPrice = do
         p <- o .: "price"
-        pure { listPrice: p, salesPrice: Nothing, discount: Nothing }
+        pure { listPrice: p, salesPrice: p, discount: Nothing }
 
       customPrice = do
         po <- o .: "price"
@@ -579,11 +579,11 @@ instance encodeJsonPricePerSegment :: EncodeJson PricePerSegment where
       ~> jsonEmptyObject
     where
     price
-      | isNothing pps.discount && isNothing pps.salesPrice = encodeJson pps.listPrice
+      | isNothing pps.discount && pps.listPrice == pps.salesPrice = encodeJson pps.listPrice
       | otherwise =
         ("listPrice" := pps.listPrice)
-          ~> ((\x -> "salesPrice" := x) <$> pps.salesPrice)
-          ~>? ((\x -> "discount" := x) <$> pps.discount)
+          ~> ("salesPrice" := pps.salesPrice)
+          ~> ((\x -> "discount" := x) <$> pps.discount)
           ~>? jsonEmptyObject
 
 instance arbPricePerSegment :: Arbitrary PricePerSegment where
@@ -650,7 +650,7 @@ instance decodeJsonPrice :: DecodeJson Price where
             { minimum: 0
             , exclusiveMaximum: Nothing
             , listPrice: p
-            , salesPrice: Nothing
+            , salesPrice: p
             , discount: Nothing
             }
         ]
@@ -668,7 +668,7 @@ instance decodeJsonPrice :: DecodeJson Price where
                 { minimum: 0
                 , exclusiveMaximum: Nothing
                 , listPrice
-                , salesPrice: Just salesPrice
+                , salesPrice: salesPrice
                 , discount
                 }
             ]

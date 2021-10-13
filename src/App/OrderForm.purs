@@ -16,11 +16,11 @@ import Data.List.Lazy as List
 import Data.Loadable (Loadable(..), getJson)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
-import Data.Monoid.Additive (Additive(..))
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (unwrap)
-import Data.Number.Format (toStringWith, fixed)
 import Data.SmartSpec as SS
+import Data.SubTotal (SubTotal(..))
+import Data.SubTotal as SubTotal
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -56,25 +56,6 @@ type StateOrderForm
     -- ^ Map from solution name to price books in the current currency.
     , orderForm :: OrderForm
     }
-
-type SubTotalEntry
-  = { listPrice :: Estimate (Additive Number)
-    , salesPrice :: Estimate (Additive Number)
-    }
-
-newtype SubTotal
-  = SubTotal
-  { onetime :: SubTotalEntry -- ^ Onetime price.
-  , monthly :: SubTotalEntry -- ^ Monthly price.
-  , quarterly :: SubTotalEntry -- ^ Quarterly price.
-  , usage :: SubTotalEntry -- ^ Usage price.
-  , segment :: SubTotalEntry -- ^ Monthly segment price.
-  , quarterlySegment :: SubTotalEntry -- ^ Quarterly segment price.
-  }
-
-derive newtype instance semigroupSubTotal :: Semigroup SubTotal
-
-derive newtype instance monoidSubTotal :: Monoid SubTotal
 
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
@@ -554,7 +535,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderSubTotal :: String -> Maybe SS.Currency -> SubTotal -> H.ComponentHTML Action Slots m
   renderSubTotal title currency (SubTotal summary) =
     let
-      price = renderWithCurrency currency
+      price = SubTotal.renderSubTotalEntry currency
 
       ifNonZero e
         | e == mempty = const []
@@ -574,21 +555,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
             <> ifNonZero summary.quarterly (HH.td_ [ price summary.quarterly ])
             <> ifNonZero summary.onetime (HH.td_ [ price summary.onetime ])
         ]
-
-  renderWithCurrency :: Maybe SS.Currency -> SubTotalEntry -> H.ComponentHTML Action Slots m
-  renderWithCurrency currency amount = case currency of
-    Nothing -> HH.text "N/A"
-    Just (SS.Currency "") -> HH.text "N/A"
-    Just (SS.Currency code) ->
-      if amount.listPrice == amount.salesPrice then
-        HH.text $ showMonetary amount.listPrice <> " " <> code
-      else
-        Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
-          $ HH.span_
-              [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.salesPrice ]
-              , HH.text " "
-              , HH.text code
-              ]
 
   renderCustomer :: Maybe SS.Customer -> H.ComponentHTML Action Slots m
   renderCustomer customer =
@@ -648,13 +614,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
       <> case state of
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
-
-showMonetary :: Estimate (Additive Number) -> String
-showMonetary = showEst <<< map (\(Additive n) -> toStringWith (fixed 2) n)
-  where
-  showEst = case _ of
-    Exact s -> s
-    Estimate s -> "~" <> s
 
 fromQuantity :: Array SS.QuantityPerUnit -> QuantityMap
 fromQuantity = Map.unions <<< map fromQuantityPerUnit
@@ -841,7 +800,7 @@ calcSubTotal os =
           pure $ calcCharge ol.product ol.quantity charge
 
   calcCharge :: SS.Product -> QuantityMap -> SS.Charge -> SubTotal
-  calcCharge product quantityMap (SS.ChargeArray cs) = A.foldl (\a b -> a <> calcChargeElem b) mempty cs
+  calcCharge product quantityMap (SS.ChargeArray cs) = fromMaybe mempty $ A.foldl (\a b -> a <> calcChargeElem b) mempty cs
     where
     priceToAmount dim (SS.PricePerUnit p) =
       let
@@ -849,48 +808,16 @@ calcSubTotal os =
           dimMap <- Map.lookup p.unit quantityMap
           either (Just <<< identity) (Map.lookup dim) dimMap
       in
-        maybe mempty (mkChargeSummary $ priceInSegment quantity p.price)
-          $ chargeType p.unit product
+        SubTotal.calcSubTotal <$> quantity <*> pure SS.SegmentationModelTiered <*> chargeType p.unit product <*> pure p.price
 
     priceByUnitToAmount (SS.PriceByUnitPerDim p) = A.foldl (\a b -> a <> priceToAmount p.dim b) mempty p.prices
 
     calcChargeElem (SS.ChargeElement c) = A.foldl (\a b -> a <> priceByUnitToAmount b) mempty c.priceByUnitByDim
 
-  mkChargeSummary :: SubTotalEntry -> SS.ChargeType -> SubTotal
-  mkChargeSummary c = case _ of
-    SS.ChargeTypeOnetime -> SubTotal $ zero { onetime = c }
-    SS.ChargeTypeMonthly -> SubTotal $ zero { monthly = c }
-    SS.ChargeTypeQuarterly -> SubTotal $ zero { quarterly = c }
-    SS.ChargeTypeUsage -> SubTotal $ zero { usage = c }
-    SS.ChargeTypeSegment -> SubTotal $ zero { segment = c }
-    SS.ChargeTypeQuarterlySegment -> SubTotal $ zero { quarterlySegment = c }
-    where
-    SubTotal zero = mempty
-
   chargeType (SS.ChargeUnitRef unit) (SS.Product { chargeUnits }) =
     map (\(SS.ChargeUnit u) -> u.chargeType)
       $ A.find (\(SS.ChargeUnit u) -> u.id == unit.unitID)
       $ chargeUnits
-
-  priceInSegment :: Maybe (Estimate Int) -> SS.Price -> SubTotalEntry
-  priceInSegment quantity (SS.Price segments) = A.foldl (\a b -> a <> calcSegmentPrice b) mempty segments
-    where
-    calcSegmentPrice (SS.PricePerSegment p) =
-      let
-        q = maybe (Exact 0.0) (map Int.toNumber) quantity
-      in
-        maybe'
-          ( \_ ->
-              { listPrice: Additive <<< (p.listPrice * _) <$> q
-              , salesPrice: Additive <<< (p.listPrice * _) <$> q
-              }
-          )
-          ( \sp ->
-              { listPrice: Additive <<< (p.listPrice * _) <$> q
-              , salesPrice: Additive <<< (sp * _) <$> q
-              }
-          )
-          p.salesPrice
 
 calcTotal :: OrderForm -> OrderForm
 calcTotal orderForm = orderForm { summary = SubTotal $ sumOrderSecs orderForm.sections }
