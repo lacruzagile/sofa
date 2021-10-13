@@ -1047,7 +1047,18 @@ handleAction = case _ of
             st
               { currency = currency
               , priceBooks = priceBooks
-              , orderForm = st.orderForm { customer = Just customer }
+              , orderForm =
+                st.orderForm
+                  { customer = Just customer
+                  --  If the currency changed then we can't use the same price
+                  --  book so the summary and all sections need to be updated.
+                  , summary = if st.currency == currency then st.orderForm.summary else mempty
+                  , sections =
+                    if st.currency == currency then
+                      st.orderForm.sections
+                    else
+                      map (map (_ { priceBook = Nothing, summary = mempty :: SubTotal })) st.orderForm.sections
+                  }
               }
   AddSection ->
     modifyInitialized
