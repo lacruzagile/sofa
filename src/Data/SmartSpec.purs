@@ -88,6 +88,7 @@ import Data.Array as A
 import Data.Array.NonEmpty (fromNonEmpty)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
+import Data.List.Lazy (List)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
@@ -929,7 +930,7 @@ data ConfigSchemaEntry
   | CseOneOf { oneOf :: Array ConfigSchemaEntry }
 
 instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
-  decodeJson json = typed <|> constValue <|> oneOf
+  decodeJson json = typed <|> constValue <|> oneOf <|> Left (TypeMismatch "Schema")
     where
     typed = do
       o <- decodeJson json
@@ -973,7 +974,9 @@ instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
     CseRegex x -> encodeJson x
     CseConst x -> encodeJson x
     CseArray x -> encodeJson x
-    CseObject x -> encodeJson x
+    CseObject x -> ("type" := "object")
+                   ~> ("properties" := encodeJson (FO.fromFoldable (Map.toUnfoldable x.properties :: List _)))
+                   ~> jsonEmptyObject
     CseOneOf x -> encodeJson x
 
 configSchemaEntryTitle :: ConfigSchemaEntry -> Maybe String
@@ -1037,7 +1040,7 @@ instance encodeJsonConfigValue :: EncodeJson ConfigValue where
   encodeJson (CvInteger v) = encodeJson v
   encodeJson (CvString v) = encodeJson v
   encodeJson (CvArray v) = encodeJson v
-  encodeJson (CvObject v) = encodeJson v
+  encodeJson (CvObject v) = encodeJson $ FO.fromFoldable (Map.toUnfoldable v :: List _)
   encodeJson (CvNull) = encodeJson (Nothing :: Maybe Int)
 
 -- TODO: Add `schema` and `variable`.
@@ -1106,7 +1109,7 @@ newtype Product
   , name :: Maybe String
   , description :: Maybe String
   , attr :: Maybe (Map String ConfigValue)
-  , orderConfigSchema :: Maybe (Map String ConfigSchemaEntry)
+  , orderConfigSchema :: Maybe ConfigSchemaEntry
   , assetConfigSchema :: Maybe ConfigSchemaEntry
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
@@ -1126,11 +1129,9 @@ instance decodeJsonProduct :: DecodeJson Product where
     name <- o .:? "name"
     description <- o .:? "description"
     attrObj :: Maybe (FO.Object ConfigValue) <- o .:? "attr"
-    orderConfigSchemaObj :: Maybe (FO.Object ConfigSchemaEntry) <- o .:? "orderConfigSchema"
     let
       attr = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> attrObj
-
-      orderConfigSchema = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> orderConfigSchemaObj
+    orderConfigSchema <- o .:? "orderConfigSchema"
     assetConfigSchema <- o .:? "assetConfigSchema"
     options <- o .:? "options"
     features <- o .:? "features"
@@ -1799,7 +1800,7 @@ newtype OrderLine
   { sku :: SkuCode
   , charge :: Charge
   , quantity :: Array QuantityPerUnit
-  , configs :: Array (Map String ConfigValue)
+  , configs :: Array ConfigValue
   }
 
 derive instance newtypeOrderLine :: Newtype OrderLine _
@@ -1810,9 +1811,7 @@ instance decodeJsonOrderLine :: DecodeJson OrderLine where
     sku <- o .: "sku"
     charge <- o .: "charge"
     quantity <- decodeQuantity =<< o .: "quantity"
-    configObjs :: Array (FO.Object ConfigValue) <- o .:? "configs" .!= []
-    let
-      configs = map (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) configObjs
+    configs <- o .:? "configs" .!= []
     pure $ OrderLine { sku, charge, quantity, configs }
     where
     decodeQuantity qJson =
@@ -1825,7 +1824,7 @@ instance encodeJsonOrderLine :: EncodeJson OrderLine where
     ("sku" := x.sku)
       ~> ("charge" := x.charge)
       ~> ("quantity" := x.quantity)
-      ~> ("configs" := map (FO.fromFoldable <<< \c -> Map.toUnfoldable c :: Array _) x.configs)
+      ~> ("configs" := x.configs)
       ~> jsonEmptyObject
 
 newtype OrderSection

@@ -78,7 +78,7 @@ type OrderLine
   = { product :: SS.Product
     , charge :: Maybe SS.Charge
     , quantity :: QuantityMap
-    , configs :: Array (Map String SS.ConfigValue)
+    , configs :: Array SS.ConfigValue
     }
 
 type QuantityMap
@@ -109,8 +109,7 @@ data Action
     { sectionIndex :: Int
     , orderLineIndex :: Int
     , configIndex :: Int
-    , field :: String
-    , value :: SS.ConfigValue
+    , alter :: Maybe SS.ConfigValue -> SS.ConfigValue
     }
   | OrderLineRemoveConfig
     { sectionIndex :: Int
@@ -278,13 +277,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
       maybe []
         ( A.singleton
             <<< renderConfigSchema allowRemove olIdx cfgIdx
-                ( \field value ->
+                ( \alter ->
                     OrderLineSetConfig
                       { sectionIndex: olIdx.sectionIndex
                       , orderLineIndex: olIdx.orderLineIndex
                       , configIndex: cfgIdx
-                      , field
-                      , value
+                      , alter
                       }
                 )
                 config
@@ -303,13 +301,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Boolean ->
     OrderLineIndex ->
     Int ->
-    (String -> SS.ConfigValue -> Action) ->
-    Map String SS.ConfigValue ->
-    Map String SS.ConfigSchemaEntry ->
+    ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
+    SS.ConfigValue ->
+    SS.ConfigSchemaEntry ->
     H.ComponentHTML Action Slots m
-  renderConfigSchema allowRemove olIdx cfgIdx onChange config = wrap <<< A.concatMap renderEntry <<< Map.toUnfoldable
+  renderConfigSchema allowRemove olIdx cfgIdx onChange config = wrap <<< renderEntry onChange "Configuration" (Just config)
     where
-    wrap entries =
+    wrap entry =
       HH.div [ HP.classes [ Css.orderLineConfig ] ]
         $ ( if allowRemove then
               [ HH.a
@@ -326,29 +324,31 @@ render state = HH.section_ [ HH.article_ renderContent ]
             else
               []
           )
-        <> entries
+        <> [entry]
 
+    mact :: forall a. (a -> Action) -> Maybe a -> Action
     mact = maybe NoOp
 
     opt :: forall a b. (a -> b) -> Maybe a -> Array b
     opt f = maybe [] (\x -> [ f x ])
 
-    renderSchemaEntry ::
-      (SS.ConfigValue -> Action) ->
+    renderEntry ::
+      ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
+      String ->
       Maybe SS.ConfigValue ->
       SS.ConfigSchemaEntry ->
       H.ComponentHTML Action Slots m
-    renderSchemaEntry act value = case _ of
-      SS.CseInteger c ->
+    renderEntry act fallbackTitle value schemaEntry = case schemaEntry of
+      SS.CseInteger c -> renderEntry' fallbackTitle schemaEntry $
         HH.input
           $ [ HP.type_ HP.InputNumber
-            , HE.onValueChange (mact (act <<< SS.CvInteger) <<< Int.fromString)
+            , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
             ]
           <> opt (HP.value <<< show) value
           <> opt (HP.min <<< Int.toNumber) c.minimum
           <> opt (HP.max <<< Int.toNumber) c.maximum
       SS.CseString c
-        | not (A.null c.enum) ->
+        | not (A.null c.enum) -> renderEntry' fallbackTitle schemaEntry $
           let
             props e =
               [ HP.selected
@@ -357,14 +357,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   )
               ]
 
-            onIndexChange i = case A.index c.enum (i - 1) of
-              Nothing -> NoOp
-              Just s -> act $ SS.CvString s
+            onIndexChange i = mact (act <<< const <<< SS.CvString) $ A.index c.enum (i - 1)
           in
             HH.select [ HE.onSelectedIndexChange onIndexChange ]
               $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
               <> map (\e -> HH.option (props e) [ HH.text e ]) c.enum
-      SS.CseString c ->
+      SS.CseString c -> renderEntry' fallbackTitle schemaEntry $
         let
           mi = maybe "0" show c.minLength
 
@@ -376,25 +374,33 @@ render state = HH.section_ [ HH.article_ renderContent ]
             else
               [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
         in
-          HH.input $ [ HE.onValueChange (act <<< SS.CvString) ]
+          HH.input $ [ HE.onValueChange (act <<< const <<< SS.CvString) ]
             <> opt HP.value (maybe c.default (Just <<< show) value)
             <> pat
-      SS.CseRegex c ->
+      SS.CseRegex c -> renderEntry' fallbackTitle schemaEntry $
         HH.input
-          $ [ HE.onValueChange (act <<< SS.CvString)
+          $ [ HE.onValueChange (act <<< const <<< SS.CvString)
             ]
           <> opt HP.value (maybe c.default (Just <<< show) value)
-      SS.CseConst _c -> HH.input [ HP.value "const", HP.disabled true ]
+      SS.CseConst _c -> renderEntry' fallbackTitle schemaEntry $ HH.input [ HP.value "const", HP.disabled true ]
       SS.CseArray _c -> HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
-      SS.CseObject _c -> HH.input [ HP.value "Unsupported configuration type: object", HP.disabled true ]
+      SS.CseObject c ->
+         let
+          findVal k = Map.lookup k $ toVal value
+          toVal = case _ of
+            Just (SS.CvObject m) -> m
+            _ -> Map.empty
+          act' k = \f -> act (SS.CvObject <<< Map.alter (Just <<< f) k <<< toVal)
+         in HH.span_
+         $ map (\(Tuple k schema) -> renderEntry (act' k) k (findVal k) schema)
+         $ Map.toUnfoldable c.properties
       SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
 
-    renderEntry (Tuple key schemaEntry) =
-      [ HH.label_
-          [ withDescription $ HH.text $ fromMaybe key $ SS.configSchemaEntryTitle schemaEntry
-          , renderSchemaEntry (onChange key) (Map.lookup key config) schemaEntry
+    renderEntry' fallbackTitle schemaEntry inner =
+      HH.label_
+          [ withDescription $ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+          , inner
           ]
-      ]
       where
       tooltip label text =
         HH.span
@@ -727,18 +733,19 @@ loadCatalog url = do
         <$> productCatalog
   H.put $ Initialized res
 
-mkDefaultConfigs :: SS.Product -> Array (Map String SS.ConfigValue)
-mkDefaultConfigs (SS.Product p) = maybe [] (A.singleton <<< mkDefaults) p.orderConfigSchema
+mkDefaultConfigs :: SS.Product -> Array SS.ConfigValue
+mkDefaultConfigs (SS.Product p) = fromMaybe [] $ do
+  schema <- p.orderConfigSchema
+  default_ <- mkDefault schema
+  pure [default_]
   where
-  mkDefaults = Map.mapMaybe mkDefault
-
   mkDefault = case _ of
     SS.CseInteger x -> SS.CvInteger <$> x.default
     SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum)
     SS.CseRegex x -> SS.CvString <$> x.default
     SS.CseConst x -> Just x.const
     SS.CseArray _ -> Just $ SS.CvArray []
-    SS.CseObject _ -> Nothing
+    SS.CseObject _ -> Just $ SS.CvObject Map.empty
     SS.CseOneOf _ -> Nothing
 
 calcSubTotal :: OrderSection -> OrderSection
@@ -1150,14 +1157,14 @@ handleAction = case _ of
           }
     in
       modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
-  OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, field, value } ->
+  OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, alter } ->
     let
       updateOrderLine :: OrderLine -> OrderLine
       updateOrderLine ol =
         ol
           { configs =
-            fromMaybe [ Map.singleton field value ]
-              $ A.modifyAt configIndex (Map.insert field value) ol.configs
+            fromMaybe [alter Nothing]
+              $ A.modifyAt configIndex (alter <<< Just) ol.configs
           }
     in
       modifyInitialized
