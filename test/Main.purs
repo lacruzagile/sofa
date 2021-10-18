@@ -61,31 +61,26 @@ calcSubTotalEntryTiered = do
         `shouldEqual`
           calcSubTotalEntry (Exact 0) SS.SegmentationModelTiered
             examplePrice
-
   it "can calculate sub-total using tiered segmentation, one tier"
     $ { listPrice: Exact (Additive 50.0), salesPrice: Exact (Additive 45.0) }
         `shouldEqual`
           calcSubTotalEntry (Exact 5) SS.SegmentationModelTiered
             examplePrice
-
   it "can calculate sub-total using tiered segmentation, two tiers (min)"
     $ { listPrice: Exact (Additive 105.0), salesPrice: Exact (Additive 94.0) }
         `shouldEqual`
           calcSubTotalEntry (Exact 11) SS.SegmentationModelTiered
             examplePrice
-
   it "can calculate sub-total using tiered segmentation, two tiers (max)"
     $ { listPrice: Exact (Additive 150.0), salesPrice: Exact (Additive 130.0) }
         `shouldEqual`
           calcSubTotalEntry (Exact 20) SS.SegmentationModelTiered
             examplePrice
-
   it "can calculate sub-total using tiered segmentation, three tiers (min)"
     $ { listPrice: Exact (Additive 151.0), salesPrice: Exact (Additive 130.5) }
         `shouldEqual`
           calcSubTotalEntry (Exact 21) SS.SegmentationModelTiered
             examplePrice
-
   it "can calculate sub-total using tiered segmentation, three tiers (bigger)"
     $ { listPrice: Exact (Additive 160.0), salesPrice: Exact (Additive 135.0) }
         `shouldEqual`

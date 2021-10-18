@@ -14,7 +14,6 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Number.Format (toStringWith, fixed)
-import Data.Ord (max)
 import Data.SmartSpec (ChargeType(..), Currency(..), Price(..), PricePerSegment(..), SegmentationModel(..))
 import Halogen as H
 import Halogen.HTML as HH

@@ -76,7 +76,7 @@ type OrderSection
 
 type OrderLine
   = { product :: SS.Product
-    , charge :: Maybe SS.Charge
+    , charges :: Maybe SS.Charges
     , quantity :: QuantityMap
     , configs :: Array SS.ConfigValue
     }
@@ -119,7 +119,7 @@ data Action
   | OrderLineSetCharge
     { sectionIndex :: Int
     , orderLineIndex :: Int
-    , charge :: SS.Charge
+    , charges :: SS.Charges
     , quantity :: QuantityMap
     }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
@@ -148,20 +148,20 @@ initialize = Just Initialize
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
-  renderCharge ::
+  renderCharges ::
     OrderLineIndex ->
     SS.ChargeUnitMap ->
     QuantityMap ->
-    SS.Charge ->
+    SS.Charges ->
     H.ComponentHTML Action Slots m
-  renderCharge olIdx unitMap quantity charge =
+  renderCharges olIdx unitMap quantity charges =
     HH.slot Charge.proxy olIdx Charge.component
-      { unitMap, charge, quantity }
+      { unitMap, charges, quantity }
       ( \result ->
           OrderLineSetCharge
             { sectionIndex: olIdx.sectionIndex
             , orderLineIndex: olIdx.orderLineIndex
-            , charge: result.charge
+            , charges: result.charges
             , quantity: result.quantity
             }
       )
@@ -170,29 +170,29 @@ render state = HH.section_ [ HH.article_ renderContent ]
     OrderLineIndex ->
     SS.ChargeUnitMap ->
     QuantityMap ->
-    Maybe SS.Charge ->
+    Maybe SS.Charges ->
     Array (H.ComponentHTML Action Slots m)
-  renderChargeModal olIdx unitMap quantity = maybe noCharge withCharge
+  renderChargeModal olIdx unitMap quantity = maybe noCharges withCharges
     where
     chargeText = HH.text "Charge"
 
     noMargin :: forall r t. HP.IProp ( style :: String | r ) t
     noMargin = HP.style "margin:0"
 
-    noCharge =
+    noCharges =
       [ HH.br_
       , HH.button [ HP.disabled true, noMargin ] [ chargeText ]
       ]
 
-    withCharge = case _ of
-      SS.ChargeArray [] -> noCharge
-      charge ->
+    withCharges = case _ of
+      SS.Charges [] -> noCharges
+      charges ->
         [ HH.br_
         , HH.label
             [ HP.for modalLabel, HP.class_ Css.button, noMargin ]
             [ chargeText ]
         , Widgets.modal modalLabel "Charge"
-            [ renderCharge olIdx unitMap quantity charge ]
+            [ renderCharges olIdx unitMap quantity charges ]
             []
         ]
 
@@ -231,7 +231,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         ]
                     ]
                 , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
-                    $ renderChargeModal olIdx (SS.productChargeUnits ol.product) ol.quantity ol.charge
+                    $ renderChargeModal olIdx (SS.productChargeUnits ol.product) ol.quantity ol.charges
                 ]
             ]
           <> ( if isJust product.orderConfigSchema then
@@ -324,7 +324,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             else
               []
           )
-        <> [entry]
+        <> [ entry ]
 
     mact :: forall a. (a -> Action) -> Maybe a -> Action
     mact = maybe NoOp
@@ -339,8 +339,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.ConfigSchemaEntry ->
       H.ComponentHTML Action Slots m
     renderEntry act fallbackTitle value schemaEntry = case schemaEntry of
-      SS.CseInteger c -> renderEntry' fallbackTitle schemaEntry $
-        HH.input
+      SS.CseInteger c ->
+        renderEntry' fallbackTitle schemaEntry
+          $ HH.input
           $ [ HP.type_ HP.InputNumber
             , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
             ]
@@ -348,59 +349,65 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> opt (HP.min <<< Int.toNumber) c.minimum
           <> opt (HP.max <<< Int.toNumber) c.maximum
       SS.CseString c
-        | not (A.null c.enum) -> renderEntry' fallbackTitle schemaEntry $
-          let
-            props e =
-              [ HP.selected
-                  ( value == Just (SS.CvString e)
-                      || (value == Nothing && Just e == c.default)
-                  )
-              ]
+        | not (A.null c.enum) ->
+          renderEntry' fallbackTitle schemaEntry
+            $ let
+                props e =
+                  [ HP.selected
+                      ( value == Just (SS.CvString e)
+                          || (value == Nothing && Just e == c.default)
+                      )
+                  ]
 
-            onIndexChange i = mact (act <<< const <<< SS.CvString) $ A.index c.enum (i - 1)
-          in
-            HH.select [ HE.onSelectedIndexChange onIndexChange ]
-              $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
-              <> map (\e -> HH.option (props e) [ HH.text e ]) c.enum
-      SS.CseString c -> renderEntry' fallbackTitle schemaEntry $
-        let
-          mi = maybe "0" show c.minLength
+                onIndexChange i = mact (act <<< const <<< SS.CvString) $ A.index c.enum (i - 1)
+              in
+                HH.select [ HE.onSelectedIndexChange onIndexChange ]
+                  $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
+                  <> map (\e -> HH.option (props e) [ HH.text e ]) c.enum
+      SS.CseString c ->
+        renderEntry' fallbackTitle schemaEntry
+          $ let
+              mi = maybe "0" show c.minLength
 
-          ma = maybe "" show c.maxLength
+              ma = maybe "" show c.maxLength
 
-          pat =
-            if mi == "0" && ma == "" then
-              []
-            else
-              [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
-        in
-          HH.input $ [ HE.onValueChange (act <<< const <<< SS.CvString) ]
-            <> opt HP.value (maybe c.default (Just <<< show) value)
-            <> pat
-      SS.CseRegex c -> renderEntry' fallbackTitle schemaEntry $
-        HH.input
+              pat =
+                if mi == "0" && ma == "" then
+                  []
+                else
+                  [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
+            in
+              HH.input $ [ HE.onValueChange (act <<< const <<< SS.CvString) ]
+                <> opt HP.value (maybe c.default (Just <<< show) value)
+                <> pat
+      SS.CseRegex c ->
+        renderEntry' fallbackTitle schemaEntry
+          $ HH.input
           $ [ HE.onValueChange (act <<< const <<< SS.CvString)
             ]
           <> opt HP.value (maybe c.default (Just <<< show) value)
       SS.CseConst _c -> renderEntry' fallbackTitle schemaEntry $ HH.input [ HP.value "const", HP.disabled true ]
       SS.CseArray _c -> HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
       SS.CseObject c ->
-         let
+        let
           findVal k = Map.lookup k $ toVal value
+
           toVal = case _ of
             Just (SS.CvObject m) -> m
             _ -> Map.empty
+
           act' k = \f -> act (SS.CvObject <<< Map.alter (Just <<< f) k <<< toVal)
-         in HH.span_
-         $ map (\(Tuple k schema) -> renderEntry (act' k) k (findVal k) schema)
-         $ Map.toUnfoldable c.properties
+        in
+          HH.span_
+            $ map (\(Tuple k schema) -> renderEntry (act' k) k (findVal k) schema)
+            $ Map.toUnfoldable c.properties
       SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
 
     renderEntry' fallbackTitle schemaEntry inner =
       HH.label_
-          [ withDescription $ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
-          , inner
-          ]
+        [ withDescription $ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+        , inner
+        ]
       where
       tooltip label text =
         HH.span
@@ -645,17 +652,17 @@ toQuantity quantityMap =
     transform :: forall k v a. (Tuple k v -> a) -> Map k v -> Array a
     transform f = A.fromFoldable <<< map f <<< toList
 
-    r1 :: Tuple SS.ChargeUnitRef (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SS.QuantityPerUnit
-    r1 (Tuple unitRef unitMap) = case unitMap of
+    r1 :: Tuple SS.ChargeUnitID (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SS.QuantityPerUnit
+    r1 (Tuple unitID unitMap) = case unitMap of
       Left quantity ->
         SS.QuantityPerUnit
-          { unit: unitRef
+          { unit: unitID
           , quantity: Est.toValue quantity
           , estimated: Est.isEstimate quantity
           }
       Right dimMap ->
         SS.QuantityByDimPerUnit
-          { unit: unitRef
+          { unit: unitID
           , quantityByDim: transform r2 dimMap
           }
 
@@ -684,11 +691,11 @@ toJson orderForm = do
   where
   toOrderLine :: OrderLine -> Maybe SS.OrderLine
   toOrderLine ol = do
-    ch <- ol.charge
+    ch <- ol.charges
     pure
       $ SS.OrderLine
           { sku: _.sku $ unwrap $ ol.product
-          , charge: ch
+          , charges: ch
           , quantity: toQuantity ol.quantity
           , configs: ol.configs
           }
@@ -734,10 +741,12 @@ loadCatalog url = do
   H.put $ Initialized res
 
 mkDefaultConfigs :: SS.Product -> Array SS.ConfigValue
-mkDefaultConfigs (SS.Product p) = fromMaybe [] $ do
-  schema <- p.orderConfigSchema
-  default_ <- mkDefault schema
-  pure [default_]
+mkDefaultConfigs (SS.Product p) =
+  fromMaybe []
+    $ do
+        schema <- p.orderConfigSchema
+        default_ <- mkDefault schema
+        pure [ default_ ]
   where
   mkDefault = case _ of
     SS.CseInteger x -> SS.CvInteger <$> x.default
@@ -755,45 +764,45 @@ calcSubTotal os =
     , summary = sumOrderLines orderLines'
     }
   where
-  orderLines' = map (map (updateOrderLineCharge os.priceBook)) os.orderLines
+  orderLines' = map (map (updateOrderLineCharges os.priceBook)) os.orderLines
 
   -- | Sets the order line charge and default quantity from the given price
   -- | book. If the order line already has a charge, then it is returned
   -- | unchanged.
-  updateOrderLineCharge :: Maybe PriceBook -> OrderLine -> OrderLine
-  updateOrderLineCharge mpb ol
-    | isJust ol.charge = ol
+  updateOrderLineCharges :: Maybe PriceBook -> OrderLine -> OrderLine
+  updateOrderLineCharges mpb ol
+    | isJust ol.charges = ol
     | otherwise =
       fromMaybe ol
         $ ( \pb ->
               let
-                charge = lookupCharge ol.product pb
+                charges = lookupCharges ol.product pb
               in
                 ol
-                  { charge = charge
-                  , quantity = mkDefaultQuantity charge
+                  { charges = charges
+                  , quantity = mkDefaultQuantity charges
                   }
           )
         <$> mpb
 
-  lookupCharge :: SS.Product -> PriceBook -> Maybe SS.Charge
-  lookupCharge (SS.Product product) pb = do
+  lookupCharges :: SS.Product -> PriceBook -> Maybe SS.Charges
+  lookupCharges (SS.Product product) pb = do
     rateCards <- pb.rateCards
     SS.RateCard rateCard <- Map.lookup product.sku rateCards
-    pure rateCard.charge
+    pure rateCard.charges
 
-  mkDefaultQuantity :: Maybe SS.Charge -> QuantityMap
+  mkDefaultQuantity :: Maybe SS.Charges -> QuantityMap
   mkDefaultQuantity Nothing = Map.empty
 
-  mkDefaultQuantity (Just (SS.ChargeArray ces)) = List.foldl accumulate Map.empty $ unravelled
+  mkDefaultQuantity (Just (SS.Charges ces)) = List.foldl accumulate Map.empty $ unravelled
     where
     unravelled = do
       SS.ChargeElement ce <- List.fromFoldable ces
       SS.PriceByUnitPerDim { prices } <- List.fromFoldable ce.priceByUnitByDim
-      SS.PricePerUnit { unit: unitRef } <- List.fromFoldable prices
-      pure $ { unitRef, quantity: Exact 1 }
+      SS.PricePerUnit { unit: unitID } <- List.fromFoldable prices
+      pure $ { unitID, quantity: Exact 1 }
 
-    accumulate acc { unitRef, quantity } = Map.alter (Just <<< Left <<< const quantity) unitRef acc
+    accumulate acc { unitID, quantity } = Map.alter (Just <<< Left <<< const quantity) unitID acc
 
   sumOrderLines :: Array (Maybe OrderLine) -> SubTotal
   sumOrderLines = A.foldl (\a b -> a <> (conv b)) mempty
@@ -803,11 +812,11 @@ calcSubTotal os =
     fromMaybe mempty
       $ do
           ol <- mol
-          charge <- ol.charge
-          pure $ calcCharge ol.product ol.quantity charge
+          charges <- ol.charges
+          pure $ calcCharges ol.product ol.quantity charges
 
-  calcCharge :: SS.Product -> QuantityMap -> SS.Charge -> SubTotal
-  calcCharge product quantityMap (SS.ChargeArray cs) = fromMaybe mempty $ A.foldl (\a b -> a <> calcChargeElem b) mempty cs
+  calcCharges :: SS.Product -> QuantityMap -> SS.Charges -> SubTotal
+  calcCharges product quantityMap (SS.Charges cs) = fromMaybe mempty $ A.foldl (\a b -> a <> calcChargeElem b) mempty cs
     where
     priceToAmount dim (SS.PricePerUnit p) =
       let
@@ -821,9 +830,10 @@ calcSubTotal os =
 
     calcChargeElem (SS.ChargeElement c) = A.foldl (\a b -> a <> priceByUnitToAmount b) mempty c.priceByUnitByDim
 
-  chargeType (SS.ChargeUnitRef unit) (SS.Product { chargeUnits }) =
+  chargeType :: SS.ChargeUnitID -> SS.Product -> Maybe SS.ChargeType
+  chargeType unitID (SS.Product { chargeUnits }) =
     map (\(SS.ChargeUnit u) -> u.chargeType)
-      $ A.find (\(SS.ChargeUnit u) -> u.id == unit.unitID)
+      $ A.find (\(SS.ChargeUnit u) -> u.id == unitID)
       $ chargeUnits
 
 calcTotal :: OrderForm -> OrderForm
@@ -913,7 +923,7 @@ loadExisting (SS.OrderForm orderForm) = do
     product <- List.find (\(SS.Product { sku }) -> l.sku == sku) $ solution.products
     pure
       { product
-      , charge: Just l.charge
+      , charges: Just l.charges
       , quantity: fromQuantity l.quantity
       , configs: l.configs
       }
@@ -1088,7 +1098,7 @@ handleAction = case _ of
       mkOrderLine :: SS.Product -> OrderLine
       mkOrderLine product =
         { product
-        , charge: Nothing
+        , charges: Nothing
         , quantity: Map.empty
         , configs: mkDefaultConfigs product
         }
@@ -1163,17 +1173,17 @@ handleAction = case _ of
       updateOrderLine ol =
         ol
           { configs =
-            fromMaybe [alter Nothing]
+            fromMaybe [ alter Nothing ]
               $ A.modifyAt configIndex (alter <<< Just) ol.configs
           }
     in
       modifyInitialized
         $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
-  OrderLineSetCharge { sectionIndex, orderLineIndex, charge, quantity } ->
+  OrderLineSetCharge { sectionIndex, orderLineIndex, charges, quantity } ->
     modifyInitialized
       $ \st ->
           modifyOrderLine sectionIndex orderLineIndex st
             _
-              { charge = Just charge
+              { charges = Just charges
               , quantity = quantity
               }

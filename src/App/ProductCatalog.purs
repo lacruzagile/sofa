@@ -154,7 +154,7 @@ render state = HH.section_ [ HH.article_ content ]
   product (SS.Product p) =
     HH.li_
       [ HH.dl_ $ dataItem "SKU" (show p.sku)
-          <> dataItem "Product Category" (show p.productCategory)
+          <> dataItem "Category" (show p.category)
           <> opt (dataItem "Platform" <<< show) p.platform
           <> opt (dataItem "Name") p.name
           <> opt (dataItem "Description") p.description
@@ -171,7 +171,7 @@ render state = HH.section_ [ HH.article_ content ]
   renderSpecUnit :: SS.ChargeUnit -> H.ComponentHTML Action Slots m
   renderSpecUnit (SS.ChargeUnit u) =
     HH.dl_
-      $ dataItem "Id" u.id
+      $ dataItem "Id" (show u.id)
       <> opt (dataItem "Name") u.name
       <> opt (dataItem "Description") u.description
       <> dataItem "Charge Type" (show u.chargeType)
@@ -185,10 +185,10 @@ render state = HH.section_ [ HH.article_ content ]
     where
     entry k v = dataItem k (show v)
 
-  renderRateCardCharge :: SS.ChargeUnitMap -> SS.Charge -> H.ComponentHTML Action Slots m
-  renderRateCardCharge unitMap charge =
+  renderRateCardCharges :: SS.ChargeUnitMap -> SS.Charges -> H.ComponentHTML Action Slots m
+  renderRateCardCharges unitMap charges =
     HH.slot Charge.proxy unit Charge.component
-      { unitMap, charge, quantity: Map.empty }
+      { unitMap, charges, quantity: Map.empty }
       (\_ -> NoOp)
 
   renderRateCard :: SS.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
@@ -196,7 +196,7 @@ render state = HH.section_ [ HH.article_ content ]
     HH.li_ $ dataItem "SKU" (show r.sku)
       <> opt (dataItem "Name") r.name
       <> opt (dataItem "Description") r.description
-      <> dataItemRaw "Charge" (renderRateCardCharge unitMap r.charge)
+      <> dataItemRaw "Charges" (renderRateCardCharges unitMap r.charges)
 
   renderRateCards :: Map SS.SkuCode SS.ChargeUnitMap -> Array SS.RateCard -> H.ComponentHTML Action Slots m
   renderRateCards prodMap = blockList <<< map (\rc@(SS.RateCard { sku }) -> renderRateCard (fromMaybe Map.empty $ Map.lookup sku prodMap) rc)
