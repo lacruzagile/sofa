@@ -38,7 +38,7 @@ data Action
   = NoOp
   | Initialize SS.Customer
   | UpdateCustomer (SS.Customer -> SS.Customer)
-  | PopulateSeller SS.Le
+  | PopulateSeller SS.LegalEntity
 
 component ::
   forall query m.
@@ -427,6 +427,11 @@ render st =
                   SS.NewCustomer $ oldCustomer { seller = SS.Seller (f oldSeller) }
               returnCustomer -> returnCustomer
 
+      renderLegalEntityOption (SS.LegalEntity le) =
+        HH.option
+          [ HP.value le.novaShortName ]
+          [ HH.text le.registeredName ]
+
       sellerOptions = case st.legalEntities of
         Idle ->
           [ HH.option
@@ -438,7 +443,7 @@ render st =
               [ HP.value "", HP.disabled true, HP.selected true ]
               [ HH.text "Please choose a legal entity" ]
           ]
-            <> map (\(SS.Le le) -> HH.option [ HP.value le.novaShortName ] [ HH.text le.registeredName ]) legalEntities
+            <> map renderLegalEntityOption legalEntities
         Loading ->
           [ HH.option
               [ HP.value "", HP.disabled true, HP.selected true ]
@@ -451,7 +456,9 @@ render st =
           ]
 
       actionPopulateSeller name = case st.legalEntities of
-        Loaded (SS.LegalEntities { legalEntities }) -> maybe NoOp PopulateSeller $ A.find (\(SS.Le le) -> name == le.novaShortName) legalEntities
+        Loaded (SS.LegalEntities { legalEntities }) ->
+          maybe NoOp PopulateSeller
+            $ A.find (\(SS.LegalEntity le) -> name == le.novaShortName) legalEntities
         _ -> NoOp
     in
       [ HH.label [ HP.for "of-seller", HP.class_ Css.button ] [ HH.text "Seller" ]
@@ -532,7 +539,7 @@ handleAction = case _ of
   UpdateCustomer updater -> do
     { customer } <- H.modify $ \st -> st { customer = map updater st.customer }
     maybe (pure unit) H.raise customer
-  PopulateSeller (SS.Le le) ->
+  PopulateSeller (SS.LegalEntity le) ->
     H.modify_
       $ \st ->
           let

@@ -28,6 +28,9 @@ module Data.SmartSpec
   , EstimatedWAP(..)
   , EstimatedWAPPerSegment(..)
   , EstimatedWAPPerUnit(..)
+  , LegalEntities(..)
+  , LegalEntity(..)
+  , LegalEntityTraffic(..)
   , OrderForm(..)
   , OrderLine(..)
   , OrderSection(..)
@@ -82,10 +85,6 @@ module Data.SmartSpec
   , productChargeUnits
   , solutionProducts
   , subdivisionRegex
-  -- -----
-  , Le(..)
-  , LeTraffic(..)
-  , LegalEntities(..)
   ) where
 
 import Prelude
@@ -1980,41 +1979,40 @@ derive newtype instance decodeJsonOrders :: DecodeJson Orders
 
 derive newtype instance encodeJsonOrders :: EncodeJson Orders
 
--- ----- Legal Entities
-newtype LeTraffic
-  = LeTraffic
+newtype LegalEntityTraffic
+  = LegalEntityTraffic
   { originating :: String
   , trafficPlatform :: String
   , automatedBillingSupport :: String
   , trafficIntegration :: String
   }
 
-derive newtype instance decodeJsonLeTraffic :: DecodeJson LeTraffic
+derive newtype instance decodeJsonLegalEntityTraffic :: DecodeJson LegalEntityTraffic
 
-derive newtype instance encodeJsonLeTraffic :: EncodeJson LeTraffic
+derive newtype instance encodeJsonLegalEntityTraffic :: EncodeJson LegalEntityTraffic
 
-newtype Le
-  = Le
+newtype LegalEntity
+  = LegalEntity
   { registeredName :: String
   , novaShortName :: String
   , status :: String
   , allowNewCustomers :: String
   , defaultBankCurrency :: Currency
   , availableCurrencies :: Maybe (Set Currency)
-  , traffics :: Array LeTraffic
+  , traffics :: Array LegalEntityTraffic
   , address :: Address
-  , phone :: String
+  , phone :: Maybe String
   , region :: String
   , regionalVPinDPA :: String
   , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
   }
 
-derive newtype instance decodeJsonLe :: DecodeJson Le
+derive newtype instance decodeJsonLegalEntity :: DecodeJson LegalEntity
 
-derive newtype instance encodeJsonLe :: EncodeJson Le
+derive newtype instance encodeJsonLegalEntity :: EncodeJson LegalEntity
 
 newtype LegalEntities
-  = LegalEntities { legalEntities :: Array Le }
+  = LegalEntities { legalEntities :: Array LegalEntity }
 
 derive newtype instance decodeJsonLegalEntities :: DecodeJson LegalEntities
 
