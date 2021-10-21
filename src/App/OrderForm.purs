@@ -3,6 +3,7 @@ module App.OrderForm (Slot, proxy, component) where
 import Prelude
 import App.Charge as Charge
 import App.OrderForm.Customer as Customer
+import App.Requests (getProductCatalog)
 import Control.Alternative ((<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
@@ -13,7 +14,7 @@ import Data.Estimate (Estimate(..))
 import Data.Estimate as Est
 import Data.Int as Int
 import Data.List.Lazy as List
-import Data.Loadable (Loadable(..), getJson)
+import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
@@ -717,11 +718,10 @@ toJson orderForm = do
 loadCatalog ::
   forall slots output m.
   MonadAff m =>
-  String ->
   H.HalogenM State Action slots output m Unit
-loadCatalog url = do
+loadCatalog = do
   H.put $ Initialized Loading
-  productCatalog <- H.liftAff $ getJson url
+  productCatalog <- H.liftAff getProductCatalog
   let
     res =
       ( \(pc :: SS.ProductCatalog) ->
@@ -877,7 +877,7 @@ loadExisting ::
   H.HalogenM State Action slots output m Unit
 loadExisting (SS.OrderForm orderForm) = do
   H.put $ Initialized Loading
-  productCatalog <- H.liftAff $ getJson "v1alpha1/examples/product-catalog.normalized.json"
+  productCatalog <- H.liftAff getProductCatalog
   let
     result = convertOrderForm <$> productCatalog
   H.put $ Initialized result
@@ -978,7 +978,7 @@ handleAction = case _ of
     st <- H.get
     case st of
       Initializing orderForm -> loadExisting orderForm
-      Initialized Idle -> loadCatalog "v1alpha1/examples/product-catalog.normalized.json"
+      Initialized Idle -> loadCatalog
       _ -> pure unit
   SetCustomer customer ->
     modifyInitialized

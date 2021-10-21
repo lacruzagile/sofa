@@ -2,8 +2,9 @@ module App.Orders (Slot, proxy, component) where
 
 import Prelude
 import App.OrderForm as OrderForm
+import App.Requests (getOrders)
 import Css as Css
-import Data.Loadable (Loadable(..), getJson)
+import Data.Loadable (Loadable(..))
 import Data.Maybe (Maybe(..))
 import Data.SmartSpec as SS
 import Data.String as S
@@ -34,7 +35,7 @@ type State
 data Action
   = NoOp
   | ClearState
-  | LoadOrders String
+  | LoadOrders
   | OpenOrder SS.OrderForm
   | CloseOrder
 
@@ -57,7 +58,7 @@ initialState :: forall input. input -> State
 initialState = const Idle
 
 initialize :: Maybe Action
-initialize = Just $ LoadOrders "v1alpha1/examples/orders.json"
+initialize = Just LoadOrders
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
@@ -140,11 +141,10 @@ showID id =
 loadOrders ::
   forall slots output m.
   MonadAff m =>
-  String ->
   H.HalogenM State Action slots output m Unit
-loadOrders url = do
+loadOrders = do
   H.modify_ \_ -> Loading
-  orders <- H.liftAff $ getJson url
+  orders <- H.liftAff getOrders
   H.modify_ \_ -> (\os -> { orders: os, selected: Nothing }) <$> orders
 
 handleAction ::
@@ -153,6 +153,6 @@ handleAction ::
 handleAction = case _ of
   NoOp -> pure unit
   ClearState -> H.put Idle
-  LoadOrders url -> loadOrders url
+  LoadOrders -> loadOrders
   OpenOrder orderForm -> H.modify_ $ map \st -> st { selected = Just orderForm }
   CloseOrder -> H.modify_ $ map \st -> st { selected = Nothing }

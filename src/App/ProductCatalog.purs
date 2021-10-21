@@ -2,9 +2,10 @@ module App.ProductCatalog (Slot, proxy, component) where
 
 import Prelude
 import App.Charge as Charge
+import App.Requests (getProductCatalog)
 import Css as Css
 import Data.Array (concatMap, fromFoldable, singleton)
-import Data.Loadable (Loadable(..), getJson)
+import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -31,7 +32,7 @@ type State
 data Action
   = NoOp
   | ClearState
-  | LoadProductCatalog String
+  | LoadProductCatalog
 
 component ::
   forall query input output m.
@@ -52,7 +53,7 @@ initialState :: forall input. input -> State
 initialState = const Idle
 
 initialize :: Maybe Action
-initialize = Just $ LoadProductCatalog "v1alpha1/examples/product-catalog.normalized.json"
+initialize = Just LoadProductCatalog
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ content ]
@@ -298,9 +299,7 @@ handleAction ::
 handleAction = case _ of
   NoOp -> pure unit
   ClearState -> H.put Idle
-  LoadProductCatalog url -> loadCatalog url
-  where
-  loadCatalog url = do
+  LoadProductCatalog -> do
     H.modify_ \_ -> Loading
-    res <- H.liftAff $ getJson url
+    res <- H.liftAff getProductCatalog
     H.modify_ \_ -> res
