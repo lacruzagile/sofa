@@ -1,7 +1,10 @@
 module App.OrderForm.Customer (Slot, Output, proxy, component) where
 
 import Prelude
+import App.Requests (getLegalEntities)
 import Css as Css
+import Data.Array as A
+import Data.Loadable (Loadable(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
 import Effect.Aff.Class (class MonadAff)
@@ -19,17 +22,21 @@ proxy :: Proxy "customer"
 proxy = Proxy
 
 type Input
-  = State
+  = Maybe SS.Customer
 
 type Output
   = SS.Customer
 
 type State
-  = Maybe SS.Customer
+  = { customer :: Maybe SS.Customer
+    , legalEntities :: Loadable SS.LegalEntities
+    }
 
 data Action
-  = InitializeCustomer SS.Customer
+  = NoOp
+  | Initialize SS.Customer
   | UpdateCustomer (SS.Customer -> SS.Customer)
+  | PopulateSeller SS.Le
 
 component ::
   forall query m.
@@ -42,13 +49,13 @@ component =
     }
 
 initialState :: Input -> State
-initialState = identity
+initialState customer = { customer, legalEntities: Idle }
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render st =
   HH.div [ HP.classes [ Css.flex, Css.two ] ]
     [ HH.div [ HP.class_ Css.one ] renderSelectCustomerType
-    , HH.div [ HP.class_ Css.one ] (renderCustomerDetails st)
+    , HH.div [ HP.class_ Css.one ] (renderCustomerDetails st.customer)
     ]
   where
   countryPattern = "[A-Z]{2}(-[0-9A-Z]{1,3})?"
@@ -56,7 +63,7 @@ render st =
   renderSelectCustomerType =
     [ HH.button
         [ HE.onClick \_ ->
-            InitializeCustomer
+            Initialize
               $ SS.NewCustomer
                   { commercial:
                       SS.Commercial
@@ -98,7 +105,7 @@ render st =
     , HH.br_
     , HH.button
         [ HE.onClick \_ ->
-            InitializeCustomer
+            Initialize
               $ SS.ReturnCustomer
                   { commercial:
                       SS.RccBillingAccountRef
@@ -212,11 +219,13 @@ render st =
           ]
       ]
 
-  renderAddress onValueChange =
+  renderAddress (SS.Address address) onValueChange =
     [ HH.fieldset_
         [ HH.legend_ [ HH.text "Address" ]
         , HH.textarea
-            [ HP.placeholder "Address"
+            [ HP.rows 4
+            , HP.placeholder "Address"
+            , HP.value address
             , HE.onValueChange onValueChange
             ]
         ]
@@ -324,7 +333,7 @@ render st =
                 purchaser.contacts.finance
                 $ \f -> update (\c -> c { contacts { finance = f c.contacts.finance } })
             ]
-              <> renderAddress (\v -> update (_ { address = SS.Address v }))
+              <> renderAddress purchaser.address (\v -> update (_ { address = SS.Address v }))
           )
           [ HH.label
               [ HP.for "of-purchaser", HP.class_ Css.button ]
@@ -344,17 +353,37 @@ render st =
                   SS.NewCustomer $ oldCustomer { seller = SS.Seller (f oldSeller) }
               returnCustomer -> returnCustomer
 
+      SS.LegalEntity legalEntity = seller.legalEntity
+
       legalEntityProps get set =
-        let
-          SS.LegalEntity le = seller.legalEntity
-        in
-          [ HP.value $ get le
-          , HE.onValueChange $ \v -> update \s -> s { legalEntity = SS.LegalEntity $ set le v }
+        [ HP.value $ get legalEntity
+        , HE.onValueChange $ \v -> update \s -> s { legalEntity = SS.LegalEntity $ set legalEntity v }
+        ]
+
+      sellerOptions = case st.legalEntities of
+        Loaded (SS.LegalEntities { legalEntities }) ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text "Please choose a legal entity" ]
           ]
+            <> map (\(SS.Le le) -> HH.option [ HP.value le.novaShortName ] [ HH.text le.registeredName ]) legalEntities
+        _ ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text "No legal entities loaded" ]
+          ]
+
+      actionPopulateSeller name = case st.legalEntities of
+        Loaded (SS.LegalEntities { legalEntities }) -> maybe NoOp PopulateSeller $ A.find (\(SS.Le le) -> name == le.novaShortName) legalEntities
+        _ -> NoOp
     in
       [ HH.label [ HP.for "of-seller", HP.class_ Css.button ] [ HH.text "Seller" ]
       , Widgets.modal "of-seller" "Seller"
           ( [ HH.label_
+                [ HH.text "Populate From"
+                , HH.select [ HE.onValueChange actionPopulateSeller ] sellerOptions
+                ]
+            , HH.label_
                 [ HH.text "Legal Entity Name"
                 , HH.input
                     $ [ HP.type_ HP.InputText
@@ -383,6 +412,7 @@ render st =
                 $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
             ]
               <> renderAddress
+                  legalEntity.address
                   ( \v ->
                       update
                         ( \s ->
@@ -423,7 +453,44 @@ handleAction ::
   forall m.
   MonadAff m => Action -> H.HalogenM State Action () Output m Unit
 handleAction = case _ of
-  InitializeCustomer st -> H.put $ Just st
+  NoOp -> pure unit
+  Initialize customer' -> do
+    H.modify_ $ \st -> st { customer = Just customer', legalEntities = Loading }
+    legalEntities <- H.liftAff getLegalEntities
+    H.modify_ $ \st -> st { legalEntities = legalEntities }
   UpdateCustomer updater -> do
-    customer <- H.modify (map updater)
+    { customer } <- H.modify $ \st -> st { customer = map updater st.customer }
     maybe (pure unit) H.raise customer
+  PopulateSeller (SS.Le le) ->
+    H.modify_
+      $ \st ->
+          let
+            SS.LeAddress address = le.address
+
+            setSeller s = case st.customer of
+              Just (SS.NewCustomer c) -> Just $ SS.NewCustomer $ c { seller = SS.Seller s }
+              _ -> st.customer
+          in
+            st
+              { customer =
+                setSeller
+                  { contacts:
+                      { primary: SS.Contact { email: "", name: "", phone: "" }
+                      , finance: SS.Contact { email: le.financeContact, name: "", phone: "" }
+                      , support: SS.Contact { email: le.supportContact, name: "", phone: "" }
+                      }
+                  , legalEntity:
+                      SS.LegalEntity
+                        { name: le.registeredName
+                        , address:
+                            SS.Address $ address.street
+                              <> "\n"
+                              <> address.postalCode
+                              <> " "
+                              <> address.city
+                              <> "\n"
+                              <> address.state
+                        , country: address.country
+                        }
+                  }
+              }

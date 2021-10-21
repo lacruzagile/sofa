@@ -77,6 +77,11 @@ module Data.SmartSpec
   , configSchemaEntryTitle
   , productChargeUnits
   , solutionProducts
+  -- -----
+  , Le(..)
+  , LeAddress(..)
+  , LeTraffic(..)
+  , LegalEntities(..)
   ) where
 
 import Prelude
@@ -93,6 +98,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.NonEmpty ((:|))
+import Data.Set (Set)
 import Data.Show.Generic (genericShow)
 import Data.String.Regex as Re
 import Data.String.Regex.Unsafe (unsafeRegex)
@@ -1851,3 +1857,57 @@ newtype Orders
 derive newtype instance decodeJsonOrders :: DecodeJson Orders
 
 derive newtype instance encodeJsonOrders :: EncodeJson Orders
+
+-- ----- Legal Entities
+newtype LeAddress
+  = LeAddress
+  { street :: String
+  , state :: String
+  , city :: String
+  , postalCode :: String
+  , country :: String
+  }
+
+derive newtype instance decodeJsonLeAddress :: DecodeJson LeAddress
+
+derive newtype instance encodeJsonLeAddress :: EncodeJson LeAddress
+
+newtype LeTraffic
+  = LeTraffic
+  { originating :: String
+  , trafficPlatform :: String
+  , automatedBillingSupport :: String
+  , trafficIntegration :: String
+  }
+
+derive newtype instance decodeJsonLeTraffic :: DecodeJson LeTraffic
+
+derive newtype instance encodeJsonLeTraffic :: EncodeJson LeTraffic
+
+newtype Le
+  = Le
+  { registeredName :: String
+  , novaShortName :: String
+  , status :: String
+  , allowNewCustomers :: String
+  , defaultBankCurrency :: Currency
+  , availableCurrencies :: Maybe (Set Currency)
+  , traffics :: Array LeTraffic
+  , address :: LeAddress
+  , phone :: String
+  , region :: String
+  , regionalVPinDPA :: String
+  , financeContact :: String
+  , supportContact :: String
+  }
+
+derive newtype instance decodeJsonLe :: DecodeJson Le
+
+derive newtype instance encodeJsonLe :: EncodeJson Le
+
+newtype LegalEntities
+  = LegalEntities { legalEntities :: Array Le }
+
+derive newtype instance decodeJsonLegalEntities :: DecodeJson LegalEntities
+
+derive newtype instance encodeJsonLegalEntities :: EncodeJson LegalEntities
