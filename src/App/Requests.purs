@@ -4,16 +4,17 @@ module App.Requests (getLegalEntities, getOrders, getProductCatalog) where
 import Prelude
 import Data.Loadable (Loadable, getJson)
 import Data.SmartSpec (LegalEntities, Orders, ProductCatalog)
-import Effect.Aff (Aff)
+import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect)
 
 baseUrl :: String
 baseUrl = "v1alpha1/examples"
 
-getLegalEntities :: Aff (Loadable LegalEntities)
-getLegalEntities = getJson $ baseUrl <> "/legalentities.json"
+getLegalEntities :: forall m. MonadAff m => MonadEffect m => m (Loadable LegalEntities)
+getLegalEntities = getJson (baseUrl <> "/legalentities.json")
 
-getOrders :: Aff (Loadable Orders)
-getOrders = getJson $ baseUrl <> "/orders.json"
+getOrders :: forall m. MonadAff m => MonadEffect m => m (Loadable Orders)
+getOrders = getJson (baseUrl <> "/orders.json")
 
-getProductCatalog :: Aff (Loadable ProductCatalog)
-getProductCatalog = getJson $ baseUrl <> "/product-catalog.normalized.json"
+getProductCatalog :: forall m. MonadAff m => MonadEffect m => m (Loadable ProductCatalog)
+getProductCatalog = getJson (baseUrl <> "/product-catalog.normalized.json")

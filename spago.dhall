@@ -16,6 +16,7 @@ to generate this file without the comments in this block.
   , "affjax"
   , "argonaut"
   , "arrays"
+  , "console"
   , "control"
   , "effect"
   , "either"

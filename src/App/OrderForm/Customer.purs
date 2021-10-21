@@ -5,9 +5,11 @@ import App.Requests (getLegalEntities)
 import Css as Css
 import Data.Array as A
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.SmartSpec as SS
+import Data.String.Regex as Re
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -58,7 +60,9 @@ render st =
     , HH.div [ HP.class_ Css.one ] (renderCustomerDetails st.customer)
     ]
   where
-  countryPattern = "[A-Z]{2}(-[0-9A-Z]{1,3})?"
+  countryPattern = Re.source SS.countryRegex
+
+  subdivisionPattern = Re.source SS.subdivisionRegex
 
   renderSelectCustomerType =
     [ HH.button
@@ -74,13 +78,12 @@ render st =
                         }
                   , purchaser:
                       SS.Purchaser
-                        { address: SS.Address ""
+                        { address: SS.emptyAddress
                         , contacts:
                             { primary: SS.Contact { email: "", name: "", phone: "" }
                             , finance: SS.Contact { email: "", name: "", phone: "" }
                             }
                         , corporateName: ""
-                        , country: ""
                         , registrationNr: ""
                         , taxID: ""
                         , website: ""
@@ -95,8 +98,7 @@ render st =
                         , legalEntity:
                             SS.LegalEntity
                               { name: ""
-                              , address: SS.Address ""
-                              , country: ""
+                              , address: SS.emptyAddress
                               }
                         }
                   }
@@ -219,17 +221,96 @@ render st =
           ]
       ]
 
-  renderAddress (SS.Address address) onValueChange =
-    [ HH.fieldset_
-        [ HH.legend_ [ HH.text "Address" ]
-        , HH.textarea
-            [ HP.rows 4
-            , HP.placeholder "Address"
-            , HP.value address
-            , HE.onValueChange onValueChange
-            ]
-        ]
-    ]
+  renderAddress baseId (SS.Address address) update =
+    let
+      opt = fromMaybe ""
+
+      unopt v = if v == "" then Nothing else Just v
+
+      input { id, placeholder, pattern, get, set } =
+        let
+          fullId = baseId <> "-" <> id
+        in
+          [ HH.label [ HP.for fullId ] [ HH.text placeholder ]
+          , HH.input
+              [ HP.type_ HP.InputText
+              , HP.placeholder placeholder
+              , HP.pattern pattern
+              , HP.value $ opt get
+              , HP.id fullId
+              , HP.class_ Css.twoThird
+              , HE.onValueChange \v -> update (\a -> set a (unopt v))
+              ]
+          ]
+    in
+      [ HH.fieldset_
+          [ HH.legend_ [ HH.text "Address" ]
+          , HH.div [ HP.classes [ Css.flex, Css.three ] ]
+              $ input
+                  { id: "line1"
+                  , placeholder: "Line 1"
+                  , pattern: ".{0,250}"
+                  , get: address.line1
+                  , set: \a v -> a { line1 = v }
+                  }
+              <> input
+                  { id: "line2"
+                  , placeholder: "Line 2"
+                  , pattern: ".{0,250}"
+                  , get: address.line2
+                  , set: \a v -> a { line2 = v }
+                  }
+              <> input
+                  { id: "line3"
+                  , placeholder: "Line 3"
+                  , pattern: ".{0,250}"
+                  , get: address.line3
+                  , set: \a v -> a { line3 = v }
+                  }
+              <> input
+                  { id: "postOfficeBox"
+                  , placeholder: "P/O Box"
+                  , pattern: ".{0,20}"
+                  , get: address.postOfficeBox
+                  , set: \a v -> a { postOfficeBox = v }
+                  }
+              <> input
+                  { id: "postalCode"
+                  , placeholder: "Postal Code"
+                  , pattern: ".{0,20}"
+                  , get: address.postalCode
+                  , set: \a v -> a { postalCode = v }
+                  }
+              <> input
+                  { id: "city"
+                  , placeholder: "City"
+                  , pattern: ".{0,80}"
+                  , get: address.city
+                  , set: \a v -> a { city = v }
+                  }
+              <> input
+                  { id: "county"
+                  , placeholder: "County"
+                  , pattern: ".{0,50}"
+                  , get: address.county
+                  , set: \a v -> a { county = v }
+                  }
+              <> input
+                  { id: "stateOrProvince"
+                  , placeholder: "State or Province"
+                  , pattern: subdivisionPattern
+                  , get: show <$> address.stateOrProvince
+                  , set: \a v -> a { stateOrProvince = SS.Subdivision <$> v }
+                  }
+              <> input
+                  { id: "country"
+                  , placeholder: "Country"
+                  , pattern: countryPattern
+                  , get: show <$> address.country
+                  , set: \a v -> a { country = SS.Country <$> v }
+                  }
+          ]
+      ]
 
   renderContact label (SS.Contact contact) update =
     let
@@ -286,17 +367,6 @@ render st =
                     ]
                 ]
             , HH.label_
-                [ HH.text "Country"
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.required true
-                    , HP.pattern countryPattern
-                    , HP.placeholder "Country (e.g. DE, US-AL)"
-                    , HP.value purchaser.country
-                    , HE.onValueChange \v -> update _ { country = v }
-                    ]
-                ]
-            , HH.label_
                 [ HH.text "Registration Number"
                 , HH.input
                     [ HP.type_ HP.InputText
@@ -333,7 +403,10 @@ render st =
                 purchaser.contacts.finance
                 $ \f -> update (\c -> c { contacts { finance = f c.contacts.finance } })
             ]
-              <> renderAddress purchaser.address (\v -> update (_ { address = SS.Address v }))
+              <> renderAddress
+                  "of-purchaser"
+                  purchaser.address
+                  (\f -> update (\c -> c { address = let SS.Address addr = c.address in SS.Address (f addr) }))
           )
           [ HH.label
               [ HP.for "of-purchaser", HP.class_ Css.button ]
@@ -361,16 +434,26 @@ render st =
         ]
 
       sellerOptions = case st.legalEntities of
+        Idle ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text "No legal entities loaded" ]
+          ]
         Loaded (SS.LegalEntities { legalEntities }) ->
           [ HH.option
               [ HP.value "", HP.disabled true, HP.selected true ]
               [ HH.text "Please choose a legal entity" ]
           ]
             <> map (\(SS.Le le) -> HH.option [ HP.value le.novaShortName ] [ HH.text le.registeredName ]) legalEntities
-        _ ->
+        Loading ->
           [ HH.option
               [ HP.value "", HP.disabled true, HP.selected true ]
-              [ HH.text "No legal entities loaded" ]
+              [ HH.text "Loading legal entities…" ]
+          ]
+        Error _ ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text $ "Error loading legal entities" ]
           ]
 
       actionPopulateSeller name = case st.legalEntities of
@@ -391,16 +474,6 @@ render st =
                       ]
                     <> legalEntityProps (\le -> le.name) (\le v -> le { name = v })
                 ]
-            , HH.label_
-                [ HH.text "Legal Entity Country"
-                , HH.input
-                    $ [ HP.type_ HP.InputText
-                      , HP.pattern countryPattern
-                      , HP.placeholder "Country (e.g. DE, US-AL)"
-                      , HP.required true
-                      ]
-                    <> legalEntityProps (\le -> le.country) (\le v -> le { country = v })
-                ]
             , renderContact "Primary Contract"
                 seller.contacts.primary
                 $ \f -> update (\s -> s { contacts { primary = f s.contacts.primary } })
@@ -411,17 +484,19 @@ render st =
                 seller.contacts.support
                 $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
             ]
-              <> renderAddress
+              <> renderAddress "of-seller"
                   legalEntity.address
-                  ( \v ->
+                  ( \f ->
                       update
                         ( \s ->
                             s
                               { legalEntity =
                                 let
                                   SS.LegalEntity le = s.legalEntity
+
+                                  SS.Address addr = le.address
                                 in
-                                  SS.LegalEntity $ le { address = SS.Address v }
+                                  SS.LegalEntity $ le { address = SS.Address (f addr) }
                               }
                         )
                   )
@@ -456,8 +531,11 @@ handleAction = case _ of
   NoOp -> pure unit
   Initialize customer' -> do
     H.modify_ $ \st -> st { customer = Just customer', legalEntities = Loading }
-    legalEntities <- H.liftAff getLegalEntities
+    legalEntities <- getLegalEntities
     H.modify_ $ \st -> st { legalEntities = legalEntities }
+    case legalEntities of
+      Error err -> Console.error $ "When fetching legal entities: " <> err
+      _ -> pure unit
   UpdateCustomer updater -> do
     { customer } <- H.modify $ \st -> st { customer = map updater st.customer }
     maybe (pure unit) H.raise customer
@@ -465,8 +543,6 @@ handleAction = case _ of
     H.modify_
       $ \st ->
           let
-            SS.LeAddress address = le.address
-
             setSeller s = case st.customer of
               Just (SS.NewCustomer c) -> Just $ SS.NewCustomer $ c { seller = SS.Seller s }
               _ -> st.customer
@@ -482,15 +558,7 @@ handleAction = case _ of
                   , legalEntity:
                       SS.LegalEntity
                         { name: le.registeredName
-                        , address:
-                            SS.Address $ address.street
-                              <> "\n"
-                              <> address.postalCode
-                              <> " "
-                              <> address.city
-                              <> "\n"
-                              <> address.state
-                        , country: address.country
+                        , address: le.address
                         }
                   }
               }

@@ -15,6 +15,7 @@ module Data.SmartSpec
   , ConfigValue(..)
   , Contact(..)
   , ContractTerm(..)
+  , Country(..)
   , Currency(..)
   , Customer(..)
   , Date(..)
@@ -70,16 +71,19 @@ module Data.SmartSpec
   , Severity(..)
   , SkuCode(..)
   , Solution(..)
+  , Subdivision(..)
   , Uri(..)
   , Validity(..)
   , chargeUnitLabel
   , configSchemaEntryDescription
   , configSchemaEntryTitle
+  , countryRegex
+  , emptyAddress
   , productChargeUnits
   , solutionProducts
+  , subdivisionRegex
   -- -----
   , Le(..)
-  , LeAddress(..)
   , LeTraffic(..)
   , LegalEntities(..)
   ) where
@@ -100,6 +104,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.NonEmpty ((:|))
 import Data.Set (Set)
 import Data.Show.Generic (genericShow)
+import Data.String as S
 import Data.String.Regex as Re
 import Data.String.Regex.Unsafe (unsafeRegex)
 import Data.Traversable (traverse)
@@ -254,6 +259,58 @@ newtype Rule
 derive newtype instance decodeJsonRule :: DecodeJson Rule
 
 derive newtype instance encodeJsonRule :: EncodeJson Rule
+
+newtype Country
+  = Country String
+
+countryRegex :: Re.Regex
+countryRegex = unsafeRegex "^[A-Z]{2}$" mempty
+
+derive instance eqCountry :: Eq Country
+
+derive instance ordCountry :: Ord Country
+
+derive instance newtypeCountry :: Newtype Country _
+
+instance showCountry :: Show Country where
+  show (Country code) = code
+
+instance decodeJsonCountry :: DecodeJson Country where
+  decodeJson json = do
+    s <- decodeJson json
+    if check s then pure (Country s) else error
+    where
+    check = Re.test countryRegex
+
+    error = Left (TypeMismatch "Country (ISO 3166-1 alpha-2 code)")
+
+derive newtype instance encodeJsonCountry :: EncodeJson Country
+
+newtype Subdivision
+  = Subdivision String
+
+subdivisionRegex :: Re.Regex
+subdivisionRegex = unsafeRegex "^[0-9A-Z]{1,3}$" mempty
+
+derive instance eqSubdivision :: Eq Subdivision
+
+derive instance ordSubdivision :: Ord Subdivision
+
+derive instance newtypeSubdivision :: Newtype Subdivision _
+
+instance showSubdivision :: Show Subdivision where
+  show (Subdivision code) = code
+
+instance decodeJsonSubdivision :: DecodeJson Subdivision where
+  decodeJson json = do
+    s <- decodeJson json
+    if check s then pure (Subdivision s) else error
+    where
+    check = Re.test subdivisionRegex
+
+    error = Left (TypeMismatch "Subdivision (ISO 3166-2 subdivision code)")
+
+derive newtype instance encodeJsonSubdivision :: EncodeJson Subdivision
 
 newtype Currency
   = Currency String
@@ -1481,11 +1538,79 @@ derive newtype instance decodeJsonCommercial :: DecodeJson Commercial
 derive newtype instance encodeJsonCommercial :: EncodeJson Commercial
 
 newtype Address
-  = Address String
+  = Address
+  { line1 :: Maybe String
+  , line2 :: Maybe String
+  , line3 :: Maybe String
+  , city :: Maybe String
+  , stateOrProvince :: Maybe Subdivision
+  , county :: Maybe String
+  , country :: Maybe Country
+  , postOfficeBox :: Maybe String
+  , postalCode :: Maybe String
+  }
 
-derive newtype instance decodeJsonAddress :: DecodeJson Address
+emptyAddress :: Address
+emptyAddress =
+  Address
+    { line1: Nothing
+    , line2: Nothing
+    , line3: Nothing
+    , city: Nothing
+    , stateOrProvince: Nothing
+    , county: Nothing
+    , country: Nothing
+    , postOfficeBox: Nothing
+    , postalCode: Nothing
+    }
 
-derive newtype instance encodeJsonAddress :: EncodeJson Address
+instance decodeJsonAddress :: DecodeJson Address where
+  decodeJson json = do
+    o <- decodeJson json
+    line1 <- getString o "line1" 1 250
+    line2 <- getString o "line2" 1 250
+    line3 <- getString o "line3" 1 250
+    city <- getString o "city" 1 80
+    stateOrProvince <- o .:? "stateOrProvince"
+    county <- getString o "county" 1 50
+    country <- o .:? "country"
+    postOfficeBox <- getString o "postOfficeBox" 1 20
+    postalCode <- getString o "postalCode" 1 20
+    pure
+      $ Address
+          { line1
+          , line2
+          , line3
+          , city
+          , stateOrProvince
+          , county
+          , country
+          , postOfficeBox
+          , postalCode
+          }
+    where
+    getString o field minLen maxLen = do
+      value <- o .:? field
+      case value of
+        Nothing -> pure Nothing
+        Just v ->
+          if S.length v >= minLen && S.length v <= maxLen then
+            pure value
+          else
+            Left (TypeMismatch $ "string of length " <> show minLen <> " through " <> show maxLen)
+
+instance encodeJsonAddress :: EncodeJson Address where
+  encodeJson (Address addr) =
+    (("line1" := _) <$> addr.line1)
+      ~>? (("line2" := _) <$> addr.line2)
+      ~>? (("line3" := _) <$> addr.line3)
+      ~>? (("city" := _) <$> addr.city)
+      ~>? (("stateOrProvince" := _) <$> addr.stateOrProvince)
+      ~>? (("county" := _) <$> addr.county)
+      ~>? (("country" := _) <$> addr.country)
+      ~>? (("postOfficeBox" := _) <$> addr.postOfficeBox)
+      ~>? (("postalCode" := _) <$> addr.postalCode)
+      ~>? jsonEmptyObject
 
 newtype Contact
   = Contact
@@ -1503,7 +1628,6 @@ newtype Purchaser
   { address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
-  , country :: String
   , registrationNr :: String
   , taxID :: String
   , website :: Uri
@@ -1517,7 +1641,6 @@ newtype LegalEntity
   = LegalEntity
   { name :: String
   , address :: Address
-  , country :: String
   }
 
 derive newtype instance decodeJsonLegalEntity :: DecodeJson LegalEntity
@@ -1859,19 +1982,6 @@ derive newtype instance decodeJsonOrders :: DecodeJson Orders
 derive newtype instance encodeJsonOrders :: EncodeJson Orders
 
 -- ----- Legal Entities
-newtype LeAddress
-  = LeAddress
-  { street :: String
-  , state :: String
-  , city :: String
-  , postalCode :: String
-  , country :: String
-  }
-
-derive newtype instance decodeJsonLeAddress :: DecodeJson LeAddress
-
-derive newtype instance encodeJsonLeAddress :: EncodeJson LeAddress
-
 newtype LeTraffic
   = LeTraffic
   { originating :: String
@@ -1893,7 +2003,7 @@ newtype Le
   , defaultBankCurrency :: Currency
   , availableCurrencies :: Maybe (Set Currency)
   , traffics :: Array LeTraffic
-  , address :: LeAddress
+  , address :: Address
   , phone :: String
   , region :: String
   , regionalVPinDPA :: String

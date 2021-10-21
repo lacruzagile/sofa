@@ -120,6 +120,9 @@ one1000 = ClassName "one-1000"
 two :: ClassName
 two = ClassName "two"
 
+twoThird :: ClassName
+twoThird = ClassName "two-third"
+
 three :: ClassName
 three = ClassName "three"
 

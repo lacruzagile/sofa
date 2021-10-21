@@ -5,7 +5,8 @@ import Affjax (printError)
 import Data.Argonaut (class DecodeJson, printJsonDecodeError)
 import Data.Either (Either(..))
 import Data.Variant (default, on)
-import Effect.Aff (Aff)
+import Effect.Aff.Class (class MonadAff, liftAff)
+import Effect.Class (class MonadEffect)
 import Simple.Ajax (_affjaxError, _notFound, _parseError)
 import Simple.Ajax as AJX
 
@@ -35,9 +36,9 @@ instance bindLoadable :: Bind Loadable where
   bind (Error err) _ = Error err
 
 -- | Fetch JSON from an URL.
-getJson :: forall a. DecodeJson a => String -> Aff (Loadable a)
+getJson :: forall a m. DecodeJson a => MonadAff m => MonadEffect m => String -> m (Loadable a)
 getJson url = do
-  res <- AJX.get url
+  res <- liftAff $ AJX.get url
   pure
     $ case res of
         Left error ->
