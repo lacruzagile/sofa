@@ -94,6 +94,8 @@ import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.NonEmpty ((:|))
 import Data.Show.Generic (genericShow)
+import Data.String.Regex as Re
+import Data.String.Regex.Unsafe (unsafeRegex)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Foreign.Object as FO
@@ -252,12 +254,21 @@ newtype Currency
 
 derive instance eqCurrency :: Eq Currency
 
+derive instance ordCurrency :: Ord Currency
+
 derive instance newtypeCurrency :: Newtype Currency _
 
 instance showCurrency :: Show Currency where
   show (Currency code) = code
 
-derive newtype instance decodeJsonCurrency :: DecodeJson Currency
+instance decodeJsonCurrency :: DecodeJson Currency where
+  decodeJson json = do
+    s <- decodeJson json
+    if check s then pure (Currency s) else error
+    where
+    check = Re.test (unsafeRegex "^[A-Z]{3}$" mempty)
+
+    error = Left (TypeMismatch "Currency (ISO 4217 alphabetic code)")
 
 derive newtype instance encodeJsonCurrency :: EncodeJson Currency
 
