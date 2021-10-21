@@ -79,6 +79,7 @@ module Data.SmartSpec
   , configSchemaEntryTitle
   , countryRegex
   , emptyAddress
+  , emptyContact
   , productChargeUnits
   , solutionProducts
   , subdivisionRegex
@@ -1614,14 +1615,22 @@ instance encodeJsonAddress :: EncodeJson Address where
 
 newtype Contact
   = Contact
-  { email :: String
-  , name :: String
-  , phone :: String
+  { email :: Maybe String
+  , name :: Maybe String
+  , phone :: Maybe String
   }
+
+emptyContact :: Contact
+emptyContact = Contact { email: Nothing, name: Nothing, phone: Nothing }
 
 derive newtype instance decodeJsonContact :: DecodeJson Contact
 
-derive newtype instance encodeJsonContact :: EncodeJson Contact
+instance encodeJsonContact :: EncodeJson Contact where
+  encodeJson (Contact x) =
+    (("email" := _) <$> x.email)
+      ~>? (("name" := _) <$> x.name)
+      ~>? (("phone" := _) <$> x.phone)
+      ~>? jsonEmptyObject
 
 newtype Purchaser
   = Purchaser
@@ -2007,8 +2016,7 @@ newtype Le
   , phone :: String
   , region :: String
   , regionalVPinDPA :: String
-  , financeContact :: String
-  , supportContact :: String
+  , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
   }
 
 derive newtype instance decodeJsonLe :: DecodeJson Le

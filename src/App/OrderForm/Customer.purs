@@ -80,8 +80,8 @@ render st =
                       SS.Purchaser
                         { address: SS.emptyAddress
                         , contacts:
-                            { primary: SS.Contact { email: "", name: "", phone: "" }
-                            , finance: SS.Contact { email: "", name: "", phone: "" }
+                            { primary: SS.emptyContact
+                            , finance: SS.emptyContact
                             }
                         , corporateName: ""
                         , registrationNr: ""
@@ -91,9 +91,9 @@ render st =
                   , seller:
                       SS.Seller
                         { contacts:
-                            { primary: SS.Contact { email: "", name: "", phone: "" }
-                            , finance: SS.Contact { email: "", name: "", phone: "" }
-                            , support: SS.Contact { email: "", name: "", phone: "" }
+                            { primary: SS.emptyContact
+                            , finance: SS.emptyContact
+                            , support: SS.emptyContact
                             }
                         , legalEntity:
                             SS.LegalEntity
@@ -314,6 +314,10 @@ render st =
 
   renderContact label (SS.Contact contact) update =
     let
+      opt = fromMaybe ""
+
+      unopt v = if v == "" then Nothing else Just v
+
       update' f = update \(SS.Contact oldContact) -> SS.Contact $ f oldContact
     in
       HH.fieldset_
@@ -323,22 +327,22 @@ render st =
                 [ HP.type_ HP.InputText
                 , HP.placeholder "Name"
                 , HP.required true
-                , HP.value contact.name
-                , HE.onValueChange \v -> update' \c -> c { name = v }
+                , HP.value $ opt contact.name
+                , HE.onValueChange \v -> update' \c -> c { name = unopt v }
                 ]
             , HH.input
                 [ HP.type_ HP.InputEmail
                 , HP.placeholder "Email"
                 , HP.required true
-                , HP.value contact.email
-                , HE.onValueChange \v -> update' \c -> c { email = v }
+                , HP.value $ opt contact.email
+                , HE.onValueChange \v -> update' \c -> c { email = unopt v }
                 ]
             , HH.input
                 [ HP.type_ HP.InputTel
                 , HP.placeholder "Phone No"
                 , HP.required true
-                , HP.value contact.phone
-                , HE.onValueChange \v -> update' \c -> c { phone = v }
+                , HP.value $ opt contact.phone
+                , HE.onValueChange \v -> update' \c -> c { phone = unopt v }
                 ]
             ]
         ]
@@ -550,11 +554,7 @@ handleAction = case _ of
             st
               { customer =
                 setSeller
-                  { contacts:
-                      { primary: SS.Contact { email: "", name: "", phone: "" }
-                      , finance: SS.Contact { email: le.financeContact, name: "", phone: "" }
-                      , support: SS.Contact { email: le.supportContact, name: "", phone: "" }
-                      }
+                  { contacts: le.contacts
                   , legalEntity:
                       SS.LegalEntity
                         { name: le.registeredName
