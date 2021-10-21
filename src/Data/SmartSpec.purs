@@ -28,7 +28,6 @@ module Data.SmartSpec
   , EstimatedWAP(..)
   , EstimatedWAPPerSegment(..)
   , EstimatedWAPPerUnit(..)
-  , LegalEntity(..)
   , OrderForm(..)
   , OrderLine(..)
   , OrderSection(..)
@@ -1646,20 +1645,11 @@ derive newtype instance decodeJsonPurchaser :: DecodeJson Purchaser
 
 derive newtype instance encodeJsonPurchaser :: EncodeJson Purchaser
 
-newtype LegalEntity
-  = LegalEntity
-  { name :: String
-  , address :: Address
-  }
-
-derive newtype instance decodeJsonLegalEntity :: DecodeJson LegalEntity
-
-derive newtype instance encodeJsonLegalEntity :: EncodeJson LegalEntity
-
 newtype Seller
   = Seller
-  { contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
-  , legalEntity :: LegalEntity
+  { name :: String
+  , address :: Address
+  , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
   }
 
 derive newtype instance decodeJsonSeller :: DecodeJson Seller

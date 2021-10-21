@@ -102,7 +102,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Tuple purchaser seller = case o.customer of
       SS.NewCustomer
         { purchaser: SS.Purchaser { corporateName: p }
-      , seller: SS.Seller { legalEntity: SS.LegalEntity { name: s } }
+      , seller: SS.Seller { name: s }
       } -> Tuple p s
       _ -> Tuple "?" "?"
 

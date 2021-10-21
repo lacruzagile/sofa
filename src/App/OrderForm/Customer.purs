@@ -90,16 +90,13 @@ render st =
                         }
                   , seller:
                       SS.Seller
-                        { contacts:
+                        { name: ""
+                        , address: SS.emptyAddress
+                        , contacts:
                             { primary: SS.emptyContact
                             , finance: SS.emptyContact
                             , support: SS.emptyContact
                             }
-                        , legalEntity:
-                            SS.LegalEntity
-                              { name: ""
-                              , address: SS.emptyAddress
-                              }
                         }
                   }
         ]
@@ -430,13 +427,6 @@ render st =
                   SS.NewCustomer $ oldCustomer { seller = SS.Seller (f oldSeller) }
               returnCustomer -> returnCustomer
 
-      SS.LegalEntity legalEntity = seller.legalEntity
-
-      legalEntityProps get set =
-        [ HP.value $ get legalEntity
-        , HE.onValueChange $ \v -> update \s -> s { legalEntity = SS.LegalEntity $ set legalEntity v }
-        ]
-
       sellerOptions = case st.legalEntities of
         Idle ->
           [ HH.option
@@ -475,8 +465,9 @@ render st =
                 , HH.input
                     $ [ HP.type_ HP.InputText
                       , HP.required true
+                      , HP.value seller.name
+                      , HE.onValueChange $ \v -> update \s -> s { name = v }
                       ]
-                    <> legalEntityProps (\le -> le.name) (\le v -> le { name = v })
                 ]
             , renderContact "Primary Contract"
                 seller.contacts.primary
@@ -489,18 +480,16 @@ render st =
                 $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
             ]
               <> renderAddress "of-seller"
-                  legalEntity.address
+                  seller.address
                   ( \f ->
                       update
                         ( \s ->
                             s
-                              { legalEntity =
+                              { address =
                                 let
-                                  SS.LegalEntity le = s.legalEntity
-
-                                  SS.Address addr = le.address
+                                  SS.Address addr = s.address
                                 in
-                                  SS.LegalEntity $ le { address = SS.Address (f addr) }
+                                  SS.Address (f addr)
                               }
                         )
                   )
@@ -554,11 +543,8 @@ handleAction = case _ of
             st
               { customer =
                 setSeller
-                  { contacts: le.contacts
-                  , legalEntity:
-                      SS.LegalEntity
-                        { name: le.registeredName
-                        , address: le.address
-                        }
+                  { name: le.registeredName
+                  , address: le.address
+                  , contacts: le.contacts
                   }
               }
