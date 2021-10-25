@@ -1998,7 +1998,7 @@ newtype LegalEntity
   , status :: String
   , allowNewCustomers :: String
   , defaultBankCurrency :: Currency
-  , availableCurrencies :: Maybe (Set Currency)
+  , availableCurrencies :: Set Currency
   , traffics :: Array LegalEntityTraffic
   , address :: Address
   , phone :: Maybe String
@@ -2006,6 +2006,8 @@ newtype LegalEntity
   , regionalVPinDPA :: String
   , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
   }
+
+derive instance newtypeLegalEntity :: Newtype LegalEntity _
 
 derive newtype instance decodeJsonLegalEntity :: DecodeJson LegalEntity
 

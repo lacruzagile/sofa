@@ -6,7 +6,9 @@ import Css as Css
 import Data.Array as A
 import Data.Loadable (Loadable(..))
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Newtype (unwrap)
 import Data.SmartSpec as SS
+import Data.String as S
 import Data.String.Regex as Re
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console as Console
@@ -31,6 +33,7 @@ type Output
 
 type State
   = { customer :: Maybe SS.Customer
+    , legalEntity :: Maybe SS.LegalEntity -- ^ The chosen legal entity.
     , legalEntities :: Loadable SS.LegalEntities
     }
 
@@ -38,7 +41,7 @@ data Action
   = NoOp
   | Initialize SS.Customer
   | UpdateCustomer (SS.Customer -> SS.Customer)
-  | PopulateSeller SS.LegalEntity
+  | SetLegalEntity SS.LegalEntity
 
 component ::
   forall query m.
@@ -51,7 +54,7 @@ component =
     }
 
 initialState :: Input -> State
-initialState customer = { customer, legalEntities: Idle }
+initialState customer = { customer, legalEntity: Nothing, legalEntities: Idle }
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render st =
@@ -149,6 +152,25 @@ render st =
           ]
       ]
 
+  renderCurrencySelect legend (SS.Currency code) availableCurrencies update =
+    let
+      mkOption (SS.Currency c) = HH.option [ HP.value c, HP.selected $ code == c ] [ HH.text c ]
+    in
+      HH.div_
+        [ HH.label_ [ HH.text legend ]
+        , HH.select [ HE.onValueChange $ \c -> update \(SS.Currency _) -> SS.Currency c ]
+            $ [ HH.option
+                  [ HP.value "", HP.disabled true, HP.selected true ]
+                  [ HH.text
+                      $ if availableCurrencies == mempty then
+                          "No currencies available"
+                        else
+                          "Please choose a currency"
+                  ]
+              ]
+            <> map mkOption (A.fromFoldable availableCurrencies)
+        ]
+
   renderCommercial (SS.Commercial commercial) =
     let
       update f =
@@ -206,9 +228,10 @@ render st =
                   "Payment Currency"
                   commercial.paymentCurrency
                   $ \f -> update (\c -> c { paymentCurrency = f c.paymentCurrency })
-              , renderCurrency
+              , renderCurrencySelect
                   "Price Currency"
                   commercial.priceCurrency
+                  (maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity)
                   $ \f -> update (\c -> c { priceCurrency = f c.priceCurrency })
               ]
           ]
@@ -455,26 +478,51 @@ render st =
               [ HH.text $ "Error loading legal entities" ]
           ]
 
-      actionPopulateSeller name = case st.legalEntities of
+      actionSetLegalEntity name = case st.legalEntities of
         Loaded (SS.LegalEntities { legalEntities }) ->
-          maybe NoOp PopulateSeller
+          maybe NoOp SetLegalEntity
             $ A.find (\(SS.LegalEntity le) -> name == le.novaShortName) legalEntities
         _ -> NoOp
+
+      defaultCurrencyStr = maybe "" (show <<< _.defaultBankCurrency <<< unwrap) st.legalEntity
+
+      currenciesStr =
+        S.joinWith ", " $ map show $ A.fromFoldable
+          $ maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity
     in
       [ HH.label [ HP.for "of-seller", HP.class_ Css.button ] [ HH.text "Seller" ]
       , Widgets.modal "of-seller" "Seller"
           ( [ HH.label_
                 [ HH.text "Populate From"
-                , HH.select [ HE.onValueChange actionPopulateSeller ] sellerOptions
+                , HH.select [ HE.onValueChange actionSetLegalEntity ] sellerOptions
                 ]
+            , HH.hr_
             , HH.label_
                 [ HH.text "Legal Entity Name"
                 , HH.input
-                    $ [ HP.type_ HP.InputText
-                      , HP.required true
-                      , HP.value seller.name
-                      , HE.onValueChange $ \v -> update \s -> s { name = v }
-                      ]
+                    [ HP.type_ HP.InputText
+                    , HP.required true
+                    , HP.value seller.name
+                    , HE.onValueChange $ \v -> update \s -> s { name = v }
+                    ]
+                ]
+            , HH.div [ HP.classes [ Css.flex, Css.two ] ]
+                [ HH.label_
+                    [ HH.text "Default Bank Currency"
+                    , HH.input
+                        [ HP.type_ HP.InputText
+                        , HP.value defaultCurrencyStr
+                        , HP.readOnly true
+                        ]
+                    ]
+                , HH.label_
+                    [ HH.text "Available Currencies"
+                    , HH.input
+                        [ HP.type_ HP.InputText
+                        , HP.value $ currenciesStr
+                        , HP.readOnly true
+                        ]
+                    ]
                 ]
             , renderContact "Primary Contract"
                 seller.contacts.primary
@@ -539,19 +587,33 @@ handleAction = case _ of
   UpdateCustomer updater -> do
     { customer } <- H.modify $ \st -> st { customer = map updater st.customer }
     maybe (pure unit) H.raise customer
-  PopulateSeller (SS.LegalEntity le) ->
-    H.modify_
-      $ \st ->
-          let
-            setSeller s = case st.customer of
-              Just (SS.NewCustomer c) -> Just $ SS.NewCustomer $ c { seller = SS.Seller s }
-              _ -> st.customer
-          in
-            st
-              { customer =
-                setSeller
-                  { name: le.registeredName
-                  , address: le.address
-                  , contacts: le.contacts
-                  }
-              }
+  SetLegalEntity (SS.LegalEntity le) -> do
+    { customer } <-
+      H.modify
+        $ \st ->
+            let
+              setPriceCurrency currency = case _ of
+                Just (SS.NewCustomer c) ->
+                  Just $ SS.NewCustomer
+                    $ let
+                        SS.Commercial commercial = c.commercial
+                      in
+                        c { commercial = SS.Commercial $ commercial { priceCurrency = currency } }
+                c -> c
+
+              setSeller s = case _ of
+                Just (SS.NewCustomer c) -> Just $ SS.NewCustomer $ c { seller = SS.Seller s }
+                c -> c
+            in
+              st
+                { legalEntity = Just $ SS.LegalEntity le
+                , customer =
+                  setPriceCurrency le.defaultBankCurrency
+                    $ setSeller
+                        { name: le.registeredName
+                        , address: le.address
+                        , contacts: le.contacts
+                        }
+                    $ st.customer
+                }
+    maybe (pure unit) H.raise customer
