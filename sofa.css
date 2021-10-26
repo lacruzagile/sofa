@@ -53,6 +53,10 @@ ul.pricelist {
     list-style-type: none;
 }
 
+ul.pricelist li {
+    padding: 0;
+}
+
 dt {
     font-style: italic;
 }

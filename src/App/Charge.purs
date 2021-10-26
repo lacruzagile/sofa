@@ -2,17 +2,16 @@
 module App.Charge (Slot, Output, QuantityMap, proxy, component) where
 
 import Prelude
+import App.EditablePrice as EditablePrice
 import App.EditableQuantity as EditableQuantity
-import App.EditableSegmentPrice as EditableSegmentPrice
-import Control.Alternative (guard)
 import Css as Css
 import Data.Array (mapWithIndex)
 import Data.Array as A
+import Data.Charge as Charge
 import Data.Either (Either(..))
-import Data.Estimate (Estimate(..))
-import Data.Estimate as Est
-import Data.Foldable (fold, traverse_)
-import Data.Int as Int
+import Data.Estimate (Estimate)
+import Data.Foldable (traverse_)
+import Data.FoldableWithIndex (findMapWithIndex)
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
@@ -20,8 +19,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
-import Data.Number.Format (fixed, toStringWith)
-import Data.SmartSpec (DimValue)
+import Data.Set as Set
 import Data.SmartSpec as SS
 import Data.SubTotal as SubTotal
 import Data.Tuple (Tuple(..))
@@ -39,30 +37,30 @@ proxy :: Proxy "charge"
 proxy = Proxy
 
 type Slots
-  = ( editableSegmentPrice :: EditableSegmentPrice.Slot PriceIndex
+  = ( editablePrice :: EditablePrice.Slot PriceIndex
     , editableQuantity :: EditableQuantity.Slot QuantityIndex
     )
 
 type PriceIndex
-  = { chargeIdx :: Int, dimIdx :: Int, unitIdx :: Int, priceIdx :: Int }
+  = { chargeIdx :: Int, subChargeIdx :: Int, dimIdx :: Int, unitIdx :: Int, segIdx :: Int }
 
 type QuantityIndex
   = { unitID :: SS.ChargeUnitID, dim :: Maybe SS.DimValue }
 
 type Input
-  = { unitMap :: SS.ChargeUnitMap
+  = { unitMap :: Charge.ChargeUnitMap
     , defaultCurrency :: SS.ChargeCurrency
-    , charges :: SS.Charges
+    , charges :: Array SS.Charge
     , quantity :: QuantityMap
     }
 
 type Output
-  = { charges :: SS.Charges, quantity :: QuantityMap }
+  = { charges :: Array SS.Charge, quantity :: QuantityMap }
 
 type State
-  = { unitMap :: SS.ChargeUnitMap
+  = { unitMap :: Charge.ChargeUnitMap
     , defaultCurrency :: SS.ChargeCurrency
-    , charges :: SS.Charges
+    , charges :: Array SS.Charge
     , quantity :: QuantityMap
     , aggregatedQuantity :: AggregatedQuantityMap
     }
@@ -91,7 +89,7 @@ type AggregatedQuantity
   = Estimate (QuantityType Int)
 
 data Action
-  = SetCustomPrice PriceIndex SS.PricePerSegment
+  = SetCustomPrice PriceIndex SS.Price
   | SetQuantity QuantityIndex (Maybe (Estimate Int))
 
 component :: forall query m. MonadAff m => H.Component query Input Output m
@@ -112,19 +110,12 @@ initialState input =
   }
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
-render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } = case charges of
-  SS.Charges rs ->
-    HH.ul [ HP.class_ Css.blocklist ] <<< A.mapWithIndex (\i r -> HH.li_ [ renderChargeElement i r ])
-      $ rs
+render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
+  HH.ul [ HP.class_ Css.blocklist ]
+    $ A.mapWithIndex (\i r -> HH.li_ [ renderCharge i r ]) charges
   where
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
   opt = maybe []
-
-  -- Apply the given function if array is non-empty, otherwise return empty array.
-  optArr :: forall a b. (Array a -> Array b) -> Array a -> Array b
-  optArr f = case _ of
-    [] -> []
-    xs -> f xs
 
   renderDataItem label value =
     [ HH.dt_ [ HH.text label ]
@@ -133,234 +124,273 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } = cas
 
   renderDataItemString label value = renderDataItem label $ HH.text value
 
-  renderPriceByUnitPerDim ::
-    Int ->
-    Array SS.ChargeUnitID ->
-    Array SS.EstimatedWAPPerUnit ->
-    Array SS.PriceByUnitPerDim ->
-    H.ComponentHTML Action Slots m
-  renderPriceByUnitPerDim chargeIdx unitIDs wapPerUnit ppd =
-    HH.table_
-      $ [ HH.tr_
-            $ fillDims true [ HH.text "Dimension" ]
-            <> [ HH.th [ HP.colSpan $ A.length units ] [ HH.text "Unit" ]
-              , HH.th_ [ HH.text "Monthly Minimum" ]
-              ]
-        , HH.tr_ $ map (HH.th_ <<< A.singleton) $ (HH.text <$> dims) <> unitLabels <> [ HH.text "" ]
-        ]
-      <> mapWithIndex priceRow ppd
-      <> totalQuantityRow (A.head ppd)
-    where
-    fillDims header els
-      | A.null dims = []
-      | header = [ HH.th [ HP.colSpan $ A.length dims ] els ]
-      | otherwise = [ HH.td [ HP.colSpan $ A.length dims ] els ]
-
-    priceRow dimIdx (SS.PriceByUnitPerDim p) =
-      HH.tr_
-        $ map (HH.td_ <<< A.singleton)
-        $ (if A.null dims then [] else HH.text <$> dimVals p.dim)
-        <> A.mapWithIndex (priceQuantityVal p.dim dimIdx) p.prices
-        <> [ HH.text $ show p.periodMinimum ]
-
-    totalQuantityRow Nothing = []
-
-    totalQuantityRow (Just (SS.PriceByUnitPerDim p)) =
-      [ HH.tr [ HP.style "border-top: 1px solid black" ]
-          $ fillDims false [ HH.text "" ]
-          <> map (HH.td_ <<< A.singleton <<< footerQuantityVal) p.prices
-          <> [ HH.td_ [ HH.text "" ] ]
-      ]
-
-    footerQuantityVal (SS.PricePerUnit { unit: unitID }) = case Map.lookup unitID aggregatedQuantity of
-      Nothing -> HH.text ""
-      Just q ->
-        HH.ul [ HP.class_ Css.priceList ]
-          $ let
-              qvalue = qtToValue <$> q
-
-              renderQuantity = renderEditableQuantity { unitID, dim: Nothing } (Just $ qvalue)
-            in
-              case Est.toValue q of
-                QtWAP _ ->
-                  [ HH.li_ [ HH.text "WAP quantity: ", renderQuantity ] ]
-                    <> renderWAP unitID qvalue
-                QtSum _ ->
-                  [ HH.li_ [ HH.text "Total quantity: ", renderQuantity ] ]
-                    <> renderTotalPrice unitID
-
-    renderWAP unitID q =
-      maybe [] renderWAP'
-        $ A.find (\(SS.EstimatedWAPPerUnit v) -> v.unit == unitID) wapPerUnit
-      where
-      renderWAP' (SS.EstimatedWAPPerUnit { wap: SS.EstimatedWAP wap }) =
-        [ HH.li_ [ HH.text "WAP: ", HH.text $ showMonetary $ calcWAP q wap ]
-        ]
-
-    renderTotalPrice unitID = renderTotalPrice' $ calc $ Map.lookup unitID quantity
-      where
-      calc :: Maybe (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SubTotal.IndexedSubTotalEntry
-      calc Nothing = mempty
-
-      calc (Just (Left _)) = mempty
-
-      calc (Just (Right dimMap)) =
-        fold
-          $ do
-              let
-                SS.Charges c = charges
-              SS.ChargeElement ce <- List.fromFoldable c
-              SS.PriceByUnitPerDim pbupd <- List.fromFoldable ce.priceByUnitByDim
-              SS.PricePerUnit p <- List.fromFoldable pbupd.prices
-              let
-                currency = fromMaybe defaultCurrency p.currency
-              guard $ p.unit == unitID
-              case Map.lookup pbupd.dim dimMap of
-                Nothing -> mempty
-                Just q -> pure $ SubTotal.calcIndexedSubTotalEntry q SS.SegmentationModelTiered currency p.price -- TODO: Use correct segmentation model.
-
-      renderTotalPrice' :: SubTotal.IndexedSubTotalEntry -> Array (H.ComponentHTML Action Slots m)
-      renderTotalPrice' tot =
-        [ HH.li_ [ HH.text "Total price: ", SubTotal.renderIndexedSubTotalEntry tot ]
-        ]
-
-    showMonetary :: Estimate Number -> String
-    showMonetary = showEst <<< map (\n -> toStringWith (fixed 3) n)
-      where
-      showEst = case _ of
-        Exact s -> s
-        Estimate s -> "~" <> s
-
-    calcWAP quant =
-      (\wap -> const wap <$> quant)
-        <<< A.foldl accWAP 0.0
-        <<< A.takeWhile ge
-      where
-      q :: Int
-      q = Est.toValue quant
-
-      accWAP :: Number -> SS.EstimatedWAPPerSegment -> Number
-      accWAP acc (SS.EstimatedWAPPerSegment wap) = case wap.exclusiveMaximum of
-        Just exmax
-          | exmax <= q ->
-            let
-              segmentSize = (fromMaybe 0 wap.exclusiveMaximum - 1) - wap.minimum
-            in
-              acc + Int.toNumber segmentSize * wap.price
-        _ ->
-          let
-            qInSegment = if wap.minimum == 0 then q else q - wap.minimum + 1
-          in
-            acc + Int.toNumber qInSegment * wap.price
-
-      -- | Whether the given quantity is above or in the given segment.
-      ge (SS.EstimatedWAPPerSegment wap) = q >= wap.minimum
-
-    units = A.mapMaybe (\id -> Map.lookup id unitMap) unitIDs
-
-    unitLabels = mkLabel <$> units
-      where
-      mkLabel u =
-        Widgets.withTooltip Widgets.Top (show $ _.chargeType $ unwrap u)
-          $ HH.text
-          $ SS.chargeUnitLabel u
-
-    -- Fatalistically assume that there is at least one unit defined, then
-    -- fatalistically assume that all units use the same dimensions.
-    dims = case A.head units of
-      Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ Map.keys o.properties
-      Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
-      _ -> []
-
-    dimVals :: SS.DimValue -> Array String
-    dimVals = case _ of
-      SS.DimValue (SS.CvObject m) -> (\d -> maybe "N/A" show $ Map.lookup d m) <$> dims
-      SS.DimValue v -> [ show v ]
-
-    findDimQuantity :: SS.ChargeUnitID -> SS.DimValue -> Maybe (Estimate Int)
-    findDimQuantity unitID dim = do
-      q <- Map.lookup unitID quantity
-      case q of
-        Left _ -> Nothing
-        Right dimMap -> Map.lookup dim dimMap
-
-    priceQuantityVal :: SS.DimValue -> Int -> Int -> SS.PricePerUnit -> H.ComponentHTML Action Slots m
-    priceQuantityVal dim dimIdx unitIdx pbu =
-      HH.ul [ HP.class_ Css.priceList ]
-        $ [ HH.li [ HP.style "border-bottom:1px solid darkgray" ]
-              [ HH.text "Quantity: "
-              , renderEditableQuantity { unitID, dim: Just dim } (findDimQuantity unitID dim)
-              ]
-          ]
-        <> A.mapWithIndex priceQuantityValEntry ps
-      where
-      -- TODO: Use currency.
-      SS.PricePerUnit { unit: unitID, price: (SS.Price ps) } = pbu
-
-      idx priceIdx = { chargeIdx, dimIdx, unitIdx, priceIdx }
-
-      priceQuantityValEntry priceIdx price = HH.li_ [ renderEditablePriceSegment (idx priceIdx) price ]
-
-  renderEditablePriceSegment :: PriceIndex -> SS.PricePerSegment -> H.ComponentHTML Action Slots m
-  renderEditablePriceSegment priceIdx price =
-    HH.slot EditableSegmentPrice.proxy priceIdx EditableSegmentPrice.component price
+  renderEditablePrice :: PriceIndex -> SS.Price -> Maybe SS.ChargeCurrency -> H.ComponentHTML Action Slots m
+  renderEditablePrice priceIdx price currency =
+    HH.slot EditablePrice.proxy priceIdx EditablePrice.component input
       $ SetCustomPrice priceIdx
+    where
+    input :: EditablePrice.Input
+    input = { price: price, currency: fromMaybe defaultCurrency currency }
 
   renderEditableQuantity :: QuantityIndex -> Maybe (Estimate Int) -> H.ComponentHTML Action Slots m
   renderEditableQuantity quantityIdx qty =
     HH.slot EditableQuantity.proxy quantityIdx EditableQuantity.component qty
       $ SetQuantity quantityIdx
 
-  renderPriceSegmentationsByUnit :: Array SS.PriceSegmentationPerUnit -> H.ComponentHTML Action Slots m
-  renderPriceSegmentationsByUnit = HH.ul_ <<< map (HH.li_ <<< A.singleton <<< renderPriceSegmentationPerUnit)
+  renderDimVals :: Array String -> SS.DimValue -> Array (H.ComponentHTML Action Slots m)
+  renderDimVals dimKeys (SS.DimValue v) = renderConfigValue dimKeys v
 
-  renderPriceSegmentationPerUnit :: SS.PriceSegmentationPerUnit -> H.ComponentHTML Action Slots m
-  renderPriceSegmentationPerUnit (SS.PriceSegmentationPerUnit p) =
-    HH.dl_
-      $ renderDataItemString "Unit" (showChargeUnitRef p.unit)
-      <> renderDataItem "Segmentation" (renderSegmentation p.segmentation)
-
-  renderSegmentation :: SS.PriceSegmentation -> H.ComponentHTML Action Slots m
-  renderSegmentation (SS.PriceSegmentation p) =
-    HH.dl_
-      $ opt (renderDataItemString "Segment Unit" <<< showChargeUnitRef) p.unit
-      <> renderDataItemString "Model" (show p.model)
-      <> renderDataItem "Segments" (HH.ul_ $ renderSegment <$> p.segments)
+  renderConfigValue :: Array String -> SS.ConfigValue -> Array (H.ComponentHTML Action Slots m)
+  renderConfigValue dimKeys = go
     where
-    renderSegment s = HH.li_ [ HH.text $ showSegment s ]
+    go = case _ of
+      SS.CvObject m -> A.concat $ (\d -> maybe [ HH.text "N/A" ] go $ Map.lookup d m) <$> dimKeys
+      SS.CvArray ms -> [ HH.ul [ HP.class_ Css.priceList ] $ (HH.li_ <<< go) <$> ms ]
+      v -> [ HH.text $ show v ]
 
-  renderDefaultPrices :: Array SS.DefaultPricePerUnit -> H.ComponentHTML Action Slots m
-  renderDefaultPrices ps =
-    HH.table_
-      $ [ HH.tr_
-            [ HH.th_ [ HH.text "Unit" ]
-            , HH.th_ [ HH.text "Price" ]
-            ]
-        ]
-      <> map mkRow ps
+  renderTotalQuantity :: SS.ChargeUnitID -> H.ComponentHTML Action Slots m
+  renderTotalQuantity unitID =
+    HH.text $ fromMaybe "N/A"
+      $ do
+          q <- Map.lookup unitID aggregatedQuantity
+          pure $ show $ qtToValue <$> q
+
+  renderSingleUnitCharge :: Int -> Int -> SS.ChargeSingleUnit -> Array (H.ComponentHTML Action Slots m)
+  renderSingleUnitCharge chargeIdx subChargeIdx fullCharge = case fullCharge of
+    SS.ChargeSimple c -> renderChargeSimple c
+    SS.ChargeDim c -> renderChargeDim c
+    SS.ChargeSeg c -> renderChargeSeg c
+    SS.ChargeDimSeg _c -> [ HH.text "TODO" ]
     where
-    mkRow (SS.DefaultPricePerUnit p) =
-      HH.tr_
-        [ HH.td_ [ HH.text $ showChargeUnitRef p.unit ]
-        , HH.td_ [ HH.text $ show p.price ]
-        ]
+    unitID = case fullCharge of
+      SS.ChargeSimple c -> c.unit
+      SS.ChargeDim c -> c.unit
+      SS.ChargeSeg c -> c.unit
+      SS.ChargeDimSeg c -> c.unit
 
-  renderChargeElement :: Int -> SS.ChargeElement -> H.ComponentHTML Action Slots m
-  renderChargeElement chargeIdx (SS.ChargeElement c) =
-    HH.section [ HP.class_ Css.charge ]
-      [ renderPriceByUnitPerDim chargeIdx c.units c.estimatedWAPByUnit c.priceByUnitByDim
-      , HH.dl_
-          $ optArr (renderDataItem "Price Segmentations" <<< renderPriceSegmentationsByUnit) c.segmentationByUnit
-          <> optArr (renderDataItem "Default Prices" <<< renderDefaultPrices) c.defaultPriceByUnit
-          <> renderDataItemString "Period Minimum" (show c.periodMinimum)
-          <> renderDataItemString "Term of Price Change" (show c.termOfPriceChangeInDays <> " days")
+    nullDim = SS.DimValue SS.CvNull
+
+    findDimQuantity :: SS.DimValue -> Maybe (Estimate Int)
+    findDimQuantity dim = do
+      q <- Map.lookup unitID quantity
+      case q of
+        Left _ -> Nothing
+        Right dimMap -> Map.lookup dim dimMap
+
+    renderUnitHdr :: String -> SS.ChargeUnitID -> H.ComponentHTML Action Slots m
+    renderUnitHdr kind u = HH.h4_ [ HH.text $ showChargeUnitRef u, HH.sup_ [ HH.text " (", HH.text kind, HH.text ")" ] ]
+
+    renderTotalPrice :: H.ComponentHTML Action Slots m
+    renderTotalPrice =
+      SubTotal.renderSubTotalText
+        $ SubTotal.calcSubTotal quantity unitMap defaultCurrency (SS.ChargeSingleUnit fullCharge)
+
+    renderChargeSimple charge =
+      [ renderUnitHdr "ChargeSimple" charge.unit
+      , HH.text "Price: "
+      , renderEditablePrice
+          { chargeIdx, subChargeIdx, dimIdx: 0, unitIdx: 0, segIdx: 0 }
+          (SS.Price { price: charge.price, listPrice: charge.listPrice, discount: charge.discount })
+          charge.currency
+      , HH.br_
+      , HH.text "Quantity: "
+      , renderEditableQuantity { unitID: charge.unit, dim: Nothing } (findDimQuantity nullDim)
+      , HH.br_
+      , HH.text "Total: "
+      , renderTotalPrice
       ]
+
+    renderChargeDim charge =
+      [ renderUnitHdr "ChargeDim" charge.unit
+      , HH.table_
+          $ [ HH.tr_ $ thColSpan (A.length dims) [ HH.text "Dimension" ] <> [ HH.th_ [ HH.text "Price" ] ]
+            , HH.tr_ $ map (HH.th_ <<< A.singleton <<< HH.text) dims <> [ HH.th_ [] ]
+            ]
+          <> A.mapWithIndex renderChargeRow charge.priceByDim
+          <> [ HH.tr_ $ thColSpanAlignRight (A.length dims) [ HH.text "Total #" ] <> [ HH.td_ [ renderTotalQuantity unitID ] ] ]
+          <> [ HH.tr_ $ thColSpanAlignRight (A.length dims) [ HH.text "Total Price" ] <> [ HH.td_ [ renderTotalPrice ] ] ]
+      ]
+      where
+      unit = Map.lookup charge.unit unitMap
+
+      -- Fatalistically assume that all units use the same dimensions.
+      dims = case unit of
+        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ Map.keys o.properties
+        Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
+        _ -> []
+
+      renderChargeRow dimIdx (SS.PricePerDim p) =
+        HH.tr_
+          $ map (HH.td_ <<< A.singleton) (if A.null dims then [] else renderDimVals dims p.dim)
+          <> [ HH.td_
+                [ renderEditablePrice pIdx
+                    price
+                    charge.currency
+                , HH.text " × "
+                , renderEditableQuantity qIdx (findDimQuantity p.dim)
+                ]
+            ]
+        where
+        pIdx = { chargeIdx, subChargeIdx, dimIdx, unitIdx: 0, segIdx: 0 }
+
+        qIdx = { unitID: charge.unit, dim: Just p.dim }
+
+        price = SS.Price { price: p.price, listPrice: p.listPrice, discount: p.discount }
+
+    renderChargeSeg c =
+      [ renderUnitHdr "ChargeSeg" c.unit
+      , HH.table_ $ [ HH.tr_ [ HH.th_ [ HH.text "Segment" ], HH.th_ [ HH.text "Price" ] ] ]
+          <> map renderChargeSegRow segments
+      , HH.text "Segmentation model: "
+      , HH.text $ show model
+      , HH.br_
+      , HH.text "Quantity: "
+      , renderEditableQuantity { unitID: c.unit, dim: Nothing } (findDimQuantity nullDim)
+      , HH.br_
+      , HH.text "Total: "
+      , renderTotalPrice
+      ]
+      where
+      SS.Segmentation { model, segments } = c.segmentation
+
+      renderPrice segIdx p =
+        renderEditablePrice
+          { chargeIdx, subChargeIdx, dimIdx: 0, unitIdx: 0, segIdx }
+          (SS.Price { price: p.price, listPrice: p.listPrice, discount: p.discount })
+          c.currency
+
+      renderChargeSegRow seg@(SS.Segment { minimum }) =
+        HH.tr_
+          [ HH.td_ [ HH.text $ showSegment seg ]
+          , HH.td_
+              [ fromMaybe (HH.text "N/A")
+                  $ findMapWithIndex
+                      ( \i (SS.PricePerSeg p) ->
+                          if p.minimum == minimum then
+                            Just (renderPrice i p)
+                          else
+                            Nothing
+                      )
+                      c.priceBySegment
+              ]
+          ]
+
+  renderChargeInner :: Int -> SS.Charge -> Array (H.ComponentHTML Action Slots m)
+  renderChargeInner chargeIdx fullCharge = case fullCharge of
+    SS.ChargeSingleUnit c -> renderSingleUnitCharge chargeIdx 0 c
+    SS.ChargeList c -> A.intercalate [ HH.hr_ ] $ A.mapWithIndex (renderSingleUnitCharge chargeIdx) c.charges
+    SS.ChargeDimUnitOptSeg c -> renderChargeDimUnitOptSeg c
+    where
+    renderChargeDimUnitOptSeg charge =
+      [ HH.table_
+          $ [ HH.tr_
+                $ thColSpan (A.length dims) [ HH.text "Dimension" ]
+                <> [ HH.th [ HP.colSpan $ A.length units ] [ HH.text "Unit" ]
+                  , HH.th_ [ HH.text "Monthly Minimum" ]
+                  ]
+            , HH.tr_ $ map (HH.th_ <<< A.singleton) $ (HH.text <$> dims) <> renderUnitLabels <> [ HH.text "" ]
+            ]
+          <> mapWithIndex renderChargeRow charge.priceByUnitByDim
+          <> [ HH.tr_
+                $ thColSpanAlignRight (A.length dims) [ HH.text "Total #" ]
+                <> map (HH.td_ <<< A.singleton <<< renderTotalQuantity) charge.units
+            ]
+      , HH.text "Total: "
+      , renderTotalPrice
+      ]
+      where
+      units = A.mapMaybe (\id -> Map.lookup id unitMap) charge.units
+
+      renderUnitLabels = mkLabel <$> units
+        where
+        mkLabel u =
+          Widgets.withTooltip Widgets.Top (show $ _.chargeType $ unwrap u)
+            $ HH.text
+            $ Charge.chargeUnitLabel u
+
+      renderTotalPrice :: H.ComponentHTML Action Slots m
+      renderTotalPrice =
+        SubTotal.renderSubTotalText
+          $ SubTotal.calcSubTotal quantity unitMap defaultCurrency fullCharge
+
+      -- Fatalistically assume that there is at least one unit defined, then
+      -- fatalistically assume that all units use the same dimensions.
+      dims = case A.head units of
+        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ Map.keys o.properties
+        Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
+        _ -> []
+
+      currency unitID =
+        A.findMap
+          ( \(SS.ChargeCurrencyPerUnit c) ->
+              if c.unit == unitID then
+                Just c.currency
+              else
+                Nothing
+          )
+          charge.currencyByUnit
+
+      findDimQuantity :: SS.ChargeUnitID -> SS.DimValue -> Maybe (Estimate Int)
+      findDimQuantity unitID dim = do
+        q <- Map.lookup unitID quantity
+        case q of
+          Left q' -> pure q'
+          Right dimMap -> Map.lookup dim dimMap
+
+      renderChargeRow dimIdx = case _ of
+        SS.PricePerDimUnitOptSeg (SS.PricePerDimUnitSeg p) ->
+          HH.tr_
+            $ map (HH.td_ <<< A.singleton)
+            $ (if A.null dims then [] else renderDimVals dims p.dim)
+            <> A.mapWithIndex (renderPriceBySegmentPerUnit p.dim dimIdx) p.priceBySegmentByUnit
+            <> [ HH.text $ show p.periodMinimum ]
+        SS.PricePerDimUnitOptNoSeg (SS.PricePerDimUnit p) ->
+          HH.tr_
+            $ map (HH.td_ <<< A.singleton)
+            $ (if A.null dims then [] else renderDimVals dims p.dim)
+            <> A.mapWithIndex (renderPricePerUnit p.dim dimIdx) p.priceByUnit
+            <> [ HH.text $ show p.periodMinimum ]
+
+      renderPriceBySegmentPerUnit _dim _dimIdx _priceIdx (SS.PricePerUnitSeg _ppus) = HH.text "TODO"
+
+      renderPricePerUnit dim dimIdx unitIdx (SS.PricePerUnit ppu) =
+        HH.div_
+          [ renderEditablePrice pIdx price (currency ppu.unit)
+          , HH.text " × "
+          , renderEditableQuantity qIdx (findDimQuantity ppu.unit dim)
+          ]
+        where
+        pIdx = { chargeIdx, subChargeIdx: 0, dimIdx, unitIdx, segIdx: 0 }
+
+        qIdx = { unitID: ppu.unit, dim: Just dim }
+
+        price = SS.Price { price: ppu.price, listPrice: ppu.listPrice, discount: ppu.discount }
+
+  renderCharge :: Int -> SS.Charge -> H.ComponentHTML Action Slots m
+  renderCharge chargeIdx charge =
+    HH.section [ HP.class_ Css.charge ]
+      $ renderChargeInner chargeIdx charge
+      <> [ HH.dl_
+            $ opt (renderDataItemString "Description") (Charge.description charge)
+            <> opt (renderDataItemString "Period Minimum" <<< show) (Charge.periodMinimum charge)
+        -- <> renderDataItemString "Term of Price Change" (show c.termOfPriceChangeInDays <> " days")
+        ]
+
+thColSpan :: forall m. Int -> Array (H.ComponentHTML Action Slots m) -> Array (H.ComponentHTML Action Slots m)
+thColSpan colSpan els
+  | colSpan == 0 = []
+  | otherwise = [ HH.th [ HP.colSpan colSpan, HP.style "text-align:center" ] els ]
+
+thColSpanAlignRight :: forall m. Int -> Array (H.ComponentHTML Action Slots m) -> Array (H.ComponentHTML Action Slots m)
+thColSpanAlignRight colSpan els
+  | colSpan == 0 = []
+  | otherwise = [ HH.th [ HP.colSpan colSpan, HP.style "text-align:right" ] els ]
 
 showChargeUnitRef :: SS.ChargeUnitID -> String
 showChargeUnitRef (SS.ChargeUnitID id) = id
 
 showSegment :: SS.Segment -> String
-showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "" show s.exclusiveMaximum <> ")"
+showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "∞" show s.exclusiveMaximum <> ")"
 
 aggregateQuantity :: QuantityMap -> AggregatedQuantityMap
 aggregateQuantity quantityMap =
@@ -378,35 +408,90 @@ aggregateQuantity quantityMap =
 
 handleAction :: forall m. Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
-  SetCustomPrice { chargeIdx, dimIdx, unitIdx, priceIdx } pps ->
+  SetCustomPrice { chargeIdx, subChargeIdx, dimIdx, unitIdx, segIdx } (SS.Price price) ->
     let
-      updatePrice p@(SS.Price p') = fromMaybe p $ SS.Price <$> A.modifyAt priceIdx (\_ -> pps) p'
+      updatePrice ::
+        forall r.
+        { listPrice :: Number, price :: Number, discount :: Maybe SS.Discount | r } ->
+        { listPrice :: Number, price :: Number, discount :: Maybe SS.Discount | r }
+      updatePrice p =
+        p
+          { price = price.price
+          , listPrice = price.listPrice
+          , discount = price.discount
+          }
 
-      updatePriceByUnit (SS.PricePerUnit p) = SS.PricePerUnit $ p { price = updatePrice p.price }
+      updatePricePerDim (SS.PricePerDim p) = SS.PricePerDim $ updatePrice p
 
-      updatePriceByUnitPerDim p@(SS.PriceByUnitPerDim p') =
-        fromMaybe p
-          $ do
-              prices <- A.modifyAt unitIdx updatePriceByUnit p'.prices
-              pure $ SS.PriceByUnitPerDim p' { prices = prices }
+      updatePricePerSeg (SS.PricePerSeg p) = SS.PricePerSeg $ updatePrice p
 
-      updateChargeElement c@(SS.ChargeElement c') =
-        fromMaybe c
-          $ do
-              priceByUnitByDim <- A.modifyAt dimIdx updatePriceByUnitPerDim c'.priceByUnitByDim
-              pure $ SS.ChargeElement $ c' { priceByUnitByDim = priceByUnitByDim }
+      updatePriceBySegment ::
+        forall r.
+        { priceBySegment :: Array SS.PricePerSeg | r } ->
+        { priceBySegment :: Array SS.PricePerSeg | r }
+      updatePriceBySegment c =
+        c
+          { priceBySegment =
+            fromMaybe c.priceBySegment
+              $ A.modifyAt segIdx updatePricePerSeg c.priceBySegment
+          }
+
+      updatePricePerUnitSeg (SS.PricePerUnitSeg p) = SS.PricePerUnitSeg $ updatePriceBySegment p
+
+      updatePricePerUnit (SS.PricePerUnit p) = SS.PricePerUnit $ updatePrice p
+
+      updatePricePerDimUnitSeg (SS.PricePerDimUnitSeg p) =
+        SS.PricePerDimUnitSeg
+          $ p
+              { priceBySegmentByUnit =
+                fromMaybe p.priceBySegmentByUnit
+                  $ A.modifyAt unitIdx updatePricePerUnitSeg p.priceBySegmentByUnit
+              }
+
+      updatePricePerDimUnit (SS.PricePerDimUnit p) =
+        SS.PricePerDimUnit
+          $ p
+              { priceByUnit =
+                fromMaybe p.priceByUnit
+                  $ A.modifyAt unitIdx updatePricePerUnit p.priceByUnit
+              }
+
+      updatePricePerDimUnitOptSeg = case _ of
+        SS.PricePerDimUnitOptSeg p -> SS.PricePerDimUnitOptSeg $ updatePricePerDimUnitSeg p
+        SS.PricePerDimUnitOptNoSeg p -> SS.PricePerDimUnitOptNoSeg $ updatePricePerDimUnit p
+
+      updateSingleUnitCharge = case _ of
+        SS.ChargeSimple c -> SS.ChargeSimple $ updatePrice c
+        SS.ChargeDim c ->
+          SS.ChargeDim
+            $ c
+                { priceByDim = fromMaybe c.priceByDim $ A.modifyAt dimIdx updatePricePerDim c.priceByDim
+                }
+        SS.ChargeSeg c -> SS.ChargeSeg $ updatePriceBySegment c
+        SS.ChargeDimSeg c -> SS.ChargeDimSeg $ c { priceBySegmentByDim = c.priceBySegmentByDim }
+
+      updateCharge = case _ of
+        SS.ChargeSingleUnit c -> SS.ChargeSingleUnit $ updateSingleUnitCharge c
+        SS.ChargeList c ->
+          SS.ChargeList
+            $ c
+                { charges =
+                  fromMaybe c.charges
+                    $ A.modifyAt subChargeIdx updateSingleUnitCharge c.charges
+                }
+        SS.ChargeDimUnitOptSeg c ->
+          SS.ChargeDimUnitOptSeg
+            $ c
+                { priceByUnitByDim =
+                  fromMaybe c.priceByUnitByDim
+                    $ A.modifyAt dimIdx updatePricePerDimUnitOptSeg c.priceByUnitByDim
+                }
     in
       do
         st' <-
           H.modify \st ->
             st
-              { charges =
-                let
-                  SS.Charges cs = st.charges
-                in
-                  fromMaybe st.charges
-                    $ SS.Charges
-                    <$> A.modifyAt chargeIdx updateChargeElement cs
+              { charges = fromMaybe st.charges $ A.modifyAt chargeIdx updateCharge st.charges
               }
         H.raise { charges: st'.charges, quantity: st'.quantity }
   SetQuantity _ Nothing -> pure unit
@@ -437,15 +522,18 @@ handleAction = case _ of
           q' = map (map qtToValue) $ Map.lookup unitID st'.aggregatedQuantity
         in
           H.tell EditableQuantity.proxy { unitID, dim: Nothing } (EditableQuantity.SetQuantity q')
+    -- If we are setting an aggregated quantity then override the dimension
+    -- specific values.
     when (isNothing dim)
-      $ traverse_ (\dim' -> H.tell EditableQuantity.proxy { unitID, dim: Just dim' } (EditableQuantity.SetQuantity Nothing)) (unitDims unitID st'.charges)
+      $ traverse_
+          ( \dim' ->
+              H.tell EditableQuantity.proxy
+                { unitID, dim: Just dim' }
+                (EditableQuantity.SetQuantity Nothing)
+          )
+      $ Set.unions
+      $ Charge.dims
+      <$> st'.charges
+    -- Inform the parent component (typically the order form) about the new
+    -- prices and quantity.
     H.raise { charges: st'.charges, quantity: st'.quantity }
-
-unitDims :: SS.ChargeUnitID -> SS.Charges -> List DimValue
-unitDims unitID (SS.Charges ces) = unravelled
-  where
-  unravelled = do
-    SS.ChargeElement ce <- List.fromFoldable ces
-    SS.PriceByUnitPerDim { dim, prices } <- List.fromFoldable ce.priceByUnitByDim
-    SS.PricePerUnit { unit: unitID' } <- List.fromFoldable prices
-    if unitID == unitID' then mempty else pure dim

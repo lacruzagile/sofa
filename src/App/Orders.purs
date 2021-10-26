@@ -123,7 +123,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , HH.th_ [ HH.text "Action" ]
                 ]
             ]
-          <> map renderOrder os.items
+          <> map renderOrder os.orders
       ]
 
   renderContent = defRender state renderOrders

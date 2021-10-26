@@ -1,17 +1,16 @@
 module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
-import App.Charge as Charge
+import App.Charge (Slot, component, proxy) as Charge
 import App.OrderForm.Customer as Customer
-import App.Requests (getProductCatalog)
+import App.Requests (getProductCatalog, postOrder)
 import Control.Alternative ((<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (modifyAt, snoc)
 import Data.Array as A
-import Data.Either (Either(..), either)
+import Data.Either (Either(..))
 import Data.Estimate (Estimate(..))
-import Data.Estimate as Est
 import Data.Int as Int
 import Data.List.Lazy as List
 import Data.Loadable (Loadable(..))
@@ -19,9 +18,10 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (unwrap)
+import Data.Quantity (QuantityMap, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Data.Set as Set
 import Data.SmartSpec as SS
-import Data.SubTotal (SubTotal(..), toCurrencies, toSubTotalEntry)
+import Data.SubTotal (SubTotal)
 import Data.SubTotal as SubTotal
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
@@ -32,6 +32,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
+import Data.Charge (ChargeUnitMap, productChargeUnitMap, unitIDs) as Charge
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -78,13 +79,11 @@ type OrderSection
 
 type OrderLine
   = { product :: SS.Product
-    , charges :: Maybe SS.Charges
+    , charges :: Maybe (Array SS.Charge)
     , quantity :: QuantityMap
+    , unitMap :: Charge.ChargeUnitMap
     , configs :: Array SS.ConfigValue
     }
-
-type QuantityMap
-  = Charge.QuantityMap
 
 type PriceBook
   = { id :: String
@@ -119,13 +118,14 @@ data Action
     , orderLineIndex :: Int
     , configIndex :: Int
     }
-  | OrderLineSetCharge
+  | OrderLineSetCharges
     { sectionIndex :: Int
     , orderLineIndex :: Int
-    , charges :: SS.Charges
+    , charges :: Array SS.Charge
     , quantity :: QuantityMap
     }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
+  | PostOrder
 
 component ::
   forall query output m.
@@ -153,16 +153,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
   where
   renderCharges ::
     OrderLineIndex ->
-    SS.ChargeUnitMap ->
+    Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
     QuantityMap ->
-    SS.Charges ->
+    Array SS.Charge ->
     H.ComponentHTML Action Slots m
   renderCharges olIdx unitMap defaultCurrency quantity charges =
     HH.slot Charge.proxy olIdx Charge.component
       { unitMap, defaultCurrency, charges, quantity }
       ( \result ->
-          OrderLineSetCharge
+          OrderLineSetCharges
             { sectionIndex: olIdx.sectionIndex
             , orderLineIndex: olIdx.orderLineIndex
             , charges: result.charges
@@ -172,10 +172,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderChargeModal ::
     OrderLineIndex ->
-    SS.ChargeUnitMap ->
+    Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
     QuantityMap ->
-    Maybe SS.Charges ->
+    Maybe (Array SS.Charge) ->
     Array (H.ComponentHTML Action Slots m)
   renderChargeModal olIdx unitMap defaultCurrency quantity = maybe noCharges withCharges
     where
@@ -190,7 +190,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
 
     withCharges = case _ of
-      SS.Charges [] -> noCharges
+      [] -> noCharges
       charges ->
         [ HH.br_
         , HH.label
@@ -237,7 +237,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         ]
                     ]
                 , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
-                    $ renderChargeModal olIdx (SS.productChargeUnits ol.product) defaultCurrency ol.quantity ol.charges
+                    $ renderChargeModal olIdx ol.unitMap defaultCurrency ol.quantity ol.charges
                 ]
             ]
           <> ( if isJust product.orderConfigSchema then
@@ -548,58 +548,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
 
   renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSectionSummary = renderSubTotal "Sub-totals"
+  renderOrderSectionSummary = SubTotal.renderSubTotalTable "Sub-totals"
 
   renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSummary = renderSubTotal "Totals"
-
-  renderSubTotal :: String -> SubTotal -> H.ComponentHTML Action Slots m
-  renderSubTotal title (SubTotal summary) =
-    let
-      price = SubTotal.renderSubTotalEntry
-
-      currencies =
-        A.fromFoldable
-          $ Set.unions
-              [ toCurrencies summary.usage
-              , toCurrencies summary.monthly
-              , toCurrencies summary.quarterly
-              , toCurrencies summary.onetime
-              ]
-
-      th sumry name = if SubTotal.isEmpty sumry then [] else [ HH.th_ [ HH.text name ] ]
-
-      td sumry =
-        if SubTotal.isEmpty sumry then
-          const []
-        else
-          let
-            td' currency s = [ HH.td_ [ price currency s ] ]
-          in
-            \currency -> td' currency $ fromMaybe mempty $ toSubTotalEntry currency sumry
-
-      renderRow currency =
-        HH.tr_
-          $ []
-          <> td summary.usage currency
-          <> td summary.monthly currency
-          <> td summary.quarterly currency
-          <> td summary.onetime currency
-    in
-      HH.table [ HP.class_ Css.subTotal ]
-        $ [ HH.tr_
-              $ [ HH.th [ HP.rowSpan (1 + A.length currencies) ] [ HH.text title ] ]
-              <> th summary.usage "Usage"
-              <> th summary.monthly "Monthly"
-              <> th summary.quarterly "Quarterly"
-              <> th summary.onetime "Onetime"
-          ]
-        <> map renderRow currencies
+  renderOrderSummary = SubTotal.renderSubTotalTable "Totals"
 
   renderCustomer :: Maybe SS.Customer -> H.ComponentHTML Action Slots m
   renderCustomer customer =
     HH.div_
-      [ HH.h3_ [ HH.text "Customer" ]
+      [ HH.h3_ [ HH.text "Header" ]
       , HH.slot Customer.proxy unit Customer.component customer SetCustomer
       ]
 
@@ -612,10 +569,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
     , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
     , Widgets.modal "of-json" "Order Form JSON"
         [ HH.pre_
-            [ HH.code_ [ HH.text $ fromMaybe errMsg $ toJson sof.orderForm ]
+            [ HH.code_ [ HH.text $ fromMaybe errMsg $ toJsonStr sof.orderForm ]
             ]
         ]
         []
+    , HH.button [ HE.onClick $ \_ -> PostOrder ] [ HH.text "Create Order" ]
     ]
     where
     errMsg =
@@ -655,60 +613,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
 
-fromQuantity :: Array SS.QuantityPerUnit -> QuantityMap
-fromQuantity = Map.unions <<< map fromQuantityPerUnit
-  where
-  toEst quantity estimated
-    | estimated = Estimate quantity
-    | otherwise = Exact quantity
-
-  fromQuantityPerUnit qpu = case qpu of
-    SS.QuantityPerUnit { unit, quantity, estimated } -> Map.singleton unit (Left $ toEst quantity estimated)
-    SS.QuantityByDimPerUnit { unit, quantityByDim } -> Map.singleton unit (Right $ fromQuantityByDim quantityByDim)
-
-  fromQuantityByDim = Map.fromFoldable <<< map fromQuantityPerDim
-
-  fromQuantityPerDim (SS.QuantityPerDim { dim, quantity, estimated }) = Tuple dim (toEst quantity estimated)
-
-toQuantity :: QuantityMap -> Array SS.QuantityPerUnit
-toQuantity quantityMap =
-  let
-    toList :: forall k v. Map k v -> List.List (Tuple k v)
-    toList = Map.toUnfoldable
-
-    transform :: forall k v a. (Tuple k v -> a) -> Map k v -> Array a
-    transform f = A.fromFoldable <<< map f <<< toList
-
-    r1 :: Tuple SS.ChargeUnitID (Either (Estimate Int) (Map SS.DimValue (Estimate Int))) -> SS.QuantityPerUnit
-    r1 (Tuple unitID unitMap) = case unitMap of
-      Left quantity ->
-        SS.QuantityPerUnit
-          { unit: unitID
-          , quantity: Est.toValue quantity
-          , estimated: Est.isEstimate quantity
-          }
-      Right dimMap ->
-        SS.QuantityByDimPerUnit
-          { unit: unitID
-          , quantityByDim: transform r2 dimMap
-          }
-
-    r2 :: Tuple SS.DimValue (Estimate Int) -> SS.QuantityPerDim
-    r2 (Tuple dim quantity) =
-      SS.QuantityPerDim
-        { dim
-        , quantity: Est.toValue quantity
-        , estimated: Est.isEstimate quantity
-        }
-  in
-    transform r1 quantityMap
-
-toJson :: OrderForm -> Maybe String
+toJson :: OrderForm -> Maybe SS.OrderForm
 toJson orderForm = do
   customer <- orderForm.customer
   sections <- traverse toOrderSection =<< sequence orderForm.sections
-  pure $ stringifyWithIndent 2
-    $ encodeJson
+  pure
     $ SS.OrderForm
         { id: ""
         , status: SS.OsInDraft
@@ -716,16 +625,14 @@ toJson orderForm = do
         , sections
         }
   where
-  toOrderLine :: OrderLine -> Maybe SS.OrderLine
-  toOrderLine ol = do
-    ch <- ol.charges
-    pure
-      $ SS.OrderLine
-          { sku: _.sku $ unwrap $ ol.product
-          , charges: ch
-          , quantity: toQuantity ol.quantity
-          , configs: ol.configs
-          }
+  toOrderLine :: OrderLine -> SS.OrderLine
+  toOrderLine ol =
+    SS.OrderLine
+      { sku: _.sku $ unwrap $ ol.product
+      , charges: fromMaybe [] ol.charges
+      , quantity: toSmartSpecQuantity ol.quantity
+      , configs: ol.configs
+      }
 
   toPriceBookRef pb =
     SS.PriceBookRef
@@ -738,8 +645,11 @@ toJson orderForm = do
   toOrderSection os = do
     solutionURI <- _.uri $ unwrap $ os.solution
     basePriceBook <- toPriceBookRef <$> os.priceBook
-    orderLines <- sequence $ map (toOrderLine =<< _) os.orderLines
+    orderLines <- sequence $ map (toOrderLine <$> _) os.orderLines
     pure $ SS.OrderSection { solutionURI, basePriceBook, orderLines }
+
+toJsonStr :: OrderForm -> Maybe String
+toJsonStr = map (stringifyWithIndent 2 <<< encodeJson) <<< toJson
 
 loadCatalog ::
   forall slots output m.
@@ -813,24 +723,16 @@ calcSubTotal os =
           )
         <$> mpb
 
-  lookupCharges :: SS.Product -> PriceBook -> Maybe SS.Charges
+  lookupCharges :: SS.Product -> PriceBook -> Maybe (Array SS.Charge)
   lookupCharges (SS.Product product) pb = do
     rateCards <- pb.rateCards
     SS.RateCard rateCard <- Map.lookup product.sku rateCards
     pure rateCard.charges
 
-  mkDefaultQuantity :: Maybe SS.Charges -> QuantityMap
+  mkDefaultQuantity :: Maybe (Array SS.Charge) -> QuantityMap
   mkDefaultQuantity Nothing = Map.empty
 
-  mkDefaultQuantity (Just (SS.Charges ces)) = List.foldl accumulate Map.empty $ unravelled
-    where
-    unravelled = do
-      SS.ChargeElement ce <- List.fromFoldable ces
-      SS.PriceByUnitPerDim { prices } <- List.fromFoldable ce.priceByUnitByDim
-      SS.PricePerUnit { unit: unitID } <- List.fromFoldable prices
-      pure $ { unitID, quantity: Exact 1 }
-
-    accumulate acc { unitID, quantity } = Map.alter (Just <<< Left <<< const quantity) unitID acc
+  mkDefaultQuantity (Just ces) = map (const $ Left $ Exact 1) $ Set.toMap $ Set.unions $ Charge.unitIDs <$> ces
 
   sumOrderLines :: Array (Maybe OrderLine) -> SubTotal
   sumOrderLines = A.foldl (\a b -> a <> conv b) mempty
@@ -841,30 +743,15 @@ calcSubTotal os =
       $ do
           ol <- mol
           charges <- ol.charges
-          pure $ calcCharges ol.product ol.quantity charges
+          pure $ calcCharges ol.quantity ol.unitMap charges
 
-  calcCharges :: SS.Product -> QuantityMap -> SS.Charges -> SubTotal
-  calcCharges product quantityMap (SS.Charges cs) = fromMaybe mempty $ A.foldl (\a b -> a <> calcChargeElem b) mempty cs
+  calcCharges :: QuantityMap -> Charge.ChargeUnitMap -> Array SS.Charge -> SubTotal
+  calcCharges quantityMap unitMap =
+    List.foldl (\a charge -> a <> calcCharge charge) mempty
+      <<< List.fromFoldable
     where
-    priceToAmount dim (SS.PricePerUnit p) =
-      let
-        currency = fromMaybe defaultCurrency p.currency
-
-        quantity = do
-          dimMap <- Map.lookup p.unit quantityMap
-          either (Just <<< identity) (Map.lookup dim) dimMap
-      in
-        SubTotal.calcSubTotal <$> quantity <*> pure SS.SegmentationModelTiered <*> chargeType p.unit product <*> pure currency <*> pure p.price
-
-    priceByUnitToAmount (SS.PriceByUnitPerDim p) = A.foldl (\a b -> a <> priceToAmount p.dim b) mempty p.prices
-
-    calcChargeElem (SS.ChargeElement c) = A.foldl (\a b -> a <> priceByUnitToAmount b) mempty c.priceByUnitByDim
-
-  chargeType :: SS.ChargeUnitID -> SS.Product -> Maybe SS.ChargeType
-  chargeType unitID (SS.Product { chargeUnits }) =
-    map (\(SS.ChargeUnit u) -> u.chargeType)
-      $ A.find (\(SS.ChargeUnit u) -> u.id == unitID)
-      $ chargeUnits
+    calcCharge :: SS.Charge -> SubTotal
+    calcCharge = SubTotal.calcSubTotal quantityMap unitMap defaultCurrency
 
 calcTotal :: OrderForm -> OrderForm
 calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
@@ -954,7 +841,8 @@ loadExisting (SS.OrderForm orderForm) = do
     pure
       { product
       , charges: Just l.charges
-      , quantity: fromQuantity l.quantity
+      , quantity: fromSmartSpecQuantity l.quantity
+      , unitMap: Charge.productChargeUnitMap product
       , configs: l.configs
       }
 
@@ -1131,6 +1019,7 @@ handleAction = case _ of
         { product
         , charges: Nothing
         , quantity: Map.empty
+        , unitMap: Charge.productChargeUnitMap product
         , configs: mkDefaultConfigs product
         }
 
@@ -1210,7 +1099,7 @@ handleAction = case _ of
     in
       modifyInitialized
         $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
-  OrderLineSetCharge { sectionIndex, orderLineIndex, charges, quantity } ->
+  OrderLineSetCharges { sectionIndex, orderLineIndex, charges, quantity } ->
     modifyInitialized
       $ \st ->
           modifyOrderLine sectionIndex orderLineIndex st
@@ -1218,3 +1107,12 @@ handleAction = case _ of
               { charges = Just charges
               , quantity = quantity
               }
+  PostOrder -> do
+    st <- H.get
+    let
+      ld o = case o of
+        Loaded o' -> loadExisting o'
+        _ -> pure unit
+    case st of
+      Initialized (Loaded st') -> maybe (pure unit) (\j -> ld =<< postOrder j) (toJson st'.orderForm)
+      _ -> pure unit

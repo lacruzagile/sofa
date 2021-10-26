@@ -205,7 +205,7 @@ render st =
 
       updateBillingOption = case _ of
         0 -> update (_ { billingOption = SS.Prepay })
-        _ -> update (_ { billingOption = SS.PostPay })
+        _ -> update (_ { billingOption = SS.Postpay })
 
       updateContractTerm = case _ of
         0 -> update (_ { contractTerm = SS.Ongoing })
@@ -222,8 +222,8 @@ render st =
                       ]
                       [ HH.text "Pre-pay" ]
                   , HH.option
-                      [ HP.value "PostPay"
-                      , HP.selected (commercial.billingOption == SS.PostPay)
+                      [ HP.value "Postpay"
+                      , HP.selected (commercial.billingOption == SS.Postpay)
                       ]
                       [ HH.text "Post-pay" ]
                   ]

@@ -74,16 +74,23 @@ render state = case state.editState of
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
           [ HP.placeholder $ "1000 | ~1000 | ?"
-          , HP.pattern """~?\d+|\?"""
+          , HP.pattern """~?\d+[kM]?|\?"""
           , HP.value value
+          , HP.style "max-width:10em"
           , HE.onValueInput UpdateContent
           ]
       ]
 
 parseQuantity :: String -> Maybe (Estimate Int)
-parseQuantity str = case String.splitAt 1 str of
-  { before: "~", after: s } -> Estimate <$> Int.fromString s
-  _ -> Exact <$> Int.fromString str
+parseQuantity str = case String.stripPrefix (String.Pattern "~") str of
+  Just s -> Estimate <$> parseMagInt s
+  _ -> Exact <$> parseMagInt str
+  where
+  parseMagInt s = case String.stripSuffix (String.Pattern "M") s of
+    Just s' -> (1_000_000 * _) <$> Int.fromString s'
+    Nothing -> case String.stripSuffix (String.Pattern "k") s of
+      Just s' -> (1_000 * _) <$> Int.fromString s'
+      Nothing -> Int.fromString s
 
 showQuantity :: Maybe (Estimate Int) -> String
 showQuantity = maybe "?" show
