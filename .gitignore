@@ -9,7 +9,7 @@
 /.purs*
 /.psa*
 /.spago
-/index.js
+/sofa.js
 
 ### Emacs ###
 .#*

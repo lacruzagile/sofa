@@ -1181,7 +1181,7 @@ let
 
   getStoreGlob = pkg: ''"${pkg.outPath}/src/**/*.purs"'';
 
-in rec {
+in {
   inherit inputs;
 
   installSpagoStyle = pkgs.writeShellScriptBin "install-spago-style" ''
@@ -1223,25 +1223,7 @@ in rec {
           builtins.toString (builtins.map (x: ''"${x.outPath}/src/**/*.purs"'')
             (builtins.attrValues inputs))
         }
-        mv output/* $out
-      '';
-    };
-
-  mkBuildProjectBundle = { name, src, purs }:
-
-    pkgs.stdenvNoCC.mkDerivation {
-      inherit name src;
-
-      buildInputs = [ purs ];
-
-      installPhase = ''
-        mkdir -p $out
-        purs compile "$src/**/*.purs" ${
-          builtins.toString (builtins.map (x: ''"${x.outPath}/src/**/*.purs"'')
-            (builtins.attrValues inputs))
-        }
-        purs bundle -o $out/index.js -m Main output/**/*.js
-        echo 'PS["Main"].main();' >>  $out/index.js
+        mv output $out
       '';
     };
 }
