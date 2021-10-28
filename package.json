@@ -1,0 +1,24 @@
+{
+  "name": "purs-smartspec",
+  "version": "1.0.0",
+  "description": "SOFA",
+  "repository": "https://git.clxnetworks.net/ea/smart-spec/",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "parcel serve sofa.html",
+    "watch": "spago build --watch --clear-screen",
+    "test": "spago test"
+  },
+  "staticFiles": {
+    "staticPath": "../public/v1alpha1",
+    "staticOutPath": "v1alpha1"
+  },
+  "devDependencies": {
+    "parcel": "^2.0.0",
+    "parcel-reporter-static-files-copy": "^1.3.0"
+  },
+  "dependencies": {
+    "xhr2": "^0.2.1"
+  }
+}

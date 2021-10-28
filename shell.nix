@@ -3,7 +3,6 @@
 pkgs.mkShellNoCC {
   name = "nix-shell-for-purssmartspec";
   buildInputs = with pkgs; [
-    darkhttpd
     dhall-lsp-server
     nodePackages.purescript-language-server
     nodejs
@@ -11,5 +10,6 @@ pkgs.mkShellNoCC {
     purty
     spago
     spago2nix
+    yarn
   ];
 }

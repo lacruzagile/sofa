@@ -9,10 +9,16 @@
 /.purs*
 /.psa*
 /.spago
-/sofa.js
 
 ### Emacs ###
 .#*
 
 ### Nix ###
 /.spago2nix
+
+### Parcel ###
+/.parcel-cache
+/dist
+
+### Yarn ###
+/yarn-error.log
