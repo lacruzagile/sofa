@@ -1,6 +1,7 @@
 module App.Orders (Slot, proxy, component) where
 
 import Prelude
+import App.Auth (class CredentialStore)
 import App.OrderForm as OrderForm
 import App.Requests (getOrders)
 import Css as Css
@@ -41,7 +42,9 @@ data Action
 
 component ::
   forall query input output m.
-  MonadAff m => H.Component query input output m
+  MonadAff m =>
+  CredentialStore m =>
+  H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -60,7 +63,11 @@ initialState = const Idle
 initialize :: Maybe Action
 initialize = Just LoadOrders
 
-render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
+render ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
   error err =
@@ -141,15 +148,18 @@ showID id =
 loadOrders ::
   forall slots output m.
   MonadAff m =>
+  CredentialStore m =>
   H.HalogenM State Action slots output m Unit
 loadOrders = do
   H.modify_ \_ -> Loading
-  orders <- H.liftAff getOrders
+  orders <- H.lift getOrders
   H.modify_ \_ -> (\os -> { orders: os, selected: Nothing }) <$> orders
 
 handleAction ::
   forall slots output m.
-  MonadAff m => Action -> H.HalogenM State Action slots output m Unit
+  MonadAff m =>
+  CredentialStore m =>
+  Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   NoOp -> pure unit
   ClearState -> H.put Idle

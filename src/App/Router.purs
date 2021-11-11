@@ -1,10 +1,11 @@
 module App.Router where
 
 import Prelude
+import App.Auth (class CredentialStore)
 import App.Home as Home
-import App.ProductCatalog as ProductCatalog
 import App.OrderForm as OrderForm
 import App.Orders as Orders
+import App.ProductCatalog as ProductCatalog
 import Css as Css
 import Data.Maybe (Maybe(..))
 import Data.Route (Route)
@@ -47,8 +48,8 @@ data Action
 
 component ::
   forall input output m.
-  MonadEffect m =>
   MonadAff m =>
+  CredentialStore m =>
   H.Component Query input output m
 component =
   H.mkComponent
@@ -66,8 +67,8 @@ initialState _ = { route: Nothing }
 
 render ::
   forall m.
-  MonadEffect m =>
   MonadAff m =>
+  CredentialStore m =>
   State -> H.ComponentHTML Action Slots m
 render state =
   navbar state

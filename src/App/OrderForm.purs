@@ -1,6 +1,7 @@
 module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
+import App.Auth (class CredentialStore)
 import App.Charge (Slot, component, proxy) as Charge
 import App.OrderForm.Customer as Customer
 import App.Requests (getProductCatalog, postOrder)
@@ -9,6 +10,7 @@ import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (modifyAt, snoc)
 import Data.Array as A
+import Data.Charge (ChargeUnitMap, productChargeUnitMap, unitIDs) as Charge
 import Data.Either (Either(..))
 import Data.Estimate (Estimate(..))
 import Data.Int as Int
@@ -32,7 +34,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
-import Data.Charge (ChargeUnitMap, productChargeUnitMap, unitIDs) as Charge
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -129,7 +130,9 @@ data Action
 
 component ::
   forall query output m.
-  MonadAff m => H.Component query Input output m
+  MonadAff m =>
+  CredentialStore m =>
+  H.Component query Input output m
 component =
   H.mkComponent
     { initialState
@@ -821,7 +824,8 @@ loadExisting (SS.OrderForm orderForm) = do
 
   convertOrderSection :: SS.ProductCatalog -> Map String (Array PriceBook) -> SS.OrderSection -> Maybe OrderSection
   convertOrderSection (SS.ProductCatalog { solutions }) pbs (SS.OrderSection s) = do
-    let SS.PriceBookRef pbRef = s.basePriceBook
+    let
+      SS.PriceBookRef pbRef = s.basePriceBook
     solution <- List.find (\(SS.Solution { uri }) -> pbRef.solutionURI == uri) $ Map.values solutions
     let
       SS.Solution sol = solution
@@ -889,7 +893,8 @@ mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>)
 
 handleAction ::
   forall slots output m.
-  MonadAff m => Action -> H.HalogenM State Action slots output m Unit
+  MonadAff m =>
+  CredentialStore m => Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   NoOp -> pure unit
   Initialize -> do
@@ -1113,5 +1118,7 @@ handleAction = case _ of
         Loaded o' -> loadExisting o'
         _ -> pure unit
     case st of
-      Initialized (Loaded st') -> maybe (pure unit) (\j -> ld =<< postOrder j) (toJson st'.orderForm)
+      Initialized (Loaded st') -> case toJson st'.orderForm of
+        Nothing -> pure unit
+        Just json -> ld =<< H.lift (postOrder json)
       _ -> pure unit

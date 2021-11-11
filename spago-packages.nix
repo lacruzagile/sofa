@@ -129,6 +129,18 @@ let
       installPhase = "ln -s $src $out";
     };
 
+    "b64" = pkgs.stdenvNoCC.mkDerivation {
+      name = "b64";
+      version = "v0.0.7";
+      src = pkgs.fetchgit {
+        url = "https://github.com/menelaos/purescript-b64.git";
+        rev = "3aa40575e916de51d6655c35c26a92f33b10a1ef";
+        sha256 = "0xrizr7lcyjzhsrzg3jdqvk44d9ghp3jaqqkjfcqchvdhgypwpp3";
+      };
+      phases = "installPhase";
+      installPhase = "ln -s $src $out";
+    };
+
     "bifunctors" = pkgs.stdenvNoCC.mkDerivation {
       name = "bifunctors";
       version = "v5.0.0";
@@ -257,6 +269,18 @@ let
         url = "https://github.com/purescript/purescript-either.git";
         rev = "c1a1af35684f10eecaf6ac7d38dbf6bd48af2ced";
         sha256 = "18dk159yyv7vs0xsnh9m5fajd7zy6zw5b2mpyd6nqdh3c6bb9wh6";
+      };
+      phases = "installPhase";
+      installPhase = "ln -s $src $out";
+    };
+
+    "encoding" = pkgs.stdenvNoCC.mkDerivation {
+      name = "encoding";
+      version = "v0.0.7";
+      src = pkgs.fetchgit {
+        url = "https://github.com/menelaos/purescript-encoding.git";
+        rev = "0a4187136f9ea4ea51ddf635e3b3c2cd2461faac";
+        sha256 = "1rsnn8g2lx24k9wflr1jj12281i0smprb76nfm2f61yqqiwgij4d";
       };
       phases = "installPhase";
       installPhase = "ln -s $src $out";
