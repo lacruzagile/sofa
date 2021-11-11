@@ -634,19 +634,19 @@ toJson orderForm = do
       , configs: ol.configs
       }
 
-  toPriceBookRef pb =
+  toPriceBookRef solutionURI pb =
     SS.PriceBookRef
       { priceBookID: pb.id
       , version: pb.version
-      , solutionURI: Nothing
+      , solutionURI: Just solutionURI
       }
 
   toOrderSection :: OrderSection -> Maybe SS.OrderSection
   toOrderSection os = do
     solutionURI <- _.uri $ unwrap $ os.solution
-    basePriceBook <- toPriceBookRef <$> os.priceBook
+    basePriceBook <- toPriceBookRef solutionURI <$> os.priceBook
     orderLines <- sequence $ map (toOrderLine <$> _) os.orderLines
-    pure $ SS.OrderSection { solutionURI, basePriceBook, orderLines }
+    pure $ SS.OrderSection { basePriceBook, orderLines }
 
 toJsonStr :: OrderForm -> Maybe String
 toJsonStr = map (stringifyWithIndent 2 <<< encodeJson) <<< toJson
@@ -821,10 +821,9 @@ loadExisting (SS.OrderForm orderForm) = do
 
   convertOrderSection :: SS.ProductCatalog -> Map String (Array PriceBook) -> SS.OrderSection -> Maybe OrderSection
   convertOrderSection (SS.ProductCatalog { solutions }) pbs (SS.OrderSection s) = do
-    solution <- List.find (\(SS.Solution { uri }) -> Just s.solutionURI == uri) $ Map.values solutions
+    let SS.PriceBookRef pbRef = s.basePriceBook
+    solution <- List.find (\(SS.Solution { uri }) -> pbRef.solutionURI == uri) $ Map.values solutions
     let
-      SS.PriceBookRef pbRef = s.basePriceBook
-
       SS.Solution sol = solution
 
       priceBook = A.find (\pb -> pb.id == pbRef.priceBookID) =<< Map.lookup sol.id pbs

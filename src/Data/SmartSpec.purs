@@ -110,7 +110,7 @@ import Data.Generic.Rep (class Generic)
 import Data.List.Lazy (List)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.NonEmpty ((:|))
 import Data.Set (Set)
@@ -118,10 +118,9 @@ import Data.Show.Generic (genericShow)
 import Data.String as S
 import Data.String.Regex as Re
 import Data.String.Regex.Unsafe (unsafeRegex)
-import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Foreign.Object as FO
-import Test.QuickCheck (class Arbitrary, arbitrary)
+import Test.QuickCheck (class Arbitrary)
 import Test.QuickCheck.Gen as QC
 
 type Uri
@@ -2141,8 +2140,7 @@ instance encodeJsonOrderLine :: EncodeJson OrderLine where
 
 newtype OrderSection
   = OrderSection
-  { solutionURI :: Uri
-  , basePriceBook :: PriceBookRef
+  { basePriceBook :: PriceBookRef
   , orderLines :: Array OrderLine
   }
 
