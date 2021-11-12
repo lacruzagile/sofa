@@ -422,11 +422,11 @@ let
 
     "halogen" = pkgs.stdenvNoCC.mkDerivation {
       name = "halogen";
-      version = "v6.1.2";
+      version = "v6.1.3";
       src = pkgs.fetchgit {
         url = "https://github.com/purescript-halogen/purescript-halogen.git";
-        rev = "5bcd961a4a3954f639da556ed6661b14bb425ae4";
-        sha256 = "0m6bq1h29rg0b8vnk2bv340wrmx9788ysbz8wlaqn2710a2pnpqq";
+        rev = "79b86b70ab0848a3551e1dac1d854036ad23d833";
+        sha256 = "08m639pfh85w52w1kk3qdk9cxvxi0f2fcfvyk23k7j5y4pi43z8f";
       };
       phases = "installPhase";
       installPhase = "ln -s $src $out";
@@ -945,11 +945,11 @@ let
 
     "transformers" = pkgs.stdenvNoCC.mkDerivation {
       name = "transformers";
-      version = "v5.1.0";
+      version = "v5.2.0";
       src = pkgs.fetchgit {
         url = "https://github.com/purescript/purescript-transformers.git";
-        rev = "60ed3f64afd67112a8d0f07f510564e41355b5fb";
-        sha256 = "15ac1jia665mglxscj3gmbg4xmlnf7xgsrkh6mvx4ayvar529xzc";
+        rev = "1e5d4193b38c613c97ea1ebdb721c6b94cd8c50a";
+        sha256 = "0lggimnq016v98ib6h68gnciraambxrfqm2s033wm34srcy8xs06";
       };
       phases = "installPhase";
       installPhase = "ln -s $src $out";
