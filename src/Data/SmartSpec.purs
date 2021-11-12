@@ -1674,11 +1674,6 @@ data BillingOption
 
 derive instance eqBillingOption :: Eq BillingOption
 
-instance showBillingOption :: Show BillingOption where
-  show = case _ of
-    Prepay -> "PREPAY"
-    Postpay -> "POSTPAY"
-
 instance decodeJsonBillingOption :: DecodeJson BillingOption where
   decodeJson json = do
     string <- decodeJson json
@@ -1689,18 +1684,15 @@ instance decodeJsonBillingOption :: DecodeJson BillingOption where
       _ -> Left (TypeMismatch "BillingOption")
 
 instance encodeJsonBillingOption :: EncodeJson BillingOption where
-  encodeJson = encodeJson <<< show
+  encodeJson = encodeJson <<< case _ of
+    Prepay -> "PREPAY"
+    Postpay -> "POSTPAY"
 
 data ContractTerm
   = Ongoing
   | Fixed
 
 derive instance eqContractTerm :: Eq ContractTerm
-
-instance showContractTerm :: Show ContractTerm where
-  show = case _ of
-    Ongoing -> "ONGOING"
-    Fixed -> "FIXED"
 
 instance decodeJsonContractTerm :: DecodeJson ContractTerm where
   decodeJson json = do
@@ -1712,7 +1704,11 @@ instance decodeJsonContractTerm :: DecodeJson ContractTerm where
       _ -> Left (TypeMismatch "ContractTerm")
 
 instance encodeJsonContractTerm :: EncodeJson ContractTerm where
-  encodeJson = encodeJson <<< show
+  encodeJson =
+    encodeJson
+      <<< case _ of
+          Ongoing -> "ONGOING"
+          Fixed -> "FIXED"
 
 newtype Commercial
   = Commercial
