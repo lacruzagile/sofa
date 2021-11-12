@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  sofa:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: sofa:latest
+    ports:
+      - "8080:80"
+    environment:
+      ORDERING_SERVICE_URL: https://ordering.eu1tst.bpa.staging.sinch.com
+      TOKEN_SERVICE_URL: https://public.token-service.common-auth.staging.sinch.com

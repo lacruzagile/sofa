@@ -4,7 +4,7 @@
     "changeOrigin": true
   },
   "/v1alpha1/orders": {
-    "target": "https://ordering.eu1tst.bpa.staging.sinch.com/",
+    "target": "https://ordering.eu1tst.bpa.staging.sinch.com",
     "changeOrigin": true
   }
 }

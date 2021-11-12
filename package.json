@@ -6,9 +6,12 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
+    "build": "spago build && parcel build --no-scope-hoist sofa.html",
+    "clean": "rm -r dist output",
+    "docker-build": "yarn build && docker build -f docker/Dockerfile -t sofa:latest .",
     "start": "parcel serve sofa.html",
-    "watch": "spago build --watch --clear-screen",
-    "test": "spago test"
+    "test": "spago test",
+    "watch": "spago build --watch --clear-screen"
   },
   "staticFiles": {
     "staticPath": "../public/v1alpha1",

@@ -1,0 +1,11 @@
+# Ignore all hidden files.
+.*
+
+# Ignore all files in the root with suffix.
+/*.*
+
+# Ignore most directories.
+/node_modules/
+/output/
+/src/
+/test/
