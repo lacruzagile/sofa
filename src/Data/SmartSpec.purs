@@ -1998,17 +1998,6 @@ data OrderStatus
   | OsFulfilled
   | OsCancelled
 
-instance showOrderStatus :: Show OrderStatus where
-  show = case _ of
-    OsInDraft -> "IN_DRAFT"
-    OsInReview -> "IN_REVIEW"
-    OsInApproval -> "IN_APPROVAL"
-    OsInSignature -> "IN_SIGNATURE"
-    OsInConfiguration -> "IN_CONFIGURATION"
-    OsInFulfillment -> "IN_FULFILLMENT"
-    OsFulfilled -> "FULFILLED"
-    OsCancelled -> "CANCELLED"
-
 instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
   decodeJson json = do
     string <- decodeJson json
@@ -2024,7 +2013,15 @@ instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
       _ -> Left (TypeMismatch "OrderStatus")
 
 instance encodeOrderStatus :: EncodeJson OrderStatus where
-  encodeJson = encodeJson <<< show
+  encodeJson = encodeJson <<< case _ of
+    OsInDraft -> "IN_DRAFT"
+    OsInReview -> "IN_REVIEW"
+    OsInApproval -> "IN_APPROVAL"
+    OsInSignature -> "IN_SIGNATURE"
+    OsInConfiguration -> "IN_CONFIGURATION"
+    OsInFulfillment -> "IN_FULFILLMENT"
+    OsFulfilled -> "FULFILLED"
+    OsCancelled -> "CANCELLED"
 
 newtype Segment
   = Segment

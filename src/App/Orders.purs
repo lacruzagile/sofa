@@ -100,7 +100,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder orderForm@(SS.OrderForm o) =
     HH.tr_
       [ HH.td_ [ HH.text $ showID o.id ]
-      , HH.td_ [ HH.text $ show o.status ]
+      , HH.td_ [ HH.text $ showOrderStatus o.status ]
       , HH.td_ [ HH.text purchaser ]
       , HH.td_ [ HH.text seller ]
       , HH.td_ [ HH.button [ HE.onClick \_ -> OpenOrder orderForm ] [ HH.text "Open" ] ]
@@ -144,6 +144,17 @@ showID id =
       S.take 4 id <> "…" <> S.drop (len - 4) id
     else
       id
+
+showOrderStatus :: SS.OrderStatus -> String
+showOrderStatus = case _ of
+  SS.OsInDraft -> "In Draft"
+  SS.OsInReview -> "In Review"
+  SS.OsInApproval -> "In Approval"
+  SS.OsInSignature -> "In Signature"
+  SS.OsInConfiguration -> "In Configuration"
+  SS.OsInFulfillment -> "In Fulfillment"
+  SS.OsFulfilled -> "Fulfilled"
+  SS.OsCancelled -> "Cancelled"
 
 loadOrders ::
   forall slots output m.
