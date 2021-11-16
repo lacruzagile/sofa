@@ -617,7 +617,7 @@ render st =
                 [ HH.text "Legal Entity Name"
                 , HH.input
                     [ HP.type_ HP.InputText
-                    , HP.required true
+                    , HP.readOnly true
                     , HP.value seller.name
                     , HE.onValueChange $ \v -> update \s -> s { name = v }
                     ]
