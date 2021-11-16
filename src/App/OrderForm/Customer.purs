@@ -477,7 +477,6 @@ render st =
             , HH.input
                 [ HP.type_ HP.InputTel
                 , HP.placeholder "Phone No"
-                , HP.required true
                 , HP.value $ opt contact.phone
                 , HE.onValueChange \v -> update' \c -> c { phone = unopt v }
                 ]
