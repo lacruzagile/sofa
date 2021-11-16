@@ -1684,9 +1684,11 @@ instance decodeJsonBillingOption :: DecodeJson BillingOption where
       _ -> Left (TypeMismatch "BillingOption")
 
 instance encodeJsonBillingOption :: EncodeJson BillingOption where
-  encodeJson = encodeJson <<< case _ of
-    Prepay -> "PREPAY"
-    Postpay -> "POSTPAY"
+  encodeJson =
+    encodeJson
+      <<< case _ of
+          Prepay -> "PREPAY"
+          Postpay -> "POSTPAY"
 
 data ContractTerm
   = Ongoing
@@ -2013,15 +2015,17 @@ instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
       _ -> Left (TypeMismatch "OrderStatus")
 
 instance encodeOrderStatus :: EncodeJson OrderStatus where
-  encodeJson = encodeJson <<< case _ of
-    OsInDraft -> "IN_DRAFT"
-    OsInReview -> "IN_REVIEW"
-    OsInApproval -> "IN_APPROVAL"
-    OsInSignature -> "IN_SIGNATURE"
-    OsInConfiguration -> "IN_CONFIGURATION"
-    OsInFulfillment -> "IN_FULFILLMENT"
-    OsFulfilled -> "FULFILLED"
-    OsCancelled -> "CANCELLED"
+  encodeJson =
+    encodeJson
+      <<< case _ of
+          OsInDraft -> "IN_DRAFT"
+          OsInReview -> "IN_REVIEW"
+          OsInApproval -> "IN_APPROVAL"
+          OsInSignature -> "IN_SIGNATURE"
+          OsInConfiguration -> "IN_CONFIGURATION"
+          OsInFulfillment -> "IN_FULFILLMENT"
+          OsFulfilled -> "FULFILLED"
+          OsCancelled -> "CANCELLED"
 
 newtype Segment
   = Segment
