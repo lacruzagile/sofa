@@ -11,7 +11,7 @@ module Data.SmartSpec
   , ChargeSingleUnit(..)
   , ChargeKind(..)
   , ChargeUnit(..)
-  , ChargeUnitID(..)
+  , ChargeUnitId(..)
   , Commercial(..)
   , ConfigSchemaEntry(..)
   , ConfigSchemaEntryMeta
@@ -28,9 +28,9 @@ module Data.SmartSpec
   , Discount(..)
   , DiscountPerDim(..)
   , DiscountProfilePerUnit(..)
-  , EstimatedWAP(..)
-  , EstimatedWAPPerSegment(..)
-  , EstimatedWAPPerUnit(..)
+  , EstimatedWap(..)
+  , EstimatedWapPerSegment(..)
+  , EstimatedWapPerUnit(..)
   , LegalEntities(..)
   , LegalEntity(..)
   , LegalEntityTraffic(..)
@@ -400,7 +400,7 @@ derive newtype instance encodeJsonChargeCurrency :: EncodeJson ChargeCurrency
 
 newtype ChargeCurrencyPerUnit
   = ChargeCurrencyPerUnit
-  { unit :: ChargeUnitID
+  { unit :: ChargeUnitId
   , currency :: ChargeCurrency
   }
 
@@ -450,7 +450,7 @@ derive newtype instance encodeJsonPriceBookCurrency :: EncodeJson PriceBookCurre
 -- | Single unit charges.
 data ChargeSingleUnit
   = ChargeSimple
-    { unit :: ChargeUnitID
+    { unit :: ChargeUnitId
     , currency :: Maybe ChargeCurrency
     , description :: Maybe String
     , listPrice :: Number
@@ -460,7 +460,7 @@ data ChargeSingleUnit
     , termOfPriceChangeInDays :: Maybe Int
     }
   | ChargeDim
-    { unit :: ChargeUnitID
+    { unit :: ChargeUnitId
     , currency :: Maybe ChargeCurrency
     , description :: Maybe String
     , priceByDim :: Array PricePerDim
@@ -469,7 +469,7 @@ data ChargeSingleUnit
     , termOfPriceChangeInDays :: Maybe Int
     }
   | ChargeSeg
-    { unit :: ChargeUnitID
+    { unit :: ChargeUnitId
     , currency :: Maybe ChargeCurrency
     , description :: Maybe String
     , segmentation :: Segmentation
@@ -478,7 +478,7 @@ data ChargeSingleUnit
     , termOfPriceChangeInDays :: Maybe Int
     }
   | ChargeDimSeg
-    { unit :: ChargeUnitID
+    { unit :: ChargeUnitId
     , currency :: Maybe ChargeCurrency
     , description :: Maybe String
     , segmentation :: SegmentationOptDim
@@ -542,7 +542,7 @@ instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
     encodeCommon ::
       forall r a.
       EncodeJson a =>
-      { unit :: ChargeUnitID
+      { unit :: ChargeUnitId
       , currency :: Maybe ChargeCurrency
       , description :: Maybe String
       , periodMinimum :: Maybe Number
@@ -566,7 +566,7 @@ data Charge
     , periodMinimum :: Maybe Number
     }
   | ChargeDimUnitOptSeg
-    { units :: Array ChargeUnitID
+    { units :: Array ChargeUnitId
     , currencyByUnit :: Array ChargeCurrencyPerUnit
     , description :: Maybe String
     , segmentationByUnit :: Array SegmentationOptDimPerUnit
@@ -703,7 +703,7 @@ instance arbDiscount :: Arbitrary Discount where
 
 newtype Segmentation
   = Segmentation
-  { unit :: Maybe ChargeUnitID
+  { unit :: Maybe ChargeUnitId
   , model :: SegmentationModel
   , segments :: Array Segment
   }
@@ -714,7 +714,7 @@ derive newtype instance encodeJsonSegmentation :: EncodeJson Segmentation
 
 newtype SegmentationDimPerUnit
   = SegmentationDimPerUnit
-  { unit :: ChargeUnitID
+  { unit :: ChargeUnitId
   , segmentation :: SegmentationDim
   }
 
@@ -724,7 +724,7 @@ derive newtype instance encodeJsonSegmentationDimPerUnit :: EncodeJson Segmentat
 
 newtype SegmentationPerUnit
   = SegmentationPerUnit
-  { unit :: ChargeUnitID
+  { unit :: ChargeUnitId
   , segmentation :: Segmentation
   }
 
@@ -734,7 +734,7 @@ derive newtype instance encodeJsonSegmentationPerUnit :: EncodeJson Segmentation
 
 newtype SegmentationDim
   = SegmentationDim
-  { unit :: Maybe ChargeUnitID
+  { unit :: Maybe ChargeUnitId
   , model :: SegmentationModel
   , segmentsByDim :: Array SegmentsPerDim
   }
@@ -980,51 +980,51 @@ instance decodeJsonSegmentationModel :: DecodeJson SegmentationModel where
 instance encodeJsonSegmentationModel :: EncodeJson SegmentationModel where
   encodeJson = encodeJson <<< show
 
-newtype EstimatedWAPPerSegment
-  = EstimatedWAPPerSegment
+newtype EstimatedWapPerSegment
+  = EstimatedWapPerSegment
   { minimum :: Int
   , exclusiveMaximum :: Maybe Int
   , price :: Number
   }
 
-instance decodeJsonEstimatedWAPPerSegment :: DecodeJson EstimatedWAPPerSegment where
-  decodeJson json = EstimatedWAPPerSegment <$> decodeJson json
+instance decodeJsonEstimatedWapPerSegment :: DecodeJson EstimatedWapPerSegment where
+  decodeJson json = EstimatedWapPerSegment <$> decodeJson json
 
-instance encodeJsonEstimatedWAPPerSegment :: EncodeJson EstimatedWAPPerSegment where
-  encodeJson (EstimatedWAPPerSegment x) = encodeJson x
+instance encodeJsonEstimatedWapPerSegment :: EncodeJson EstimatedWapPerSegment where
+  encodeJson (EstimatedWapPerSegment x) = encodeJson x
 
-newtype EstimatedWAP
-  = EstimatedWAP (Array EstimatedWAPPerSegment)
+newtype EstimatedWap
+  = EstimatedWap (Array EstimatedWapPerSegment)
 
-instance decodeJsonEstimatedWAP :: DecodeJson EstimatedWAP where
+instance decodeJsonEstimatedWap :: DecodeJson EstimatedWap where
   decodeJson json = primitive <|> object
     where
-    mk price = EstimatedWAPPerSegment { minimum: 0, exclusiveMaximum: Nothing, price }
+    mk price = EstimatedWapPerSegment { minimum: 0, exclusiveMaximum: Nothing, price }
 
-    primitive = (EstimatedWAP <<< A.singleton <<< mk) <$> decodeJson json
+    primitive = (EstimatedWap <<< A.singleton <<< mk) <$> decodeJson json
 
-    object = EstimatedWAP <$> decodeJson json
+    object = EstimatedWap <$> decodeJson json
 
-instance encodeJsonEstimatedWAP :: EncodeJson EstimatedWAP where
-  encodeJson (EstimatedWAP x) = case x of
-    [ EstimatedWAPPerSegment { minimum: 0, exclusiveMaximum: Nothing, price } ] -> encodeJson price
+instance encodeJsonEstimatedWap :: EncodeJson EstimatedWap where
+  encodeJson (EstimatedWap x) = case x of
+    [ EstimatedWapPerSegment { minimum: 0, exclusiveMaximum: Nothing, price } ] -> encodeJson price
     _ -> encodeJson x
 
-newtype EstimatedWAPPerUnit
-  = EstimatedWAPPerUnit
-  { unit :: ChargeUnitID
-  , wap :: EstimatedWAP
+newtype EstimatedWapPerUnit
+  = EstimatedWapPerUnit
+  { unit :: ChargeUnitId
+  , wap :: EstimatedWap
   }
 
-derive instance newtypeEstimatedWAPPerUnit :: Newtype EstimatedWAPPerUnit _
+derive instance newtypeEstimatedWapPerUnit :: Newtype EstimatedWapPerUnit _
 
-derive newtype instance decodeJsonEstimatedWAPPerUnit :: DecodeJson EstimatedWAPPerUnit
+derive newtype instance decodeJsonEstimatedWapPerUnit :: DecodeJson EstimatedWapPerUnit
 
-derive newtype instance encodeJsonEstimatedWAPPerUnit :: EncodeJson EstimatedWAPPerUnit
+derive newtype instance encodeJsonEstimatedWapPerUnit :: EncodeJson EstimatedWapPerUnit
 
 newtype DefaultPricePerUnit
   = DefaultPricePerUnit
-  { unit :: ChargeUnitID
+  { unit :: ChargeUnitId
   , description :: Maybe String
   | PriceRow
   }
@@ -1058,7 +1058,7 @@ instance encodeJsonPriceByUnitPerDim :: EncodeJson PriceByUnitPerDim where
 
 newtype PricePerUnit
   = PricePerUnit
-  { unit :: ChargeUnitID
+  { unit :: ChargeUnitId
   , description :: Maybe String
   | PriceRow
   }
@@ -1089,7 +1089,7 @@ instance encodeJsonPricePerUnit :: EncodeJson PricePerUnit where
 
 newtype PricePerUnitSeg
   = PricePerUnitSeg
-  { unit :: ChargeUnitID
+  { unit :: ChargeUnitId
   , description :: Maybe String
   , priceBySegment :: Array PricePerSeg
   }
@@ -1105,24 +1105,24 @@ instance encodeJsonPricePerUnitSeg :: EncodeJson PricePerUnitSeg where
       ~>? ("priceBySegment" := ppu.priceBySegment)
       ~> jsonEmptyObject
 
-newtype ChargeUnitID
-  = ChargeUnitID String
+newtype ChargeUnitId
+  = ChargeUnitId String
 
-derive instance genericChargeUnitID :: Generic ChargeUnitID _
+derive instance genericChargeUnitId :: Generic ChargeUnitId _
 
-derive instance eqChargeUnitID :: Eq ChargeUnitID
+derive instance eqChargeUnitId :: Eq ChargeUnitId
 
-derive instance ordChargeUnitID :: Ord ChargeUnitID
+derive instance ordChargeUnitId :: Ord ChargeUnitId
 
-derive instance newtypeChargeUnitID :: Newtype ChargeUnitID _
+derive instance newtypeChargeUnitId :: Newtype ChargeUnitId _
 
-derive newtype instance showChargeUnitID :: Show ChargeUnitID
+derive newtype instance showChargeUnitId :: Show ChargeUnitId
 
-instance decodeJsonChargeUnitID :: DecodeJson ChargeUnitID where
-  decodeJson json = ChargeUnitID <$> decodeJson json
+instance decodeJsonChargeUnitId :: DecodeJson ChargeUnitId where
+  decodeJson json = ChargeUnitId <$> decodeJson json
 
-instance encodeJsonChargeUnitID :: EncodeJson ChargeUnitID where
-  encodeJson (ChargeUnitID x) = encodeJson x
+instance encodeJsonChargeUnitId :: EncodeJson ChargeUnitId where
+  encodeJson (ChargeUnitId x) = encodeJson x
 
 data ChargeKind
   = CkOnetime
@@ -1306,7 +1306,7 @@ instance encodeJsonConfigValue :: EncodeJson ConfigValue where
 
 newtype ChargeUnit
   = ChargeUnit
-  { id :: ChargeUnitID
+  { id :: ChargeUnitId
   , title :: Maybe String
   , description :: Maybe String
   , kind :: ChargeKind
@@ -1808,7 +1808,7 @@ newtype Buyer
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
   , registrationNr :: String
-  , taxID :: String
+  , taxId :: String
   , website :: Uri
   }
 
@@ -1829,7 +1829,7 @@ derive newtype instance encodeJsonSeller :: EncodeJson Seller
 
 newtype BillingAccountRef
   = BillingAccountRef
-  { billingAccountID :: String
+  { billingAccountId :: String
   }
 
 derive newtype instance decodeJsonBillingAccountRef :: DecodeJson BillingAccountRef
@@ -1901,7 +1901,7 @@ derive newtype instance encodeJsonPriceOverride :: EncodeJson PriceOverride
 
 newtype DiscountProfilePerUnit
   = DiscountProfilePerUnit
-  { unit :: ChargeUnitID
+  { unit :: ChargeUnitId
   , defaultDiscount :: Maybe Discount
   , discountByDim :: Maybe (Array DiscountPerDim)
   }
@@ -1922,23 +1922,23 @@ derive newtype instance encodeJsonDiscountPerDim :: EncodeJson DiscountPerDim
 
 newtype PriceBookRef
   = PriceBookRef
-  { priceBookID :: String
+  { priceBookId :: String
   , version :: String
-  , solutionURI :: Maybe Uri
+  , solutionUri :: Maybe Uri
   }
 
 derive newtype instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef
 
 instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
   encodeJson (PriceBookRef x) =
-    ("priceBookID" := x.priceBookID)
+    ("priceBookId" := x.priceBookId)
       ~> ("version" := x.version)
-      ~> ((\uri -> "solutionURI" := uri) <$> x.solutionURI)
+      ~> ((\uri -> "solutionUri" := uri) <$> x.solutionUri)
       ~>? jsonEmptyObject
 
 newtype SalesforceAccountRef
   = SalesforceAccountRef
-  { salesforceAccountID :: String
+  { salesforceAccountId :: String
   }
 
 derive newtype instance decodeJsonSalesforceAccountRef :: DecodeJson SalesforceAccountRef
@@ -2053,12 +2053,12 @@ instance encodeJsonQuantityPerDim :: EncodeJson QuantityPerDim where
 
 data QuantityPerUnit
   = QuantityPerUnit
-    { unit :: ChargeUnitID
+    { unit :: ChargeUnitId
     , quantity :: Int
     , estimated :: Boolean
     }
   | QuantityByDimPerUnit
-    { unit :: ChargeUnitID
+    { unit :: ChargeUnitId
     , quantityByDim :: Array QuantityPerDim
     }
 
@@ -2082,7 +2082,7 @@ instance encodeJsonQuantityPerUnit :: EncodeJson QuantityPerUnit where
 mkQuantityPerUnitFromPrimitive :: Int -> QuantityPerUnit
 mkQuantityPerUnitFromPrimitive quantity =
   QuantityByDimPerUnit
-    { unit: ChargeUnitID ""
+    { unit: ChargeUnitId ""
     , quantityByDim:
         [ QuantityPerDim
             { dim: DimValue CvNull
@@ -2174,7 +2174,7 @@ newtype LegalEntity
   , address :: Address
   , phone :: Maybe String
   , region :: String
-  , regionalVPinDPA :: String
+  , regionalVpInDpa :: String
   , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
   }
 

@@ -45,7 +45,7 @@ type PriceIndex
   = { chargeIdx :: Int, subChargeIdx :: Int, dimIdx :: Int, unitIdx :: Int, segIdx :: Int }
 
 type QuantityIndex
-  = { unitID :: SS.ChargeUnitID, dim :: Maybe SS.DimValue }
+  = { unitId :: SS.ChargeUnitId, dim :: Maybe SS.DimValue }
 
 type Input
   = { unitMap :: Charge.ChargeUnitMap
@@ -68,13 +68,13 @@ type State
 -- | The quantity is either set as an aggregate or individually for each of the
 -- | unit's dimensions.
 type QuantityMap
-  = Map SS.ChargeUnitID (Either (Estimate Int) (Map SS.DimValue (Estimate Int)))
+  = Map SS.ChargeUnitId (Either (Estimate Int) (Map SS.DimValue (Estimate Int)))
 
 -- | The aggregated quantity has one quantity per unit. Note, if per-dimension
 -- | quantities are used and a dimension quantity is missing then the aggregated
 -- | value is `Nothing`.
 type AggregatedQuantityMap
-  = Map SS.ChargeUnitID AggregatedQuantity
+  = Map SS.ChargeUnitId AggregatedQuantity
 
 data QuantityType a
   = QtWAP a
@@ -148,11 +148,11 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
       SS.CvArray ms -> [ HH.ul [ HP.class_ Css.priceList ] $ (HH.li_ <<< go) <$> ms ]
       v -> [ HH.text $ show v ]
 
-  renderTotalQuantity :: SS.ChargeUnitID -> H.ComponentHTML Action Slots m
-  renderTotalQuantity unitID =
+  renderTotalQuantity :: SS.ChargeUnitId -> H.ComponentHTML Action Slots m
+  renderTotalQuantity unitId =
     HH.text $ fromMaybe "N/A"
       $ do
-          q <- Map.lookup unitID aggregatedQuantity
+          q <- Map.lookup unitId aggregatedQuantity
           pure $ show $ qtToValue <$> q
 
   renderSingleUnitCharge :: Int -> Int -> SS.ChargeSingleUnit -> Array (H.ComponentHTML Action Slots m)
@@ -162,7 +162,7 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
     SS.ChargeSeg c -> renderChargeSeg c
     SS.ChargeDimSeg _c -> [ HH.text "TODO" ]
     where
-    unitID = case fullCharge of
+    unitId = case fullCharge of
       SS.ChargeSimple c -> c.unit
       SS.ChargeDim c -> c.unit
       SS.ChargeSeg c -> c.unit
@@ -172,12 +172,12 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
 
     findDimQuantity :: SS.DimValue -> Maybe (Estimate Int)
     findDimQuantity dim = do
-      q <- Map.lookup unitID quantity
+      q <- Map.lookup unitId quantity
       case q of
         Left _ -> Nothing
         Right dimMap -> Map.lookup dim dimMap
 
-    renderUnitHdr :: String -> SS.ChargeUnitID -> H.ComponentHTML Action Slots m
+    renderUnitHdr :: String -> SS.ChargeUnitId -> H.ComponentHTML Action Slots m
     renderUnitHdr kind u = HH.h4_ [ HH.text $ showChargeUnitRef u, HH.sup_ [ HH.text " (", HH.text kind, HH.text ")" ] ]
 
     renderTotalPrice :: H.ComponentHTML Action Slots m
@@ -194,7 +194,7 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
           charge.currency
       , HH.br_
       , HH.text "Quantity: "
-      , renderEditableQuantity { unitID: charge.unit, dim: Nothing } (findDimQuantity nullDim)
+      , renderEditableQuantity { unitId: charge.unit, dim: Nothing } (findDimQuantity nullDim)
       , HH.br_
       , HH.text "Total: "
       , renderTotalPrice
@@ -207,7 +207,7 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
             , HH.tr_ $ map (HH.th_ <<< A.singleton <<< HH.text) dims <> [ HH.th_ [] ]
             ]
           <> A.mapWithIndex renderChargeRow charge.priceByDim
-          <> [ HH.tr_ $ thColSpanAlignRight (A.length dims) [ HH.text "Total #" ] <> [ HH.td_ [ renderTotalQuantity unitID ] ] ]
+          <> [ HH.tr_ $ thColSpanAlignRight (A.length dims) [ HH.text "Total #" ] <> [ HH.td_ [ renderTotalQuantity unitId ] ] ]
           <> [ HH.tr_ $ thColSpanAlignRight (A.length dims) [ HH.text "Total Price" ] <> [ HH.td_ [ renderTotalPrice ] ] ]
       ]
       where
@@ -233,7 +233,7 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
         where
         pIdx = { chargeIdx, subChargeIdx, dimIdx, unitIdx: 0, segIdx: 0 }
 
-        qIdx = { unitID: charge.unit, dim: Just p.dim }
+        qIdx = { unitId: charge.unit, dim: Just p.dim }
 
         price = SS.Price { price: p.price, listPrice: p.listPrice, discount: p.discount }
 
@@ -245,7 +245,7 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
       , HH.text $ show model
       , HH.br_
       , HH.text "Quantity: "
-      , renderEditableQuantity { unitID: c.unit, dim: Nothing } (findDimQuantity nullDim)
+      , renderEditableQuantity { unitId: c.unit, dim: Nothing } (findDimQuantity nullDim)
       , HH.br_
       , HH.text "Total: "
       , renderTotalPrice
@@ -320,19 +320,19 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
         Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
         _ -> []
 
-      currency unitID =
+      currency unitId =
         A.findMap
           ( \(SS.ChargeCurrencyPerUnit c) ->
-              if c.unit == unitID then
+              if c.unit == unitId then
                 Just c.currency
               else
                 Nothing
           )
           charge.currencyByUnit
 
-      findDimQuantity :: SS.ChargeUnitID -> SS.DimValue -> Maybe (Estimate Int)
-      findDimQuantity unitID dim = do
-        q <- Map.lookup unitID quantity
+      findDimQuantity :: SS.ChargeUnitId -> SS.DimValue -> Maybe (Estimate Int)
+      findDimQuantity unitId dim = do
+        q <- Map.lookup unitId quantity
         case q of
           Left q' -> pure q'
           Right dimMap -> Map.lookup dim dimMap
@@ -362,7 +362,7 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
         where
         pIdx = { chargeIdx, subChargeIdx: 0, dimIdx, unitIdx, segIdx: 0 }
 
-        qIdx = { unitID: ppu.unit, dim: Just dim }
+        qIdx = { unitId: ppu.unit, dim: Just dim }
 
         price = SS.Price { price: ppu.price, listPrice: ppu.listPrice, discount: ppu.discount }
 
@@ -386,8 +386,8 @@ thColSpanAlignRight colSpan els
   | colSpan == 0 = []
   | otherwise = [ HH.th [ HP.colSpan colSpan, HP.style "text-align:right" ] els ]
 
-showChargeUnitRef :: SS.ChargeUnitID -> String
-showChargeUnitRef (SS.ChargeUnitID id) = id
+showChargeUnitRef :: SS.ChargeUnitId -> String
+showChargeUnitRef (SS.ChargeUnitId id) = id
 
 showSegment :: SS.Segment -> String
 showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "∞" show s.exclusiveMaximum <> ")"
@@ -396,7 +396,7 @@ aggregateQuantity :: QuantityMap -> AggregatedQuantityMap
 aggregateQuantity quantityMap =
   Map.fromFoldable
     $ do
-        Tuple unitID dimMap <- Map.toUnfoldable quantityMap :: List _
+        Tuple unitId dimMap <- Map.toUnfoldable quantityMap :: List _
         let
           q = case dimMap of
             Left q' -> QtWAP <$> q'
@@ -404,7 +404,7 @@ aggregateQuantity quantityMap =
               map (\(Additive n) -> QtSum n)
                 $ List.foldl (\a b -> a <> map Additive b) mempty
                 $ Map.values m
-        pure $ Tuple unitID q
+        pure $ Tuple unitId q
 
 handleAction :: forall m. Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
@@ -495,13 +495,13 @@ handleAction = case _ of
               }
         H.raise { charges: st'.charges, quantity: st'.quantity }
   SetQuantity _ Nothing -> pure unit
-  SetQuantity { dim, unitID } (Just q) -> do
+  SetQuantity { dim, unitId } (Just q) -> do
     st' <-
       H.modify \st ->
         let
           quantity' =
             let
-              updateUnit = Map.update updateDim unitID
+              updateUnit = Map.update updateDim unitId
 
               updateDim dimMap = case dim of
                 Nothing -> Just $ Left q
@@ -519,16 +519,16 @@ handleAction = case _ of
     -- of the aggregate unit quantity component.
     when (isJust dim)
       $ let
-          q' = map (map qtToValue) $ Map.lookup unitID st'.aggregatedQuantity
+          q' = map (map qtToValue) $ Map.lookup unitId st'.aggregatedQuantity
         in
-          H.tell EditableQuantity.proxy { unitID, dim: Nothing } (EditableQuantity.SetQuantity q')
+          H.tell EditableQuantity.proxy { unitId, dim: Nothing } (EditableQuantity.SetQuantity q')
     -- If we are setting an aggregated quantity then override the dimension
     -- specific values.
     when (isNothing dim)
       $ traverse_
           ( \dim' ->
               H.tell EditableQuantity.proxy
-                { unitID, dim: Just dim' }
+                { unitId, dim: Just dim' }
                 (EditableQuantity.SetQuantity Nothing)
           )
       $ Set.unions

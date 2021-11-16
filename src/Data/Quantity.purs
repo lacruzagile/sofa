@@ -17,13 +17,13 @@ import Data.Estimate as Est
 import Data.List.Lazy (List)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.SmartSpec (ChargeUnitID, DimValue, QuantityPerDim(..), QuantityPerUnit(..))
+import Data.SmartSpec (ChargeUnitId, DimValue, QuantityPerDim(..), QuantityPerUnit(..))
 import Data.Tuple (Tuple(..))
 
 -- | The quantity is either set as an aggregate or individually for each of the
 -- | unit's dimensions.
 type QuantityMap
-  = Map ChargeUnitID QuantityMapEntry
+  = Map ChargeUnitId QuantityMapEntry
 
 type QuantityMapEntry
   = Either Quantity (Map DimValue Quantity)
@@ -32,7 +32,7 @@ type QuantityMapEntry
 -- | quantities are used and a dimension quantity is missing then the aggregated
 -- | value is `Nothing`.
 type AggregatedQuantityMap
-  = Map ChargeUnitID AggregatedQuantity
+  = Map ChargeUnitId AggregatedQuantity
 
 -- | A quantity is a non-negative integer that is either exact or estimated.
 type Quantity
@@ -67,17 +67,17 @@ toSmartSpecQuantity quantityMap = transform r1 quantityMap
   transform :: forall k v a. (Tuple k v -> a) -> Map k v -> Array a
   transform f = A.fromFoldable <<< map f <<< toList
 
-  r1 :: Tuple ChargeUnitID (Either (Estimate Int) (Map DimValue (Estimate Int))) -> QuantityPerUnit
-  r1 (Tuple unitID unitMap) = case unitMap of
+  r1 :: Tuple ChargeUnitId (Either (Estimate Int) (Map DimValue (Estimate Int))) -> QuantityPerUnit
+  r1 (Tuple unitId unitMap) = case unitMap of
     Left quantity ->
       QuantityPerUnit
-        { unit: unitID
+        { unit: unitId
         , quantity: Est.toValue quantity
         , estimated: Est.isEstimate quantity
         }
     Right dimMap ->
       QuantityByDimPerUnit
-        { unit: unitID
+        { unit: unitId
         , quantityByDim: transform r2 dimMap
         }
 

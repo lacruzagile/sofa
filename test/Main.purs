@@ -61,14 +61,14 @@ calcSubTotalChargeSimple = do
 
     currency = SS.ChargeCurrency (SS.Currency "EUR")
 
-    unitID = SS.ChargeUnitID "uid"
+    unitId = SS.ChargeUnitId "uid"
 
-    quantity n = Map.singleton unitID (Left $ Exact n)
+    quantity n = Map.singleton unitId (Left $ Exact n)
 
     unitMap =
-      Map.singleton unitID
+      Map.singleton unitId
         $ SS.ChargeUnit
-            { id: unitID
+            { id: unitId
             , title: Nothing
             , description: Nothing
             , kind: SS.CkOnetime
@@ -96,14 +96,14 @@ calcSubTotalChargeSegVolume = do
 
     currency = SS.ChargeCurrency (SS.Currency "EUR")
 
-    unitID = SS.ChargeUnitID "uid"
+    unitId = SS.ChargeUnitId "uid"
 
-    quantity n = Map.singleton unitID (Left $ Exact n)
+    quantity n = Map.singleton unitId (Left $ Exact n)
 
     unitMap =
-      Map.singleton unitID
+      Map.singleton unitId
         ( SS.ChargeUnit
-            { id: unitID
+            { id: unitId
             , title: Nothing
             , description: Nothing
             , kind: SS.CkOnetime
@@ -132,14 +132,14 @@ calcSubTotalChargeSegTiered = do
 
     currency = SS.ChargeCurrency (SS.Currency "EUR")
 
-    unitID = SS.ChargeUnitID "uid"
+    unitId = SS.ChargeUnitId "uid"
 
-    quantity n = Map.singleton unitID (Left $ Exact n)
+    quantity n = Map.singleton unitId (Left $ Exact n)
 
     unitMap =
-      Map.singleton unitID
+      Map.singleton unitId
         ( SS.ChargeUnit
-            { id: unitID
+            { id: unitId
             , title: Nothing
             , description: Nothing
             , kind: SS.CkOnetime
@@ -185,7 +185,7 @@ exampleChargeSimple :: SS.Charge
 exampleChargeSimple =
   SS.ChargeSingleUnit
     $ SS.ChargeSimple
-        { unit: SS.ChargeUnitID "uid"
+        { unit: SS.ChargeUnitId "uid"
         , currency: Nothing
         , description: Nothing
         , listPrice: 10.0
@@ -199,7 +199,7 @@ exampleChargeSeg :: SS.SegmentationModel -> SS.Charge
 exampleChargeSeg model =
   SS.ChargeSingleUnit
     $ SS.ChargeSeg
-        { unit: SS.ChargeUnitID "uid"
+        { unit: SS.ChargeUnitId "uid"
         , currency: Nothing
         , description: Nothing
         , segmentation:

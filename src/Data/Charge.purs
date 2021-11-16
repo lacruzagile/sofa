@@ -7,7 +7,7 @@ module Data.Charge
   , lookupChargeKind
   , periodMinimum
   , productChargeUnitMap
-  , unitIDs
+  , unitIds
   ) where
 
 import Prelude
@@ -16,11 +16,11 @@ import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.SmartSpec (Charge(..), ChargeSingleUnit(..), ChargeKind, ChargeUnit(..), ChargeUnitID(..), DimValue, PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), Product(..))
+import Data.SmartSpec (Charge(..), ChargeSingleUnit(..), ChargeKind, ChargeUnit(..), ChargeUnitId(..), DimValue, PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), Product(..))
 import Data.Tuple (Tuple(..))
 
 type ChargeUnitMap
-  = Map ChargeUnitID ChargeUnit
+  = Map ChargeUnitId ChargeUnit
 
 -- | Produces a map from unit IDs to the charge unit itself.
 productChargeUnitMap :: Product -> ChargeUnitMap
@@ -31,7 +31,7 @@ productChargeUnitMap (Product { chargeUnits }) =
 -- | A suitable label for a unit. Uses the unit title, if available, otherwise
 -- | its identifier.
 chargeUnitLabel :: ChargeUnit -> String
-chargeUnitLabel (ChargeUnit { id: ChargeUnitID id, title }) = fromMaybe id title
+chargeUnitLabel (ChargeUnit { id: ChargeUnitId id, title }) = fromMaybe id title
 
 dims :: Charge -> Set DimValue
 dims = case _ of
@@ -71,15 +71,15 @@ periodMinimum = case _ of
   ChargeList { periodMinimum: n } -> n
   ChargeDimUnitOptSeg { periodMinimum: n } -> n
 
--- | Finds the charge type of the given identified charge unit.
-lookupChargeKind :: ChargeUnitID -> ChargeUnitMap -> Maybe ChargeKind
-lookupChargeKind unitID unitMap =
+-- | Finds the charge kind of the given identified charge unit.
+lookupChargeKind :: ChargeUnitId -> ChargeUnitMap -> Maybe ChargeKind
+lookupChargeKind unitId unitMap =
   (\(ChargeUnit u) -> u.kind)
-    <$> Map.lookup unitID unitMap
+    <$> Map.lookup unitId unitMap
 
 -- Set of all charge unit IDs present within the given charge.
-unitIDs :: Charge -> Set ChargeUnitID
-unitIDs = case _ of
+unitIds :: Charge -> Set ChargeUnitId
+unitIds = case _ of
   ChargeSingleUnit c ->
     Set.singleton
       $ fromSingleUnit c

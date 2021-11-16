@@ -96,7 +96,7 @@ render st =
                             }
                         , corporateName: ""
                         , registrationNr: ""
-                        , taxID: ""
+                        , taxId: ""
                         , website: ""
                         }
                   , seller:
@@ -120,14 +120,14 @@ render st =
                   { commercial:
                       SS.RccBillingAccountRef
                         $ SS.BillingAccountRef
-                            { billingAccountID: ""
+                            { billingAccountId: ""
                             }
                   , customer:
                       SS.ReturnCustomerData
                         { assets: []
                         , salesforceAccountRef:
                             SS.SalesforceAccountRef
-                              { salesforceAccountID: ""
+                              { salesforceAccountId: ""
                               }
                         }
                   }
@@ -569,8 +569,8 @@ render st =
                     [ HP.type_ HP.InputText
                     , HP.required true
                     , HP.placeholder "012345"
-                    , HP.value buyer.taxID
-                    , HE.onValueChange \v -> update _ { taxID = v }
+                    , HP.value buyer.taxId
+                    , HE.onValueChange \v -> update _ { taxId = v }
                     ]
                 ]
             , HH.label_

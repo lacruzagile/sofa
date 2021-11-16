@@ -10,7 +10,7 @@ import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (modifyAt, snoc)
 import Data.Array as A
-import Data.Charge (ChargeUnitMap, productChargeUnitMap, unitIDs) as Charge
+import Data.Charge (ChargeUnitMap, productChargeUnitMap, unitIds) as Charge
 import Data.Either (Either(..))
 import Data.Estimate (Estimate(..))
 import Data.Int as Int
@@ -637,17 +637,17 @@ toJson orderForm = do
       , configs: ol.configs
       }
 
-  toPriceBookRef solutionURI pb =
+  toPriceBookRef solutionUri pb =
     SS.PriceBookRef
-      { priceBookID: pb.id
+      { priceBookId: pb.id
       , version: pb.version
-      , solutionURI: Just solutionURI
+      , solutionUri: Just solutionUri
       }
 
   toOrderSection :: OrderSection -> Maybe SS.OrderSection
   toOrderSection os = do
-    solutionURI <- _.uri $ unwrap $ os.solution
-    basePriceBook <- toPriceBookRef solutionURI <$> os.priceBook
+    solutionUri <- _.uri $ unwrap $ os.solution
+    basePriceBook <- toPriceBookRef solutionUri <$> os.priceBook
     orderLines <- sequence $ map (toOrderLine <$> _) os.orderLines
     pure $ SS.OrderSection { basePriceBook, orderLines }
 
@@ -735,7 +735,7 @@ calcSubTotal os =
   mkDefaultQuantity :: Maybe (Array SS.Charge) -> QuantityMap
   mkDefaultQuantity Nothing = Map.empty
 
-  mkDefaultQuantity (Just ces) = map (const $ Left $ Exact 1) $ Set.toMap $ Set.unions $ Charge.unitIDs <$> ces
+  mkDefaultQuantity (Just ces) = map (const $ Left $ Exact 1) $ Set.toMap $ Set.unions $ Charge.unitIds <$> ces
 
   sumOrderLines :: Array (Maybe OrderLine) -> SubTotal
   sumOrderLines = A.foldl (\a b -> a <> conv b) mempty
@@ -826,11 +826,11 @@ loadExisting (SS.OrderForm orderForm) = do
   convertOrderSection (SS.ProductCatalog { solutions }) pbs (SS.OrderSection s) = do
     let
       SS.PriceBookRef pbRef = s.basePriceBook
-    solution <- List.find (\(SS.Solution { uri }) -> pbRef.solutionURI == uri) $ Map.values solutions
+    solution <- List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri) $ Map.values solutions
     let
       SS.Solution sol = solution
 
-      priceBook = A.find (\pb -> pb.id == pbRef.priceBookID) =<< Map.lookup sol.id pbs
+      priceBook = A.find (\pb -> pb.id == pbRef.priceBookId) =<< Map.lookup sol.id pbs
     pure
       $ calcSubTotal
           { solution

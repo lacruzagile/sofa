@@ -29,7 +29,7 @@ import Data.Number.Format (toStringWith, fixed)
 import Data.Quantity (Quantity, QuantityMap)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeSingleUnit(..), ChargeKind(..), ChargeUnit(..), ChargeUnitID, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
+import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeSingleUnit(..), ChargeKind(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Halogen as H
 import Halogen.HTML as HH
@@ -94,16 +94,16 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
                   in
                     calcForPricePerDimSeg dimQ model priceBySegmentByDim
 
-  calcSingleEntrySubTotal unitID currency go = do
-    quantity <- Map.lookup unitID quantityMap
-    ChargeUnit chargeUnit <- Map.lookup unitID unitMap
+  calcSingleEntrySubTotal unitId currency go = do
+    quantity <- Map.lookup unitId quantityMap
+    ChargeUnit chargeUnit <- Map.lookup unitId unitMap
     case quantity of
       Left q -> pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go q
       Right _dimQ -> Nothing
 
-  calcSingleEntrySubTotalDim unitID currency go = do
-    quantity <- Map.lookup unitID quantityMap
-    ChargeUnit chargeUnit <- Map.lookup unitID unitMap
+  calcSingleEntrySubTotalDim unitId currency go = do
+    quantity <- Map.lookup unitId quantityMap
+    ChargeUnit chargeUnit <- Map.lookup unitId unitMap
     case quantity of
       Left _q -> Nothing
       Right dimQ -> pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go dimQ
@@ -121,40 +121,40 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
     SegmentationOptUndimPerUnit (SegmentationPerUnit { segmentation }) -> SegmentationOptUndim segmentation
     SegmentationOptDimPerUnit (SegmentationDimPerUnit { segmentation }) -> SegmentationOptDim segmentation
 
-  getUnitID :: SegmentationOptDimPerUnit -> ChargeUnitID
+  getUnitID :: SegmentationOptDimPerUnit -> ChargeUnitId
   getUnitID = case _ of
     SegmentationOptUndimPerUnit (SegmentationPerUnit { unit }) -> unit
     SegmentationOptDimPerUnit (SegmentationDimPerUnit { unit }) -> unit
 
-  getCurrency unitID (ChargeCurrencyPerUnit x)
-    | x.unit == unitID = Just x.currency
+  getCurrency unitId (ChargeCurrencyPerUnit x)
+    | x.unit == unitId = Just x.currency
     | otherwise = Nothing
 
-  getDefaultPrice unitID (DefaultPricePerUnit x)
-    | x.unit == unitID = Just $ Price { price: x.price, listPrice: x.listPrice, discount: x.discount }
+  getDefaultPrice unitId (DefaultPricePerUnit x)
+    | x.unit == unitId = Just $ Price { price: x.price, listPrice: x.listPrice, discount: x.discount }
     | otherwise = Nothing
 
-  fromMultiUnit charge = A.foldl (\a unitID -> a <> forUnit unitID) mempty $ charge.units
+  fromMultiUnit charge = A.foldl (\a unitId -> a <> forUnit unitId) mempty $ charge.units
     where
     bubbled = bubblePricePerDimUnitOptSeg charge.priceByUnitByDim
 
-    forUnit unitID =
+    forUnit unitId =
       fromMaybe mempty do
-        pricePerDimOptSeg <- Map.lookup unitID bubbled
-        ChargeUnit chargeUnit <- Map.lookup unitID unitMap
+        pricePerDimOptSeg <- Map.lookup unitId bubbled
+        ChargeUnit chargeUnit <- Map.lookup unitId unitMap
         let
-          currency = A.findMap (getCurrency unitID) charge.currencyByUnit
+          currency = A.findMap (getCurrency unitId) charge.currencyByUnit
 
-          defaultPrice = A.findMap (getDefaultPrice unitID) charge.defaultPriceByUnit
+          defaultPrice = A.findMap (getDefaultPrice unitId) charge.defaultPriceByUnit
 
           finish = pure <<< mkSubTotal chargeUnit.kind <<< mkIndexed currency
-        quantity <- Map.lookup unitID quantityMap
+        quantity <- Map.lookup unitId quantityMap
         case pricePerDimOptSeg of
           PricePerDimOptSeg ps -> do
             segmentation <-
               A.findMap
                 ( \seg ->
-                    if getUnitID seg == unitID then
+                    if getUnitID seg == unitId then
                       Just (getSegmentationUnit seg)
                     else
                       Nothing
@@ -172,7 +172,7 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
 
 -- Move unit to top-level. This essentially swaps places between unit and
 -- dimension to make the structure more convenient.
-bubblePricePerDimUnitOptSeg :: Array PricePerDimUnitOptSeg -> Map ChargeUnitID PricePerDimOptSeg
+bubblePricePerDimUnitOptSeg :: Array PricePerDimUnitOptSeg -> Map ChargeUnitId PricePerDimOptSeg
 bubblePricePerDimUnitOptSeg = Map.fromFoldableWith (<>) <<< List.concatMap foo <<< toList
   where
   toList :: forall a. Array a -> List a
@@ -195,7 +195,7 @@ bubblePricePerDimUnitOptSeg = Map.fromFoldableWith (<>) <<< List.concatMap foo <
           , discount: ppu.discount
           }
 
-  foo :: PricePerDimUnitOptSeg -> List (Tuple ChargeUnitID PricePerDimOptSeg)
+  foo :: PricePerDimUnitOptSeg -> List (Tuple ChargeUnitId PricePerDimOptSeg)
   foo = case _ of
     PricePerDimUnitOptSeg (PricePerDimUnitSeg ppdu) -> bar ppdu <$> toList ppdu.priceBySegmentByUnit
     PricePerDimUnitOptNoSeg (PricePerDimUnit ppdu) -> baz ppdu <$> toList ppdu.priceByUnit
