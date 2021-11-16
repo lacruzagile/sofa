@@ -22,6 +22,7 @@
     "parcel-reporter-static-files-copy": "^1.3.0"
   },
   "dependencies": {
+    "iso-3166": "^4.0.1",
     "xhr2": "^0.2.1"
   }
 }

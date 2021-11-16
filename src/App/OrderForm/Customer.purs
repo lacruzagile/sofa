@@ -4,13 +4,14 @@ import Prelude
 import App.Requests (getLegalEntities)
 import Css as Css
 import Data.Array as A
+import Data.Iso3166 (countryForCode, subdivisionForCode)
+import Data.Iso3166 as Iso3166
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Data.SmartSpec as SS
 import Data.String as S
-import Data.String.Regex as Re
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console as Console
 import Halogen as H
@@ -64,10 +65,6 @@ render st =
     , HH.div [ HP.class_ Css.one ] (renderCustomerDetails st.customer)
     ]
   where
-  countryPattern = Re.source SS.countryRegex
-
-  subdivisionPattern = Re.source SS.subdivisionRegex
-
   renderSelectCustomerType =
     [ HH.button
         [ HE.onClick \_ ->
@@ -261,6 +258,106 @@ render st =
           ]
       ]
 
+  -- Renders a drop-down list of countries.
+  renderCountrySelect ::
+    { id :: String
+    , set :: SS.Country -> Action
+    , selected :: Maybe SS.Country
+    } ->
+    H.ComponentHTML Action slots m
+  renderCountrySelect { id, set, selected } =
+    let
+      countryEntry c =
+        HH.option
+          [ HP.value c.alpha2, HP.selected (Just (SS.Country c.alpha2) == selected) ]
+          [ HH.text c.name ]
+    in
+      HH.select
+        [ HP.id id, HP.class_ Css.twoThird, HE.onValueChange (set <<< SS.Country) ]
+        $ [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected (isNothing selected) ]
+              [ HH.text "Please choose a country" ]
+          ]
+        <> map countryEntry Iso3166.countries
+
+  -- Renders a drop-down list of subdivisions for the given country.
+  renderSubdivisionSelect ::
+    { id :: String
+    , country :: Maybe SS.Country
+    , set :: (Maybe SS.Subdivision -> Action)
+    , selected :: Maybe SS.Subdivision
+    } ->
+    H.ComponentHTML Action slots m
+  renderSubdivisionSelect { id, country, set, selected } = case country of
+    Nothing ->
+      HH.select
+        [ HP.id id, HP.class_ Css.twoThird ]
+        [ HH.option
+            [ HP.value "", HP.disabled true, HP.selected true ]
+            [ HH.text "Please choose a country" ]
+        ]
+    Just (SS.Country countryCode) ->
+      let
+        subdivEntry c =
+          let
+            -- Drop country code and '-'.
+            code = S.drop 3 c.code
+          in
+            HH.option
+              [ HP.value code, HP.selected (Just (SS.Subdivision code) == selected) ]
+              [ HH.text c.name ]
+
+        subdivs = A.fromFoldable (subdivEntry <$> Iso3166.countrySubdivisions countryCode)
+
+        set' =
+          set
+            <<< case _ of
+                "" -> Nothing
+                s -> Just $ SS.Subdivision s
+      in
+        HH.select
+          [ HP.id id, HP.class_ Css.twoThird, HE.onValueChange set' ]
+          $ [ HH.option
+                [ HP.value "", HP.selected (isNothing selected) ]
+                [ HH.text "No state or province" ]
+            ]
+          <> subdivs
+
+  renderReadOnlyAddress (SS.Address address) =
+    let
+      entry title value = case value of
+        Nothing -> []
+        Just v ->
+          [ HH.div_ [ HH.text title ]
+          , HH.div [ HP.class_ Css.twoThird ] [ HH.text v ]
+          ]
+    in
+      [ HH.fieldset_
+          [ HH.legend_ [ HH.text "Address" ]
+          , HH.div [ HP.classes [ Css.flex, Css.three ] ]
+              $ entry "" address.line1
+              <> entry "" address.line2
+              <> entry "" address.line3
+              <> entry "P/O Box" address.postOfficeBox
+              <> entry "Postal Code" address.postalCode
+              <> entry "City" address.city
+              <> entry "County" address.county
+              <> entry "State or Province"
+                  ( do
+                      SS.Country cCode <- address.country
+                      SS.Subdivision sCode <- address.stateOrProvince
+                      subdiv <- subdivisionForCode cCode sCode
+                      pure subdiv.name
+                  )
+              <> entry "Country"
+                  ( do
+                      SS.Country cCode <- address.country
+                      country <- countryForCode cCode
+                      pure country.name
+                  )
+          ]
+      ]
+
   renderAddress baseId (SS.Address address) update =
     let
       opt = fromMaybe ""
@@ -335,20 +432,20 @@ render st =
                   , get: address.county
                   , set: \a v -> a { county = v }
                   }
-              <> input
-                  { id: "stateOrProvince"
-                  , placeholder: "State or Province"
-                  , pattern: subdivisionPattern
-                  , get: show <$> address.stateOrProvince
-                  , set: \a v -> a { stateOrProvince = SS.Subdivision <$> v }
-                  }
-              <> input
-                  { id: "country"
-                  , placeholder: "Country"
-                  , pattern: countryPattern
-                  , get: show <$> address.country
-                  , set: \a v -> a { country = SS.Country <$> v }
-                  }
+              <> [ HH.label [ HP.for "stateOrProvince" ] [ HH.text "State or Province" ]
+                , renderSubdivisionSelect
+                    { id: "stateOrProvince"
+                    , country: address.country
+                    , set: \v -> update (\a -> a { stateOrProvince = v })
+                    , selected: address.stateOrProvince
+                    }
+                , HH.label [ HP.for "country" ] [ HH.text "Country" ]
+                , renderCountrySelect
+                    { id: "country"
+                    , set: \v -> update (\a -> a { country = Just v })
+                    , selected: address.country
+                    }
+                ]
           ]
       ]
 
@@ -554,20 +651,7 @@ render st =
                 seller.contacts.support
                 $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
             ]
-              <> renderAddress "of-seller"
-                  seller.address
-                  ( \f ->
-                      update
-                        ( \s ->
-                            s
-                              { address =
-                                let
-                                  SS.Address addr = s.address
-                                in
-                                  SS.Address (f addr)
-                              }
-                        )
-                  )
+              <> renderReadOnlyAddress seller.address
           )
           [ HH.label
               [ HP.for "of-seller", HP.class_ Css.button ]
