@@ -1,7 +1,7 @@
 module App.OrderForm.Customer (Slot, Output, proxy, component) where
 
 import Prelude
-import App.Requests (getLegalEntities)
+import App.Requests (getBuyers, getLegalEntities)
 import Css as Css
 import Data.Array as A
 import Data.Iso3166 (countryForCode, subdivisionForCode)
@@ -37,6 +37,8 @@ type State
   = { customer :: Maybe SS.Customer
     , legalEntity :: Maybe SS.LegalEntity -- ^ The chosen legal entity.
     , legalEntities :: Loadable SS.LegalEntities
+    , buyer :: Maybe SS.Buyer -- ^ The chosen buyer.
+    , buyers :: Loadable (Array SS.Buyer)
     }
 
 data Action
@@ -44,6 +46,7 @@ data Action
   | Initialize SS.Customer
   | UpdateCustomer (SS.Customer -> SS.Customer)
   | SetLegalEntity SS.LegalEntity
+  | SetBuyer SS.Buyer
 
 component ::
   forall query m.
@@ -56,7 +59,13 @@ component =
     }
 
 initialState :: Input -> State
-initialState customer = { customer, legalEntity: Nothing, legalEntities: Idle }
+initialState customer =
+  { customer
+  , legalEntity: Nothing
+  , legalEntities: Idle
+  , buyer: Nothing
+  , buyers: Idle
+  }
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render st =
@@ -79,7 +88,8 @@ render st =
                         }
                   , buyer:
                       SS.Buyer
-                        { address: SS.emptyAddress
+                        { buyerID: Nothing
+                        , address: SS.emptyAddress
                         , contacts:
                             { primary: SS.emptyContact
                             , finance: SS.emptyContact
@@ -494,10 +504,47 @@ render st =
                 in
                   SS.NewCustomer $ oldCustomer { buyer = SS.Buyer (f oldBuyer) }
               returnCustomer -> returnCustomer
+
+      renderBuyerOption (SS.Buyer b) =
+        HH.option
+          [ HP.value $ fromMaybe "" b.buyerID ]
+          [ HH.text b.corporateName ]
+
+      buyerOptions = case st.buyers of
+        Idle ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text "No buyers loaded" ]
+          ]
+        Loaded buyers ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text "Please choose a buyer" ]
+          ]
+            <> map renderBuyerOption buyers
+        Loading ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text "Loading buyers…" ]
+          ]
+        Error _ ->
+          [ HH.option
+              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HH.text $ "Error loading buyers" ]
+          ]
+
+      actionSetBuyer id = case st.buyers of
+        Loaded buyers -> maybe NoOp SetBuyer $ A.find (\(SS.Buyer b) -> Just id == b.buyerID) buyers
+        _ -> NoOp
     in
       [ HH.label [ HP.for "of-buyer", HP.class_ Css.button ] [ HH.text "Buyer" ]
       , Widgets.modal "of-buyer" "Buyer"
           ( [ HH.label_
+                [ HH.text "Populate From"
+                , HH.select [ HE.onValueChange actionSetBuyer ] buyerOptions
+                ]
+            , HH.hr_
+            , HH.label_
                 [ HH.text "Corporate Name"
                 , HH.input
                     [ HP.type_ HP.InputText
@@ -683,9 +730,13 @@ handleAction = case _ of
   Initialize customer' -> do
     H.modify_ $ \st -> st { customer = Just customer', legalEntities = Loading }
     legalEntities <- getLegalEntities
-    H.modify_ $ \st -> st { legalEntities = legalEntities }
+    buyers <- getBuyers ""
+    H.modify_ $ \st -> st { legalEntities = legalEntities, buyers = buyers }
     case legalEntities of
       Error err -> Console.error $ "When fetching legal entities: " <> err
+      _ -> pure unit
+    case buyers of
+      Error err -> Console.error $ "When fetching buyers: " <> err
       _ -> pure unit
   UpdateCustomer updater -> do
     { customer } <- H.modify $ \st -> st { customer = map updater st.customer }
@@ -724,5 +775,19 @@ handleAction = case _ of
                         , contacts: le.contacts
                         }
                     $ st.customer
+                }
+    maybe (pure unit) H.raise customer
+  SetBuyer buyer -> do
+    { customer } <-
+      H.modify
+        $ \st ->
+            let
+              customer' = case _ of
+                Just (SS.NewCustomer c) -> Just $ SS.NewCustomer $ c { buyer = buyer }
+                c -> c
+            in
+              st
+                { buyer = Just buyer
+                , customer = customer' st.customer
                 }
     maybe (pure unit) H.raise customer

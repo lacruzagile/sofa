@@ -1803,7 +1803,8 @@ instance encodeJsonContact :: EncodeJson Contact where
 
 newtype Buyer
   = Buyer
-  { address :: Address
+  { buyerID :: Maybe String
+  , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
   , registrationNr :: String

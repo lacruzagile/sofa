@@ -52,4 +52,5 @@ subdivisionForCode :: String -> String -> Maybe Iso31662Entry
 subdivisionForCode countryCode subdivCode = find codeMatch subdivisions
   where
   code = countryCode <> "-" <> subdivCode
+
   codeMatch subdiv = subdiv.code == code

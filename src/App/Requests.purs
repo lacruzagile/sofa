@@ -1,10 +1,10 @@
 -- | Contains various AJAX requests.
-module App.Requests (getLegalEntities, getOrders, getProductCatalog, postOrder) where
+module App.Requests (getBuyers, getLegalEntities, getOrders, getProductCatalog, postOrder) where
 
 import Prelude
 import App.Auth (class CredentialStore)
 import Data.Loadable (Loadable, getJson, getRJson, postRJson)
-import Data.SmartSpec (LegalEntities, OrderForm, Orders, ProductCatalog)
+import Data.SmartSpec (Buyer, LegalEntities, OrderForm, Orders, ProductCatalog)
 import Effect.Aff.Class (class MonadAff)
 
 baseUrl :: String
@@ -15,6 +15,13 @@ orderingBaseUrl = "/v1alpha1"
 
 ordersUrl :: String
 ordersUrl = orderingBaseUrl <> "/orders"
+
+-- | Fetches buyers that match the given query string.
+getBuyers :: forall m. MonadAff m => String -> m (Loadable (Array Buyer))
+getBuyers _query = map (map conv) $ getJson (baseUrl <> "/buyers.json")
+  where
+  conv :: { buyers :: Array Buyer } -> Array Buyer
+  conv { buyers } = buyers
 
 getLegalEntities :: forall m. MonadAff m => m (Loadable LegalEntities)
 getLegalEntities = getJson (baseUrl <> "/legalentities.json")
