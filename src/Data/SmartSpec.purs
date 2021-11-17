@@ -63,7 +63,6 @@ module Data.SmartSpec
   , ProductFeature(..)
   , ProductOption(..)
   , ProductOptionType(..)
-  , ProductVariable(..)
   , Purchaser(..)
   , Quantifier(..)
   , QuantityPerDim(..)
@@ -130,7 +129,7 @@ newtype Solution
   = Solution
   { id :: String
   , uri :: Maybe Uri
-  , name :: Maybe String
+  , title :: Maybe String
   , description :: Maybe String
   , products :: Array Product
   , rules :: Array Rule
@@ -144,12 +143,12 @@ instance decodeJsonSolution :: DecodeJson Solution where
     o <- decodeJson json
     id <- o .: "id"
     uri <- o .:? "uri"
-    name <- o .:? "name"
+    title <- o .:? "title"
     description <- o .:? "description"
     products <- o .: "products"
     rules <- o .:? "rules" .!= []
     priceBooks <- o .: "priceBooks"
-    pure $ Solution { id, uri, name, description, rules, products, priceBooks }
+    pure $ Solution { id, uri, title, description, rules, products, priceBooks }
 
 derive newtype instance encodeJsonSolution :: EncodeJson Solution
 
@@ -162,7 +161,7 @@ solutionProducts =
 
 newtype ProductCatalog
   = ProductCatalog
-  { name :: Maybe String
+  { title :: Maybe String
   , description :: Maybe String
   , solutions :: Map String Solution
   }
@@ -170,14 +169,14 @@ newtype ProductCatalog
 instance decodeJsonProductCatalog :: DecodeJson ProductCatalog where
   decodeJson json = do
     o <- decodeJson json
-    name <- o .:? "name"
+    title <- o .:? "title"
     description <- o .:? "description"
     solutionsObj :: FO.Object Solution <- o .: "solutions"
     let
       solutions = Map.fromFoldable (FO.toUnfoldable solutionsObj :: Array _)
     pure
       $ ProductCatalog
-          { name
+          { title
           , description
           , solutions
           }
@@ -409,7 +408,7 @@ derive newtype instance encodeJsonChargeCurrencyPerUnit :: EncodeJson ChargeCurr
 newtype PriceBook
   = PriceBook
   { id :: String
-  , name :: String
+  , title :: String
   , description :: Maybe String
   , byVersion :: Array PriceBookVersion
   }
@@ -782,7 +781,7 @@ derive newtype instance encodeJsonSegmentsPerDim :: EncodeJson SegmentsPerDim
 newtype RateCard
   = RateCard
   { sku :: SkuCode
-  , name :: Maybe String
+  , title :: Maybe String
   , description :: Maybe String
   , charges :: Array Charge
   }
@@ -1302,20 +1301,10 @@ instance encodeJsonConfigValue :: EncodeJson ConfigValue where
   encodeJson (CvObject v) = encodeJson $ FO.fromFoldable (Map.toUnfoldable v :: List _)
   encodeJson (CvNull) = encodeJson (Nothing :: Maybe Int)
 
--- TODO: Add `schema` and `variable`.
-newtype ProductVariable
-  = ProductVariable
-  { name :: String, path :: String
-  }
-
-derive newtype instance decodeJsonProductVariable :: DecodeJson ProductVariable
-
-derive newtype instance encodeJsonProductVariable :: EncodeJson ProductVariable
-
 newtype ChargeUnit
   = ChargeUnit
   { id :: ChargeUnitID
-  , name :: Maybe String
+  , title :: Maybe String
   , description :: Maybe String
   , chargeType :: ChargeType
   , priceDimSchema :: Maybe ConfigSchemaEntry
@@ -1328,7 +1317,7 @@ instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
   decodeJson json = do
     o <- decodeJson json
     id <- o .: "id"
-    name <- o .:? "name"
+    title <- o .:? "title"
     description <- o .:? "description"
     chargeType <- o .:? "chargeType" .!= ChargeTypeUsage
     priceDimSchema <- o .:? "priceDimSchema"
@@ -1336,7 +1325,7 @@ instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
     pure
       $ ChargeUnit
           { id
-          , name
+          , title
           , description
           , chargeType
           , priceDimSchema
@@ -1355,16 +1344,13 @@ derive newtype instance encodeJsonPriceDimSchema :: EncodeJson PriceDimSchema
 newtype Product
   = Product
   { sku :: SkuCode
-  , category :: ProductCategory
-  , platform :: Maybe Platform
-  , name :: Maybe String
+  , title :: Maybe String
   , description :: Maybe String
   , attr :: Maybe (Map String ConfigValue)
   , orderConfigSchema :: Maybe ConfigSchemaEntry
   , assetConfigSchema :: Maybe ConfigSchemaEntry
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
-  , variables :: Maybe (Array ProductVariable)
   , chargeUnits :: Array ChargeUnit
   , rules :: Maybe (Array Rule)
   }
@@ -1375,9 +1361,7 @@ instance decodeJsonProduct :: DecodeJson Product where
   decodeJson json = do
     o <- decodeJson json
     sku <- o .: "sku"
-    category <- o .: "category"
-    platform <- o .:? "platform"
-    name <- o .:? "name"
+    title <- o .:? "title"
     description <- o .:? "description"
     attrObj :: Maybe (FO.Object ConfigValue) <- o .:? "attr"
     let
@@ -1386,22 +1370,18 @@ instance decodeJsonProduct :: DecodeJson Product where
     assetConfigSchema <- o .:? "assetConfigSchema"
     options <- o .:? "options"
     features <- o .:? "features"
-    variables <- o .:? "variables"
     chargeUnits <- o .: "chargeUnits"
     rules <- o .:? "rules"
     pure
       $ Product
           { sku
-          , category
-          , platform
-          , name
+          , title
           , description
           , attr
           , orderConfigSchema
           , assetConfigSchema
           , options
           , features
-          , variables
           , chargeUnits
           , rules
           }
@@ -1585,7 +1565,7 @@ data ProductOption
   = ProdOptSkuCode String
   | ProductOption
     { sku :: SkuCode
-    , name :: Maybe String
+    , title :: Maybe String
     , required :: Boolean
     , quoteLineVisible :: Boolean
     , quantity :: Int
@@ -1604,7 +1584,7 @@ instance decodeJsonProductOption :: DecodeJson ProductOption where
 
     decodeProductOption = do
       o <- decodeJson json
-      name <- o .:? "name"
+      title <- o .:? "title"
       sku <- o .: "sku"
       required <- o .:? "required" .!= false
       quoteLineVisible <- o .:? "quoteLineVisible" .!= false
@@ -1618,7 +1598,7 @@ instance decodeJsonProductOption :: DecodeJson ProductOption where
       pure
         $ ProductOption
             { sku
-            , name
+            , title
             , required
             , quoteLineVisible
             , quantity
@@ -1659,7 +1639,7 @@ instance encodeJsonProductOptionType :: EncodeJson ProductOptionType where
 
 newtype ProductFeature
   = ProductFeature
-  { name :: Maybe String
+  { title :: Maybe String
   , description :: Maybe String
   , options :: Maybe (Array Json)
   }

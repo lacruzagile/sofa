@@ -57,7 +57,7 @@ type StateOrderForm
   = { productCatalog :: SS.ProductCatalog
     , currency :: Maybe SS.PricingCurrency
     , priceBooks :: Map String (Array PriceBook)
-    -- ^ Map from solution name to price books in the current currency.
+    -- ^ Map from solution title to price books in the current currency.
     , orderForm :: OrderForm
     }
 
@@ -88,7 +88,7 @@ type OrderLine
 
 type PriceBook
   = { id :: String
-    , name :: String
+    , title :: String
     , version :: String
     , currency :: SS.ChargeCurrency -- ^ The default charge currency.
     , rateCards :: Maybe (Map SS.SkuCode SS.RateCard) -- ^ Maybe a map from SKU to rate cards.
@@ -499,7 +499,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
         <> subBody
 
-    solutionLabel (SS.Solution s) = fromMaybe s.id s.name
+    solutionLabel (SS.Solution s) = fromMaybe s.id s.title
 
     actionSetSolution solId =
       SectionSetSolution
@@ -527,7 +527,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             HH.option
               [ HP.selected (Just pb.id == map _.id curPriceBook)
               ]
-              [ HH.text $ pb.name <> " (" <> pb.version <> ")" ]
+              [ HH.text $ pb.title <> " (" <> pb.version <> ")" ]
         )
 
     sectionOrderLines sol orderLines = [ HH.div_ $ A.mapWithIndex renderOrderLine' orderLines ]
@@ -881,7 +881,7 @@ mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>)
     if pbc.currency == c then
       [ Tuple sol.id
           [ { id: pb.id
-            , name: pb.name
+            , title: pb.title
             , version: pbv.version
             , currency: SS.ChargeCurrency (unwrap c)
             , rateCards: rateCardMap <$> pbc.rateCards

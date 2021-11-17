@@ -28,10 +28,10 @@ productChargeUnitMap (Product { chargeUnits }) =
   Map.fromFoldable $ map (\u@(ChargeUnit { id }) -> Tuple id u)
     $ chargeUnits
 
--- | A suitable label for a unit. Uses the unit name, if available, otherwise
+-- | A suitable label for a unit. Uses the unit title, if available, otherwise
 -- | its identifier.
 chargeUnitLabel :: ChargeUnit -> String
-chargeUnitLabel (ChargeUnit { id: ChargeUnitID id, name }) = fromMaybe id name
+chargeUnitLabel (ChargeUnit { id: ChargeUnitID id, title }) = fromMaybe id title
 
 dims :: Charge -> Set DimValue
 dims = case _ of

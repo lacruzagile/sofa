@@ -82,7 +82,7 @@ render state = HH.section_ [ HH.article_ content ]
     HH.li_
       [ HH.dl_
           ( dataItem "SKU" (show po.sku)
-              <> opt (dataItem "Name") po.name
+              <> opt (dataItem "Title") po.title
               <> dataItem "Required" (show po.required)
               <> dataItem "Quote Line Visible" (show po.quoteLineVisible)
               <> dataItem "Quantity" (show po.quantity)
@@ -157,16 +157,13 @@ render state = HH.section_ [ HH.article_ content ]
   product (SS.Product p) =
     HH.li_
       [ HH.dl_ $ dataItem "SKU" (show p.sku)
-          <> dataItem "Category" (show p.category)
-          <> opt (dataItem "Platform" <<< show) p.platform
-          <> opt (dataItem "Name") p.name
+          <> opt (dataItem "Title") p.title
           <> opt (dataItem "Description") p.description
           <> opt (dataItemRaw "Attributes" <<< renderConfigValues) p.attr
           <> opt (dataItemRaw "Order Configuration Schema" <<< configSchemaEntry) p.orderConfigSchema
           <> opt (dataItemRaw "Asset Configuration Schema" <<< configSchemaEntry) p.assetConfigSchema
           <> productOptions p.options
           <> opt (dataItem "Features" <<< const "TODO") p.features
-          <> opt (dataItem "Variables" <<< const "TODO") p.variables
           <> dataItemRaw "Units" (renderSpecUnits p.chargeUnits)
           <> opt (dataItem "Rules" <<< const "TODO") p.rules
       ]
@@ -175,7 +172,7 @@ render state = HH.section_ [ HH.article_ content ]
   renderSpecUnit (SS.ChargeUnit u) =
     HH.dl_
       $ dataItem "Id" (show u.id)
-      <> opt (dataItem "Name") u.name
+      <> opt (dataItem "Title") u.title
       <> opt (dataItem "Description") u.description
       <> dataItem "Charge Type" (show u.chargeType)
       <> opt (dataItemRaw "Price Dimension Schema" <<< configSchemaEntry) u.priceDimSchema
@@ -197,7 +194,7 @@ render state = HH.section_ [ HH.article_ content ]
   renderRateCard :: SS.ChargeCurrency -> Charge.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
   renderRateCard defaultCurrency unitMap (SS.RateCard r) =
     HH.li_ $ dataItem "SKU" (show r.sku)
-      <> opt (dataItem "Name") r.name
+      <> opt (dataItem "Title") r.title
       <> opt (dataItem "Description") r.description
       <> dataItemRaw "Charges" (renderRateCardCharges defaultCurrency unitMap r.charges)
 
@@ -230,7 +227,7 @@ render state = HH.section_ [ HH.article_ content ]
     HH.li_
       [ HH.dl_
           ( dataItem "ID" p.id
-              <> dataItem "Name" p.name
+              <> dataItem "Title" p.title
               <> opt (dataItem "Description") p.description
               <> (dataItemRaw "Versions" $ HH.ul_ $ map (renderPriceBookVersion prodMap) p.byVersion)
           )
@@ -267,7 +264,7 @@ render state = HH.section_ [ HH.article_ content ]
     HH.li_
       [ HH.dl_
           $ dataItem "ID" sol.id
-          <> opt (dataItem "Name") sol.name
+          <> opt (dataItem "Title") sol.title
           <> opt (dataItem "Description") sol.description
           <> dataItemRaw "Price Books" (blockList (map (renderPrice prodMap) sol.priceBooks))
           <> dataItemRaw "Products" (blockList (map product sol.products))
@@ -279,7 +276,7 @@ render state = HH.section_ [ HH.article_ content ]
         $ sol.products
 
   productCatalog (SS.ProductCatalog pc) =
-    [ HH.h1_ [ HH.text (fromMaybe "Unnamed Product Catalog" pc.name) ]
+    [ HH.h1_ [ HH.text (fromMaybe "Untitled Product Catalog" pc.title) ]
     , HH.h2_ [ HH.text "Description" ]
     , HH.p_ [ HH.text $ fromMaybe "No description" pc.description ]
     , HH.h2_ [ HH.text "Solutions" ]
