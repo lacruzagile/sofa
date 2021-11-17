@@ -4,6 +4,7 @@ module Data.SmartSpec
   , BillingAccountRef(..)
   , BillingCurrency(..)
   , BillingOption(..)
+  , Buyer(..)
   , Charge(..)
   , ChargeCurrency(..)
   , ChargeCurrencyPerUnit(..)
@@ -63,7 +64,6 @@ module Data.SmartSpec
   , ProductFeature(..)
   , ProductOption(..)
   , ProductOptionType(..)
-  , Purchaser(..)
   , Quantifier(..)
   , QuantityPerDim(..)
   , QuantityPerUnit(..)
@@ -344,11 +344,14 @@ instance decodeJsonCurrency :: DecodeJson Currency where
 
 derive newtype instance encodeJsonCurrency :: EncodeJson Currency
 
--- | The billing currency. This is the currency that is used for the purchaser's invoice. It is always the same as the pricing currency and is therefore an alias.
+-- | The billing currency. This is the currency that is used for the buyer's
+-- | invoice. It is always the same as the pricing currency and is therefore an
+-- | alias.
 type BillingCurrency
   = PricingCurrency
 
--- | The payment currency. This is the currency that the purchaser actually use to pay their invoice.
+-- | The payment currency. This is the currency that the buyer actually use to
+-- | pay their invoice.
 newtype PaymentCurrency
   = PaymentCurrency Currency
 
@@ -1798,8 +1801,8 @@ instance encodeJsonContact :: EncodeJson Contact where
       ~>? (("phone" := _) <$> x.phone)
       ~>? jsonEmptyObject
 
-newtype Purchaser
-  = Purchaser
+newtype Buyer
+  = Buyer
   { address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
@@ -1808,9 +1811,9 @@ newtype Purchaser
   , website :: Uri
   }
 
-derive newtype instance decodeJsonPurchaser :: DecodeJson Purchaser
+derive newtype instance decodeJsonBuyer :: DecodeJson Buyer
 
-derive newtype instance encodeJsonPurchaser :: EncodeJson Purchaser
+derive newtype instance encodeJsonBuyer :: EncodeJson Buyer
 
 newtype Seller
   = Seller
@@ -1954,7 +1957,7 @@ derive newtype instance encodeJsonReturnCustomerData :: EncodeJson ReturnCustome
 data Customer
   = NewCustomer
     { commercial :: Commercial
-    , purchaser :: Purchaser
+    , buyer :: Buyer
     , seller :: Seller
     }
   | ReturnCustomer

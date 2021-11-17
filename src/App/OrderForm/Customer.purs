@@ -77,8 +77,8 @@ render st =
                         , paymentCurrency: SS.PaymentCurrency (SS.Currency "")
                         , billingCurrency: SS.PricingCurrency (SS.Currency "")
                         }
-                  , purchaser:
-                      SS.Purchaser
+                  , buyer:
+                      SS.Buyer
                         { address: SS.emptyAddress
                         , contacts:
                             { primary: SS.emptyContact
@@ -132,7 +132,7 @@ render st =
 
   renderNewCustomer c =
     renderCommercial c.commercial
-      <> renderPurchaser c.purchaser
+      <> renderBuyer c.buyer
       <> renderSeller c.seller
 
   renderReturnCustomer _c = [ HH.text "Return customers are unsupported at the moment" ]
@@ -483,26 +483,26 @@ render st =
             ]
         ]
 
-  renderPurchaser (SS.Purchaser purchaser) =
+  renderBuyer (SS.Buyer buyer) =
     let
       update f =
         UpdateCustomer
           $ case _ of
               SS.NewCustomer oldCustomer ->
                 let
-                  SS.Purchaser oldPurchaser = oldCustomer.purchaser
+                  SS.Buyer oldBuyer = oldCustomer.buyer
                 in
-                  SS.NewCustomer $ oldCustomer { purchaser = SS.Purchaser (f oldPurchaser) }
+                  SS.NewCustomer $ oldCustomer { buyer = SS.Buyer (f oldBuyer) }
               returnCustomer -> returnCustomer
     in
-      [ HH.label [ HP.for "of-purchaser", HP.class_ Css.button ] [ HH.text "Purchaser" ]
-      , Widgets.modal "of-purchaser" "Purchaser"
+      [ HH.label [ HP.for "of-buyer", HP.class_ Css.button ] [ HH.text "Buyer" ]
+      , Widgets.modal "of-buyer" "Buyer"
           ( [ HH.label_
                 [ HH.text "Corporate Name"
                 , HH.input
                     [ HP.type_ HP.InputText
                     , HP.required true
-                    , HP.value purchaser.corporateName
+                    , HP.value buyer.corporateName
                     , HE.onValueChange \v -> update _ { corporateName = v }
                     ]
                 ]
@@ -512,7 +512,7 @@ render st =
                     [ HP.type_ HP.InputText
                     , HP.required true
                     , HP.placeholder "012345"
-                    , HP.value purchaser.registrationNr
+                    , HP.value buyer.registrationNr
                     , HE.onValueChange \v -> update _ { registrationNr = v }
                     ]
                 ]
@@ -522,7 +522,7 @@ render st =
                     [ HP.type_ HP.InputText
                     , HP.required true
                     , HP.placeholder "012345"
-                    , HP.value purchaser.taxID
+                    , HP.value buyer.taxID
                     , HE.onValueChange \v -> update _ { taxID = v }
                     ]
                 ]
@@ -532,24 +532,24 @@ render st =
                     [ HP.type_ HP.InputUrl
                     , HP.required true
                     , HP.placeholder "https://example.org/"
-                    , HP.value purchaser.website
+                    , HP.value buyer.website
                     , HE.onValueChange \v -> update _ { website = v }
                     ]
                 ]
             , renderContact "Primary Contact"
-                purchaser.contacts.primary
+                buyer.contacts.primary
                 $ \f -> update (\c -> c { contacts { primary = f c.contacts.primary } })
             , renderContact "Finance Contact"
-                purchaser.contacts.finance
+                buyer.contacts.finance
                 $ \f -> update (\c -> c { contacts { finance = f c.contacts.finance } })
             ]
               <> renderAddress
-                  "of-purchaser"
-                  purchaser.address
+                  "of-buyer"
+                  buyer.address
                   (\f -> update (\c -> c { address = let SS.Address addr = c.address in SS.Address (f addr) }))
           )
           [ HH.label
-              [ HP.for "of-purchaser", HP.class_ Css.button ]
+              [ HP.for "of-buyer", HP.class_ Css.button ]
               [ HH.text "OK" ]
           ]
       ]

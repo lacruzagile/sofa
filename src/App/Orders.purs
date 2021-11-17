@@ -101,14 +101,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
     HH.tr_
       [ HH.td_ [ HH.text $ showID o.id ]
       , HH.td_ [ HH.text $ showOrderStatus o.status ]
-      , HH.td_ [ HH.text purchaser ]
+      , HH.td_ [ HH.text buyer ]
       , HH.td_ [ HH.text seller ]
       , HH.td_ [ HH.button [ HE.onClick \_ -> OpenOrder orderForm ] [ HH.text "Open" ] ]
       ]
     where
-    Tuple purchaser seller = case o.customer of
+    Tuple buyer seller = case o.customer of
       SS.NewCustomer
-        { purchaser: SS.Purchaser { corporateName: p }
+        { buyer: SS.Buyer { corporateName: p }
       , seller: SS.Seller { name: s }
       } -> Tuple p s
       _ -> Tuple "?" "?"
@@ -125,7 +125,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           $ [ HH.tr_
                 [ HH.th_ [ HH.text "ID" ]
                 , HH.th_ [ HH.text "Status" ]
-                , HH.th_ [ HH.text "Purchaser" ]
+                , HH.th_ [ HH.text "Buyer" ]
                 , HH.th_ [ HH.text "Seller" ]
                 , HH.th_ [ HH.text "Action" ]
                 ]
