@@ -4,7 +4,7 @@ module Data.Charge
   , chargeUnitLabel
   , description
   , dims
-  , lookupChargeType
+  , lookupChargeKind
   , periodMinimum
   , productChargeUnitMap
   , unitIDs
@@ -16,7 +16,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.SmartSpec (Charge(..), ChargeSingleUnit(..), ChargeType, ChargeUnit(..), ChargeUnitID(..), DimValue, PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), Product(..))
+import Data.SmartSpec (Charge(..), ChargeSingleUnit(..), ChargeKind, ChargeUnit(..), ChargeUnitID(..), DimValue, PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), Product(..))
 import Data.Tuple (Tuple(..))
 
 type ChargeUnitMap
@@ -72,9 +72,9 @@ periodMinimum = case _ of
   ChargeDimUnitOptSeg { periodMinimum: n } -> n
 
 -- | Finds the charge type of the given identified charge unit.
-lookupChargeType :: ChargeUnitID -> ChargeUnitMap -> Maybe ChargeType
-lookupChargeType unitID unitMap =
-  (\(ChargeUnit u) -> u.chargeType)
+lookupChargeKind :: ChargeUnitID -> ChargeUnitMap -> Maybe ChargeKind
+lookupChargeKind unitID unitMap =
+  (\(ChargeUnit u) -> u.kind)
     <$> Map.lookup unitID unitMap
 
 -- Set of all charge unit IDs present within the given charge.

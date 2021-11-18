@@ -304,7 +304,7 @@ render { unitMap, defaultCurrency, charges, quantity, aggregatedQuantity } =
       renderUnitLabels = mkLabel <$> units
         where
         mkLabel u =
-          Widgets.withTooltip Widgets.Top (show $ _.chargeType $ unwrap u)
+          Widgets.withTooltip Widgets.Top (show $ _.kind $ unwrap u)
             $ HH.text
             $ Charge.chargeUnitLabel u
 

@@ -174,7 +174,7 @@ render state = HH.section_ [ HH.article_ content ]
       $ dataItem "Id" (show u.id)
       <> opt (dataItem "Title") u.title
       <> opt (dataItem "Description") u.description
-      <> dataItem "Charge Type" (show u.chargeType)
+      <> dataItem "Kind" (show u.kind)
       <> opt (dataItemRaw "Price Dimension Schema" <<< configSchemaEntry) u.priceDimSchema
 
   renderSpecUnits :: Array SS.ChargeUnit -> H.ComponentHTML Action Slots m

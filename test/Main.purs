@@ -67,15 +67,14 @@ calcSubTotalChargeSimple = do
 
     unitMap =
       Map.singleton unitID
-        ( SS.ChargeUnit
+        $ SS.ChargeUnit
             { id: unitID
             , title: Nothing
             , description: Nothing
-            , chargeType: SS.ChargeTypeOnetime
+            , kind: SS.CkOnetime
             , priceDimSchema: Nothing
             , reportDimSchemas: Nothing
             }
-        )
 
     subTotal n =
       SubTotal
@@ -107,7 +106,7 @@ calcSubTotalChargeSegVolume = do
             { id: unitID
             , title: Nothing
             , description: Nothing
-            , chargeType: SS.ChargeTypeOnetime
+            , kind: SS.CkOnetime
             , priceDimSchema: Nothing
             , reportDimSchemas: Nothing
             }
@@ -143,7 +142,7 @@ calcSubTotalChargeSegTiered = do
             { id: unitID
             , title: Nothing
             , description: Nothing
-            , chargeType: SS.ChargeTypeOnetime
+            , kind: SS.CkOnetime
             , priceDimSchema: Nothing
             , reportDimSchemas: Nothing
             }

@@ -9,7 +9,7 @@ module Data.SmartSpec
   , ChargeCurrency(..)
   , ChargeCurrencyPerUnit(..)
   , ChargeSingleUnit(..)
-  , ChargeType(..)
+  , ChargeKind(..)
   , ChargeUnit(..)
   , ChargeUnitID(..)
   , Commercial(..)
@@ -1124,35 +1124,35 @@ instance decodeJsonChargeUnitID :: DecodeJson ChargeUnitID where
 instance encodeJsonChargeUnitID :: EncodeJson ChargeUnitID where
   encodeJson (ChargeUnitID x) = encodeJson x
 
-data ChargeType
-  = ChargeTypeOnetime
-  | ChargeTypeMonthly
-  | ChargeTypeQuarterly
-  | ChargeTypeUsage
-  | ChargeTypeSegment
+data ChargeKind
+  = CkOnetime
+  | CkMonthly
+  | CkQuarterly
+  | CkUsage
+  | CkSegment
 
-derive instance eqChargeType :: Eq ChargeType
+derive instance eqChargeKind :: Eq ChargeKind
 
-instance showChargeType :: Show ChargeType where
+instance showChargeKind :: Show ChargeKind where
   show = case _ of
-    ChargeTypeOnetime -> "Onetime"
-    ChargeTypeMonthly -> "Monthly"
-    ChargeTypeQuarterly -> "Quarterly"
-    ChargeTypeUsage -> "Usage"
-    ChargeTypeSegment -> "Segment"
+    CkOnetime -> "Onetime"
+    CkMonthly -> "Monthly"
+    CkQuarterly -> "Quarterly"
+    CkUsage -> "Usage"
+    CkSegment -> "Segment"
 
-instance decodeJsonChargeType :: DecodeJson ChargeType where
+instance decodeJsonChargeKind :: DecodeJson ChargeKind where
   decodeJson json = do
     string <- decodeJson json
     case string of
-      "Onetime" -> Right ChargeTypeOnetime
-      "Monthly" -> Right ChargeTypeMonthly
-      "Quarterly" -> Right ChargeTypeQuarterly
-      "Usage" -> Right ChargeTypeUsage
-      "Segment" -> Right ChargeTypeSegment
-      _ -> Left (TypeMismatch "ChargeType")
+      "Onetime" -> Right CkOnetime
+      "Monthly" -> Right CkMonthly
+      "Quarterly" -> Right CkQuarterly
+      "Usage" -> Right CkUsage
+      "Segment" -> Right CkSegment
+      _ -> Left (TypeMismatch "ChargeKind")
 
-instance encodeJsonChargeType :: EncodeJson ChargeType where
+instance encodeJsonChargeKind :: EncodeJson ChargeKind where
   encodeJson = encodeJson <<< show
 
 type ConfigSchemaEntryMeta
@@ -1309,7 +1309,7 @@ newtype ChargeUnit
   { id :: ChargeUnitID
   , title :: Maybe String
   , description :: Maybe String
-  , chargeType :: ChargeType
+  , kind :: ChargeKind
   , priceDimSchema :: Maybe ConfigSchemaEntry
   , reportDimSchemas :: Maybe (Array ConfigSchemaEntry)
   }
@@ -1322,7 +1322,7 @@ instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
     id <- o .: "id"
     title <- o .:? "title"
     description <- o .:? "description"
-    chargeType <- o .:? "chargeType" .!= ChargeTypeUsage
+    kind <- o .:? "kind" .!= CkUsage
     priceDimSchema <- o .:? "priceDimSchema"
     reportDimSchemas <- o .:? "reportDimSchemas"
     pure
@@ -1330,7 +1330,7 @@ instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
           { id
           , title
           , description
-          , chargeType
+          , kind
           , priceDimSchema
           , reportDimSchemas
           }

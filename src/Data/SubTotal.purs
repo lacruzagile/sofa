@@ -29,7 +29,7 @@ import Data.Number.Format (toStringWith, fixed)
 import Data.Quantity (Quantity, QuantityMap)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeSingleUnit(..), ChargeType(..), ChargeUnit(..), ChargeUnitID, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
+import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeSingleUnit(..), ChargeKind(..), ChargeUnit(..), ChargeUnitID, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Halogen as H
 import Halogen.HTML as HH
@@ -98,7 +98,7 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
     quantity <- Map.lookup unitID quantityMap
     ChargeUnit chargeUnit <- Map.lookup unitID unitMap
     case quantity of
-      Left q -> pure $ mkSubTotal chargeUnit.chargeType $ mkIndexed currency $ go q
+      Left q -> pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go q
       Right _dimQ -> Nothing
 
   calcSingleEntrySubTotalDim unitID currency go = do
@@ -106,7 +106,7 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
     ChargeUnit chargeUnit <- Map.lookup unitID unitMap
     case quantity of
       Left _q -> Nothing
-      Right dimQ -> pure $ mkSubTotal chargeUnit.chargeType $ mkIndexed currency $ go dimQ
+      Right dimQ -> pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go dimQ
 
   mkIndexed currency entry =
     IndexedSubTotalEntry
@@ -147,7 +147,7 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
 
           defaultPrice = A.findMap (getDefaultPrice unitID) charge.defaultPriceByUnit
 
-          finish = pure <<< mkSubTotal chargeUnit.chargeType <<< mkIndexed currency
+          finish = pure <<< mkSubTotal chargeUnit.kind <<< mkIndexed currency
         quantity <- Map.lookup unitID quantityMap
         case pricePerDimOptSeg of
           PricePerDimOptSeg ps -> do
@@ -217,13 +217,13 @@ instance monoidPricePerDimOptSeg :: Monoid PricePerDimOptSeg where
   mempty = PricePerDimOptSegNil
 
 -- Create a `SubTotal` value for the given entry using the given charge type.
-mkSubTotal :: ChargeType -> IndexedSubTotalEntry -> SubTotal
-mkSubTotal chargeType entry = case chargeType of
-  ChargeTypeOnetime -> SubTotal $ zero { onetime = entry }
-  ChargeTypeMonthly -> SubTotal $ zero { monthly = entry }
-  ChargeTypeQuarterly -> SubTotal $ zero { quarterly = entry }
-  ChargeTypeUsage -> SubTotal $ zero { usage = entry }
-  ChargeTypeSegment -> SubTotal $ zero { segment = entry }
+mkSubTotal :: ChargeKind -> IndexedSubTotalEntry -> SubTotal
+mkSubTotal kind entry = case kind of
+  CkOnetime -> SubTotal $ zero { onetime = entry }
+  CkMonthly -> SubTotal $ zero { monthly = entry }
+  CkQuarterly -> SubTotal $ zero { quarterly = entry }
+  CkUsage -> SubTotal $ zero { usage = entry }
+  CkSegment -> SubTotal $ zero { segment = entry }
   where
   SubTotal zero = mempty
 
