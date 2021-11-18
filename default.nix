@@ -12,9 +12,41 @@ let
     purs = pkgs.purescript;
   };
 
-in pkgs.runCommand "sofa" { nativeBuildInputs = [ pkgs.purescript ]; } ''
-  mkdir $out
-  cp ${src}/sofa.{css,html} ${src}/picnic.min.css $out
-  purs bundle -o $out/sofa.js -m Main ${pursOutput}/output/**/*.js
-  echo 'PS["Main"].main();' >> $out/sofa.js
-''
+in
+
+pkgs.mkYarnPackage {
+  name = "sofa";
+  inherit src;
+  packageJSON = ./package.json;
+  yarnLock = ./yarn.lock;
+
+  nativeBuildInputs = [ pkgs.nodejs-12_x pkgs.purescript pkgs.spago ];
+
+  buildPhase = ''
+    cd deps/purs-smartspec
+    ln -s ${pursOutput}/output .
+    spago --global-cache skip bundle-app --no-install --no-build \
+      --main Main --to sofa.js
+
+    # Work around for https://github.com/purescript-contrib/purescript-affjax/issues/161
+    sed -i 's/&& module.require /\&\& false /' sofa.js
+
+    node node_modules/.bin/parcel build \
+       --no-cache --no-source-maps --public-url ./ \
+       sofa.html
+  '';
+
+  installPhase = ''
+    mkdir $out
+    ln -sv ${pursOutput}/output $out/purs_output
+    cp -rv node_modules $out
+    cp -rv dist $out
+    rmdir $out/dist/v1alpha1
+  '';
+
+  distPhase = "true";
+
+  meta = with pkgs.stdenv.lib; {
+    description = "The Sinch SOFA SPA";
+  };
+}

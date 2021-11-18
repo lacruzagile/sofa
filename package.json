@@ -6,10 +6,10 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "build": "spago build && parcel build --no-scope-hoist sofa.html",
-    "clean": "rm -r dist output",
+    "build": "spago bundle-app --to sofa.js && sed -i 's/&& module.require /\\&\\& false /' sofa.js && parcel build sofa.html",
+    "clean": "rm -rf dist output sofa.js",
     "docker-build": "yarn build && docker build -f docker/Dockerfile -t sofa:latest .",
-    "start": "parcel serve sofa.html",
+    "start": "parcel serve sofa-dev.html",
     "test": "spago test",
     "watch": "spago build --watch --clear-screen"
   },
@@ -22,7 +22,6 @@
     "parcel-reporter-static-files-copy": "^1.3.0"
   },
   "dependencies": {
-    "iso-3166": "^4.0.1",
-    "xhr2": "^0.2.1"
+    "iso-3166": "^4.0.1"
   }
 }

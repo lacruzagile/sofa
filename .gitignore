@@ -1,3 +1,6 @@
+### Production build output ###
+/sofa.js
+
 ### Purescript ###
 /bower_components/
 /node_modules/

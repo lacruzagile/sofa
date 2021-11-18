@@ -11,5 +11,6 @@ pkgs.mkShellNoCC {
     spago
     spago2nix
     yarn
+    yarn2nix
   ];
 }
