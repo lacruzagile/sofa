@@ -2,8 +2,8 @@ module Data.Loadable (Loadable(..), getJson, getRJson, postRJson) where
 
 import Prelude
 import Affjax (printError)
-import App.Auth (class CredentialStore, getAuthorizationHeader)
 import Data.Argonaut (class DecodeJson, class EncodeJson, printJsonDecodeError)
+import Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Variant (default, on)

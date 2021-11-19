@@ -1,12 +1,12 @@
 module App.Router where
 
 import Prelude
-import App.Auth (class CredentialStore)
 import App.Home as Home
 import App.OrderForm as OrderForm
 import App.Orders as Orders
 import App.ProductCatalog as ProductCatalog
 import Css as Css
+import Data.Auth (class CredentialStore)
 import Data.Maybe (Maybe(..))
 import Data.Route (Route)
 import Data.Route as Route

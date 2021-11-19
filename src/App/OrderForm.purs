@@ -1,7 +1,6 @@
 module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
-import App.Auth (class CredentialStore)
 import App.Charge (Slot, component, proxy) as Charge
 import App.OrderForm.Customer as Customer
 import App.Requests (getProductCatalog, postOrder)
@@ -10,6 +9,7 @@ import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (modifyAt, snoc)
 import Data.Array as A
+import Data.Auth (class CredentialStore)
 import Data.Charge (ChargeUnitMap, productChargeUnitMap, unitIds) as Charge
 import Data.Either (Either(..))
 import Data.Estimate (Estimate(..))

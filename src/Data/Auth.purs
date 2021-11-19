@@ -1,10 +1,12 @@
 -- | Types and functions useful for authentication.
-module App.Auth
+module Data.Auth
   ( class CredentialStore
   , Credentials
+  , clearCredentials
   , getAuthorizationHeader
   , getCredentials
   , login
+  , logout
   , setCredentials
   ) where
 
@@ -49,6 +51,7 @@ class
   Monad m <= CredentialStore m where
   getCredentials :: m (Maybe Credentials)
   setCredentials :: Credentials -> m Unit
+  clearCredentials :: m Unit
 
 newtype TokenResponse
   = TokenResponse
@@ -105,6 +108,9 @@ login =
 
           expiry = fromMaybe now $ DateTime.adjust offset now
         pure { token: tokenResp.accessToken, expiry }
+
+logout :: forall m. CredentialStore m => m Unit
+logout = clearCredentials
 
 -- | Gets the credentials, renewing if expired.
 getActiveCredentials :: forall m. MonadAff m => CredentialStore m => m (Either Error Credentials)

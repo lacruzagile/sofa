@@ -4,7 +4,7 @@ module App
   ) where
 
 import Prelude
-import App.Auth (class CredentialStore, Credentials)
+import Data.Auth (class CredentialStore, Credentials)
 import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
@@ -41,6 +41,9 @@ instance credentialStoreAppM :: CredentialStore AppM where
   setCredentials creds =
     AppM
       $ ReaderT \r -> liftEffect $ Ref.write (Just creds) r.credentials
+  clearCredentials =
+    AppM
+      $ ReaderT \r -> liftEffect $ Ref.write Nothing r.credentials
 
 runAppM :: forall a. AppM a -> Aff a
 runAppM (AppM m) = do

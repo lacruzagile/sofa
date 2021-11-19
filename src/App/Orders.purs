@@ -1,10 +1,10 @@
 module App.Orders (Slot, proxy, component) where
 
 import Prelude
-import App.Auth (class CredentialStore)
 import App.OrderForm as OrderForm
 import App.Requests (getOrders)
 import Css as Css
+import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Maybe (Maybe(..))
 import Data.SmartSpec as SS

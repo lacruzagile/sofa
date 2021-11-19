@@ -2,7 +2,7 @@
 module App.Requests (getBuyers, getLegalEntities, getOrders, getProductCatalog, postOrder) where
 
 import Prelude
-import App.Auth (class CredentialStore)
+import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable, getJson, getRJson, postRJson)
 import Data.SmartSpec (Buyer, LegalEntities, OrderForm, Orders, ProductCatalog)
 import Effect.Aff.Class (class MonadAff)
