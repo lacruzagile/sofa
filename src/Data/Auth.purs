@@ -37,14 +37,13 @@ type Error
   = String
 
 type AuthConfig
-  = { tokenUrl :: String
-    , user :: String
-    , pass :: String
-    }
+  = { tokenUrl :: String }
 
 type Credentials
   = { token :: String
     , expiry :: DateTime
+    , user :: String
+    , pass :: String
     }
 
 class
@@ -71,11 +70,7 @@ instance decodeJsonTokenResponse :: DecodeJson TokenResponse where
     pure $ TokenResponse { accessToken, expiresIn, scope, tokenType }
 
 authConfig :: AuthConfig
-authConfig =
-  { tokenUrl: "/oauth2/token"
-  , user: "bpa-provisioning-staging-test"
-  , pass: "p_8BHmN9eab77jzbcBQSuyc0Gx"
-  }
+authConfig = { tokenUrl: "/oauth2/token" }
 
 basicAuth :: String -> String -> RequestHeader
 basicAuth user pass =
@@ -84,15 +79,15 @@ basicAuth user pass =
   in
     RequestHeader "Authorization" $ "Basic " <> encoded
 
-login :: forall m. MonadAff m => CredentialStore m => m (Either Error Credentials)
-login =
+login :: forall m. MonadAff m => String -> String -> CredentialStore m => m (Either Error Credentials)
+login user pass =
   runExceptT do
     result <-
       liftAff $ AX.request
         $ AX.defaultRequest
             { url = authConfig.tokenUrl
             , method = Left POST
-            , headers = [ basicAuth authConfig.user authConfig.pass ]
+            , headers = [ basicAuth user pass ]
             , content = Just $ formURLEncoded $ FormURLEncoded [ Tuple "grant_type" (Just "client_credentials") ]
             , responseFormat = ResponseFormat.json
             }
@@ -107,7 +102,10 @@ login =
           offset = Seconds $ Int.toNumber tokenResp.expiresIn - 30.0
 
           expiry = fromMaybe now $ DateTime.adjust offset now
-        pure { token: tokenResp.accessToken, expiry }
+
+          creds = { token: tokenResp.accessToken, expiry, user, pass }
+        lift $ setCredentials creds
+        pure creds
 
 logout :: forall m. CredentialStore m => m Unit
 logout = clearCredentials
@@ -121,10 +119,8 @@ getActiveCredentials =
     case mcreds of
       Just creds
         | creds.expiry > now -> pure creds
-      _ -> do
-        creds' <- ExceptT login
-        lift $ setCredentials creds'
-        pure creds'
+        | otherwise -> ExceptT $ login creds.user creds.pass
+      _ -> throwError "Not logged in"
 
 getAuthorizationHeader :: forall m. MonadAff m => CredentialStore m => m (Either Error RequestHeader)
 getAuthorizationHeader =

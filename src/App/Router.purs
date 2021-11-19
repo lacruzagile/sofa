@@ -5,6 +5,7 @@ import App.Home as Home
 import App.OrderForm as OrderForm
 import App.Orders as Orders
 import App.ProductCatalog as ProductCatalog
+import App.User as User
 import Css as Css
 import Data.Auth (class CredentialStore)
 import Data.Maybe (Maybe(..))
@@ -38,6 +39,7 @@ type Slots
     , productCatalog :: ProductCatalog.Slot Unit
     , orderForm :: OrderForm.Slot Unit
     , orders :: Orders.Slot Unit
+    , user :: User.Slot Unit
     )
 
 data Query a
@@ -78,6 +80,7 @@ render state =
         Just Route.OrderForm -> slotOrderForm
         Just Route.Orders -> slotOrders
         Just Route.ProductCatalog -> slotProductCatalog
+        Just Route.User -> slotUser
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
@@ -87,8 +90,15 @@ render state =
 
   slotProductCatalog = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component absurd
 
+  slotUser = HH.slot_ User.proxy unit User.component absurd
+
 navbar ::
-  forall slot. State -> HH.HTML slot Action -> HH.HTML slot Action
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  State ->
+  H.ComponentHTML Action Slots m ->
+  H.ComponentHTML Action Slots m
 navbar state body =
   HH.div_
     [ HH.nav_
@@ -112,6 +122,7 @@ navbar state body =
             , navbarItem Route.ProductCatalog "Product Catalog"
             , navbarItem Route.Orders "Orders"
             , navbarItem Route.OrderForm "Order Form"
+            , navbarItem Route.User "User"
             ]
         ]
     , HH.main [ HP.class_ (H.ClassName "content") ] [ body ]

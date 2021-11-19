@@ -12,6 +12,7 @@ data Route
   | OrderForm
   | Orders
   | ProductCatalog
+  | User
 
 derive instance genericRoute :: Generic Route _
 
@@ -23,7 +24,7 @@ instance showRoute :: Show Route where
   show = genericShow
 
 routes :: Match Route
-routes = root *> (home <|> orderForm <|> orders <|> productCatalog)
+routes = root *> (home <|> orderForm <|> orders <|> productCatalog <|> user)
   where
   home = Home <$ end
 
@@ -33,12 +34,15 @@ routes = root *> (home <|> orderForm <|> orders <|> productCatalog)
 
   productCatalog = ProductCatalog <$ lit "product-catalog" <* end
 
+  user = User <$ lit "user" <* end
+
 rawHref :: Route -> String
 rawHref = case _ of
   Home -> "/"
   OrderForm -> "/order-form"
   Orders -> "/orders"
   ProductCatalog -> "/product-catalog"
+  User -> "/user"
 
 href :: forall r i. Route -> HP.IProp ( href :: String | r ) i
 href route = HP.href $ "#" <> rawHref route
