@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+fd -e purs -x purty format --write {} \;
+
+#nix run nixpkgs.nginx-config-formatter --command nginxfmt docker/default.conf.template

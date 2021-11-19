@@ -23,7 +23,7 @@ pkgs.mkYarnPackage {
   nativeBuildInputs = [ pkgs.nodejs-12_x pkgs.purescript pkgs.spago ];
 
   buildPhase = ''
-    cd deps/purs-smartspec
+    cd deps/sofa
     ln -s ${pursOutput}/output .
     spago --global-cache skip bundle-app --no-install --no-build \
       --main Main --to sofa.js
