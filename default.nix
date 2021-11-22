@@ -18,6 +18,7 @@ pkgs.mkYarnPackage {
   name = "sofa";
   inherit src;
   packageJSON = ./package.json;
+  yarnNix = ./yarn.nix;
   yarnLock = ./yarn.lock;
 
   nativeBuildInputs = [ pkgs.nodejs-12_x pkgs.purescript pkgs.spago ];
