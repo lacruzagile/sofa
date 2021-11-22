@@ -192,7 +192,6 @@ exampleChargeSimple =
         , price: 9.0
         , discount: Nothing
         , periodMinimum: Nothing
-        , termOfPriceChangeInDays: Nothing
         }
 
 exampleChargeSeg :: SS.SegmentationModel -> SS.Charge
@@ -236,5 +235,4 @@ exampleChargeSeg model =
                 }
             ]
         , periodMinimum: Nothing
-        , termOfPriceChangeInDays: Nothing
         }

@@ -457,7 +457,6 @@ data ChargeSingleUnit
     , price :: Number
     , discount :: Maybe Discount
     , periodMinimum :: Maybe Number
-    , termOfPriceChangeInDays :: Maybe Int
     }
   | ChargeDim
     { unit :: ChargeUnitId
@@ -466,7 +465,6 @@ data ChargeSingleUnit
     , priceByDim :: Array PricePerDim
     , defaultPrice :: Maybe Price
     , periodMinimum :: Maybe Number
-    , termOfPriceChangeInDays :: Maybe Int
     }
   | ChargeSeg
     { unit :: ChargeUnitId
@@ -475,7 +473,6 @@ data ChargeSingleUnit
     , segmentation :: Segmentation
     , priceBySegment :: Array PricePerSeg
     , periodMinimum :: Maybe Number
-    , termOfPriceChangeInDays :: Maybe Int
     }
   | ChargeDimSeg
     { unit :: ChargeUnitId
@@ -485,7 +482,6 @@ data ChargeSingleUnit
     , priceBySegmentByDim :: Array PricePerDimSeg
     , defaultPrice :: Maybe Price
     , periodMinimum :: Maybe Number
-    , termOfPriceChangeInDays :: Maybe Int
     }
 
 instance decodeJsonChargeSingleUnit :: DecodeJson ChargeSingleUnit where
@@ -504,7 +500,6 @@ instance decodeJsonChargeSingleUnit :: DecodeJson ChargeSingleUnit where
       listPrice <- o .:? "listPrice" .!= price
       discount <- o .:? "discount"
       periodMinimum <- o .:? "periodMinimum"
-      termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays"
       pure
         $ ChargeSimple
             { unit
@@ -514,7 +509,6 @@ instance decodeJsonChargeSingleUnit :: DecodeJson ChargeSingleUnit where
             , listPrice
             , discount
             , periodMinimum
-            , termOfPriceChangeInDays
             }
 
 instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
@@ -546,7 +540,6 @@ instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
       , currency :: Maybe ChargeCurrency
       , description :: Maybe String
       , periodMinimum :: Maybe Number
-      , termOfPriceChangeInDays :: Maybe Int
       | r
       } ->
       a -> Json
@@ -555,7 +548,6 @@ instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
         ~> ("currency" :=? x.currency)
         ~>? ("description" :=? x.description)
         ~>? ("periodMinimum" :=? x.periodMinimum)
-        ~>? ("termOfPriceChangeInDays" :=? x.termOfPriceChangeInDays)
         ~>? rest
 
 data Charge
@@ -573,7 +565,6 @@ data Charge
     , priceByUnitByDim :: Array PricePerDimUnitOptSeg
     , defaultPriceByUnit :: Array DefaultPricePerUnit
     , periodMinimum :: Maybe Number
-    , termOfPriceChangeInDays :: Int
     -- estimatedWAPByUnit :: Maybe _ // FIXME
     }
 
@@ -592,7 +583,6 @@ instance decodeJsonCharge :: DecodeJson Charge where
       priceByUnitByDim <- o .: "priceByUnitByDim"
       defaultPriceByUnit <- o .:? "defaultPriceByUnit" .!= []
       periodMinimum <- o .:? "periodMinimum"
-      termOfPriceChangeInDays <- o .:? "termOfPriceChangeInDays" .!= 0
       pure
         $ ChargeDimUnitOptSeg
             { units
@@ -602,7 +592,6 @@ instance decodeJsonCharge :: DecodeJson Charge where
             , priceByUnitByDim
             , defaultPriceByUnit
             , periodMinimum
-            , termOfPriceChangeInDays
             }
 
 instance encodeJsonCharge :: EncodeJson Charge where
@@ -621,7 +610,6 @@ instance encodeJsonCharge :: EncodeJson Charge where
         ~>? ("priceByUnitByDim" := x.priceByUnitByDim)
         ~> ("defaultPriceByUnit" :=? ifNonEmpty x.defaultPriceByUnit)
         ~>? ("periodMinimum" :=? x.periodMinimum)
-        ~>? ("termOfPriceChangeInDays" :=? ifNonZero x.termOfPriceChangeInDays)
         ~>? jsonEmptyObject
 
 newtype DimValue
@@ -1872,20 +1860,48 @@ derive newtype instance decodeDateTime :: DecodeJson DateTime
 
 derive newtype instance encodeJsonDateTime :: EncodeJson DateTime
 
--- TODO: Add `configs`
 newtype Asset
   = Asset
   { sku :: SkuCode
-  -- , configs :: Array ConfigValue
+  , configs :: Array ConfigValue
   , billingAccount :: BillingAccountRef
   , createTime :: DateTime
   , updateTime :: DateTime
   , priceOverrides :: Array PriceOverride
+  , priceChangeNotificationInDays :: Int
   }
 
-derive newtype instance decodeJsonAsset :: DecodeJson Asset
+instance decodeJsonAsset :: DecodeJson Asset where
+  decodeJson json = do
+    o <- decodeJson json
+    sku <- o .: "sku"
+    configs <- o .: "configs"
+    billingAccount <- o .: "billingAccount"
+    createTime <- o .: "createTime"
+    updateTime <- o .: "updateTime"
+    priceOverrides <- o .: "priceOverrides"
+    priceChangeNotificationInDays <- o .:? "priceChangeNotificationInDays" .!= 0
+    pure
+      $ Asset
+          { sku
+          , configs
+          , billingAccount
+          , createTime
+          , updateTime
+          , priceOverrides
+          , priceChangeNotificationInDays
+          }
 
-derive newtype instance encodeJsonAsset :: EncodeJson Asset
+instance encodeJsonAsset :: EncodeJson Asset where
+  encodeJson (Asset x) =
+    ("sku" := x.sku)
+      ~> ("configs" := x.configs)
+      ~> ("billingAccount" := x.billingAccount)
+      ~> ("createTime" := x.createTime)
+      ~> ("updateTime" := x.updateTime)
+      ~> ("priceOverrides" := x.priceOverrides)
+      ~> ("priceChangeNotificationInDays" :=? ifNonZero x.priceChangeNotificationInDays)
+      ~>? jsonEmptyObject
 
 newtype PriceOverride
   = PriceOverride
