@@ -85,9 +85,9 @@ calcSubTotalChargeSimple = do
         , segment: IndexedSubTotalEntry Map.empty
         }
   it "can calculate sub-total"
-    $ subTotal (Exact { listPrice: Additive 250.0, price: Additive 225.0 })
+    $ subTotal { listPrice: Additive 250.0, price: Additive 225.0 }
         `shouldEqual`
-          calcSubTotal (quantity 25) unitMap currency charge
+          calcSubTotal 25 Map.empty unitMap currency charge
 
 calcSubTotalChargeSegVolume :: Spec Unit
 calcSubTotalChargeSegVolume = do
@@ -121,9 +121,9 @@ calcSubTotalChargeSegVolume = do
         , segment: IndexedSubTotalEntry Map.empty
         }
   it "can calculate sub-total using volume segmentation"
-    $ subTotal (Exact { listPrice: Additive 25.0, price: Additive 12.5 })
+    $ subTotal { listPrice: Additive 25.0, price: Additive 12.5 }
         `shouldEqual`
-          calcSubTotal (quantity 25) unitMap currency charge
+          calcSubTotal 25 Map.empty unitMap currency charge
 
 calcSubTotalChargeSegTiered :: Spec Unit
 calcSubTotalChargeSegTiered = do
@@ -157,29 +157,29 @@ calcSubTotalChargeSegTiered = do
         , segment: IndexedSubTotalEntry Map.empty
         }
   it "can calculate sub-total using tiered segmentation, zero"
-    $ subTotal (Exact { listPrice: Additive 0.0, price: Additive 0.0 })
+    $ subTotal { listPrice: Additive 0.0, price: Additive 0.0 }
         `shouldEqual`
-          calcSubTotal (quantity 0) unitMap currency charge
+          calcSubTotal 0 Map.empty unitMap currency charge
   it "can calculate sub-total using tiered segmentation, one tier"
-    $ subTotal (Exact { listPrice: Additive 50.0, price: Additive 45.0 })
+    $ subTotal { listPrice: Additive 50.0, price: Additive 45.0 }
         `shouldEqual`
-          calcSubTotal (quantity 5) unitMap currency charge
+          calcSubTotal 5 Map.empty unitMap currency charge
   it "can calculate sub-total using tiered segmentation, two tiers (min)"
-    $ subTotal (Exact { listPrice: Additive 105.0, price: Additive 94.0 })
+    $ subTotal { listPrice: Additive 105.0, price: Additive 94.0 }
         `shouldEqual`
-          calcSubTotal (quantity 11) unitMap currency charge
+          calcSubTotal 11 Map.empty unitMap currency charge
   it "can calculate sub-total using tiered segmentation, two tiers (max)"
-    $ subTotal (Exact { listPrice: Additive 150.0, price: Additive 130.0 })
+    $ subTotal { listPrice: Additive 150.0, price: Additive 130.0 }
         `shouldEqual`
-          calcSubTotal (quantity 20) unitMap currency charge
+          calcSubTotal 20 Map.empty unitMap currency charge
   it "can calculate sub-total using tiered segmentation, three tiers (min)"
-    $ subTotal (Exact { listPrice: Additive 151.0, price: Additive 130.5 })
+    $ subTotal { listPrice: Additive 151.0, price: Additive 130.5 }
         `shouldEqual`
-          calcSubTotal (quantity 21) unitMap currency charge
+          calcSubTotal 21 Map.empty unitMap currency charge
   it "can calculate sub-total using tiered segmentation, three tiers (bigger)"
-    $ subTotal (Exact { listPrice: Additive 160.0, price: Additive 135.0 })
+    $ subTotal { listPrice: Additive 160.0, price: Additive 135.0 }
         `shouldEqual`
-          calcSubTotal (quantity 30) unitMap currency charge
+          calcSubTotal 30 Map.empty unitMap currency charge
 
 exampleChargeSimple :: SS.Charge
 exampleChargeSimple =

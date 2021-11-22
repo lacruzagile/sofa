@@ -12,12 +12,10 @@ module Data.Quantity
 import Prelude
 import Data.Array as A
 import Data.Either (Either(..))
-import Data.Estimate (Estimate(..))
-import Data.Estimate as Est
 import Data.List.Lazy (List)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.SmartSpec (ChargeUnitId, DimValue, QuantityPerDim(..), QuantityPerUnit(..))
+import Data.SmartSpec (ChargeUnitId, DimValue, EstimatedUsagePerDim(..), EstimatedUsage(..))
 import Data.Tuple (Tuple(..))
 
 -- | The quantity is either set as an aggregate or individually for each of the
@@ -36,29 +34,25 @@ type AggregatedQuantityMap
 
 -- | A quantity is a non-negative integer that is either exact or estimated.
 type Quantity
-  = Estimate Int
+  = Int
 
 -- | An aggregated quantity can be either the sum of constituent quantities
 -- | (exact) or an estimation of the total quantity (estimate).
 newtype AggregatedQuantity
-  = AggregatedQuantity (Estimate Quantity)
+  = AggregatedQuantity Quantity
 
-fromSmartSpecQuantity :: Array QuantityPerUnit -> QuantityMap
-fromSmartSpecQuantity = Map.unions <<< map fromQuantityPerUnit
+fromSmartSpecQuantity :: Array EstimatedUsage -> QuantityMap
+fromSmartSpecQuantity = Map.unions <<< map fromEstimatedUsage
   where
-  toEst quantity estimated
-    | estimated = Estimate quantity
-    | otherwise = Exact quantity
+  fromEstimatedUsage qpu = case qpu of
+    EstimatedUsagePerUnit { unit, usage } -> Map.singleton unit (Left usage)
+    EstimatedUsageByDimPerUnit { unit, usageByDim } -> Map.singleton unit (Right $ fromEstimatedUsageByDim usageByDim)
 
-  fromQuantityPerUnit qpu = case qpu of
-    QuantityPerUnit { unit, quantity, estimated } -> Map.singleton unit (Left $ toEst quantity estimated)
-    QuantityByDimPerUnit { unit, quantityByDim } -> Map.singleton unit (Right $ fromQuantityByDim quantityByDim)
+  fromEstimatedUsageByDim = Map.fromFoldable <<< map fromEstimatedUsagePerDim
 
-  fromQuantityByDim = Map.fromFoldable <<< map fromQuantityPerDim
+  fromEstimatedUsagePerDim (EstimatedUsagePerDim { dim, usage }) = Tuple dim usage
 
-  fromQuantityPerDim (QuantityPerDim { dim, quantity, estimated }) = Tuple dim (toEst quantity estimated)
-
-toSmartSpecQuantity :: QuantityMap -> Array QuantityPerUnit
+toSmartSpecQuantity :: QuantityMap -> Array EstimatedUsage
 toSmartSpecQuantity quantityMap = transform r1 quantityMap
   where
   toList :: forall k v. Map k v -> List (Tuple k v)
@@ -67,24 +61,10 @@ toSmartSpecQuantity quantityMap = transform r1 quantityMap
   transform :: forall k v a. (Tuple k v -> a) -> Map k v -> Array a
   transform f = A.fromFoldable <<< map f <<< toList
 
-  r1 :: Tuple ChargeUnitId (Either (Estimate Int) (Map DimValue (Estimate Int))) -> QuantityPerUnit
+  r1 :: Tuple ChargeUnitId (Either Quantity (Map DimValue Quantity)) -> EstimatedUsage
   r1 (Tuple unitId unitMap) = case unitMap of
-    Left quantity ->
-      QuantityPerUnit
-        { unit: unitId
-        , quantity: Est.toValue quantity
-        , estimated: Est.isEstimate quantity
-        }
-    Right dimMap ->
-      QuantityByDimPerUnit
-        { unit: unitId
-        , quantityByDim: transform r2 dimMap
-        }
+    Left usage -> EstimatedUsagePerUnit { unit: unitId, usage }
+    Right dimMap -> EstimatedUsageByDimPerUnit { unit: unitId, usageByDim: transform r2 dimMap }
 
-  r2 :: Tuple DimValue (Estimate Int) -> QuantityPerDim
-  r2 (Tuple dim quantity) =
-    QuantityPerDim
-      { dim
-      , quantity: Est.toValue quantity
-      , estimated: Est.isEstimate quantity
-      }
+  r2 :: Tuple DimValue Quantity -> EstimatedUsagePerDim
+  r2 (Tuple dim usage) = EstimatedUsagePerDim { dim, usage }

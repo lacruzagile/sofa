@@ -7,21 +7,20 @@ import App.Requests (getProductCatalog, postOrder)
 import Control.Alternative ((<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
-import Data.Array (modifyAt, snoc)
+import Data.Array (foldl, head, modifyAt, snoc)
 import Data.Array as A
 import Data.Auth (class CredentialStore)
-import Data.Charge (ChargeUnitMap, productChargeUnitMap, unitIds) as Charge
+import Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
 import Data.Either (Either(..))
-import Data.Estimate (Estimate(..))
 import Data.Int as Int
+import Data.List.Lazy (List)
 import Data.List.Lazy as List
 import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (unwrap)
-import Data.Quantity (QuantityMap, fromSmartSpecQuantity, toSmartSpecQuantity)
-import Data.Set as Set
+import Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Data.SmartSpec as SS
 import Data.SubTotal (SubTotal)
 import Data.SubTotal as SubTotal
@@ -79,11 +78,13 @@ type OrderSection
     }
 
 type OrderLine
-  = { product :: SS.Product
+  = { orderLineId :: Maybe String
+    , status :: SS.OrderLineStatus
+    , product :: SS.Product
     , charges :: Maybe (Array SS.Charge)
-    , quantity :: QuantityMap
     , unitMap :: Charge.ChargeUnitMap
-    , configs :: Array SS.ConfigValue
+    , configs :: Array SS.OrderLineConfig
+    , estimatedUsage :: QuantityMap
     }
 
 type PriceBook
@@ -107,6 +108,12 @@ data Action
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
   | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.SkuCode }
+  | OrderLineSetQuantity
+    { sectionIndex :: Int
+    , orderLineIndex :: Int
+    , configIndex :: Int
+    , quantity :: Int
+    }
   | OrderLineAddConfig OrderLineIndex
   | OrderLineSetConfig
     { sectionIndex :: Int
@@ -123,7 +130,7 @@ data Action
     { sectionIndex :: Int
     , orderLineIndex :: Int
     , charges :: Array SS.Charge
-    , quantity :: QuantityMap
+    , estimatedUsage :: QuantityMap
     }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
   | PostOrder
@@ -158,18 +165,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
+    Quantity ->
     QuantityMap ->
     Array SS.Charge ->
     H.ComponentHTML Action Slots m
-  renderCharges olIdx unitMap defaultCurrency quantity charges =
+  renderCharges olIdx unitMap defaultCurrency quantity estimatedUsage charges =
     HH.slot Charge.proxy olIdx Charge.component
-      { unitMap, defaultCurrency, charges, quantity }
+      { unitMap, defaultCurrency, charges, quantity, estimatedUsage }
       ( \result ->
           OrderLineSetCharges
             { sectionIndex: olIdx.sectionIndex
             , orderLineIndex: olIdx.orderLineIndex
             , charges: result.charges
-            , quantity: result.quantity
+            , estimatedUsage: result.estimatedUsage
             }
       )
 
@@ -177,10 +185,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
+    Quantity ->
     QuantityMap ->
     Maybe (Array SS.Charge) ->
     Array (H.ComponentHTML Action Slots m)
-  renderChargeModal olIdx unitMap defaultCurrency quantity = maybe noCharges withCharges
+  renderChargeModal olIdx unitMap defaultCurrency quantity estimatedUsage = maybe noCharges withCharges
     where
     chargeText = HH.text "Charge"
 
@@ -200,7 +209,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HP.for modalLabel, HP.class_ Css.button, noMargin ]
             [ chargeText ]
         , Widgets.modal modalLabel "Charge"
-            [ renderCharges olIdx unitMap defaultCurrency quantity charges ]
+            [ renderCharges olIdx unitMap defaultCurrency quantity estimatedUsage charges ]
             []
         ]
 
@@ -228,6 +237,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Just ol ->
       let
         SS.Product product = ol.product
+
+        quantity = foldl (\a (SS.OrderLineConfig b) -> a + b.quantity) 0 ol.configs
       in
         body
           $ [ HH.div [ HP.classes [ Css.flex, Css.five ] ]
@@ -240,13 +251,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         ]
                     ]
                 , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
-                    $ renderChargeModal olIdx ol.unitMap defaultCurrency ol.quantity ol.charges
+                    $ renderChargeModal olIdx ol.unitMap defaultCurrency quantity ol.estimatedUsage ol.charges
                 ]
             ]
           <> ( if isJust product.orderConfigSchema then
                 renderProductConfigs product ol.configs <> renderAddProductConfig
               else
-                []
+                renderQuantity 0 $ fromMaybe (SS.OrderLineConfig { quantity: 0, config: Nothing }) $ head ol.configs
             )
     where
     body subBody =
@@ -276,27 +287,69 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , sku: SS.SkuCode sku
         }
 
+    renderQuantity cfgIdx (SS.OrderLineConfig olc) =
+      [ HH.div_
+          [ HH.label_ [ HH.text "Quantity" ]
+          , HH.input
+              [ HP.type_ HP.InputNumber
+              , HP.min 1.0
+              , HP.value $ show olc.quantity
+              , HE.onValueChange
+                  $ \v ->
+                      OrderLineSetQuantity
+                        { sectionIndex: olIdx.sectionIndex
+                        , orderLineIndex: olIdx.orderLineIndex
+                        , configIndex: cfgIdx
+                        , quantity: fromMaybe olc.quantity $ Int.fromString v
+                        }
+              ]
+          ]
+      ]
+
     renderProductConfigs product configs =
       let
         allowRemove = A.length configs > 1
       in
-        A.concat $ A.mapWithIndex (renderProductConfig allowRemove product) configs
+        A.concat (A.mapWithIndex (renderProductConfig allowRemove product) configs)
 
-    renderProductConfig allowRemove product cfgIdx config =
-      maybe []
-        ( A.singleton
-            <<< renderConfigSchema allowRemove olIdx cfgIdx
-                ( \alter ->
-                    OrderLineSetConfig
-                      { sectionIndex: olIdx.sectionIndex
-                      , orderLineIndex: olIdx.orderLineIndex
-                      , configIndex: cfgIdx
-                      , alter
-                      }
-                )
-                config
-        )
-        product.orderConfigSchema
+    renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { config }) =
+      [ HH.div [ HP.classes [ Css.orderLineConfig ] ]
+          $ ( if allowRemove then
+                [ HH.a
+                    [ HP.class_ Css.close
+                    , HE.onClick \_ ->
+                        OrderLineRemoveConfig
+                          { sectionIndex: olIdx.sectionIndex
+                          , orderLineIndex: olIdx.orderLineIndex
+                          , configIndex: cfgIdx
+                          }
+                    ]
+                    [ HH.text "×" ]
+                ]
+              else
+                []
+            )
+          <> renderQuantity cfgIdx olc
+          <> case config of
+              Nothing -> []
+              Just c ->
+                [ HH.fieldset_ $ [ HH.legend_ [ HH.text "Configuration" ] ]
+                    <> maybe []
+                        ( A.singleton
+                            <<< renderConfigSchema
+                                ( \alter ->
+                                    OrderLineSetConfig
+                                      { sectionIndex: olIdx.sectionIndex
+                                      , orderLineIndex: olIdx.orderLineIndex
+                                      , configIndex: cfgIdx
+                                      , alter
+                                      }
+                                )
+                                c
+                        )
+                        product.orderConfigSchema
+                ]
+      ]
 
     renderAddProductConfig =
       [ HH.div [ HP.class_ Css.orderLineConfig ]
@@ -307,34 +360,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
 
   renderConfigSchema ::
-    Boolean ->
-    OrderLineIndex ->
-    Int ->
     ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
     SS.ConfigValue ->
     SS.ConfigSchemaEntry ->
     H.ComponentHTML Action Slots m
-  renderConfigSchema allowRemove olIdx cfgIdx onChange config = wrap <<< renderEntry onChange "Configuration" (Just config)
+  renderConfigSchema onChange config = renderEntry onChange "Configuration" (Just config)
     where
-    wrap entry =
-      HH.div [ HP.classes [ Css.orderLineConfig ] ]
-        $ ( if allowRemove then
-              [ HH.a
-                  [ HP.class_ Css.close
-                  , HE.onClick \_ ->
-                      OrderLineRemoveConfig
-                        { sectionIndex: olIdx.sectionIndex
-                        , orderLineIndex: olIdx.orderLineIndex
-                        , configIndex: cfgIdx
-                        }
-                  ]
-                  [ HH.text "×" ]
-              ]
-            else
-              []
-          )
-        <> [ entry ]
-
     mact :: forall a. (a -> Action) -> Maybe a -> Action
     mact = maybe NoOp
 
@@ -631,10 +662,12 @@ toJson orderForm = do
   toOrderLine :: OrderLine -> SS.OrderLine
   toOrderLine ol =
     SS.OrderLine
-      { sku: _.sku $ unwrap $ ol.product
+      { orderLineId: ol.orderLineId
+      , status: ol.status
+      , sku: _.sku $ unwrap $ ol.product
       , charges: fromMaybe [] ol.charges
-      , quantity: toSmartSpecQuantity ol.quantity
       , configs: ol.configs
+      , estimatedUsage: toSmartSpecQuantity ol.estimatedUsage
       }
 
   toPriceBookRef solutionUri pb =
@@ -679,13 +712,13 @@ loadCatalog = do
         <$> productCatalog
   H.put $ Initialized res
 
-mkDefaultConfigs :: SS.Product -> Array SS.ConfigValue
+mkDefaultConfigs :: SS.Product -> Array SS.OrderLineConfig
 mkDefaultConfigs (SS.Product p) =
-  fromMaybe []
+  fromMaybe [ SS.OrderLineConfig { quantity: 1, config: Nothing } ]
     $ do
         schema <- p.orderConfigSchema
         default_ <- mkDefault schema
-        pure [ default_ ]
+        pure [ SS.OrderLineConfig { quantity: 1, config: Just default_ } ]
   where
   mkDefault = case _ of
     SS.CseInteger x -> SS.CvInteger <$> x.default
@@ -721,7 +754,7 @@ calcSubTotal os =
               in
                 ol
                   { charges = charges
-                  , quantity = mkDefaultQuantity charges
+                  , estimatedUsage = mkDefaultEstimatedUsage ol.unitMap charges
                   }
           )
         <$> mpb
@@ -732,10 +765,32 @@ calcSubTotal os =
     SS.RateCard rateCard <- Map.lookup product.sku rateCards
     pure rateCard.charges
 
-  mkDefaultQuantity :: Maybe (Array SS.Charge) -> QuantityMap
-  mkDefaultQuantity Nothing = Map.empty
+  mkDefaultEstimatedUsage :: Charge.ChargeUnitMap -> Maybe (Array SS.Charge) -> QuantityMap
+  mkDefaultEstimatedUsage _ Nothing = Map.empty
 
-  mkDefaultQuantity (Just ces) = map (const $ Left $ Exact 1) $ Set.toMap $ Set.unions $ Charge.unitIds <$> ces
+  mkDefaultEstimatedUsage unitMap (Just ces) =
+    Map.fromFoldable
+      $ List.concatMap mk
+      $ List.fromFoldable ces
+    where
+    opt = maybe List.nil List.singleton
+
+    mk charge = do
+      unitId <- List.fromFoldable $ Charge.unitIds charge
+      SS.ChargeUnit { kind } <- opt $ Map.lookup unitId unitMap
+      if kind /= SS.CkUsage then
+        List.nil
+      else
+        let
+          dims :: List SS.DimValue
+          dims = List.fromFoldable $ Charge.dims charge
+        in
+          pure
+            $ Tuple unitId
+            $ if List.null dims then
+                Left 1
+              else
+                Right (Map.fromFoldable $ (\d -> Tuple d 1) <$> dims)
 
   sumOrderLines :: Array (Maybe OrderLine) -> SubTotal
   sumOrderLines = A.foldl (\a b -> a <> conv b) mempty
@@ -746,15 +801,15 @@ calcSubTotal os =
       $ do
           ol <- mol
           charges <- ol.charges
-          pure $ calcCharges ol.quantity ol.unitMap charges
+          pure $ calcCharges (orderLineQuantity ol) ol.estimatedUsage ol.unitMap charges
 
-  calcCharges :: QuantityMap -> Charge.ChargeUnitMap -> Array SS.Charge -> SubTotal
-  calcCharges quantityMap unitMap =
+  calcCharges :: Quantity -> QuantityMap -> Charge.ChargeUnitMap -> Array SS.Charge -> SubTotal
+  calcCharges quantity estimatedUsageMap unitMap =
     List.foldl (\a charge -> a <> calcCharge charge) mempty
       <<< List.fromFoldable
     where
     calcCharge :: SS.Charge -> SubTotal
-    calcCharge = SubTotal.calcSubTotal quantityMap unitMap defaultCurrency
+    calcCharge = SubTotal.calcSubTotal quantity estimatedUsageMap unitMap defaultCurrency
 
 calcTotal :: OrderForm -> OrderForm
 calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
@@ -762,6 +817,9 @@ calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
   sumOrderSecs = A.foldl (\a b -> a <> conv b) mempty
 
   conv = maybe mempty (\{ summary } -> summary)
+
+orderLineQuantity :: OrderLine -> Quantity
+orderLineQuantity ol = foldl (\a (SS.OrderLineConfig b) -> a + b.quantity) 0 ol.configs
 
 -- | Helper function to modify an indexed order line.
 modifyOrderLine :: Int -> Int -> StateOrderForm -> (OrderLine -> OrderLine) -> StateOrderForm
@@ -842,11 +900,13 @@ loadExisting (SS.OrderForm orderForm) = do
   convertOrderLine (SS.Solution solution) (SS.OrderLine l) = do
     product <- List.find (\(SS.Product { sku }) -> l.sku == sku) $ solution.products
     pure
-      { product
+      { orderLineId: l.orderLineId
+      , status: l.status
+      , product
       , charges: Just l.charges
-      , quantity: fromSmartSpecQuantity l.quantity
       , unitMap: Charge.productChargeUnitMap product
       , configs: l.configs
+      , estimatedUsage: fromSmartSpecQuantity l.estimatedUsage
       }
 
 modifyInitialized ::
@@ -1020,11 +1080,13 @@ handleAction = case _ of
     let
       mkOrderLine :: SS.Product -> OrderLine
       mkOrderLine product =
-        { product
+        { orderLineId: Nothing
+        , status: SS.OlsNew
+        , product
         , charges: Nothing
-        , quantity: Map.empty
         , unitMap: Charge.productChargeUnitMap product
         , configs: mkDefaultConfigs product
+        , estimatedUsage: Map.empty
         }
 
       updateOrderLine :: SS.Product -> Maybe OrderLine -> OrderLine
@@ -1070,6 +1132,24 @@ handleAction = case _ of
     in
       modifyInitialized
         $ \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
+  OrderLineSetQuantity { sectionIndex, orderLineIndex, configIndex, quantity } ->
+    let
+      updateOrderConfig :: SS.OrderLineConfig -> SS.OrderLineConfig
+      updateOrderConfig (SS.OrderLineConfig olc) = SS.OrderLineConfig $ olc { quantity = quantity }
+
+      -- | Remove the configuration entry. If this is the last entry then we
+      -- | ignore the request.
+      updateOrderLine :: OrderLine -> OrderLine
+      updateOrderLine ol =
+        ol
+          { configs =
+            if A.null ol.configs then
+              [ SS.OrderLineConfig { quantity, config: Nothing } ]
+            else
+              fromMaybe ol.configs $ A.modifyAt configIndex updateOrderConfig ol.configs
+          }
+    in
+      modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineAddConfig { sectionIndex, orderLineIndex } ->
     let
       updateOrderLine :: OrderLine -> OrderLine
@@ -1093,23 +1173,25 @@ handleAction = case _ of
       modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
   OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, alter } ->
     let
+      alterConfig (SS.OrderLineConfig olc) = SS.OrderLineConfig $ olc { config = Just $ alter olc.config }
+
       updateOrderLine :: OrderLine -> OrderLine
       updateOrderLine ol =
         ol
           { configs =
-            fromMaybe [ alter Nothing ]
-              $ A.modifyAt configIndex (alter <<< Just) ol.configs
+            fromMaybe [ SS.OrderLineConfig { quantity: 1, config: Just $ alter Nothing } ]
+              $ A.modifyAt configIndex alterConfig ol.configs
           }
     in
       modifyInitialized
         $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
-  OrderLineSetCharges { sectionIndex, orderLineIndex, charges, quantity } ->
+  OrderLineSetCharges { sectionIndex, orderLineIndex, charges, estimatedUsage } ->
     modifyInitialized
       $ \st ->
           modifyOrderLine sectionIndex orderLineIndex st
             _
               { charges = Just charges
-              , quantity = quantity
+              , estimatedUsage = estimatedUsage
               }
   PostOrder -> do
     st <- H.get

@@ -88,7 +88,7 @@ render st =
                         }
                   , buyer:
                       SS.Buyer
-                        { buyerID: Nothing
+                        { buyerId: Nothing
                         , address: SS.emptyAddress
                         , contacts:
                             { primary: SS.emptyContact
@@ -507,7 +507,7 @@ render st =
 
       renderBuyerOption (SS.Buyer b) =
         HH.option
-          [ HP.value $ fromMaybe "" b.buyerID ]
+          [ HP.value $ fromMaybe "" b.buyerId ]
           [ HH.text b.corporateName ]
 
       buyerOptions = case st.buyers of
@@ -534,7 +534,7 @@ render st =
           ]
 
       actionSetBuyer id = case st.buyers of
-        Loaded buyers -> maybe NoOp SetBuyer $ A.find (\(SS.Buyer b) -> Just id == b.buyerID) buyers
+        Loaded buyers -> maybe NoOp SetBuyer $ A.find (\(SS.Buyer b) -> Just id == b.buyerId) buyers
         _ -> NoOp
     in
       [ HH.label [ HP.for "of-buyer", HP.class_ Css.button ] [ HH.text "Buyer" ]

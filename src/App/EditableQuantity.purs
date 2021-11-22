@@ -1,9 +1,9 @@
 module App.EditableQuantity (Slot, Input(..), Query(..), proxy, component) where
 
 import Prelude
-import Data.Estimate (Estimate(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
+import Data.Quantity (Quantity)
 import Data.String as String
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -21,17 +21,17 @@ proxy :: Proxy "editableQuantity"
 proxy = Proxy
 
 type Input
-  = Maybe (Estimate Int)
+  = Maybe Quantity
 
 type Output
-  = Maybe (Estimate Int)
+  = Maybe Quantity
 
 data EditState
   = Editing String
   | Viewing
 
 type State
-  = { quantity :: Maybe (Estimate Int)
+  = { quantity :: Maybe Quantity
     , editState :: EditState
     }
 
@@ -41,7 +41,7 @@ data Action
   | UpdateContent String
 
 data Query a
-  = SetQuantity (Maybe (Estimate Int)) a
+  = SetQuantity (Maybe Quantity) a
 
 component ::
   forall m.
@@ -73,18 +73,16 @@ render state = case state.editState of
   Editing value ->
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
-          [ HP.placeholder $ "1000 | ~1000 | ?"
-          , HP.pattern """~?\d+[kM]?|\?"""
+          [ HP.placeholder $ "1000 | 1k | 1M"
+          , HP.pattern """\d+[kM]?"""
           , HP.value value
           , HP.style "max-width:10em"
           , HE.onValueInput UpdateContent
           ]
       ]
 
-parseQuantity :: String -> Maybe (Estimate Int)
-parseQuantity str = case String.stripPrefix (String.Pattern "~") str of
-  Just s -> Estimate <$> parseMagInt s
-  _ -> Exact <$> parseMagInt str
+parseQuantity :: String -> Maybe Quantity
+parseQuantity = parseMagInt
   where
   parseMagInt s = case String.stripSuffix (String.Pattern "M") s of
     Just s' -> (1_000_000 * _) <$> Int.fromString s'
@@ -92,7 +90,7 @@ parseQuantity str = case String.stripPrefix (String.Pattern "~") str of
       Just s' -> (1_000 * _) <$> Int.fromString s'
       Nothing -> Int.fromString s
 
-showQuantity :: Maybe (Estimate Int) -> String
+showQuantity :: Maybe Quantity -> String
 showQuantity = maybe "?" show
 
 handleAction ::

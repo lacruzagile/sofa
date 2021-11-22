@@ -16,8 +16,7 @@ import Prelude
 import Css as Css
 import Data.Array as A
 import Data.Charge (ChargeUnitMap)
-import Data.Either (Either(..))
-import Data.Estimate (Estimate(..))
+import Data.Either (either)
 import Data.Int as Int
 import Data.List (List)
 import Data.List as List
@@ -29,7 +28,7 @@ import Data.Number.Format (toStringWith, fixed)
 import Data.Quantity (Quantity, QuantityMap)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeSingleUnit(..), ChargeKind(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
+import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeKind(..), ChargeSingleUnit(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Halogen as H
 import Halogen.HTML as HH
@@ -37,10 +36,9 @@ import Halogen.HTML.Properties as HP
 import Widgets as Widgets
 
 type SubTotalEntry
-  = Estimate
-      { price :: Additive Number
-      , listPrice :: Additive Number
-      }
+  = { price :: Additive Number
+    , listPrice :: Additive Number
+    }
 
 newtype IndexedSubTotalEntry
   = IndexedSubTotalEntry (Map ChargeCurrency SubTotalEntry)
@@ -74,8 +72,8 @@ derive newtype instance semigroupSubTotal :: Semigroup SubTotal
 derive newtype instance monoidSubTotal :: Monoid SubTotal
 
 -- | Calculates the sub-total using the given information.
-calcSubTotal :: QuantityMap -> ChargeUnitMap -> ChargeCurrency -> Charge -> SubTotal
-calcSubTotal quantityMap unitMap defaultCurrency = case _ of
+calcSubTotal :: Quantity -> QuantityMap -> ChargeUnitMap -> ChargeCurrency -> Charge -> SubTotal
+calcSubTotal quantity estimatedUsageMap unitMap defaultCurrency = case _ of
   ChargeSingleUnit c -> fromSingleUnit c
   ChargeList c -> A.foldl (\a b -> a <> fromSingleUnit b) mempty c.charges
   ChargeDimUnitOptSeg c -> fromMultiUnit c
@@ -95,18 +93,18 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
                     calcForPricePerDimSeg dimQ model priceBySegmentByDim
 
   calcSingleEntrySubTotal unitId currency go = do
-    quantity <- Map.lookup unitId quantityMap
     ChargeUnit chargeUnit <- Map.lookup unitId unitMap
-    case quantity of
-      Left q -> pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go q
-      Right _dimQ -> Nothing
+    q <- case chargeUnit.kind of
+      CkUsage -> either pure (const Nothing) =<< Map.lookup unitId estimatedUsageMap
+      _ -> pure quantity
+    pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go q
 
   calcSingleEntrySubTotalDim unitId currency go = do
-    quantity <- Map.lookup unitId quantityMap
     ChargeUnit chargeUnit <- Map.lookup unitId unitMap
-    case quantity of
-      Left _q -> Nothing
-      Right dimQ -> pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go dimQ
+    dimQ <- case chargeUnit.kind of
+      CkUsage -> either (const Nothing) pure =<< Map.lookup unitId estimatedUsageMap
+      _ -> Nothing -- FIXME: `quantity` for each dim?
+    pure $ mkSubTotal chargeUnit.kind $ mkIndexed currency $ go dimQ
 
   mkIndexed currency entry =
     IndexedSubTotalEntry
@@ -148,7 +146,9 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
           defaultPrice = A.findMap (getDefaultPrice unitId) charge.defaultPriceByUnit
 
           finish = pure <<< mkSubTotal chargeUnit.kind <<< mkIndexed currency
-        quantity <- Map.lookup unitId quantityMap
+        dimQ <- case chargeUnit.kind of
+          CkUsage -> either (const Nothing) pure =<< Map.lookup unitId estimatedUsageMap
+          _ -> Nothing -- FIXME: `quantity` for each dim?
         case pricePerDimOptSeg of
           PricePerDimOptSeg ps -> do
             segmentation <-
@@ -162,12 +162,8 @@ calcSubTotal quantityMap unitMap defaultCurrency = case _ of
                 charge.segmentationByUnit
             let
               model = getSegmentationModel segmentation
-            case quantity of
-              Left _q -> pure mempty -- Should probably be some error.
-              Right dimQ -> finish $ calcForPricePerDimSeg dimQ model ps
-          PricePerDimOptNoSeg ps -> case quantity of
-            Left _q -> pure mempty -- Should probably be some error.
-            Right dimQ -> finish $ calcForPricePerDim dimQ ps
+            finish $ calcForPricePerDimSeg dimQ model ps
+          PricePerDimOptNoSeg ps -> finish $ calcForPricePerDim dimQ ps
           _ -> mempty
 
 -- Move unit to top-level. This essentially swaps places between unit and
@@ -235,12 +231,12 @@ calcForPrice ::
   | r
   } ->
   SubTotalEntry
-calcForPrice quantity p = scaleBy p <$> quantity
+calcForPrice quantity p = scaleBy p quantity
 
 calcForPricePerDim :: Map DimValue Quantity -> Array PricePerDim -> SubTotalEntry
 calcForPricePerDim quantities = A.foldl (\a b -> a <> lookup b) mempty
   where
-  lookup (PricePerDim p@{ dim }) = fromMaybe mempty $ map (scaleBy p) <$> Map.lookup dim quantities
+  lookup (PricePerDim p@{ dim }) = fromMaybe mempty $ map (scaleBy p) $ Map.lookup dim quantities
 
 calcForPricePerSeg :: Quantity -> SegmentationModel -> Array PricePerSeg -> SubTotalEntry
 calcForPricePerSeg quantity segmentationModel priceBySeg = case segmentationModel of
@@ -253,7 +249,7 @@ calcForPricePerSeg quantity segmentationModel priceBySeg = case segmentationMode
 -- | Specifically, this finds the price segment that covers the given quantity
 -- | and uses that segment's price for the entire quantity.
 calcVolumeEntry :: Quantity -> Array PricePerSeg -> SubTotalEntry
-calcVolumeEntry quantity priceBySeg = calc <$> quantity
+calcVolumeEntry quantity priceBySeg = calc quantity
   where
   calc q = maybe mempty (calc' q) $ A.find (inSegment q) priceBySeg
 
@@ -266,7 +262,7 @@ calcVolumeEntry quantity priceBySeg = calc <$> quantity
 -- | Specifically, this deducts quantity for each segment in rising order and
 -- | calculates sub-totals for each segment, which are then summed.
 calcTieredEntry :: Quantity -> Array PricePerSeg -> SubTotalEntry
-calcTieredEntry quantity priceBySeg = calc <$> quantity
+calcTieredEntry quantity priceBySeg = calc quantity
   where
   calc q = A.foldl (accTot q) mempty $ A.takeWhile (ge q) priceBySeg
 
@@ -398,24 +394,15 @@ renderSubTotalEntry ::
   SubTotalEntry ->
   H.ComponentHTML action slots m
 renderSubTotalEntry currencyCode amount =
-  let
-    amount' = case amount of
-      Exact a -> { price: Exact a.price, listPrice: Exact a.listPrice }
-      Estimate a -> { price: Estimate a.price, listPrice: Estimate a.listPrice }
-  in
-    if amount'.price == amount'.listPrice then
-      HH.text $ showMonetary amount'.price <> " " <> show currencyCode
-    else
-      Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount'.listPrice)
-        $ HH.span_
-            [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount'.price ]
-            , HH.text " "
-            , HH.text (show currencyCode)
-            ]
+  if amount.price == amount.listPrice then
+    HH.text $ showMonetary amount.price <> " " <> show currencyCode
+  else
+    Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
+      $ HH.span_
+          [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.price ]
+          , HH.text " "
+          , HH.text (show currencyCode)
+          ]
 
-showMonetary :: Estimate (Additive Number) -> String
-showMonetary = showEst <<< map (\(Additive n) -> toStringWith (fixed 2) n)
-  where
-  showEst = case _ of
-    Exact s -> s
-    Estimate s -> "~" <> s
+showMonetary :: Additive Number -> String
+showMonetary (Additive n) = toStringWith (fixed 2) n

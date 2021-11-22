@@ -8,8 +8,8 @@ module Data.SmartSpec
   , Charge(..)
   , ChargeCurrency(..)
   , ChargeCurrencyPerUnit(..)
-  , ChargeSingleUnit(..)
   , ChargeKind(..)
+  , ChargeSingleUnit(..)
   , ChargeUnit(..)
   , ChargeUnitId(..)
   , Commercial(..)
@@ -28,6 +28,8 @@ module Data.SmartSpec
   , Discount(..)
   , DiscountPerDim(..)
   , DiscountProfilePerUnit(..)
+  , EstimatedUsage(..)
+  , EstimatedUsagePerDim(..)
   , EstimatedWap(..)
   , EstimatedWapPerSegment(..)
   , EstimatedWapPerUnit(..)
@@ -36,6 +38,8 @@ module Data.SmartSpec
   , LegalEntityTraffic(..)
   , OrderForm(..)
   , OrderLine(..)
+  , OrderLineConfig(..)
+  , OrderLineStatus(..)
   , OrderSection(..)
   , OrderStatus(..)
   , Orders(..)
@@ -65,8 +69,6 @@ module Data.SmartSpec
   , ProductOption(..)
   , ProductOptionType(..)
   , Quantifier(..)
-  , QuantityPerDim(..)
-  , QuantityPerUnit(..)
   , RateCard(..)
   , ReturnCustomerCommercial(..)
   , ReturnCustomerData(..)
@@ -1791,7 +1793,7 @@ instance encodeJsonContact :: EncodeJson Contact where
 
 newtype Buyer
   = Buyer
-  { buyerID :: Maybe String
+  { buyerId :: Maybe String
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
@@ -2027,6 +2029,34 @@ instance encodeOrderStatus :: EncodeJson OrderStatus where
           OsFulfilled -> "FULFILLED"
           OsCancelled -> "CANCELLED"
 
+data OrderLineStatus
+  = OlsNew
+  | OlsAccepted
+  | OlsSucceeded
+  | OlsFailed
+  | OlsCancelled
+
+instance decodeJsonOrderLineStatus :: DecodeJson OrderLineStatus where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "NEW" -> Right OlsNew
+      "ACCEPTED" -> Right OlsAccepted
+      "SUCCEEDED" -> Right OlsSucceeded
+      "FAILED" -> Right OlsFailed
+      "CANCELLED" -> Right OlsCancelled
+      _ -> Left (TypeMismatch "OrderLineStatus")
+
+instance encodeOrderLineStatus :: EncodeJson OrderLineStatus where
+  encodeJson =
+    encodeJson
+      <<< case _ of
+          OlsNew -> "NEW"
+          OlsAccepted -> "ACCEPTED"
+          OlsSucceeded -> "SUCCEEDED"
+          OlsFailed -> "FAILED"
+          OlsCancelled -> "CANCELLED"
+
 newtype Segment
   = Segment
   { minimum :: Int
@@ -2045,75 +2075,60 @@ instance encodeJsonSegment :: EncodeJson Segment where
       ~> ((\x -> "exclusiveMaximum" := x) <$> exclusiveMaximum)
       ~>? jsonEmptyObject
 
-newtype QuantityPerDim
-  = QuantityPerDim
+newtype EstimatedUsagePerDim
+  = EstimatedUsagePerDim
   { dim :: DimValue
-  , quantity :: Int
-  , estimated :: Boolean
+  , usage :: Int
   }
 
-instance decodeJsonQuantityPerDim :: DecodeJson QuantityPerDim where
-  decodeJson json = do
-    o <- decodeJson json
-    dim <- o .: "dim"
-    quantity <- o .: "quantity"
-    estimated <- o .:? "estimated" .!= false
-    pure $ QuantityPerDim { dim, quantity, estimated }
+derive newtype instance decodeJsonEstimatedUsagePerDim :: DecodeJson EstimatedUsagePerDim
 
-instance encodeJsonQuantityPerDim :: EncodeJson QuantityPerDim where
-  encodeJson (QuantityPerDim qpd) =
-    ("dim" := qpd.dim)
-      ~> ("quantity" := qpd.quantity)
-      ~> (if qpd.estimated then Just ("estimated" := qpd.estimated) else Nothing)
-      ~>? jsonEmptyObject
+derive newtype instance encodeJsonEstimatedUsagePerDim :: EncodeJson EstimatedUsagePerDim
 
-data QuantityPerUnit
-  = QuantityPerUnit
+data EstimatedUsage
+  = EstimatedUsagePerUnit
     { unit :: ChargeUnitId
-    , quantity :: Int
-    , estimated :: Boolean
+    , usage :: Int
     }
-  | QuantityByDimPerUnit
+  | EstimatedUsageByDimPerUnit
     { unit :: ChargeUnitId
-    , quantityByDim :: Array QuantityPerDim
+    , usageByDim :: Array EstimatedUsagePerDim
     }
 
-instance decodeJsonQuantityPerUnit :: DecodeJson QuantityPerUnit where
+instance decodeJsonEstimatedUsage :: DecodeJson EstimatedUsage where
   decodeJson json = perUnit <|> perUnitByDim
     where
-    perUnit = do
-      o <- decodeJson json
-      unit <- o .: "unit"
-      quantity <- o .: "quantity"
-      estimated <- o .:? "estimated" .!= false
-      pure $ QuantityPerUnit { unit, quantity, estimated }
+    perUnit = EstimatedUsagePerUnit <$> decodeJson json
 
-    perUnitByDim = QuantityByDimPerUnit <$> decodeJson json
+    perUnitByDim = EstimatedUsageByDimPerUnit <$> decodeJson json
 
-instance encodeJsonQuantityPerUnit :: EncodeJson QuantityPerUnit where
+instance encodeJsonEstimatedUsage :: EncodeJson EstimatedUsage where
   encodeJson = case _ of
-    QuantityPerUnit x -> encodeJson x
-    QuantityByDimPerUnit x -> encodeJson x
+    EstimatedUsagePerUnit x -> encodeJson x
+    EstimatedUsageByDimPerUnit x -> encodeJson x
 
-mkQuantityPerUnitFromPrimitive :: Int -> QuantityPerUnit
-mkQuantityPerUnitFromPrimitive quantity =
-  QuantityByDimPerUnit
-    { unit: ChargeUnitId ""
-    , quantityByDim:
-        [ QuantityPerDim
-            { dim: DimValue CvNull
-            , quantity: quantity
-            , estimated: false
-            }
-        ]
-    }
+newtype OrderLineConfig
+  = OrderLineConfig
+  { quantity :: Int
+  , config :: Maybe ConfigValue
+  }
+
+derive newtype instance decodeJsonOrderLineConfig :: DecodeJson OrderLineConfig
+
+instance encodeJsonOrderLineConfig :: EncodeJson OrderLineConfig where
+  encodeJson (OrderLineConfig x) =
+    ("quantity" := x.quantity)
+      ~> ("config" :=? x.config)
+      ~>? jsonEmptyObject
 
 newtype OrderLine
   = OrderLine
-  { sku :: SkuCode
+  { orderLineId :: Maybe String
+  , status :: OrderLineStatus
+  , sku :: SkuCode
   , charges :: Array Charge
-  , quantity :: Array QuantityPerUnit
-  , configs :: Array ConfigValue
+  , configs :: Array OrderLineConfig
+  , estimatedUsage :: Array EstimatedUsage
   }
 
 derive instance newtypeOrderLine :: Newtype OrderLine _
@@ -2121,19 +2136,23 @@ derive instance newtypeOrderLine :: Newtype OrderLine _
 instance decodeJsonOrderLine :: DecodeJson OrderLine where
   decodeJson json = do
     o <- decodeJson json
+    orderLineId <- o .:? "orderLineId"
+    status <- o .:? "status" .!= OlsNew
     sku <- o .: "sku"
     charges <- o .: "charges"
-    quantity <- decodeQuantity =<< o .: "quantity"
     configs <- o .:? "configs" .!= []
-    pure $ OrderLine { sku, charges, quantity, configs }
-    where
-    decodeQuantity qJson =
-      -- A primitive integer quantity.
-      (A.singleton <<< mkQuantityPerUnitFromPrimitive) <$> decodeJson qJson
-        <|> decodeJson qJson
+    estimatedUsage <- o .:? "estimatedUsage" .!= []
+    pure $ OrderLine { orderLineId, status, sku, charges, configs, estimatedUsage }
 
 instance encodeJsonOrderLine :: EncodeJson OrderLine where
-  encodeJson (OrderLine x) = encodeJson x
+  encodeJson (OrderLine x) =
+    ("orderLineId" :=? x.orderLineId)
+      ~>? ("status" := x.status)
+      ~> ("sku" := x.sku)
+      ~> ("charges" := x.charges)
+      ~> ("configs" :=? ifNonEmpty x.configs)
+      ~>? ("estimatedUsage" :=? ifNonEmpty x.estimatedUsage)
+      ~>? jsonEmptyObject
 
 newtype OrderSection
   = OrderSection
