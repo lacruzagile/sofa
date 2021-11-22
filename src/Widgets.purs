@@ -2,6 +2,7 @@ module Widgets (withTooltip, TooltipDirection(..), tabbed2, Tab(..), modal) wher
 
 import Prelude
 import Css as Css
+import Data.Array as A
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -76,11 +77,11 @@ modal label title body footer =
     [ HH.input [ HP.id label, HP.type_ HP.InputCheckbox ]
     , HH.label [ HP.for label, HP.class_ Css.overlay ] []
     , HH.article_
-        [ HH.header_
-            [ HH.h3_ [ HH.text title ]
-            , HH.label [ HP.for label, HP.class_ Css.close ] [ HH.text "×" ]
-            ]
-        , HH.section [ HP.class_ Css.content ] body
-        , HH.footer_ footer
-        ]
+        $ [ HH.header_
+              [ HH.h3_ [ HH.text title ]
+              , HH.label [ HP.for label, HP.class_ Css.close ] [ HH.text "×" ]
+              ]
+          , HH.section [ HP.class_ Css.content ] body
+          ]
+        <> if A.null footer then [] else [ HH.footer_ footer ]
     ]
