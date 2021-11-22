@@ -4850,6 +4850,14 @@
       };
     }
     {
+      name = "xhr2___xhr2_0.2.1.tgz";
+      path = fetchurl {
+        name = "xhr2___xhr2_0.2.1.tgz";
+        url  = "https://registry.yarnpkg.com/xhr2/-/xhr2-0.2.1.tgz";
+        sha1 = "4e73adc4f9cfec9cbd2157f73efdce3a5f108a93";
+      };
+    }
+    {
       name = "xml_name_validator___xml_name_validator_3.0.0.tgz";
       path = fetchurl {
         name = "xml_name_validator___xml_name_validator_3.0.0.tgz";
