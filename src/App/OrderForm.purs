@@ -726,7 +726,16 @@ mkDefaultConfigs (SS.Product p) =
     SS.CseRegex x -> SS.CvString <$> x.default
     SS.CseConst x -> Just x.const
     SS.CseArray _ -> Just $ SS.CvArray []
-    SS.CseObject _ -> Just $ SS.CvObject Map.empty
+    SS.CseObject x ->
+      let
+        defaults :: Maybe (Map String SS.ConfigValue)
+        defaults =
+          map Map.fromFoldable
+            $ sequence
+            $ map (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefault v)
+            $ (Map.toUnfoldable x.properties :: List _)
+      in
+        SS.CvObject <$> defaults
     SS.CseOneOf _ -> Nothing
 
 calcSubTotal :: OrderSection -> OrderSection
