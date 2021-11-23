@@ -1804,7 +1804,16 @@ newtype Buyer
 
 derive newtype instance decodeJsonBuyer :: DecodeJson Buyer
 
-derive newtype instance encodeJsonBuyer :: EncodeJson Buyer
+instance encodeJsonBuyer :: EncodeJson Buyer where
+  encodeJson (Buyer x) =
+    ("buyerId" :=? x.buyerId)
+      ~>? ("address" := x.address)
+      ~> ("contacts" := x.contacts)
+      ~> ("corporateName" := x.corporateName)
+      ~> ("registrationNr" := x.registrationNr)
+      ~> ("taxId" := x.taxId)
+      ~> ("website" := x.website)
+      ~> jsonEmptyObject
 
 newtype Seller
   = Seller

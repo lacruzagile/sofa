@@ -165,11 +165,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
-    Quantity ->
     QuantityMap ->
     Array SS.Charge ->
     H.ComponentHTML Action Slots m
-  renderCharges olIdx unitMap defaultCurrency quantity estimatedUsage charges =
+  renderCharges olIdx unitMap defaultCurrency estimatedUsage charges =
     HH.slot Charge.proxy olIdx Charge.component
       { unitMap, defaultCurrency, charges, estimatedUsage }
       ( \result ->
@@ -185,11 +184,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
-    Quantity ->
     QuantityMap ->
     Maybe (Array SS.Charge) ->
     Array (H.ComponentHTML Action Slots m)
-  renderChargeModal olIdx unitMap defaultCurrency quantity estimatedUsage = maybe noCharges withCharges
+  renderChargeModal olIdx unitMap defaultCurrency estimatedUsage = maybe noCharges withCharges
     where
     chargeText = HH.text "Charge"
 
@@ -209,7 +207,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HP.for modalLabel, HP.class_ Css.button, noMargin ]
             [ chargeText ]
         , Widgets.modal modalLabel "Charge"
-            [ renderCharges olIdx unitMap defaultCurrency quantity estimatedUsage charges ]
+            [ renderCharges olIdx unitMap defaultCurrency estimatedUsage charges ]
             []
         ]
 
@@ -237,8 +235,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Just ol ->
       let
         SS.Product product = ol.product
-
-        quantity = foldl (\a (SS.OrderLineConfig b) -> a + b.quantity) 0 ol.configs
       in
         body
           $ [ HH.div [ HP.classes [ Css.flex, Css.five ] ]
@@ -251,7 +247,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         ]
                     ]
                 , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
-                    $ renderChargeModal olIdx ol.unitMap defaultCurrency quantity ol.estimatedUsage ol.charges
+                    $ renderChargeModal olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
                 ]
             ]
           <> ( if isJust product.orderConfigSchema then
