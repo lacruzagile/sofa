@@ -20,7 +20,6 @@ module Data.SmartSpec
   , ContractTerm(..)
   , Country(..)
   , Currency(..)
-  , Customer(..)
   , Date(..)
   , DateTime(..)
   , DefaultPricePerUnit(..)
@@ -2001,25 +2000,6 @@ derive newtype instance decodeJsonReturnCustomerData :: DecodeJson ReturnCustome
 
 derive newtype instance encodeJsonReturnCustomerData :: EncodeJson ReturnCustomerData
 
-data Customer
-  = NewCustomer
-    { commercial :: Commercial
-    , buyer :: Buyer
-    , seller :: Seller
-    }
-  | ReturnCustomer
-    { commercial :: ReturnCustomerCommercial
-    , customer :: ReturnCustomerData
-    }
-
-instance decodeJsonCustomer :: DecodeJson Customer where
-  decodeJson json = (NewCustomer <$> decodeJson json) <|> (ReturnCustomer <$> decodeJson json)
-
-instance encodeJsonCustomer :: EncodeJson Customer where
-  encodeJson = case _ of
-    NewCustomer x -> encodeJson x
-    ReturnCustomer x -> encodeJson x
-
 data OrderStatus
   = OsInDraft
   | OsInReview
@@ -2196,7 +2176,9 @@ newtype OrderForm
   = OrderForm
   { id :: String
   , status :: OrderStatus
-  , customer :: Customer
+  , commercial :: Commercial
+  , buyer :: Buyer
+  , seller :: Seller
   , sections :: Array OrderSection
   }
 

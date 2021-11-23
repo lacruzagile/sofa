@@ -2,7 +2,7 @@ module App.OrderForm (Slot, proxy, component) where
 
 import Prelude
 import App.Charge (Slot, component, proxy) as Charge
-import App.OrderForm.Customer as Customer
+import App.OrderForm.OrderHeader as OrderHeader
 import App.Requests (getProductCatalog, postOrder)
 import Control.Alternative ((<|>))
 import Css as Css
@@ -42,7 +42,7 @@ proxy = Proxy
 
 type Slots
   = ( charge :: Charge.Slot OrderLineIndex
-    , customer :: Customer.Slot Unit
+    , customer :: OrderHeader.Slot Unit
     )
 
 type Input
@@ -63,7 +63,7 @@ type StateOrderForm
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
   = { id :: Maybe String
-    , customer :: Maybe SS.Customer
+    , orderHeader :: Maybe OrderHeader.OrderHeader
     , status :: Maybe SS.OrderStatus
     , summary :: SubTotal
     , sections :: Array (Maybe OrderSection)
@@ -101,7 +101,7 @@ type OrderLineIndex
 data Action
   = NoOp
   | Initialize
-  | SetCustomer SS.Customer
+  | SetOrderHeader OrderHeader.OrderHeader
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
   | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
@@ -583,16 +583,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSummary = SubTotal.renderSubTotalTable "Totals"
 
-  renderCustomer :: Maybe SS.Customer -> H.ComponentHTML Action Slots m
-  renderCustomer customer =
+  renderOrderHeader :: Maybe OrderHeader.OrderHeader -> H.ComponentHTML Action Slots m
+  renderOrderHeader customer =
     HH.div_
       [ HH.h3_ [ HH.text "Header" ]
-      , HH.slot Customer.proxy unit Customer.component customer SetCustomer
+      , HH.slot OrderHeader.proxy unit OrderHeader.component customer SetOrderHeader
       ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
-    [ renderCustomer sof.orderForm.customer
+    [ renderOrderHeader sof.orderForm.orderHeader
     , renderSections sof sof.orderForm.sections
     , renderOrderSummary sof.orderForm.summary
     , HH.hr_
@@ -645,13 +645,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
 toJson :: OrderForm -> Maybe SS.OrderForm
 toJson orderForm = do
-  customer <- orderForm.customer
+  orderHeader <- orderForm.orderHeader
   sections <- traverse toOrderSection =<< sequence orderForm.sections
   pure
     $ SS.OrderForm
         { id: ""
         , status: SS.OsInDraft
-        , customer
+        , commercial: orderHeader.commercial
+        , buyer: orderHeader.buyer
+        , seller: orderHeader.seller
         , sections
         }
   where
@@ -698,7 +700,7 @@ loadCatalog = do
           , priceBooks: Map.empty
           , orderForm:
               { id: Nothing
-              , customer: Nothing
+              , orderHeader: Nothing
               , status: Nothing
               , summary: mempty
               , sections: []
@@ -868,7 +870,7 @@ loadExisting (SS.OrderForm orderForm) = do
   convertOrderForm :: SS.ProductCatalog -> StateOrderForm
   convertOrderForm productCatalog =
     let
-      currency = toPricingCurrency orderForm.customer
+      currency = toPricingCurrency orderForm.commercial
 
       priceBooks = mkPriceBooks productCatalog currency
     in
@@ -878,7 +880,10 @@ loadExisting (SS.OrderForm orderForm) = do
       , orderForm:
           calcTotal
             { id: Just orderForm.id
-            , customer: Just orderForm.customer
+            , orderHeader: Just { commercial: orderForm.commercial
+                        , buyer: orderForm.buyer
+                        , seller: orderForm.seller
+                        }
             , status: Just orderForm.status
             , summary: mempty
             , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
@@ -925,11 +930,8 @@ modifyInitialized f =
         Initialized st -> Initialized (f <$> st)
         initializing -> initializing
 
-toPricingCurrency :: SS.Customer -> Maybe SS.PricingCurrency
-toPricingCurrency = case _ of
-  SS.NewCustomer cust -> case cust.commercial of
-    SS.Commercial { billingCurrency } -> Just billingCurrency
-  _ -> Nothing
+toPricingCurrency :: SS.Commercial -> Maybe SS.PricingCurrency
+toPricingCurrency (SS.Commercial { billingCurrency }) = Just billingCurrency
 
 -- | Assemble a map from solution ID to its associated price books. The price
 -- | books are limited to the given pricing currency.
@@ -968,11 +970,11 @@ handleAction = case _ of
       Initializing orderForm -> loadExisting orderForm
       Initialized Idle -> loadCatalog
       _ -> pure unit
-  SetCustomer customer ->
+  SetOrderHeader orderHeader ->
     modifyInitialized
       $ \st ->
           let
-            currency = toPricingCurrency customer
+            currency = toPricingCurrency orderHeader.commercial
 
             priceBooks = mkPriceBooks st.productCatalog currency
           in
@@ -981,7 +983,7 @@ handleAction = case _ of
               , priceBooks = priceBooks
               , orderForm =
                 st.orderForm
-                  { customer = Just customer
+                  { orderHeader = Just orderHeader
                   --  If the currency changed then we can't use the same price
                   --  book so the summary and all sections need to be updated.
                   , summary = if st.currency == currency then st.orderForm.summary else mempty

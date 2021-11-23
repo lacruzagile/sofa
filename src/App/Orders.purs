@@ -106,12 +106,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
       , HH.td_ [ HH.button [ HE.onClick \_ -> OpenOrder orderForm ] [ HH.text "Open" ] ]
       ]
     where
-    Tuple buyer seller = case o.customer of
-      SS.NewCustomer
-        { buyer: SS.Buyer { corporateName: p }
-      , seller: SS.Seller { name: s }
-      } -> Tuple p s
-      _ -> Tuple "?" "?"
+    Tuple buyer seller =
+      let
+        SS.Buyer { corporateName: b } = o.buyer
+
+        SS.Seller { name: s } = o.seller
+      in
+        Tuple b s
 
   renderOrders :: { orders :: SS.Orders, selected :: Maybe SS.OrderForm } -> Array (H.ComponentHTML Action Slots m)
   renderOrders { orders: SS.Orders os, selected } = case selected of

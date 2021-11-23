@@ -1,4 +1,4 @@
-module App.OrderForm.Customer (Slot, Output, proxy, component) where
+module App.OrderForm.OrderHeader (Slot, Output, OrderHeader, proxy, component) where
 
 import Prelude
 import App.Requests (getBuyers, getLegalEntities)
@@ -8,7 +8,7 @@ import Data.Auth (class CredentialStore)
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Iso3166 as Iso3166
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Data.SmartSpec as SS
@@ -28,14 +28,17 @@ type Slot id
 proxy :: Proxy "customer"
 proxy = Proxy
 
+type OrderHeader
+  = { commercial :: SS.Commercial, buyer :: SS.Buyer, seller :: SS.Seller }
+
 type Input
-  = Maybe SS.Customer
+  = Maybe OrderHeader
 
 type Output
-  = SS.Customer
+  = OrderHeader
 
 type State
-  = { customer :: Maybe SS.Customer
+  = { customer :: OrderHeader
     , legalEntity :: Maybe SS.LegalEntity -- ^ The chosen legal entity.
     , legalEntities :: Loadable SS.LegalEntities
     , buyer :: Maybe SS.Buyer -- ^ The chosen buyer.
@@ -44,8 +47,10 @@ type State
 
 data Action
   = NoOp
-  | Initialize SS.Customer
-  | UpdateCustomer (SS.Customer -> SS.Customer)
+  | Initialize
+  | UpdateCommercial (SS.Commercial -> SS.Commercial)
+  | UpdateBuyer (SS.Buyer -> SS.Buyer)
+  | UpdateSeller (SS.Seller -> SS.Seller)
   | SetLegalEntity SS.LegalEntity
   | SetBuyer SS.Buyer
 
@@ -56,98 +61,62 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+    , eval:
+        H.mkEval
+          H.defaultEval
+            { handleAction = handleAction
+            , initialize = initialize
+            }
     }
 
 initialState :: Input -> State
 initialState customer =
-  { customer
+  { customer:
+      fromMaybe'
+        ( \_ ->
+            { commercial:
+                SS.Commercial
+                  { billingOption: SS.Prepay
+                  , contractTerm: SS.Ongoing
+                  , paymentCurrency: SS.PaymentCurrency (SS.Currency "")
+                  , billingCurrency: SS.PricingCurrency (SS.Currency "")
+                  }
+            , buyer:
+                SS.Buyer
+                  { buyerId: Nothing
+                  , address: SS.emptyAddress
+                  , contacts: { primary: SS.emptyContact, finance: SS.emptyContact }
+                  , corporateName: ""
+                  , registrationNr: ""
+                  , taxId: ""
+                  , website: ""
+                  }
+            , seller:
+                SS.Seller
+                  { name: ""
+                  , address: SS.emptyAddress
+                  , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
+                  }
+            }
+        )
+        customer
   , legalEntity: Nothing
   , legalEntities: Idle
   , buyer: Nothing
   , buyers: Idle
   }
 
+initialize :: Maybe Action
+initialize = Just Initialize
+
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render st =
-  HH.div [ HP.classes [ Css.flex, Css.two ] ]
-    [ HH.div [ HP.class_ Css.one ] renderSelectCustomerType
-    , HH.div [ HP.class_ Css.one ] (renderCustomerDetails st.customer)
-    ]
+  HH.div [ HP.classes [ Css.flex, Css.three ] ]
+    $ [ renderSeller st.customer.seller
+      , renderBuyer st.customer.buyer
+      , renderCommercial st.customer.commercial
+      ]
   where
-  renderSelectCustomerType =
-    [ HH.button
-        [ HE.onClick \_ ->
-            Initialize
-              $ SS.NewCustomer
-                  { commercial:
-                      SS.Commercial
-                        { billingOption: SS.Prepay
-                        , contractTerm: SS.Ongoing
-                        , paymentCurrency: SS.PaymentCurrency (SS.Currency "")
-                        , billingCurrency: SS.PricingCurrency (SS.Currency "")
-                        }
-                  , buyer:
-                      SS.Buyer
-                        { buyerId: Nothing
-                        , address: SS.emptyAddress
-                        , contacts:
-                            { primary: SS.emptyContact
-                            , finance: SS.emptyContact
-                            }
-                        , corporateName: ""
-                        , registrationNr: ""
-                        , taxId: ""
-                        , website: ""
-                        }
-                  , seller:
-                      SS.Seller
-                        { name: ""
-                        , address: SS.emptyAddress
-                        , contacts:
-                            { primary: SS.emptyContact
-                            , finance: SS.emptyContact
-                            , support: SS.emptyContact
-                            }
-                        }
-                  }
-        ]
-        [ HH.text "New Customer →" ]
-    , HH.br_
-    , HH.button
-        [ HE.onClick \_ ->
-            Initialize
-              $ SS.ReturnCustomer
-                  { commercial:
-                      SS.RccBillingAccountRef
-                        $ SS.BillingAccountRef
-                            { billingAccountId: ""
-                            }
-                  , customer:
-                      SS.ReturnCustomerData
-                        { assets: []
-                        , salesforceAccountRef:
-                            SS.SalesforceAccountRef
-                              { salesforceAccountId: ""
-                              }
-                        }
-                  }
-        ]
-        [ HH.text "Return Customer →" ]
-    ]
-
-  renderCustomerDetails = case _ of
-    Nothing -> []
-    Just (SS.NewCustomer c) -> renderNewCustomer c
-    Just (SS.ReturnCustomer c) -> renderReturnCustomer c
-
-  renderNewCustomer c =
-    renderCommercial c.commercial
-      <> renderBuyer c.buyer
-      <> renderSeller c.seller
-
-  renderReturnCustomer _c = [ HH.text "Return customers are unsupported at the moment" ]
-
   renderCurrency ::
     forall currency.
     Newtype currency SS.Currency =>
@@ -201,15 +170,7 @@ render st =
 
   renderCommercial (SS.Commercial commercial) =
     let
-      update f =
-        UpdateCustomer
-          $ case _ of
-              SS.NewCustomer oldCustomer ->
-                let
-                  SS.Commercial oldCommercial = oldCustomer.commercial
-                in
-                  SS.NewCustomer $ oldCustomer { commercial = SS.Commercial (f oldCommercial) }
-              returnCustomer -> returnCustomer
+      update f = UpdateCommercial $ \(SS.Commercial old) -> SS.Commercial (f old)
 
       updateBillingOption = case _ of
         0 -> update (_ { billingOption = SS.Prepay })
@@ -219,55 +180,58 @@ render st =
         0 -> update (_ { contractTerm = SS.Ongoing })
         _ -> update (_ { contractTerm = SS.Fixed })
     in
-      [ HH.label [ HP.for "of-commercial", HP.class_ Css.button ] [ HH.text "Commercial" ]
-      , Widgets.modal "of-commercial" "Commercial"
-          [ HH.label_
-              [ HH.text "Billing Option"
-              , HH.select [ HE.onSelectedIndexChange updateBillingOption ]
-                  [ HH.option
-                      [ HP.value "Prepay"
-                      , HP.selected (commercial.billingOption == SS.Prepay)
-                      ]
-                      [ HH.text "Pre-pay" ]
-                  , HH.option
-                      [ HP.value "Postpay"
-                      , HP.selected (commercial.billingOption == SS.Postpay)
-                      ]
-                      [ HH.text "Post-pay" ]
-                  ]
-              ]
-          , HH.label_
-              [ HH.text "Contract Term"
-              , HH.select [ HE.onSelectedIndexChange updateContractTerm ]
-                  [ HH.option
-                      [ HP.value "Ongoing"
-                      , HP.selected (commercial.contractTerm == SS.Ongoing)
-                      ]
-                      [ HH.text "Ongoing" ]
-                  , HH.option
-                      [ HP.value "Fixed"
-                      , HP.selected (commercial.contractTerm == SS.Fixed)
-                      ]
-                      [ HH.text "Fixed" ]
-                  ]
-              ]
-          , HH.div [ HP.classes [ Css.flex, Css.two ] ]
-              [ renderCurrency
-                  "Payment Currency"
-                  commercial.paymentCurrency
-                  $ \currency -> update (\c -> c { paymentCurrency = SS.PaymentCurrency currency })
-              , renderCurrencySelect
-                  "Billing Currency"
-                  commercial.billingCurrency
-                  (maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity)
-                  $ \currency -> update (\c -> c { billingCurrency = SS.PricingCurrency currency })
-              ]
-          ]
-          [ HH.label
-              [ HP.for "of-commercial", HP.class_ Css.button ]
-              [ HH.text "OK" ]
-          ]
-      ]
+      HH.div_
+        [ HH.label
+          [ HP.for "of-commercial", HP.class_ Css.button, HP.style "width:100%" ]
+          [ HH.text "Commercial" ]
+        , Widgets.modal "of-commercial" "Commercial"
+            [ HH.label_
+                [ HH.text "Billing Option"
+                , HH.select [ HE.onSelectedIndexChange updateBillingOption ]
+                    [ HH.option
+                        [ HP.value "Prepay"
+                        , HP.selected (commercial.billingOption == SS.Prepay)
+                        ]
+                        [ HH.text "Pre-pay" ]
+                    , HH.option
+                        [ HP.value "Postpay"
+                        , HP.selected (commercial.billingOption == SS.Postpay)
+                        ]
+                        [ HH.text "Post-pay" ]
+                    ]
+                ]
+            , HH.label_
+                [ HH.text "Contract Term"
+                , HH.select [ HE.onSelectedIndexChange updateContractTerm ]
+                    [ HH.option
+                        [ HP.value "Ongoing"
+                        , HP.selected (commercial.contractTerm == SS.Ongoing)
+                        ]
+                        [ HH.text "Ongoing" ]
+                    , HH.option
+                        [ HP.value "Fixed"
+                        , HP.selected (commercial.contractTerm == SS.Fixed)
+                        ]
+                        [ HH.text "Fixed" ]
+                    ]
+                ]
+            , HH.div [ HP.classes [ Css.flex, Css.two ] ]
+                [ renderCurrency
+                    "Payment Currency"
+                    commercial.paymentCurrency
+                    $ \currency -> update (\c -> c { paymentCurrency = SS.PaymentCurrency currency })
+                , renderCurrencySelect
+                    "Billing Currency"
+                    commercial.billingCurrency
+                    (maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity)
+                    $ \currency -> update (\c -> c { billingCurrency = SS.PricingCurrency currency })
+                ]
+            ]
+            [ HH.label
+                [ HP.for "of-commercial", HP.class_ Css.button ]
+                [ HH.text "OK" ]
+            ]
+        ]
 
   -- Renders a drop-down list of countries.
   renderCountrySelect ::
@@ -496,15 +460,7 @@ render st =
 
   renderBuyer (SS.Buyer buyer) =
     let
-      update f =
-        UpdateCustomer
-          $ case _ of
-              SS.NewCustomer oldCustomer ->
-                let
-                  SS.Buyer oldBuyer = oldCustomer.buyer
-                in
-                  SS.NewCustomer $ oldCustomer { buyer = SS.Buyer (f oldBuyer) }
-              returnCustomer -> returnCustomer
+      update f = UpdateBuyer $ \(SS.Buyer old) -> SS.Buyer (f old)
 
       renderBuyerOption (SS.Buyer b) =
         HH.option
@@ -531,88 +487,83 @@ render st =
         Error _ ->
           [ HH.option
               [ HP.value "", HP.disabled true, HP.selected true ]
-              [ HH.text $ "Error loading buyers" ]
+              [ HH.text $ "Error loading buyers (login?)" ]
           ]
 
       actionSetBuyer id = case st.buyers of
         Loaded buyers -> maybe NoOp SetBuyer $ A.find (\(SS.Buyer b) -> Just id == b.buyerId) buyers
         _ -> NoOp
     in
-      [ HH.label [ HP.for "of-buyer", HP.class_ Css.button ] [ HH.text "Buyer" ]
-      , Widgets.modal "of-buyer" "Buyer"
-          ( [ HH.label_
-                [ HH.text "Populate From"
-                , HH.select [ HE.onValueChange actionSetBuyer ] buyerOptions
-                ]
-            , HH.hr_
-            , HH.label_
-                [ HH.text "Corporate Name"
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.required true
-                    , HP.value buyer.corporateName
-                    , HE.onValueChange \v -> update _ { corporateName = v }
-                    ]
-                ]
-            , HH.label_
-                [ HH.text "Registration Number"
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.required true
-                    , HP.placeholder "012345"
-                    , HP.value buyer.registrationNr
-                    , HE.onValueChange \v -> update _ { registrationNr = v }
-                    ]
-                ]
-            , HH.label_
-                [ HH.text "Tax ID"
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.required true
-                    , HP.placeholder "012345"
-                    , HP.value buyer.taxId
-                    , HE.onValueChange \v -> update _ { taxId = v }
-                    ]
-                ]
-            , HH.label_
-                [ HH.text "Website"
-                , HH.input
-                    [ HP.type_ HP.InputUrl
-                    , HP.required true
-                    , HP.placeholder "https://example.org/"
-                    , HP.value buyer.website
-                    , HE.onValueChange \v -> update _ { website = v }
-                    ]
-                ]
-            , renderContact "Primary Contact"
-                buyer.contacts.primary
-                $ \f -> update (\c -> c { contacts { primary = f c.contacts.primary } })
-            , renderContact "Finance Contact"
-                buyer.contacts.finance
-                $ \f -> update (\c -> c { contacts { finance = f c.contacts.finance } })
+      HH.div_
+        [ HH.label
+          [ HP.for "of-buyer", HP.class_ Css.button, HP.style "width:100%" ]
+          [ HH.text "Buyer" ]
+        , Widgets.modal "of-buyer" "Buyer"
+            ( [ HH.label_
+                  [ HH.text "Populate From"
+                  , HH.select [ HE.onValueChange actionSetBuyer ] buyerOptions
+                  ]
+              , HH.hr_
+              , HH.label_
+                  [ HH.text "Corporate Name"
+                  , HH.input
+                      [ HP.type_ HP.InputText
+                      , HP.required true
+                      , HP.value buyer.corporateName
+                      , HE.onValueChange \v -> update _ { corporateName = v }
+                      ]
+                  ]
+              , HH.label_
+                  [ HH.text "Registration Number"
+                  , HH.input
+                      [ HP.type_ HP.InputText
+                      , HP.required true
+                      , HP.placeholder "012345"
+                      , HP.value buyer.registrationNr
+                      , HE.onValueChange \v -> update _ { registrationNr = v }
+                      ]
+                  ]
+              , HH.label_
+                  [ HH.text "Tax ID"
+                  , HH.input
+                      [ HP.type_ HP.InputText
+                      , HP.required true
+                      , HP.placeholder "012345"
+                      , HP.value buyer.taxId
+                      , HE.onValueChange \v -> update _ { taxId = v }
+                      ]
+                  ]
+              , HH.label_
+                  [ HH.text "Website"
+                  , HH.input
+                      [ HP.type_ HP.InputUrl
+                      , HP.required true
+                      , HP.placeholder "https://example.org/"
+                      , HP.value buyer.website
+                      , HE.onValueChange \v -> update _ { website = v }
+                      ]
+                  ]
+              , renderContact "Primary Contact"
+                  buyer.contacts.primary
+                  $ \f -> update (\c -> c { contacts { primary = f c.contacts.primary } })
+              , renderContact "Finance Contact"
+                  buyer.contacts.finance
+                  $ \f -> update (\c -> c { contacts { finance = f c.contacts.finance } })
+              ]
+                <> renderAddress
+                    "of-buyer"
+                    buyer.address
+                    (\f -> update (\c -> c { address = let SS.Address addr = c.address in SS.Address (f addr) }))
+            )
+            [ HH.label
+                [ HP.for "of-buyer", HP.class_ Css.button ]
+                [ HH.text "OK" ]
             ]
-              <> renderAddress
-                  "of-buyer"
-                  buyer.address
-                  (\f -> update (\c -> c { address = let SS.Address addr = c.address in SS.Address (f addr) }))
-          )
-          [ HH.label
-              [ HP.for "of-buyer", HP.class_ Css.button ]
-              [ HH.text "OK" ]
-          ]
-      ]
+        ]
 
   renderSeller (SS.Seller seller) =
     let
-      update f =
-        UpdateCustomer
-          $ case _ of
-              SS.NewCustomer oldCustomer ->
-                let
-                  SS.Seller oldSeller = oldCustomer.seller
-                in
-                  SS.NewCustomer $ oldCustomer { seller = SS.Seller (f oldSeller) }
-              returnCustomer -> returnCustomer
+      update f = UpdateSeller $ \(SS.Seller old) -> SS.Seller (f old)
 
       renderLegalEntityOption (SS.LegalEntity le) =
         HH.option
@@ -654,74 +605,60 @@ render st =
         S.joinWith ", " $ map show $ A.fromFoldable
           $ maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity
     in
-      [ HH.label [ HP.for "of-seller", HP.class_ Css.button ] [ HH.text "Seller" ]
-      , Widgets.modal "of-seller" "Seller"
-          ( [ HH.label_
-                [ HH.text "Populate From"
-                , HH.select [ HE.onValueChange actionSetLegalEntity ] sellerOptions
-                ]
-            , HH.hr_
-            , HH.label_
-                [ HH.text "Legal Entity Name"
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.readOnly true
-                    , HP.value seller.name
-                    , HE.onValueChange $ \v -> update \s -> s { name = v }
-                    ]
-                ]
-            , HH.div [ HP.classes [ Css.flex, Css.two ] ]
-                [ HH.label_
-                    [ HH.text "Default Bank Currency"
-                    , HH.input
-                        [ HP.type_ HP.InputText
-                        , HP.value defaultCurrencyStr
-                        , HP.readOnly true
-                        ]
-                    ]
-                , HH.label_
-                    [ HH.text "Available Currencies"
-                    , HH.input
-                        [ HP.type_ HP.InputText
-                        , HP.value $ currenciesStr
-                        , HP.readOnly true
-                        ]
-                    ]
-                ]
-            , renderContact "Primary Contract"
-                seller.contacts.primary
-                $ \f -> update (\s -> s { contacts { primary = f s.contacts.primary } })
-            , renderContact "Finance Contract"
-                seller.contacts.finance
-                $ \f -> update (\s -> s { contacts { finance = f s.contacts.finance } })
-            , renderContact "Support Contract"
-                seller.contacts.support
-                $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
-            ]
-              <> renderReadOnlyAddress seller.address
-          )
-          [ HH.label
-              [ HP.for "of-seller", HP.class_ Css.button ]
-              [ HH.text "OK" ]
-          ]
-      ]
-
-  renderBillingAccountRef =
-    [ HH.label [ HP.for "of-billing-account", HP.class_ Css.button ] [ HH.text "Billing Account" ]
-    , Widgets.modal "of-billing-account" "Billing Account"
-        [ HH.label_
-            [ HH.text "Identifier"
-            , HH.input [ HP.type_ HP.InputText, HP.name "billing-account-id" ]
-            ]
-        ]
+      HH.div_
         [ HH.label
-            [ HP.for "of-billing-account", HP.classes [ Css.button ] ]
-            [ HH.text "Save" ]
-        , HH.label
-            [ HP.for "of-billing-account", HP.classes [ Css.button, Css.dangerous ] ]
-            [ HH.text "Cancel" ]
+            [ HP.for "of-seller", HP.class_ Css.button, HP.style "width:100%" ]
+            [ HH.text "Seller" ]
+        , Widgets.modal "of-seller" "Seller"
+            ( [ HH.label_
+                  [ HH.text "Populate From"
+                  , HH.select [ HE.onValueChange actionSetLegalEntity ] sellerOptions
+                  ]
+              , HH.hr_
+              , HH.label_
+                  [ HH.text "Legal Entity Name"
+                  , HH.input
+                      [ HP.type_ HP.InputText
+                      , HP.readOnly true
+                      , HP.value seller.name
+                      , HE.onValueChange $ \v -> update \s -> s { name = v }
+                      ]
+                  ]
+              , HH.div [ HP.classes [ Css.flex, Css.two ] ]
+                  [ HH.label_
+                      [ HH.text "Default Bank Currency"
+                      , HH.input
+                          [ HP.type_ HP.InputText
+                          , HP.value defaultCurrencyStr
+                          , HP.readOnly true
+                          ]
+                      ]
+                  , HH.label_
+                      [ HH.text "Available Currencies"
+                      , HH.input
+                          [ HP.type_ HP.InputText
+                          , HP.value $ currenciesStr
+                          , HP.readOnly true
+                          ]
+                      ]
+                  ]
+              , renderContact "Primary Contract"
+                  seller.contacts.primary
+                  $ \f -> update (\s -> s { contacts { primary = f s.contacts.primary } })
+              , renderContact "Finance Contract"
+                  seller.contacts.finance
+                  $ \f -> update (\s -> s { contacts { finance = f s.contacts.finance } })
+              , renderContact "Support Contract"
+                  seller.contacts.support
+                  $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
+              ]
+                <> renderReadOnlyAddress seller.address
+            )
+            [ HH.label
+                [ HP.for "of-seller", HP.class_ Css.button ]
+                [ HH.text "OK" ]
+            ]
         ]
-    ]
 
 handleAction ::
   forall m.
@@ -730,8 +667,8 @@ handleAction ::
   Action -> H.HalogenM State Action () Output m Unit
 handleAction = case _ of
   NoOp -> pure unit
-  Initialize customer' -> do
-    H.modify_ $ \st -> st { customer = Just customer', legalEntities = Loading }
+  Initialize -> do
+    H.modify_ $ \st -> st { legalEntities = Loading }
     legalEntities <- getLegalEntities
     buyers <- H.lift $ getBuyers ""
     H.modify_ $ \st -> st { legalEntities = legalEntities, buyers = buyers }
@@ -741,56 +678,42 @@ handleAction = case _ of
     case buyers of
       Error err -> Console.error $ "When fetching buyers: " <> err
       _ -> pure unit
-  UpdateCustomer updater -> do
-    { customer } <- H.modify $ \st -> st { customer = map updater st.customer }
-    maybe (pure unit) H.raise customer
+  UpdateCommercial updater -> do
+    { customer } <- H.modify $ \st -> st { customer { commercial = updater st.customer.commercial } }
+    H.raise customer
+  UpdateBuyer updater -> do
+    { customer } <- H.modify $ \st -> st { customer { buyer = updater st.customer.buyer } }
+    H.raise customer
+  UpdateSeller updater -> do
+    { customer } <- H.modify $ \st -> st { customer { seller = updater st.customer.seller } }
+    H.raise customer
   SetLegalEntity (SS.LegalEntity le) -> do
     { customer } <-
       H.modify
         $ \st ->
-            let
-              setBillingCurrency currency = case _ of
-                Just (SS.NewCustomer c) ->
-                  Just $ SS.NewCustomer
-                    $ let
-                        SS.Commercial commercial = c.commercial
-                      in
-                        c
-                          { commercial =
-                            SS.Commercial
-                              $ commercial
-                                  { billingCurrency = SS.PricingCurrency currency
-                                  }
-                          }
-                c -> c
-
-              setSeller s = case _ of
-                Just (SS.NewCustomer c) -> Just $ SS.NewCustomer $ c { seller = SS.Seller s }
-                c -> c
-            in
-              st
-                { legalEntity = Just $ SS.LegalEntity le
-                , customer =
-                  setBillingCurrency le.defaultBankCurrency
-                    $ setSeller
-                        { name: le.registeredName
-                        , address: le.address
-                        , contacts: le.contacts
-                        }
-                    $ st.customer
+            st
+              { legalEntity = Just $ SS.LegalEntity le
+              , customer
+                { commercial =
+                  let
+                    SS.Commercial commercial = st.customer.commercial
+                  in
+                    SS.Commercial $ commercial { billingCurrency = SS.PricingCurrency le.defaultBankCurrency }
+                , seller =
+                  SS.Seller
+                    { name: le.registeredName
+                    , address: le.address
+                    , contacts: le.contacts
+                    }
                 }
-    maybe (pure unit) H.raise customer
+              }
+    H.raise customer
   SetBuyer buyer -> do
     { customer } <-
       H.modify
         $ \st ->
-            let
-              customer' = case _ of
-                Just (SS.NewCustomer c) -> Just $ SS.NewCustomer $ c { buyer = buyer }
-                c -> c
-            in
-              st
-                { buyer = Just buyer
-                , customer = customer' st.customer
-                }
-    maybe (pure unit) H.raise customer
+            st
+              { buyer = Just buyer
+              , customer { buyer = buyer }
+              }
+    H.raise customer
