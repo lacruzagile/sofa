@@ -3,7 +3,6 @@ module Test.Main where
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, printJsonDecodeError)
 import Data.Either (Either(..))
-import Data.Estimate (Estimate(..))
 import Data.Maybe (Maybe(..))
 import Data.Monoid.Additive (Additive(..))
 import Data.SmartSpec as SS
@@ -63,8 +62,6 @@ calcSubTotalChargeSimple = do
 
     unitId = SS.ChargeUnitId "uid"
 
-    quantity n = Map.singleton unitId (Left $ Exact n)
-
     unitMap =
       Map.singleton unitId
         $ SS.ChargeUnit
@@ -97,8 +94,6 @@ calcSubTotalChargeSegVolume = do
     currency = SS.ChargeCurrency (SS.Currency "EUR")
 
     unitId = SS.ChargeUnitId "uid"
-
-    quantity n = Map.singleton unitId (Left $ Exact n)
 
     unitMap =
       Map.singleton unitId
@@ -133,8 +128,6 @@ calcSubTotalChargeSegTiered = do
     currency = SS.ChargeCurrency (SS.Currency "EUR")
 
     unitId = SS.ChargeUnitId "uid"
-
-    quantity n = Map.singleton unitId (Left $ Exact n)
 
     unitMap =
       Map.singleton unitId
