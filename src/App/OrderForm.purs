@@ -171,7 +171,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     H.ComponentHTML Action Slots m
   renderCharges olIdx unitMap defaultCurrency quantity estimatedUsage charges =
     HH.slot Charge.proxy olIdx Charge.component
-      { unitMap, defaultCurrency, charges, quantity, estimatedUsage }
+      { unitMap, defaultCurrency, charges, estimatedUsage }
       ( \result ->
           OrderLineSetCharges
             { sectionIndex: olIdx.sectionIndex

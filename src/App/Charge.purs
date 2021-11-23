@@ -50,8 +50,7 @@ type Input
   = { unitMap :: Charge.ChargeUnitMap
     , defaultCurrency :: SS.ChargeCurrency
     , charges :: Array SS.Charge
-    , quantity :: Quantity -- ^ The product quantity.
-    , estimatedUsage :: QuantityMap -- ^ The product usage.
+    , estimatedUsage :: QuantityMap
     }
 
 type Output
@@ -61,7 +60,6 @@ type State
   = { unitMap :: Charge.ChargeUnitMap
     , defaultCurrency :: SS.ChargeCurrency
     , charges :: Array SS.Charge
-    , quantity :: Quantity
     , estimatedUsage :: QuantityMap
     , aggregatedQuantity :: AggregatedQuantityMap
     }
@@ -105,13 +103,12 @@ initialState input =
   { unitMap: input.unitMap
   , defaultCurrency: input.defaultCurrency
   , charges: input.charges
-  , quantity: input.quantity
   , estimatedUsage: input.estimatedUsage
   , aggregatedQuantity: aggregateQuantity input.estimatedUsage
   }
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
-render { unitMap, defaultCurrency, charges, quantity, estimatedUsage, aggregatedQuantity } =
+render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity } =
   HH.ul [ HP.class_ Css.blocklist ]
     $ A.mapWithIndex (\i r -> HH.li_ [ renderCharge i r ]) charges
   where
