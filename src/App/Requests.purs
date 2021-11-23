@@ -16,9 +16,12 @@ orderingBaseUrl = "/v1alpha1"
 ordersUrl :: String
 ordersUrl = orderingBaseUrl <> "/orders"
 
+buyersUrl :: String
+buyersUrl = orderingBaseUrl <> "/buyers"
+
 -- | Fetches buyers that match the given query string.
-getBuyers :: forall m. MonadAff m => String -> m (Loadable (Array Buyer))
-getBuyers _query = map (map conv) $ getJson (baseUrl <> "/buyers.json")
+getBuyers :: forall m. MonadAff m => CredentialStore m => String -> m (Loadable (Array Buyer))
+getBuyers _query = map (map conv) $ getRJson buyersUrl
   where
   conv :: { buyers :: Array Buyer } -> Array Buyer
   conv { buyers } = buyers

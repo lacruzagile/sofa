@@ -4,6 +4,7 @@ import Prelude
 import App.Requests (getBuyers, getLegalEntities)
 import Css as Css
 import Data.Array as A
+import Data.Auth (class CredentialStore)
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Iso3166 as Iso3166
 import Data.Loadable (Loadable(..))
@@ -50,7 +51,7 @@ data Action
 
 component ::
   forall query m.
-  MonadAff m => H.Component query Input Output m
+  MonadAff m => CredentialStore m => H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
@@ -724,13 +725,15 @@ render st =
 
 handleAction ::
   forall m.
-  MonadAff m => Action -> H.HalogenM State Action () Output m Unit
+  MonadAff m =>
+  CredentialStore m =>
+  Action -> H.HalogenM State Action () Output m Unit
 handleAction = case _ of
   NoOp -> pure unit
   Initialize customer' -> do
     H.modify_ $ \st -> st { customer = Just customer', legalEntities = Loading }
     legalEntities <- getLegalEntities
-    buyers <- getBuyers ""
+    buyers <- H.lift $ getBuyers ""
     H.modify_ $ \st -> st { legalEntities = legalEntities, buyers = buyers }
     case legalEntities of
       Error err -> Console.error $ "When fetching legal entities: " <> err

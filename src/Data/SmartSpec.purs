@@ -1802,7 +1802,26 @@ newtype Buyer
   , website :: Uri
   }
 
-derive newtype instance decodeJsonBuyer :: DecodeJson Buyer
+instance decodeJsonBuyer :: DecodeJson Buyer where
+  decodeJson json = do
+    o <- decodeJson json
+    buyerId <- o .:? "buyerId"
+    address <- o .:? "address" .!= emptyAddress
+    contacts <- o .:? "contacts" .!= { primary: emptyContact, finance: emptyContact }
+    corporateName <- o .: "corporateName"
+    registrationNr <- o .: "registrationNr"
+    taxId <- o .: "taxId"
+    website <- o .: "website"
+    pure
+      $ Buyer
+          { buyerId
+          , address
+          , contacts
+          , corporateName
+          , registrationNr
+          , taxId
+          , website
+          }
 
 instance encodeJsonBuyer :: EncodeJson Buyer where
   encodeJson (Buyer x) =

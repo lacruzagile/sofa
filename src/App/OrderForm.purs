@@ -158,7 +158,7 @@ initialState = maybe (Initialized Idle) Initializing
 initialize :: Maybe Action
 initialize = Just Initialize
 
-render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
+render :: forall m. MonadAff m => CredentialStore m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
   renderCharges ::
