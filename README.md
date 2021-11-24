@@ -4,6 +4,15 @@ This is a prototype front-end of Smart § Spec. It is implemented as a
 single-page application in the [PureScript] programming language using
 the [Halogen] UI library.
 
+## Development
+
+Formatting is done using [purty](https://gitlab.com/joneshf/purty),
+for example,
+
+``` sh-session
+$ find src -name '*.purs' -exec purty format --write '{}' ';'
+```
+
 ## Running locally
 
 You can run the application in a development mode relatively simply.

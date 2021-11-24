@@ -1,7 +1,8 @@
 module Data.SmartSpec
   ( Address(..)
   , Asset(..)
-  , BillingAccountRef(..)
+  , BillingAccount(..)
+  , BillingAccountId(..)
   , BillingCurrency(..)
   , BillingOption(..)
   , Buyer(..)
@@ -20,6 +21,7 @@ module Data.SmartSpec
   , ContactId(..)
   , ContractTerm(..)
   , Country(..)
+  , CrmAccountId(..)
   , Currency(..)
   , Date(..)
   , DateTime(..)
@@ -70,12 +72,9 @@ module Data.SmartSpec
   , ProductOptionType(..)
   , Quantifier(..)
   , RateCard(..)
-  , ReturnCustomerCommercial(..)
-  , ReturnCustomerData(..)
   , Rule(..)
   , RuleConditionExpr(..)
   , RuleStage(..)
-  , SalesforceAccountRef(..)
   , Segment(..)
   , Segmentation(..)
   , SegmentationDim(..)
@@ -1685,6 +1684,56 @@ instance encodeJsonContractTerm :: EncodeJson ContractTerm where
           Ongoing -> "ONGOING"
           Fixed -> "FIXED"
 
+newtype BillingAccountId
+  = BillingAccountId String
+
+derive instance genericBillingAccountId :: Generic BillingAccountId _
+
+derive instance eqBillingAccountId :: Eq BillingAccountId
+
+derive instance ordBillingAccountId :: Ord BillingAccountId
+
+derive instance newtypeBillingAccountId :: Newtype BillingAccountId _
+
+derive newtype instance showBillingAccountId :: Show BillingAccountId
+
+derive newtype instance decodeJsonBillingAccountId :: DecodeJson BillingAccountId
+
+derive newtype instance encodeJsonBillingAccountId :: EncodeJson BillingAccountId
+
+newtype BillingAccount
+  = BillingAccount
+  { billingAccountId :: BillingAccountId
+  , displayName :: String
+  , shortId :: String
+  , commercial :: Commercial
+  }
+
+instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
+  decodeJson json = do
+    o <- decodeJson json
+    billingAccountId <- o .: "billingAccountId"
+    displayName <- o .: "displayName"
+    shortId <- o .: "shortId"
+    commercial <- o .:? "commercial" .!= defaultCommercial
+    pure
+      $ BillingAccount
+          { billingAccountId
+          , displayName
+          , shortId
+          , commercial
+          }
+    where
+    defaultCommercial =
+      Commercial
+        { billingOption: Prepay
+        , contractTerm: Ongoing
+        , paymentCurrency: PaymentCurrency (Currency "EUR")
+        , billingCurrency: PricingCurrency (Currency "EUR")
+        }
+
+derive newtype instance encodeJsonBillingAccount :: EncodeJson BillingAccount
+
 newtype Commercial
   = Commercial
   { billingOption :: BillingOption
@@ -1817,9 +1866,26 @@ instance encodeJsonContact :: EncodeJson Contact where
       ~>? ("phone" :=? x.phone)
       ~>? jsonEmptyObject
 
+newtype CrmAccountId
+  = CrmAccountId String
+
+derive instance genericCrmAccountId :: Generic CrmAccountId _
+
+derive instance eqCrmAccountId :: Eq CrmAccountId
+
+derive instance ordCrmAccountId :: Ord CrmAccountId
+
+derive instance newtypeCrmAccountId :: Newtype CrmAccountId _
+
+derive newtype instance showCrmAccountId :: Show CrmAccountId
+
+derive newtype instance decodeJsonCrmAccountId :: DecodeJson CrmAccountId
+
+derive newtype instance encodeJsonCrmAccountId :: EncodeJson CrmAccountId
+
 newtype Buyer
   = Buyer
-  { buyerId :: Maybe String
+  { buyerId :: Maybe CrmAccountId
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
@@ -1831,7 +1897,7 @@ newtype Buyer
 instance decodeJsonBuyer :: DecodeJson Buyer where
   decodeJson json = do
     o <- decodeJson json
-    buyerId <- o .:? "buyerId"
+    buyerId <- o .:? "buyerID"
     address <- o .:? "address" .!= emptyAddress
     contacts <- o .:? "contacts" .!= { primary: emptyContact, finance: emptyContact }
     corporateName <- o .: "corporateName"
@@ -1871,29 +1937,6 @@ derive newtype instance decodeJsonSeller :: DecodeJson Seller
 
 derive newtype instance encodeJsonSeller :: EncodeJson Seller
 
-newtype BillingAccountRef
-  = BillingAccountRef
-  { billingAccountId :: String
-  }
-
-derive newtype instance decodeJsonBillingAccountRef :: DecodeJson BillingAccountRef
-
-derive newtype instance encodeJsonBillingAccountRef :: EncodeJson BillingAccountRef
-
-data ReturnCustomerCommercial
-  = RccCommercial Commercial
-  | RccBillingAccountRef BillingAccountRef
-
-instance decodeJsonReturnCustomerCommercial :: DecodeJson ReturnCustomerCommercial where
-  decodeJson json =
-    (RccCommercial <$> decodeJson json)
-      <|> (RccBillingAccountRef <$> decodeJson json)
-
-instance encodeJsonReturnCustomerCommercial :: EncodeJson ReturnCustomerCommercial where
-  encodeJson = case _ of
-    RccCommercial x -> encodeJson x
-    RccBillingAccountRef x -> encodeJson x
-
 type Date
   = String
 
@@ -1920,7 +1963,7 @@ newtype Asset
   = Asset
   { sku :: SkuCode
   , configs :: Array ConfigValue
-  , billingAccount :: BillingAccountRef
+  , billingAccount :: BillingAccountId
   , createTime :: DateTime
   , updateTime :: DateTime
   , priceOverrides :: Array PriceOverride
@@ -2007,25 +2050,6 @@ instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
       ~> ("version" := x.version)
       ~> ((\uri -> "solutionUri" := uri) <$> x.solutionUri)
       ~>? jsonEmptyObject
-
-newtype SalesforceAccountRef
-  = SalesforceAccountRef
-  { salesforceAccountId :: String
-  }
-
-derive newtype instance decodeJsonSalesforceAccountRef :: DecodeJson SalesforceAccountRef
-
-derive newtype instance encodeJsonSalesforceAccountRef :: EncodeJson SalesforceAccountRef
-
-newtype ReturnCustomerData
-  = ReturnCustomerData
-  { assets :: Array Asset
-  , salesforceAccountRef :: SalesforceAccountRef
-  }
-
-derive newtype instance decodeJsonReturnCustomerData :: DecodeJson ReturnCustomerData
-
-derive newtype instance encodeJsonReturnCustomerData :: EncodeJson ReturnCustomerData
 
 data OrderStatus
   = OsInDraft

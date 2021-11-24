@@ -1,4 +1,4 @@
-module Data.Loadable (Loadable(..), getJson, getRJson, postRJson) where
+module Data.Loadable (Loadable(..), toMaybe, getJson, getRJson, postRJson) where
 
 import Prelude
 import Affjax (printError)
@@ -35,6 +35,14 @@ instance bindLoadable :: Bind Loadable where
   bind (Loaded x) f = f x
   bind Loading _ = Loading
   bind (Error err) _ = Error err
+
+-- | Converts the given loadable into a maybe value. A `Loaded` value is
+-- | converted to a `Just`, all other loadable values are converted to
+-- | `Nothing`.
+toMaybe :: forall a. Loadable a -> Maybe a
+toMaybe = case _ of
+  Loaded x -> Just x
+  _ -> Nothing
 
 -- | Fetch JSON from an URL.
 getJson :: forall a m. DecodeJson a => MonadAff m => String -> m (Loadable a)

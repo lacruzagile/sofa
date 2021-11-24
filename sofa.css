@@ -6,10 +6,6 @@ input[disabled] {
     color: #555
 }
 
-input:valid {
-    border-color: green;
-}
-
 input:invalid {
     color: red;
     border-color: red;
@@ -135,4 +131,24 @@ table.subtotal {
 
 table.subtotal th {
     background-color: #94a1ac;
+}
+
+.ta-input {
+}
+
+.ta-container {
+    border: 2px solid darkgray;
+    position: relative;
+    height: 0;
+    z-index: 1;
+}
+
+.ta-item {
+    background: #eaeaea;
+    border: 1px solid #f0f3fb;
+    cursor: default;
+}
+
+.ta-highlight {
+    background: lightblue;
 }

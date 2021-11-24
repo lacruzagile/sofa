@@ -456,6 +456,18 @@ let
       installPhase = "ln -s $src $out";
     };
 
+    "halogen-select" = pkgs.stdenvNoCC.mkDerivation {
+      name = "halogen-select";
+      version = "v6.0.0";
+      src = pkgs.fetchgit {
+        url = "https://github.com/citizennet/purescript-halogen-select.git";
+        rev = "27befa13f29272386a4e6edfae1c9258a4206747";
+        sha256 = "0cijzbaqjnkps7mj7xrw261jy13mp4almjm5i22nkhkgb45jwd89";
+      };
+      phases = "installPhase";
+      installPhase = "ln -s $src $out";
+    };
+
     "halogen-subscriptions" = pkgs.stdenvNoCC.mkDerivation {
       name = "halogen-subscriptions";
       version = "v1.0.0";

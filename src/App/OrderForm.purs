@@ -42,7 +42,7 @@ proxy = Proxy
 
 type Slots
   = ( charge :: Charge.Slot OrderLineIndex
-    , customer :: OrderHeader.Slot Unit
+    , orderHeader :: OrderHeader.Slot Unit
     )
 
 type Input
@@ -63,6 +63,8 @@ type StateOrderForm
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
   = { id :: Maybe String
+    , buyer :: Maybe SS.Buyer
+    , commercial :: Maybe SS.Commercial
     , orderHeader :: Maybe OrderHeader.OrderHeader
     , status :: Maybe SS.OrderStatus
     , summary :: SubTotal
@@ -101,7 +103,7 @@ type OrderLineIndex
 data Action
   = NoOp
   | Initialize
-  | SetOrderHeader OrderHeader.OrderHeader
+  | SetOrderHeader (Maybe OrderHeader.OrderHeader)
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
   | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
@@ -584,10 +586,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderSummary = SubTotal.renderSubTotalTable "Totals"
 
   renderOrderHeader :: Maybe OrderHeader.OrderHeader -> H.ComponentHTML Action Slots m
-  renderOrderHeader customer =
+  renderOrderHeader orderHeader =
     HH.div_
       [ HH.h3_ [ HH.text "Header" ]
-      , HH.slot OrderHeader.proxy unit OrderHeader.component customer SetOrderHeader
+      , HH.slot OrderHeader.proxy unit OrderHeader.component orderHeader SetOrderHeader
       ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
@@ -700,6 +702,8 @@ loadCatalog = do
           , priceBooks: Map.empty
           , orderForm:
               { id: Nothing
+              , buyer: Nothing
+              , commercial: Nothing
               , orderHeader: Nothing
               , status: Nothing
               , summary: mempty
@@ -880,10 +884,14 @@ loadExisting (SS.OrderForm orderForm) = do
       , orderForm:
           calcTotal
             { id: Just orderForm.id
-            , orderHeader: Just { commercial: orderForm.commercial
-                        , buyer: orderForm.buyer
-                        , seller: orderForm.seller
-                        }
+            , buyer: Just orderForm.buyer
+            , commercial: Just orderForm.commercial
+            , orderHeader:
+                Just
+                  { commercial: orderForm.commercial
+                  , buyer: orderForm.buyer
+                  , seller: orderForm.seller
+                  }
             , status: Just orderForm.status
             , summary: mempty
             , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
@@ -959,9 +967,9 @@ mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>)
       []
 
 handleAction ::
-  forall slots output m.
+  forall output m.
   MonadAff m =>
-  CredentialStore m => Action -> H.HalogenM State Action slots output m Unit
+  CredentialStore m => Action -> H.HalogenM State Action Slots output m Unit
 handleAction = case _ of
   NoOp -> pure unit
   Initialize -> do
@@ -970,7 +978,20 @@ handleAction = case _ of
       Initializing orderForm -> loadExisting orderForm
       Initialized Idle -> loadCatalog
       _ -> pure unit
-  SetOrderHeader orderHeader ->
+  SetOrderHeader Nothing ->
+    modifyInitialized
+      $ \st ->
+          st
+            { currency = Nothing
+            , priceBooks = Map.empty
+            , orderForm =
+              st.orderForm
+                { orderHeader = Nothing
+                , summary = mempty
+                , sections = []
+                }
+            }
+  SetOrderHeader (Just orderHeader) ->
     modifyInitialized
       $ \st ->
           let

@@ -50,6 +50,18 @@ landing = ClassName "landing"
 subTotal :: ClassName
 subTotal = ClassName "subtotal"
 
+taInput :: ClassName
+taInput = ClassName "ta-input"
+
+taContainer :: ClassName
+taContainer = ClassName "ta-container"
+
+taItem :: ClassName
+taItem = ClassName "ta-item"
+
+taHighlight :: ClassName
+taHighlight = ClassName "ta-highlight"
+
 -- Picnic CSS
 brand :: ClassName
 brand = ClassName "brand"
@@ -185,3 +197,6 @@ tooltipLeft = ClassName "tooltip-left"
 
 tooltipRight :: ClassName
 tooltipRight = ClassName "tooltip-right"
+
+disabled :: ClassName
+disabled = ClassName "disabled"

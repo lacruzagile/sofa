@@ -26,8 +26,10 @@ to generate this file without the comments in this block.
   , "foreign-object"
   , "form-urlencoded"
   , "halogen"
+  , "halogen-select"
   , "http-methods"
   , "integers"
+  , "js-uri"
   , "lists"
   , "maybe"
   , "newtype"
@@ -48,6 +50,7 @@ to generate this file without the comments in this block.
   , "tuples"
   , "variant"
   , "web-events"
+  , "web-html"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
