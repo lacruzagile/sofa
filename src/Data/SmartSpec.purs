@@ -1780,7 +1780,7 @@ instance decodeJsonAddress :: DecodeJson Address where
     line2 <- getString o "line2" 1 250
     line3 <- getString o "line3" 1 250
     city <- getString o "city" 1 80
-    stateOrProvince <- o .:? "stateOrProvince"
+    stateOrProvince <- o .:? "stateOrProvince" <|> pure Nothing
     county <- getString o "county" 1 50
     country <- o .:? "country"
     postOfficeBox <- getString o "postOfficeBox" 1 20
