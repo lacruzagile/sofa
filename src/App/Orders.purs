@@ -110,7 +110,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       let
         SS.Buyer { corporateName: b } = o.buyer
 
-        SS.Seller { name: s } = o.seller
+        SS.Seller { registeredName: s } = o.seller
       in
         Tuple b s
 

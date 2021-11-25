@@ -99,8 +99,8 @@ selectComponent =
         fromMaybe (pure Nothing)
           $ do
               (SS.Buyer buyer) <- st'.selected
-              buyerId <- buyer.buyerId
-              pure $ H.lift $ Loadable.toMaybe <$> getBuyer buyerId
+              crmAccountId <- buyer.crmAccountId
+              pure $ H.lift $ Loadable.toMaybe <$> getBuyer crmAccountId
       -- Let the parent component know about the new selection.
       H.raise selected
     _ -> pure unit
@@ -141,5 +141,7 @@ selectComponent =
     renderBuyerSummary (SS.Buyer buyer) =
       [ HH.text buyer.corporateName
       , HH.text " "
-      , HH.span [ HP.style "color:gray" ] [ HH.text $ maybe "No buyer ID" unwrap buyer.buyerId ]
+      , HH.span
+          [ HP.style "color:gray" ]
+          [ HH.text $ maybe "No CRM account ID" unwrap buyer.crmAccountId ]
       ]

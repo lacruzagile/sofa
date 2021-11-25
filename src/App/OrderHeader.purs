@@ -101,7 +101,7 @@ emptyCommercial =
 emptyBuyer :: SS.Buyer
 emptyBuyer =
   SS.Buyer
-    { buyerId: Nothing
+    { crmAccountId: Nothing
     , address: SS.emptyAddress
     , contacts: { primary: SS.emptyContact, finance: SS.emptyContact }
     , corporateName: ""
@@ -113,7 +113,8 @@ emptyBuyer =
 emptySeller :: SS.Seller
 emptySeller =
   SS.Seller
-    { name: ""
+    { registeredName: ""
+    , novaShortName: ""
     , address: SS.emptyAddress
     , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
     }
@@ -181,7 +182,7 @@ render st =
         ]
 
   renderCommercial commercialOpt = case st.buyer of
-    Just (SS.Buyer { buyerId: Just crmAccountId }) -> renderCommercial' crmAccountId
+    Just (SS.Buyer { crmAccountId: Just crmAccountId }) -> renderCommercial' crmAccountId
     _ ->
       HH.div_
         [ HH.button [ HP.disabled true, HP.style "width:100%" ] [ HH.text "Commercial" ]
@@ -489,8 +490,8 @@ render st =
                 , HH.input
                     [ HP.type_ HP.InputText
                     , HP.readOnly true
-                    , HP.value seller.name
-                    , HE.onValueChange $ \v -> update \s -> s { name = v }
+                    , HP.value seller.registeredName
+                    , HE.onValueChange $ \v -> update \s -> s { registeredName = v }
                     ]
                 ]
             , HH.div [ HP.classes [ Css.flex, Css.two ] ]
@@ -577,7 +578,8 @@ handleAction = case _ of
             , seller =
               Just
                 $ SS.Seller
-                    { name: le.registeredName
+                    { registeredName: le.registeredName
+                    , novaShortName: le.novaShortName
                     , address: le.address
                     , contacts: le.contacts
                     }
@@ -598,12 +600,12 @@ handleAction = case _ of
         , buyerAvailableContacts = Loading
         }
     case buyer of
-      SS.Buyer { buyerId: Just buyerId } -> do
+      SS.Buyer { crmAccountId: Just crmAccountId } -> do
         -- Reset the commercial selector.
         H.tell SelectCommercial.proxy unit
-          $ SelectCommercial.SetCrmAccountId buyerId
+          $ SelectCommercial.SetCrmAccountId crmAccountId
         -- Fetch the buyer contacts.
-        contacts <- H.lift $ getBuyerContacts buyerId
+        contacts <- H.lift $ getBuyerContacts crmAccountId
         case contacts of
           Error err -> Console.error $ "When fetching contacts: " <> err
           _ -> pure unit

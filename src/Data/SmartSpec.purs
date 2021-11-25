@@ -1885,7 +1885,7 @@ derive newtype instance encodeJsonCrmAccountId :: EncodeJson CrmAccountId
 
 newtype Buyer
   = Buyer
-  { buyerId :: Maybe CrmAccountId
+  { crmAccountId :: Maybe CrmAccountId
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
@@ -1897,7 +1897,7 @@ newtype Buyer
 instance decodeJsonBuyer :: DecodeJson Buyer where
   decodeJson json = do
     o <- decodeJson json
-    buyerId <- o .:? "buyerID"
+    crmAccountId <- o .:? "crmAccountId"
     address <- o .:? "address" .!= emptyAddress
     contacts <- o .:? "contacts" .!= { primary: emptyContact, finance: emptyContact }
     corporateName <- o .: "corporateName"
@@ -1906,7 +1906,7 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
     website <- o .: "website"
     pure
       $ Buyer
-          { buyerId
+          { crmAccountId
           , address
           , contacts
           , corporateName
@@ -1917,7 +1917,7 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
 
 instance encodeJsonBuyer :: EncodeJson Buyer where
   encodeJson (Buyer x) =
-    ("buyerId" :=? x.buyerId)
+    ("crmAccountId" :=? x.crmAccountId)
       ~>? ("address" := x.address)
       ~> ("contacts" := x.contacts)
       ~> ("corporateName" := x.corporateName)
@@ -1928,7 +1928,8 @@ instance encodeJsonBuyer :: EncodeJson Buyer where
 
 newtype Seller
   = Seller
-  { name :: String
+  { registeredName :: String
+  , novaShortName :: String
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
   }
