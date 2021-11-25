@@ -17,6 +17,7 @@ module Data.SmartSpec
   , ConfigSchemaEntryMeta
   , ConfigValue(..)
   , Contact(..)
+  , ContactId(..)
   , ContractTerm(..)
   , Country(..)
   , Currency(..)
@@ -1778,23 +1779,42 @@ instance encodeJsonAddress :: EncodeJson Address where
       ~>? (("postalCode" := _) <$> addr.postalCode)
       ~>? jsonEmptyObject
 
+newtype ContactId
+  = ContactId String
+
+derive instance genericContactId :: Generic ContactId _
+
+derive instance eqContactId :: Eq ContactId
+
+derive instance ordContactId :: Ord ContactId
+
+derive instance newtypeContactId :: Newtype ContactId _
+
+derive newtype instance showContactId :: Show ContactId
+
+derive newtype instance decodeJsonContactId :: DecodeJson ContactId
+
+derive newtype instance encodeJsonContactId :: EncodeJson ContactId
+
 newtype Contact
   = Contact
-  { email :: Maybe String
-  , name :: Maybe String
+  { contactId :: Maybe ContactId
+  , email :: Maybe String
+  , displayName :: Maybe String
   , phone :: Maybe String
   }
 
 emptyContact :: Contact
-emptyContact = Contact { email: Nothing, name: Nothing, phone: Nothing }
+emptyContact = Contact { contactId: Nothing, email: Nothing, displayName: Nothing, phone: Nothing }
 
 derive newtype instance decodeJsonContact :: DecodeJson Contact
 
 instance encodeJsonContact :: EncodeJson Contact where
   encodeJson (Contact x) =
-    (("email" := _) <$> x.email)
-      ~>? (("name" := _) <$> x.name)
-      ~>? (("phone" := _) <$> x.phone)
+    ("contactId" :=? x.contactId)
+      ~>? ("email" :=? x.email)
+      ~>? ("displayName" :=? x.displayName)
+      ~>? ("phone" :=? x.phone)
       ~>? jsonEmptyObject
 
 newtype Buyer

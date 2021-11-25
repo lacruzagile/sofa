@@ -439,8 +439,8 @@ render st =
                 [ HP.type_ HP.InputText
                 , HP.placeholder "Name"
                 , HP.required true
-                , HP.value $ opt contact.name
-                , HE.onValueChange \v -> update' \c -> c { name = unopt v }
+                , HP.value $ opt contact.displayName
+                , HE.onValueChange \v -> update' \c -> c { displayName = unopt v }
                 ]
             , HH.input
                 [ HP.type_ HP.InputEmail
