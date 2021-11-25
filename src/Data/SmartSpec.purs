@@ -1752,11 +1752,18 @@ instance decodeJsonAddress :: DecodeJson Address where
       value <- o .:? field
       case value of
         Nothing -> pure Nothing
+        Just "" -> pure Nothing
         Just v ->
           if S.length v >= minLen && S.length v <= maxLen then
             pure value
           else
-            Left (TypeMismatch $ "string of length " <> show minLen <> " through " <> show maxLen)
+            Left
+              ( TypeMismatch $ "At object key '" <> field <> "':\n"
+                  <> "  string of length "
+                  <> show minLen
+                  <> " through "
+                  <> show maxLen
+              )
 
 instance encodeJsonAddress :: EncodeJson Address where
   encodeJson (Address addr) =
