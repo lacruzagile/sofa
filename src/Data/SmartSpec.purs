@@ -35,7 +35,6 @@ module Data.SmartSpec
   , EstimatedWap(..)
   , EstimatedWapPerSegment(..)
   , EstimatedWapPerUnit(..)
-  , LegalEntities(..)
   , LegalEntity(..)
   , LegalEntityTraffic(..)
   , OrderForm(..)
@@ -2280,13 +2279,6 @@ derive instance newtypeLegalEntity :: Newtype LegalEntity _
 derive newtype instance decodeJsonLegalEntity :: DecodeJson LegalEntity
 
 derive newtype instance encodeJsonLegalEntity :: EncodeJson LegalEntity
-
-newtype LegalEntities
-  = LegalEntities { legalEntities :: Array LegalEntity }
-
-derive newtype instance decodeJsonLegalEntities :: DecodeJson LegalEntities
-
-derive newtype instance encodeJsonLegalEntities :: EncodeJson LegalEntities
 
 -- | Given a value, returns nothing if equal a first value, otherwise just the value.
 ifNonEq :: forall a. Eq a => a -> a -> Maybe a

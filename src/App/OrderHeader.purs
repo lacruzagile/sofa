@@ -9,6 +9,7 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Loadable (Loadable(..))
+import Data.Loadable as Loadable
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
@@ -45,7 +46,7 @@ type Output
 
 type State
   = { legalEntity :: Maybe SS.LegalEntity -- ^ The chosen legal entity.
-    , legalEntities :: Loadable SS.LegalEntities
+    , legalEntities :: Loadable (Array SS.LegalEntity)
     , commercial :: Maybe SS.Commercial
     , buyer :: Maybe SS.Buyer
     , buyerAvailableContacts :: Loadable (Array (SS.Contact))
@@ -458,7 +459,7 @@ render st =
               [ HP.value "", HP.disabled true, HP.selected true ]
               [ HH.text "No legal entities loaded" ]
           ]
-        Loaded (SS.LegalEntities { legalEntities }) ->
+        Loaded legalEntities ->
           [ HH.option
               [ HP.value "", HP.disabled true, HP.selected true ]
               [ HH.text "Please choose a legal entity" ]
@@ -476,7 +477,7 @@ render st =
           ]
 
       actionSetLegalEntity name = case st.legalEntities of
-        Loaded (SS.LegalEntities { legalEntities }) ->
+        Loaded legalEntities ->
           maybe NoOp SetLegalEntity
             $ A.find (\(SS.LegalEntity le) -> name == le.novaShortName) legalEntities
         _ -> NoOp

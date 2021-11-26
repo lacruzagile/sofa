@@ -15,7 +15,7 @@ import Prelude
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable, getJson, getRJson, postRJson)
 import Data.Maybe (fromMaybe)
-import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntities, OrderForm, Orders, ProductCatalog)
+import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm, Orders, ProductCatalog)
 import Effect.Aff.Class (class MonadAff)
 import JSURI (encodeURIComponent)
 
@@ -109,8 +109,11 @@ getBuyerContacts (CrmAccountId id) =
   conv :: { contacts :: Array Contact } -> Array Contact
   conv { contacts } = contacts
 
-getLegalEntities :: forall m. MonadAff m => m (Loadable LegalEntities)
-getLegalEntities = getJson (baseUrl <> "/legalentities.json")
+getLegalEntities :: forall m. MonadAff m => m (Loadable (Array LegalEntity))
+getLegalEntities = map (map conv) $ getJson (baseUrl <> "/legalentities.json")
+  where
+  conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
+  conv { legalEntities } = legalEntities
 
 getOrders :: forall m. MonadAff m => CredentialStore m => m (Loadable Orders)
 getOrders = getRJson ordersUrl
