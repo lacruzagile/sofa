@@ -932,11 +932,20 @@ loadExisting original@(SS.OrderForm orderForm) = do
   convertOrderSection (SS.ProductCatalog { solutions }) pbs (SS.OrderSection s) = do
     let
       SS.PriceBookRef pbRef = s.basePriceBook
-    solution <- List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri) $ Map.values solutions
+    solution <-
+      List.find
+        ( \(SS.Solution { uri }) ->
+            pbRef.solutionUri == uri
+              || ( pbRef.version == "NOVA"
+                    && uri
+                    == Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/solution.nova.json"
+                )
+        )
+        $ Map.values solutions
     let
       SS.Solution sol = solution
 
-      priceBook = A.find (\pb -> pb.id == pbRef.priceBookId) =<< Map.lookup sol.id pbs
+      priceBook = A.find (\pb -> Just pb.id == pbRef.solutionUri) =<< Map.lookup sol.id pbs
     pure
       $ calcSubTotal
           { solution
