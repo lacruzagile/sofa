@@ -583,6 +583,23 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSummary = SubTotal.renderSubTotalTable "Totals"
 
+  renderOrderInfo :: Maybe SS.OrderForm -> H.ComponentHTML Action Slots m
+  renderOrderInfo Nothing = HH.span_ []
+
+  renderOrderInfo (Just order@(SS.OrderForm o)) =
+    HH.div [ HP.classes [ Css.flex, Css.two ] ]
+      [ HH.div_
+          [ HH.strong_ [ HH.text "Order ID" ]
+          , HH.text ": "
+          , HH.text $ fromMaybe "Not Available" $ SS.abbreviatedOrderId order
+          ]
+      , HH.div_
+          [ HH.strong_ [ HH.text "Order Status" ]
+          , HH.text ": "
+          , HH.text $ SS.prettyOrderStatus o.status
+          ]
+      ]
+
   renderOrderHeader :: Maybe OrderHeader.OrderHeader -> H.ComponentHTML Action Slots m
   renderOrderHeader orderHeader =
     HH.div_
@@ -592,7 +609,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
-    [ renderOrderHeader sof.orderForm.orderHeader
+    [ renderOrderInfo sof.orderForm.original
+    , renderOrderHeader sof.orderForm.orderHeader
     , renderSections sof sof.orderForm.sections
     , renderOrderSummary sof.orderForm.summary
     , HH.hr_

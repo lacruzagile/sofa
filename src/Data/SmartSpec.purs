@@ -90,11 +90,13 @@ module Data.SmartSpec
   , Subdivision(..)
   , Uri(..)
   , Validity(..)
+  , abbreviatedOrderId
   , configSchemaEntryDescription
   , configSchemaEntryTitle
   , countryRegex
   , emptyAddress
   , emptyContact
+  , prettyOrderStatus
   , solutionProducts
   , subdivisionRegex
   ) where
@@ -2088,6 +2090,18 @@ instance encodeOrderStatus :: EncodeJson OrderStatus where
           OsFulfilled -> "FULFILLED"
           OsCancelled -> "CANCELLED"
 
+-- | Show pretty order status.
+prettyOrderStatus :: OrderStatus -> String
+prettyOrderStatus = case _ of
+  OsInDraft -> "In Draft"
+  OsInReview -> "In Review"
+  OsInApproval -> "In Approval"
+  OsInSignature -> "In Signature"
+  OsInConfiguration -> "In Configuration"
+  OsInFulfillment -> "In Fulfillment"
+  OsFulfilled -> "Fulfilled"
+  OsCancelled -> "Cancelled"
+
 data OrderLineStatus
   = OlsNew
   | OlsAccepted
@@ -2236,6 +2250,19 @@ newtype OrderForm
 derive newtype instance decodeJsonOrderForm :: DecodeJson OrderForm
 
 derive newtype instance encodeJsonOrderForm :: EncodeJson OrderForm
+
+abbreviatedOrderId :: OrderForm -> Maybe String
+abbreviatedOrderId (OrderForm { id: "" }) = Nothing
+
+abbreviatedOrderId (OrderForm { id }) =
+  let
+    len = S.length id
+  in
+    Just
+      $ if len > 10 then
+          S.take 4 id <> "…" <> S.drop (len - 4) id
+        else
+          id
 
 newtype Orders
   = Orders
