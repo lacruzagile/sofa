@@ -708,7 +708,7 @@ toJson orderForm = do
     SS.PriceBookRef
       { priceBookId: pb.id
       , version: pb.version
-      , solutionUri: Just solutionUri
+      , solutionUri: Just "NOVA" -- FIXME: Should be solutionUri.
       }
 
   toOrderSection :: OrderSection -> Maybe SS.OrderSection
