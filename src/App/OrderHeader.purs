@@ -432,7 +432,8 @@ render st =
               [ HP.for "of-buyer", HP.class_ Css.button, HP.style "width:100%" ]
               [ HH.text "Buyer"
               , HH.br_
-              , HH.text $ maybe "No buyer selected" buyerName buyerOpt]
+              , HH.text $ maybe "No buyer selected" buyerName buyerOpt
+              ]
           , Widgets.modal "of-buyer" "Buyer"
               [ HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd SetBuyer
               , HH.hr_
@@ -450,7 +451,13 @@ render st =
 
       renderLegalEntityOption (SS.LegalEntity le) =
         HH.option
-          [ HP.value le.novaShortName ]
+          [ HP.value le.novaShortName
+          , HP.selected
+              $ maybe
+                  false
+                  (\(SS.LegalEntity sel) -> le.novaShortName == sel.novaShortName)
+                  st.legalEntity
+          ]
           [ HH.text le.registeredName ]
 
       sellerOptions = case st.legalEntities of
@@ -461,7 +468,7 @@ render st =
           ]
         Loaded legalEntities ->
           [ HH.option
-              [ HP.value "", HP.disabled true, HP.selected true ]
+              [ HP.value "", HP.disabled true, HP.selected $ isNothing st.legalEntity ]
               [ HH.text "Please choose a legal entity" ]
           ]
             <> map renderLegalEntityOption legalEntities
@@ -490,16 +497,7 @@ render st =
 
       renderSellerData (SS.Seller seller) =
         HH.div_
-          $ [ HH.label_
-                [ HH.text "Legal Entity Name"
-                , HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.readOnly true
-                    , HP.value seller.registeredName
-                    , HE.onValueChange $ \v -> update \s -> s { registeredName = v }
-                    ]
-                ]
-            , HH.div [ HP.classes [ Css.flex, Css.two ] ]
+          $ [ HH.div [ HP.classes [ Css.flex, Css.two ] ]
                 [ HH.label_
                     [ HH.text "Default Bank Currency"
                     , HH.input
@@ -540,10 +538,9 @@ render st =
             ]
         , Widgets.modal "of-seller" "Seller"
             [ HH.label_
-                [ HH.text "Populate From"
+                [ HH.text "Legal Entity"
                 , HH.select [ HE.onValueChange actionSetLegalEntity ] sellerOptions
                 ]
-            , HH.hr_
             , renderSellerData $ fromMaybe emptySeller sellerOpt
             ]
             [ HH.label
@@ -565,9 +562,14 @@ handleAction ::
 handleAction = case _ of
   NoOp -> pure unit
   Initialize -> do
-    H.modify_ $ \st -> st { legalEntities = Loading }
+    st' <- H.modify $ \st -> st { legalEntities = Loading }
     legalEntities <- getLegalEntities
-    H.modify_ $ \st -> st { legalEntities = legalEntities }
+    let
+      legalEntity = do
+        SS.Seller seller <- st'.seller
+        les <- Loadable.toMaybe legalEntities
+        A.find (\(SS.LegalEntity le) -> seller.novaShortName == le.novaShortName) les
+    H.modify_ $ \st -> st { legalEntity = legalEntity, legalEntities = legalEntities }
     case legalEntities of
       Error err -> Console.error $ "When fetching legal entities: " <> err
       _ -> pure unit
