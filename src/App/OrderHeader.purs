@@ -423,11 +423,15 @@ render st =
               , renderContactSelect "Finance Contact" SetBuyerContactFinance
               ]
             <> renderReadOnlyAddress buyer.address
+
+        buyerName (SS.Buyer { corporateName }) = corporateName
       in
         HH.div_
           [ HH.label
               [ HP.for "of-buyer", HP.class_ Css.button, HP.style "width:100%" ]
-              [ HH.text "Buyer" ]
+              [ HH.text "Buyer"
+              , HH.br_
+              , HH.text $ maybe "No buyer selected" buyerName buyerOpt]
           , Widgets.modal "of-buyer" "Buyer"
               [ HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd SetBuyer
               , HH.hr_
@@ -523,11 +527,16 @@ render st =
                 $ \f -> update (\s -> s { contacts { support = f s.contacts.support } })
             ]
           <> renderReadOnlyAddress seller.address
+
+      sellerName (SS.Seller { registeredName }) = registeredName
     in
       HH.div_
         [ HH.label
             [ HP.for "of-seller", HP.class_ Css.button, HP.style "width:100%" ]
-            [ HH.text "Seller" ]
+            [ HH.text "Seller"
+            , HH.br_
+            , HH.text $ maybe "No seller selected" sellerName sellerOpt
+            ]
         , Widgets.modal "of-seller" "Seller"
             [ HH.label_
                 [ HH.text "Populate From"
