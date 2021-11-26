@@ -37,10 +37,12 @@ module Data.SmartSpec
   , EstimatedWapPerUnit(..)
   , LegalEntity(..)
   , LegalEntityTraffic(..)
+  , OrderApprovalStatus(..)
   , OrderForm(..)
   , OrderLine(..)
   , OrderLineConfig(..)
   , OrderLineStatus(..)
+  , OrderNote(..)
   , OrderSection(..)
   , OrderStatus(..)
   , Orders(..)
@@ -96,6 +98,7 @@ module Data.SmartSpec
   , countryRegex
   , emptyAddress
   , emptyContact
+  , prettyOrderApprovalStatus
   , prettyOrderStatus
   , solutionProducts
   , subdivisionRegex
@@ -1957,6 +1960,8 @@ instance encodeJsonValidity :: EncodeJson Validity where
 newtype DateTime
   = DateTime String
 
+derive instance newtypeDateTime :: Newtype DateTime _
+
 derive newtype instance decodeDateTime :: DecodeJson DateTime
 
 derive newtype instance encodeJsonDateTime :: EncodeJson DateTime
@@ -2102,6 +2107,35 @@ prettyOrderStatus = case _ of
   OsFulfilled -> "Fulfilled"
   OsCancelled -> "Cancelled"
 
+data OrderApprovalStatus
+  = OasUndecided
+  | OasApproved
+  | OasRejected
+
+instance decodeJsonOrderApprovalStatus :: DecodeJson OrderApprovalStatus where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "UNDECIDED" -> Right OasUndecided
+      "APPROVED" -> Right OasApproved
+      "REJECTED" -> Right OasRejected
+      _ -> Left (TypeMismatch "OrderApprovalStatus")
+
+instance encodeOrderApprovalStatus :: EncodeJson OrderApprovalStatus where
+  encodeJson =
+    encodeJson
+      <<< case _ of
+          OasUndecided -> "UNDECIDED"
+          OasApproved -> "APPROVED"
+          OasRejected -> "REJECTED"
+
+-- | Show pretty order status.
+prettyOrderApprovalStatus :: OrderApprovalStatus -> String
+prettyOrderApprovalStatus = case _ of
+  OasUndecided -> "Undecided"
+  OasApproved -> "Approved"
+  OasRejected -> "Rejected"
+
 data OrderLineStatus
   = OlsNew
   | OlsAccepted
@@ -2237,24 +2271,72 @@ derive newtype instance decodeJsonOrderSection :: DecodeJson OrderSection
 
 derive newtype instance encodeJsonOrderSection :: EncodeJson OrderSection
 
+newtype OrderNote
+  = OrderNote
+  { orderNoteId :: String
+  , note :: String
+  , createTime :: DateTime
+  }
+
+derive newtype instance decodeJsonOrderNote :: DecodeJson OrderNote
+
+derive newtype instance encodeJsonOrderNote :: EncodeJson OrderNote
+
 newtype OrderForm
   = OrderForm
-  { id :: String
+  { id :: Maybe String
   , status :: OrderStatus
+  , approvalStatus :: OrderApprovalStatus
   , commercial :: Commercial
   , buyer :: Buyer
   , seller :: Seller
+  , orderNotes :: Array OrderNote
   , sections :: Array OrderSection
+  , createTime :: Maybe DateTime
   }
 
-derive newtype instance decodeJsonOrderForm :: DecodeJson OrderForm
+instance decodeJsonOrderForm :: DecodeJson OrderForm where
+  decodeJson json = do
+    o <- decodeJson json
+    id <- o .:? "id"
+    status <- o .:? "status" .!= OsInDraft
+    approvalStatus <- o .:? "approvalStatus" .!= OasUndecided
+    commercial <- o .: "commercial"
+    buyer <- o .: "buyer"
+    seller <- o .: "seller"
+    orderNotes <- o .:? "orderNotes" .!= []
+    sections <- o .: "sections"
+    createTime <- o .:? "createTime"
+    pure
+      $ OrderForm
+          { id
+          , status
+          , approvalStatus
+          , commercial
+          , buyer
+          , seller
+          , orderNotes
+          , sections
+          , createTime
+          }
 
-derive newtype instance encodeJsonOrderForm :: EncodeJson OrderForm
+instance encodeJsonOrderForm :: EncodeJson OrderForm where
+  encodeJson (OrderForm x) =
+    ("id" :=? x.id)
+      ~>? ("status" := x.status)
+      ~> ("approvalStatus" := x.approvalStatus)
+      ~> ("commercial" := x.commercial)
+      ~> ("buyer" := x.buyer)
+      ~> ("seller" := x.seller)
+      ~> ("orderNotes" :=? ifNonEmpty x.orderNotes)
+      ~>? ("sections" := x.sections)
+      ~> ("createTime" :=? x.createTime)
+      ~>? jsonEmptyObject
 
 abbreviatedOrderId :: OrderForm -> Maybe String
-abbreviatedOrderId (OrderForm { id: "" }) = Nothing
+abbreviatedOrderId (OrderForm { id: Nothing }) = Nothing
 
-abbreviatedOrderId (OrderForm { id }) =
+abbreviatedOrderId (OrderForm { id: Just id }) =
   let
     len = S.length id
   in

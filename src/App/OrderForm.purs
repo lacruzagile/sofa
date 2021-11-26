@@ -586,17 +586,32 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderInfo :: Maybe SS.OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo Nothing = HH.span_ []
 
-  renderOrderInfo (Just order@(SS.OrderForm o)) =
+  renderOrderInfo (Just (SS.OrderForm o)) =
     HH.div [ HP.classes [ Css.flex, Css.two ] ]
       [ HH.div_
           [ HH.strong_ [ HH.text "Order ID" ]
           , HH.text ": "
-          , HH.text $ fromMaybe "Not Available" $ SS.abbreviatedOrderId order
+          , HH.text $ fromMaybe "Not Available" o.id
           ]
       , HH.div_
           [ HH.strong_ [ HH.text "Order Status" ]
           , HH.text ": "
           , HH.text $ SS.prettyOrderStatus o.status
+          ]
+      , HH.div_
+          [ HH.strong_ [ HH.text "Created" ]
+          , HH.text ": "
+          , HH.text $ maybe "Not Available" unwrap o.createTime
+          ]
+      , HH.div_
+          [ HH.strong_ [ HH.text "Order Approval" ]
+          , HH.text ": "
+          , HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus
+          ]
+      , HH.div_
+          [ HH.strong_ [ HH.text "Order Notes" ]
+          , HH.text ": "
+          , HH.text $ show $ A.length o.orderNotes
           ]
       ]
 
@@ -667,12 +682,15 @@ toJson orderForm = do
   sections <- traverse toOrderSection =<< sequence orderForm.sections
   pure
     $ SS.OrderForm
-        { id: ""
+        { id: Nothing
         , status: SS.OsInDraft
+        , approvalStatus: SS.OasUndecided
         , commercial: orderHeader.commercial
         , buyer: orderHeader.buyer
         , seller: orderHeader.seller
+        , orderNotes: []
         , sections
+        , createTime: Nothing
         }
   where
   toOrderLine :: OrderLine -> SS.OrderLine
