@@ -62,9 +62,7 @@ type StateOrderForm
 
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
-  = { id :: Maybe String
-    , buyer :: Maybe SS.Buyer
-    , commercial :: Maybe SS.Commercial
+  = { original :: Maybe SS.OrderForm -- ^ The original order form, if one exists.
     , orderHeader :: Maybe OrderHeader.OrderHeader
     , status :: Maybe SS.OrderStatus
     , summary :: SubTotal
@@ -701,9 +699,7 @@ loadCatalog = do
           , currency: Nothing
           , priceBooks: Map.empty
           , orderForm:
-              { id: Nothing
-              , buyer: Nothing
-              , commercial: Nothing
+              { original: Nothing
               , orderHeader: Nothing
               , status: Nothing
               , summary: mempty
@@ -864,7 +860,7 @@ loadExisting ::
   MonadAff m =>
   SS.OrderForm ->
   H.HalogenM State Action slots output m Unit
-loadExisting (SS.OrderForm orderForm) = do
+loadExisting original@(SS.OrderForm orderForm) = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff getProductCatalog
   let
@@ -883,9 +879,7 @@ loadExisting (SS.OrderForm orderForm) = do
       , priceBooks
       , orderForm:
           calcTotal
-            { id: Just orderForm.id
-            , buyer: Just orderForm.buyer
-            , commercial: Just orderForm.commercial
+            { original: Just original
             , orderHeader:
                 Just
                   { commercial: orderForm.commercial
