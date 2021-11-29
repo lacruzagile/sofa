@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: {{ .Values.maxUnavailable }}
+  selector:
+    matchLabels:
+      name: {{ .Values.app.name }}
+  template:
+    metadata:
+      labels:
+        name: {{ .Values.app.name }}
+      annotations:
+        sidecar.istio.io/inject: "{{ .Values.istio.sidecar.enabled }}"
+        sidecar.istio.io/proxyCPU: {{ .Values.istio.sidecar.resources.requests.cpu }}
+        sidecar.istio.io/proxyCPULimit: {{ .Values.istio.sidecar.resources.limits.cpu }}
+        sidecar.istio.io/proxyMemory: {{ .Values.istio.sidecar.resources.requests.memory }}
+        sidecar.istio.io/proxyMemoryLimit: {{ .Values.istio.sidecar.resources.limits.memory }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.image.pullCreds }}
+      containers:
+        - name: {{ .Values.app.name }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.version }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.ports.http }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.monitoring.health.path }}
+              port: {{ .Values.ports.http }}
+            initialDelaySeconds: {{ .Values.monitoring.health.initialDelaySeconds }}
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.monitoring.liveness.path }}
+              port: {{ .Values.ports.http }}
+            initialDelaySeconds: {{ .Values.monitoring.liveness.initialDelaySeconds }}
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 12
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+              cpu: {{ .Values.resources.limits.cpu }}
+          env:
+            - name: ORDERING_SERVICE_URL
+              value: {{ .Values.app.orderingServiceUrl }}
+            - name: TOKEN_SERVICE_URL
+              value: {{ .Values.app.tokenServiceUrl }}

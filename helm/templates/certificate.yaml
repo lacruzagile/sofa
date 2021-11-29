@@ -1,0 +1,11 @@
+kind: Certificate
+apiVersion: cert-manager.io/v1
+metadata:
+  name: {{ .Values.app.name }}-certificate
+spec:
+  dnsNames:
+    - {{ .Values.ingress.host }}
+  issuerRef:
+    kind: ClusterIssuer
+    name: acme-cluster-issuer-dns01
+  secretName: {{ .Values.app.name }}-gateway-credentials
