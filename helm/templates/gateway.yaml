@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ .Values.app.name }}-gateway
+spec:
+  selector:
+    istio: istio-ingressgateway-int-no-auth
+  servers:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      port:
+        name: https
+        number: {{ .Values.ports.https }}
+        protocol: HTTPS
+      tls:
+        credentialName: {{ .Values.app.name }}-gateway-credentials
+        mode: SIMPLE

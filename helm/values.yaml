@@ -1,0 +1,50 @@
+replicaCount: 2
+maxUnavailable: 1
+podDisruptionBudget:
+  minAvailable: 1
+
+app:
+  name: sofa
+
+ports:
+  http: 80
+  https: 443
+
+image:
+  version: latest
+  repository: nexus.int.clxnetworks.net:8089/ea/smart-spec/sofa
+  pullPolicy: Always
+  pullCreds: nexussecret
+
+ingress:
+  tls:
+    issuer: acme-cluster-issuer-dns01
+  class:
+    name: 'private-nginx-ingress'
+
+istio:
+  sidecar:
+    enabled: true
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+monitoring:
+  health:
+    path: /health
+    initialDelaySeconds: 20
+  liveness:
+    path: /health
+    initialDelaySeconds: 40

@@ -1,7 +1,8 @@
 module Data.SmartSpec
   ( Address(..)
   , Asset(..)
-  , BillingAccountRef(..)
+  , BillingAccount(..)
+  , BillingAccountId(..)
   , BillingCurrency(..)
   , BillingOption(..)
   , Buyer(..)
@@ -17,8 +18,10 @@ module Data.SmartSpec
   , ConfigSchemaEntryMeta
   , ConfigValue(..)
   , Contact(..)
+  , ContactId(..)
   , ContractTerm(..)
   , Country(..)
+  , CrmAccountId(..)
   , Currency(..)
   , Date(..)
   , DateTime(..)
@@ -32,13 +35,14 @@ module Data.SmartSpec
   , EstimatedWap(..)
   , EstimatedWapPerSegment(..)
   , EstimatedWapPerUnit(..)
-  , LegalEntities(..)
   , LegalEntity(..)
   , LegalEntityTraffic(..)
+  , OrderApprovalStatus(..)
   , OrderForm(..)
   , OrderLine(..)
   , OrderLineConfig(..)
   , OrderLineStatus(..)
+  , OrderNote(..)
   , OrderSection(..)
   , OrderStatus(..)
   , Orders(..)
@@ -69,12 +73,9 @@ module Data.SmartSpec
   , ProductOptionType(..)
   , Quantifier(..)
   , RateCard(..)
-  , ReturnCustomerCommercial(..)
-  , ReturnCustomerData(..)
   , Rule(..)
   , RuleConditionExpr(..)
   , RuleStage(..)
-  , SalesforceAccountRef(..)
   , Segment(..)
   , Segmentation(..)
   , SegmentationDim(..)
@@ -91,11 +92,14 @@ module Data.SmartSpec
   , Subdivision(..)
   , Uri(..)
   , Validity(..)
+  , abbreviatedOrderId
   , configSchemaEntryDescription
   , configSchemaEntryTitle
   , countryRegex
   , emptyAddress
   , emptyContact
+  , prettyOrderApprovalStatus
+  , prettyOrderStatus
   , solutionProducts
   , subdivisionRegex
   ) where
@@ -1684,6 +1688,56 @@ instance encodeJsonContractTerm :: EncodeJson ContractTerm where
           Ongoing -> "ONGOING"
           Fixed -> "FIXED"
 
+newtype BillingAccountId
+  = BillingAccountId String
+
+derive instance genericBillingAccountId :: Generic BillingAccountId _
+
+derive instance eqBillingAccountId :: Eq BillingAccountId
+
+derive instance ordBillingAccountId :: Ord BillingAccountId
+
+derive instance newtypeBillingAccountId :: Newtype BillingAccountId _
+
+derive newtype instance showBillingAccountId :: Show BillingAccountId
+
+derive newtype instance decodeJsonBillingAccountId :: DecodeJson BillingAccountId
+
+derive newtype instance encodeJsonBillingAccountId :: EncodeJson BillingAccountId
+
+newtype BillingAccount
+  = BillingAccount
+  { billingAccountId :: BillingAccountId
+  , displayName :: String
+  , shortId :: String
+  , commercial :: Commercial
+  }
+
+instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
+  decodeJson json = do
+    o <- decodeJson json
+    billingAccountId <- o .: "billingAccountId"
+    displayName <- o .: "displayName"
+    shortId <- o .: "shortId"
+    commercial <- o .:? "commercial" .!= defaultCommercial
+    pure
+      $ BillingAccount
+          { billingAccountId
+          , displayName
+          , shortId
+          , commercial
+          }
+    where
+    defaultCommercial =
+      Commercial
+        { billingOption: Prepay
+        , contractTerm: Ongoing
+        , paymentCurrency: PaymentCurrency (Currency "EUR")
+        , billingCurrency: PricingCurrency (Currency "EUR")
+        }
+
+derive newtype instance encodeJsonBillingAccount :: EncodeJson BillingAccount
+
 newtype Commercial
   = Commercial
   { billingOption :: BillingOption
@@ -1730,7 +1784,7 @@ instance decodeJsonAddress :: DecodeJson Address where
     line2 <- getString o "line2" 1 250
     line3 <- getString o "line3" 1 250
     city <- getString o "city" 1 80
-    stateOrProvince <- o .:? "stateOrProvince"
+    stateOrProvince <- o .:? "stateOrProvince" <|> pure Nothing
     county <- getString o "county" 1 50
     country <- o .:? "country"
     postOfficeBox <- getString o "postOfficeBox" 1 20
@@ -1752,11 +1806,18 @@ instance decodeJsonAddress :: DecodeJson Address where
       value <- o .:? field
       case value of
         Nothing -> pure Nothing
+        Just "" -> pure Nothing
         Just v ->
           if S.length v >= minLen && S.length v <= maxLen then
             pure value
           else
-            Left (TypeMismatch $ "string of length " <> show minLen <> " through " <> show maxLen)
+            Left
+              ( TypeMismatch $ "At object key '" <> field <> "':\n"
+                  <> "  string of length "
+                  <> show minLen
+                  <> " through "
+                  <> show maxLen
+              )
 
 instance encodeJsonAddress :: EncodeJson Address where
   encodeJson (Address addr) =
@@ -1771,28 +1832,64 @@ instance encodeJsonAddress :: EncodeJson Address where
       ~>? (("postalCode" := _) <$> addr.postalCode)
       ~>? jsonEmptyObject
 
+newtype ContactId
+  = ContactId String
+
+derive instance genericContactId :: Generic ContactId _
+
+derive instance eqContactId :: Eq ContactId
+
+derive instance ordContactId :: Ord ContactId
+
+derive instance newtypeContactId :: Newtype ContactId _
+
+derive newtype instance showContactId :: Show ContactId
+
+derive newtype instance decodeJsonContactId :: DecodeJson ContactId
+
+derive newtype instance encodeJsonContactId :: EncodeJson ContactId
+
 newtype Contact
   = Contact
-  { email :: Maybe String
-  , name :: Maybe String
+  { contactId :: Maybe ContactId
+  , email :: Maybe String
+  , displayName :: Maybe String
   , phone :: Maybe String
   }
 
 emptyContact :: Contact
-emptyContact = Contact { email: Nothing, name: Nothing, phone: Nothing }
+emptyContact = Contact { contactId: Nothing, email: Nothing, displayName: Nothing, phone: Nothing }
 
 derive newtype instance decodeJsonContact :: DecodeJson Contact
 
 instance encodeJsonContact :: EncodeJson Contact where
   encodeJson (Contact x) =
-    (("email" := _) <$> x.email)
-      ~>? (("name" := _) <$> x.name)
-      ~>? (("phone" := _) <$> x.phone)
+    ("contactId" :=? x.contactId)
+      ~>? ("email" :=? x.email)
+      ~>? ("displayName" :=? x.displayName)
+      ~>? ("phone" :=? x.phone)
       ~>? jsonEmptyObject
+
+newtype CrmAccountId
+  = CrmAccountId String
+
+derive instance genericCrmAccountId :: Generic CrmAccountId _
+
+derive instance eqCrmAccountId :: Eq CrmAccountId
+
+derive instance ordCrmAccountId :: Ord CrmAccountId
+
+derive instance newtypeCrmAccountId :: Newtype CrmAccountId _
+
+derive newtype instance showCrmAccountId :: Show CrmAccountId
+
+derive newtype instance decodeJsonCrmAccountId :: DecodeJson CrmAccountId
+
+derive newtype instance encodeJsonCrmAccountId :: EncodeJson CrmAccountId
 
 newtype Buyer
   = Buyer
-  { buyerId :: Maybe String
+  { crmAccountId :: Maybe CrmAccountId
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
@@ -1804,7 +1901,7 @@ newtype Buyer
 instance decodeJsonBuyer :: DecodeJson Buyer where
   decodeJson json = do
     o <- decodeJson json
-    buyerId <- o .:? "buyerId"
+    crmAccountId <- o .:? "crmAccountId"
     address <- o .:? "address" .!= emptyAddress
     contacts <- o .:? "contacts" .!= { primary: emptyContact, finance: emptyContact }
     corporateName <- o .: "corporateName"
@@ -1813,7 +1910,7 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
     website <- o .: "website"
     pure
       $ Buyer
-          { buyerId
+          { crmAccountId
           , address
           , contacts
           , corporateName
@@ -1824,7 +1921,7 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
 
 instance encodeJsonBuyer :: EncodeJson Buyer where
   encodeJson (Buyer x) =
-    ("buyerId" :=? x.buyerId)
+    ("crmAccountId" :=? x.crmAccountId)
       ~>? ("address" := x.address)
       ~> ("contacts" := x.contacts)
       ~> ("corporateName" := x.corporateName)
@@ -1835,7 +1932,8 @@ instance encodeJsonBuyer :: EncodeJson Buyer where
 
 newtype Seller
   = Seller
-  { name :: String
+  { registeredName :: String
+  , novaShortName :: String
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
   }
@@ -1843,29 +1941,6 @@ newtype Seller
 derive newtype instance decodeJsonSeller :: DecodeJson Seller
 
 derive newtype instance encodeJsonSeller :: EncodeJson Seller
-
-newtype BillingAccountRef
-  = BillingAccountRef
-  { billingAccountId :: String
-  }
-
-derive newtype instance decodeJsonBillingAccountRef :: DecodeJson BillingAccountRef
-
-derive newtype instance encodeJsonBillingAccountRef :: EncodeJson BillingAccountRef
-
-data ReturnCustomerCommercial
-  = RccCommercial Commercial
-  | RccBillingAccountRef BillingAccountRef
-
-instance decodeJsonReturnCustomerCommercial :: DecodeJson ReturnCustomerCommercial where
-  decodeJson json =
-    (RccCommercial <$> decodeJson json)
-      <|> (RccBillingAccountRef <$> decodeJson json)
-
-instance encodeJsonReturnCustomerCommercial :: EncodeJson ReturnCustomerCommercial where
-  encodeJson = case _ of
-    RccCommercial x -> encodeJson x
-    RccBillingAccountRef x -> encodeJson x
 
 type Date
   = String
@@ -1885,6 +1960,8 @@ instance encodeJsonValidity :: EncodeJson Validity where
 newtype DateTime
   = DateTime String
 
+derive instance newtypeDateTime :: Newtype DateTime _
+
 derive newtype instance decodeDateTime :: DecodeJson DateTime
 
 derive newtype instance encodeJsonDateTime :: EncodeJson DateTime
@@ -1893,7 +1970,7 @@ newtype Asset
   = Asset
   { sku :: SkuCode
   , configs :: Array ConfigValue
-  , billingAccount :: BillingAccountRef
+  , billingAccount :: BillingAccountId
   , createTime :: DateTime
   , updateTime :: DateTime
   , priceOverrides :: Array PriceOverride
@@ -1981,25 +2058,6 @@ instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
       ~> ((\uri -> "solutionUri" := uri) <$> x.solutionUri)
       ~>? jsonEmptyObject
 
-newtype SalesforceAccountRef
-  = SalesforceAccountRef
-  { salesforceAccountId :: String
-  }
-
-derive newtype instance decodeJsonSalesforceAccountRef :: DecodeJson SalesforceAccountRef
-
-derive newtype instance encodeJsonSalesforceAccountRef :: EncodeJson SalesforceAccountRef
-
-newtype ReturnCustomerData
-  = ReturnCustomerData
-  { assets :: Array Asset
-  , salesforceAccountRef :: SalesforceAccountRef
-  }
-
-derive newtype instance decodeJsonReturnCustomerData :: DecodeJson ReturnCustomerData
-
-derive newtype instance encodeJsonReturnCustomerData :: EncodeJson ReturnCustomerData
-
 data OrderStatus
   = OsInDraft
   | OsInReview
@@ -2036,6 +2094,47 @@ instance encodeOrderStatus :: EncodeJson OrderStatus where
           OsInFulfillment -> "IN_FULFILLMENT"
           OsFulfilled -> "FULFILLED"
           OsCancelled -> "CANCELLED"
+
+-- | Show pretty order status.
+prettyOrderStatus :: OrderStatus -> String
+prettyOrderStatus = case _ of
+  OsInDraft -> "In Draft"
+  OsInReview -> "In Review"
+  OsInApproval -> "In Approval"
+  OsInSignature -> "In Signature"
+  OsInConfiguration -> "In Configuration"
+  OsInFulfillment -> "In Fulfillment"
+  OsFulfilled -> "Fulfilled"
+  OsCancelled -> "Cancelled"
+
+data OrderApprovalStatus
+  = OasUndecided
+  | OasApproved
+  | OasRejected
+
+instance decodeJsonOrderApprovalStatus :: DecodeJson OrderApprovalStatus where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "UNDECIDED" -> Right OasUndecided
+      "APPROVED" -> Right OasApproved
+      "REJECTED" -> Right OasRejected
+      _ -> Left (TypeMismatch "OrderApprovalStatus")
+
+instance encodeOrderApprovalStatus :: EncodeJson OrderApprovalStatus where
+  encodeJson =
+    encodeJson
+      <<< case _ of
+          OasUndecided -> "UNDECIDED"
+          OasApproved -> "APPROVED"
+          OasRejected -> "REJECTED"
+
+-- | Show pretty order status.
+prettyOrderApprovalStatus :: OrderApprovalStatus -> String
+prettyOrderApprovalStatus = case _ of
+  OasUndecided -> "Undecided"
+  OasApproved -> "Approved"
+  OasRejected -> "Rejected"
 
 data OrderLineStatus
   = OlsNew
@@ -2172,19 +2271,80 @@ derive newtype instance decodeJsonOrderSection :: DecodeJson OrderSection
 
 derive newtype instance encodeJsonOrderSection :: EncodeJson OrderSection
 
+newtype OrderNote
+  = OrderNote
+  { orderNoteId :: String
+  , note :: String
+  , createTime :: DateTime
+  }
+
+derive newtype instance decodeJsonOrderNote :: DecodeJson OrderNote
+
+derive newtype instance encodeJsonOrderNote :: EncodeJson OrderNote
+
 newtype OrderForm
   = OrderForm
-  { id :: String
+  { id :: Maybe String
   , status :: OrderStatus
+  , approvalStatus :: OrderApprovalStatus
   , commercial :: Commercial
   , buyer :: Buyer
   , seller :: Seller
+  , orderNotes :: Array OrderNote
   , sections :: Array OrderSection
+  , createTime :: Maybe DateTime
   }
 
-derive newtype instance decodeJsonOrderForm :: DecodeJson OrderForm
+instance decodeJsonOrderForm :: DecodeJson OrderForm where
+  decodeJson json = do
+    o <- decodeJson json
+    id <- o .:? "id"
+    status <- o .:? "status" .!= OsInDraft
+    approvalStatus <- o .:? "approvalStatus" .!= OasUndecided
+    commercial <- o .: "commercial"
+    buyer <- o .: "buyer"
+    seller <- o .: "seller"
+    orderNotes <- o .:? "orderNotes" .!= []
+    sections <- o .: "sections"
+    createTime <- o .:? "createTime"
+    pure
+      $ OrderForm
+          { id
+          , status
+          , approvalStatus
+          , commercial
+          , buyer
+          , seller
+          , orderNotes
+          , sections
+          , createTime
+          }
 
-derive newtype instance encodeJsonOrderForm :: EncodeJson OrderForm
+instance encodeJsonOrderForm :: EncodeJson OrderForm where
+  encodeJson (OrderForm x) =
+    ("id" :=? x.id)
+      ~>? ("status" := x.status)
+      ~> ("approvalStatus" := x.approvalStatus)
+      ~> ("commercial" := x.commercial)
+      ~> ("buyer" := x.buyer)
+      ~> ("seller" := x.seller)
+      ~> ("orderNotes" :=? ifNonEmpty x.orderNotes)
+      ~>? ("sections" := x.sections)
+      ~> ("createTime" :=? x.createTime)
+      ~>? jsonEmptyObject
+
+abbreviatedOrderId :: OrderForm -> Maybe String
+abbreviatedOrderId (OrderForm { id: Nothing }) = Nothing
+
+abbreviatedOrderId (OrderForm { id: Just id }) =
+  let
+    len = S.length id
+  in
+    Just
+      $ if len > 10 then
+          S.take 4 id <> "…" <> S.drop (len - 4) id
+        else
+          id
 
 newtype Orders
   = Orders
@@ -2228,13 +2388,6 @@ derive instance newtypeLegalEntity :: Newtype LegalEntity _
 derive newtype instance decodeJsonLegalEntity :: DecodeJson LegalEntity
 
 derive newtype instance encodeJsonLegalEntity :: EncodeJson LegalEntity
-
-newtype LegalEntities
-  = LegalEntities { legalEntities :: Array LegalEntity }
-
-derive newtype instance decodeJsonLegalEntities :: DecodeJson LegalEntities
-
-derive newtype instance encodeJsonLegalEntities :: EncodeJson LegalEntities
 
 -- | Given a value, returns nothing if equal a first value, otherwise just the value.
 ifNonEq :: forall a. Eq a => a -> a -> Maybe a

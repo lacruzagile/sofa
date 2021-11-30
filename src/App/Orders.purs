@@ -6,9 +6,8 @@ import App.Requests (getOrders)
 import Css as Css
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.SmartSpec as SS
-import Data.String as S
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -99,8 +98,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder :: SS.OrderForm -> H.ComponentHTML Action Slots m
   renderOrder orderForm@(SS.OrderForm o) =
     HH.tr_
-      [ HH.td_ [ HH.text $ showID o.id ]
-      , HH.td_ [ HH.text $ showOrderStatus o.status ]
+      [ HH.td_ [ HH.text $ fromMaybe "N/A" $ SS.abbreviatedOrderId orderForm ]
+      , HH.td_ [ HH.text $ SS.prettyOrderStatus o.status ]
       , HH.td_ [ HH.text buyer ]
       , HH.td_ [ HH.text seller ]
       , HH.td_ [ HH.button [ HE.onClick \_ -> OpenOrder orderForm ] [ HH.text "Open" ] ]
@@ -110,7 +109,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       let
         SS.Buyer { corporateName: b } = o.buyer
 
-        SS.Seller { name: s } = o.seller
+        SS.Seller { registeredName: s } = o.seller
       in
         Tuple b s
 
@@ -135,27 +134,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
 
   renderContent = defRender state renderOrders
-
-showID :: String -> String
-showID id =
-  let
-    len = S.length id
-  in
-    if len > 10 then
-      S.take 4 id <> "…" <> S.drop (len - 4) id
-    else
-      id
-
-showOrderStatus :: SS.OrderStatus -> String
-showOrderStatus = case _ of
-  SS.OsInDraft -> "In Draft"
-  SS.OsInReview -> "In Review"
-  SS.OsInApproval -> "In Approval"
-  SS.OsInSignature -> "In Signature"
-  SS.OsInConfiguration -> "In Configuration"
-  SS.OsInFulfillment -> "In Fulfillment"
-  SS.OsFulfilled -> "Fulfilled"
-  SS.OsCancelled -> "Cancelled"
 
 loadOrders ::
   forall slots output m.
