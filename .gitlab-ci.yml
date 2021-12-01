@@ -1,0 +1,99 @@
+include:
+  - project: "devops/pipeline/kubernetes-components"
+    ref: 1.5.0
+    file: "kubernetes-components.template.gitlab-ci.yml"
+
+stages:
+  - build
+  - test
+  - image
+  - pre-deploy
+  - deploy
+
+variables:
+  NO_COLOR: 1
+
+.yarn-job:
+  image: node:17
+  cache:
+    key:
+      files:
+        - spago.dhall
+        - yarn.lock
+    paths:
+      - .spago
+      - node_modules
+      - output
+  before_script:
+    - yarn install
+
+build:
+  extends: .yarn-job
+  stage: build
+  script:
+    - yarn build
+  artifacts:
+    paths:
+      - dist
+
+test:
+  extends: .yarn-job
+  stage: test
+  cache:
+    policy: pull
+  script:
+    - yarn test
+
+build-and-push-image:
+  stage: image
+  only: [ master ]
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$NEXUS_REGISTRY\":{\"username\":\"$NEXUS_USER\",\"password\":\"$NEXUS_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context .
+      --dockerfile ./docker/Dockerfile
+      --destination $NEXUS_REGISTRY/$CI_PROJECT_PATH:latest
+
+neuvector:
+  stage: pre-deploy
+  only: [ master ]
+  image: nexus.int.clxnetworks.net:8089/pipeline/neuvector:latest
+  variables:
+    nexus_user: $NEXUS_USER
+    nexus_password: $NEXUS_PASSWORD
+    scan_target: $CI_PROJECT_PATH:latest
+  script:
+    - scan
+  artifacts:
+    when: always
+    paths:
+      - ./nvreport/scan-summary.txt
+      - ./nvreport/security-report.csv
+      - ./nvreport/scan-repository.json
+
+.deploy:
+  image: alpine:latest
+  stage: deploy
+  when: manual
+  extends:
+    - .kubernetes-components
+  script:
+    - install_dependencies
+    - configure_kubectl
+    - ensure_namespace
+    - >-
+      helm upgrade
+      --install sofa
+      --values ./sofa/helm/config/$CI_ENVIRONMENT_NAME.yaml
+      ./helm
+
+deploy-staging:
+  extends: .deploy
+  only: [ master ]
+  environment:
+    name: eu1tst

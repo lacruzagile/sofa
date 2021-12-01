@@ -1,5 +1,5 @@
 ingress:
-  host: sofa.ea-sofa.istio.unauth.int.lab.sinch.com
+  host: sofa.eu1tst.bpa.staging.sinch.com
 
 app:
   orderingServiceUrl: https://ordering.eu1tst.bpa.staging.sinch.com
