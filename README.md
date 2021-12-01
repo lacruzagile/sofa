@@ -11,9 +11,10 @@ use the Docker image. Run
 
 ``` sh-session
 $ docker run -p 8080:80 \
+    -e SMART_SPEC_URL=https://ea.pages.sinch.com/smart-spec \
     -e ORDERING_SERVICE_URL=https://ordering.eu1tst.bpa.staging.sinch.com \
     -e TOKEN_SERVICE_URL=https://public.token-service.common-auth.staging.sinch.com \
-    nexus.int.clxnetworks.net:8089/ea/smart-spec/sofa:latest
+    nexus.int.clxnetworks.net:8089/dev/business-process-automation/sofa:latest
 ```
 
 in a terminal to fetch the most recent build. Then open
@@ -33,6 +34,9 @@ $ find src -name '*.purs' -exec purty format --write '{}' ';'
 ### Running locally
 
 You can run the application in a development mode relatively simply.
+Note, when running this way the application will communicate with the
+backend services running in the staging environment.
+
 First make sure you have [Yarn], [PureScript], and [Spago] installed.
 If you have [Nix] installed, then you can get a shell with the
 required applications by running `nix-shell`.
@@ -40,20 +44,7 @@ required applications by running `nix-shell`.
 Also make sure to run `yarn install` to download all additional
 dependencies.
 
-1. Build the example JSON files by going to the root directory and
-   running
-
-   ``` sh-session
-   $ make example example-order-form
-   ```
-
-   This command requires [GNU Bash], [GNU Make], [GNU sed], [CUE],
-   [jq], and various standard Unix tools such as `mkdir`, `rm`, etc.
-   If you use the [Nix] package manager than you can run `nix-shell`
-   to get a development shell with all necessary tools in well
-   supported versions.
-
-2. If your editor doesn't automatically build the project (e.g.,
+1. If your editor doesn't automatically build the project (e.g.,
    though `purs ide`) then you can start a watcher by running
 
     ``` sh-session
@@ -62,9 +53,9 @@ dependencies.
 
    in a terminal.
 
-3. Start serving the application by running
+2. Start serving the application by running
 
-    ``` sh-ession
+    ``` sh-session
     $ yarn start
     ```
 

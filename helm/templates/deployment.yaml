@@ -55,5 +55,9 @@ spec:
           env:
             - name: ORDERING_SERVICE_URL
               value: {{ .Values.app.orderingServiceUrl }}
+            - name: SERVER_NAME
+              value: https://{{ .Values.ingress.host }}
+            - name: SMART_SPEC_URL
+              value: {{ .Values.app.smartSpecUrl }}
             - name: TOKEN_SERVICE_URL
               value: {{ .Values.app.tokenServiceUrl }}

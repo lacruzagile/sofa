@@ -20,16 +20,13 @@ import Effect.Aff.Class (class MonadAff)
 import JSURI (encodeURIComponent)
 
 baseUrl :: String
-baseUrl = "v1alpha1/examples"
-
-orderingBaseUrl :: String
-orderingBaseUrl = "/v1alpha1"
+baseUrl = "/v1alpha1"
 
 ordersUrl :: String
-ordersUrl = orderingBaseUrl <> "/orders"
+ordersUrl = baseUrl <> "/orders"
 
 buyersUrl :: String
-buyersUrl = orderingBaseUrl <> "/buyers"
+buyersUrl = baseUrl <> "/buyers"
 
 appendPathPiece :: String -> String -> String
 appendPathPiece a b = a <> "/" <> b
@@ -110,8 +107,10 @@ getBuyerContacts (CrmAccountId id) =
   conv { contacts } = contacts
 
 getLegalEntities :: forall m. MonadAff m => m (Loadable (Array LegalEntity))
-getLegalEntities = map (map conv) $ getJson (baseUrl <> "/legalentities.json")
+getLegalEntities = map (map conv) $ getJson url
   where
+  url = baseUrl </> "examples" </> "legalentities.json"
+
   conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
   conv { legalEntities } = legalEntities
 
@@ -122,4 +121,6 @@ postOrder :: forall m. MonadAff m => CredentialStore m => OrderForm -> m (Loadab
 postOrder orderForm = postRJson ordersUrl orderForm
 
 getProductCatalog :: forall m. MonadAff m => m (Loadable ProductCatalog)
-getProductCatalog = getJson (baseUrl <> "/product-catalog.normalized.json")
+getProductCatalog = getJson url
+  where
+  url = baseUrl </> "examples" </> "product-catalog.normalized.json"

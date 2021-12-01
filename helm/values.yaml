@@ -12,7 +12,7 @@ ports:
 
 image:
   version: latest
-  repository: nexus.int.clxnetworks.net:8089/ea/smart-spec/sofa
+  repository: nexus.int.clxnetworks.net:8089/dev/business-process-automation/sofa
   pullPolicy: Always
   pullCreds: nexussecret
 

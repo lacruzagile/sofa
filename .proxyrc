@@ -7,6 +7,10 @@
     "target": "https://ordering.eu1tst.bpa.staging.sinch.com",
     "changeOrigin": true
   },
+  "/v1alpha1/examples": {
+    "target": "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples",
+    "changeOrigin": true
+  },
   "/v1alpha1/orders": {
     "target": "https://ordering.eu1tst.bpa.staging.sinch.com",
     "changeOrigin": true
