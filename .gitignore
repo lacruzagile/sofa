@@ -4,6 +4,7 @@
 ### Purescript ###
 /output/
 /generated-docs/
+/.psc*
 /.purs*
 /.spago
 
