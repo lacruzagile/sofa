@@ -2,26 +2,21 @@
 /sofa.js
 
 ### Purescript ###
-/bower_components/
-/node_modules/
-/.pulp-cache/
 /output/
 /generated-docs/
-/.psc-package/
-/.psc*
 /.purs*
-/.psa*
 /.spago
 
 ### Emacs ###
 .#*
 
-### Nix ###
-/.spago2nix
+### Direnv ###
+/.envrc
 
 ### Parcel ###
 /.parcel-cache
 /dist
 
 ### Yarn ###
+/node_modules/
 /yarn-error.log
