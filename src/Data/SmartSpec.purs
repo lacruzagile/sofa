@@ -519,25 +519,32 @@ instance decodeJsonChargeSingleUnit :: DecodeJson ChargeSingleUnit where
 instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
   encodeJson = case _ of
     ChargeSimple x ->
-      encodeCommon x
+      encodeType "CHARGE_SIMPLE"
+        $ encodeCommon x
         $ encodePriceRowJson x
         $ jsonEmptyObject
     ChargeDim x ->
-      encodeCommon x
+      encodeType "CHARGE_PER_DIM"
+        $ encodeCommon x
         $ ("priceByDim" := x.priceByDim)
         ~> jsonEmptyObject
     ChargeSeg x ->
-      encodeCommon x
+      encodeType "CHARGE_PER_SEG"
+        $ encodeCommon x
         $ ("segmentation" := x.segmentation)
         ~> ("priceBySegment" := x.priceBySegment)
         ~> jsonEmptyObject
     ChargeDimSeg x ->
-      encodeCommon x
+      encodeType "CHARGE_PER_DIM_SEG"
+        $ encodeCommon x
         $ ("segmentation" := x.segmentation)
         ~> ("priceBySegmentByDim" := x.priceBySegmentByDim)
         ~> ("defaultPrice" := x.defaultPrice)
         ~> jsonEmptyObject
     where
+    encodeType :: String -> Json -> Json
+    encodeType typ rest = ("type" := typ) ~> rest
+
     encodeCommon ::
       forall r a.
       EncodeJson a =>
@@ -603,12 +610,14 @@ instance encodeJsonCharge :: EncodeJson Charge where
   encodeJson = case _ of
     ChargeSingleUnit x -> encodeJson x
     ChargeList x ->
-      ("description" :=? x.description)
+      ("type" := "CHARGE_LIST")
+        ~> ("description" :=? x.description)
         ~>? ("charges" := x.charges)
         ~> ("periodMinimum" :=? x.periodMinimum)
         ~>? jsonEmptyObject
     ChargeDimUnitOptSeg x ->
-      ("units" := x.units)
+      ("type" := "CHARGE_PER_DIM_UNIT_OPT_SEG")
+        ~> ("units" := x.units)
         ~> ("currencyByUnit" :=? ifNonEmpty x.currencyByUnit)
         ~>? ("description" :=? x.description)
         ~>? ("segmentationByUnit" :=? ifNonEmpty x.segmentationByUnit)
