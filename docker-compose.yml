@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: sofa:latest
+    image: nexus.int.clxnetworks.net:8089/dev/business-process-automation/sofa:latest
     ports:
       - "8080:80"
     environment:

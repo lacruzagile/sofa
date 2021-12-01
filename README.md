@@ -7,14 +7,12 @@ the [Halogen] UI library.
 ## Quick Start
 
 If you just want SOFA up and running as quickly as possible you can
-use the Docker image. Run
+use the prebuilt Docker image then start it with [Docker Compose]. Run
 
 ``` sh-session
-$ docker run -p 8080:80 \
-    -e SMART_SPEC_URL=https://ea.pages.sinch.com/smart-spec \
-    -e ORDERING_SERVICE_URL=https://ordering.eu1tst.bpa.staging.sinch.com \
-    -e TOKEN_SERVICE_URL=https://public.token-service.common-auth.staging.sinch.com \
+$ docker image pull \
     nexus.int.clxnetworks.net:8089/dev/business-process-automation/sofa:latest
+$ docker-compose up --no-build
 ```
 
 in a terminal to fetch the most recent build. Then open
@@ -63,6 +61,7 @@ dependencies.
    automatically be reopened in the browser.
 
 [CUE]: https://cuelang.org/
+[Docker Compose]: https://docs.docker.com/compose/
 [GNU Bash]: https://www.gnu.org/software/bash/
 [GNU Make]: https://www.gnu.org/software/make/
 [GNU sed]: https://www.gnu.org/software/sed/
