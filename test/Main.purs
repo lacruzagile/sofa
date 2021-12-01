@@ -70,7 +70,7 @@ calcSubTotalChargeSimple = do
             , description: Nothing
             , kind: SS.CkOnetime
             , priceDimSchema: Nothing
-            , reportDimSchemas: Nothing
+            , reportDimSchema: Nothing
             }
 
     subTotal n =
@@ -103,7 +103,7 @@ calcSubTotalChargeSegVolume = do
             , description: Nothing
             , kind: SS.CkOnetime
             , priceDimSchema: Nothing
-            , reportDimSchemas: Nothing
+            , reportDimSchema: Nothing
             }
         )
 
@@ -137,7 +137,7 @@ calcSubTotalChargeSegTiered = do
             , description: Nothing
             , kind: SS.CkOnetime
             , priceDimSchema: Nothing
-            , reportDimSchemas: Nothing
+            , reportDimSchema: Nothing
             }
         )
 

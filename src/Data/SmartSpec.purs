@@ -1304,7 +1304,7 @@ newtype ChargeUnit
   , description :: Maybe String
   , kind :: ChargeKind
   , priceDimSchema :: Maybe ConfigSchemaEntry
-  , reportDimSchemas :: Maybe (Array ConfigSchemaEntry)
+  , reportDimSchema :: Maybe ConfigSchemaEntry
   }
 
 derive instance newtypeChargeUnit :: Newtype ChargeUnit _
@@ -1317,7 +1317,7 @@ instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
     description <- o .:? "description"
     kind <- o .:? "kind" .!= CkUsage
     priceDimSchema <- o .:? "priceDimSchema"
-    reportDimSchemas <- o .:? "reportDimSchemas"
+    reportDimSchema <- o .:? "reportDimSchema"
     pure
       $ ChargeUnit
           { id
@@ -1325,7 +1325,7 @@ instance decodeJsonChargeUnit :: DecodeJson ChargeUnit where
           , description
           , kind
           , priceDimSchema
-          , reportDimSchemas
+          , reportDimSchema
           }
 
 derive newtype instance encodeJsonChargeUnit :: EncodeJson ChargeUnit
