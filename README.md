@@ -36,8 +36,8 @@ Note, when running this way the application will communicate with the
 backend services running in the staging environment.
 
 First make sure you have [Yarn], [PureScript], and [Spago] installed.
-If you have [Nix] installed, then you can get a shell with the
-required applications by running `nix-shell`.
+If you have [Nix] installed with Flake support, then you can get a
+shell with the required applications by running `nix develop`.
 
 Also make sure to run `yarn install` to download all additional
 dependencies.
