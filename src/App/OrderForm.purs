@@ -437,8 +437,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
           $ [ HE.onValueChange (act <<< const <<< SS.CvString)
             ]
           <> opt HP.value (maybe c.default (Just <<< show) value)
-      SS.CseConst _c -> renderEntry' fallbackTitle schemaEntry $ HH.input [ HP.value "const", HP.disabled true ]
-      SS.CseArray _c -> HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
+      SS.CseConst _c ->
+        renderEntry' fallbackTitle schemaEntry
+          $ HH.input [ HP.value "const", HP.disabled true ]
+      SS.CseArray _c ->
+        renderEntry' fallbackTitle schemaEntry
+          $ HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
       SS.CseObject c ->
         let
           findVal k = Map.lookup k $ toVal value
@@ -778,14 +782,13 @@ mkDefaultConfigs (SS.Product p) =
     SS.CseArray _ -> Just $ SS.CvArray []
     SS.CseObject x ->
       let
-        defaults :: Maybe (Map String SS.ConfigValue)
+        defaults :: Map String SS.ConfigValue
         defaults =
-          map Map.fromFoldable
-            $ sequence
-            $ map (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefault v)
+          Map.fromFoldable
+            $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefault v)
             $ (Map.toUnfoldable x.properties :: List _)
       in
-        SS.CvObject <$> defaults
+        Just $ SS.CvObject defaults
     SS.CseOneOf _ -> Nothing
 
 calcSubTotal :: OrderSection -> OrderSection
