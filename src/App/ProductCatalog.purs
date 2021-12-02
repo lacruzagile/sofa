@@ -103,6 +103,7 @@ render state = HH.section_ [ HH.article_ content ]
 
   configSchemaEntry :: SS.ConfigSchemaEntry -> H.ComponentHTML Action Slots m
   configSchemaEntry = case _ of
+    SS.CseBoolean v -> renderBoolean v
     SS.CseInteger v -> renderInteger v
     SS.CseString v -> renderString v
     SS.CseRegex v -> renderRegex v
@@ -111,6 +112,8 @@ render state = HH.section_ [ HH.article_ content ]
     SS.CseObject v -> renderObject v
     SS.CseOneOf v -> renderOneOf v
     where
+    renderBoolean v = HH.dl_ (opt (dataItem "Default" <<< show) v.default)
+
     renderInteger v =
       HH.dl_
         ( opt (dataItem "Minimum" <<< show) v.minimum
@@ -287,6 +290,7 @@ render state = HH.section_ [ HH.article_ content ]
 
 showCseTypeName :: SS.ConfigSchemaEntry -> String
 showCseTypeName = case _ of
+  SS.CseBoolean _ -> "boolean"
   SS.CseInteger _ -> "integer"
   SS.CseString _ -> "string"
   SS.CseRegex _ -> "regex"

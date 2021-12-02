@@ -1163,7 +1163,11 @@ type ConfigSchemaEntryMeta
     )
 
 data ConfigSchemaEntry
-  = CseInteger
+  = CseBoolean
+    { default :: Maybe Boolean
+    | ConfigSchemaEntryMeta
+    }
+  | CseInteger
     { minimum :: Maybe Int
     , maximum :: Maybe Int
     , default :: Maybe Int
@@ -1200,6 +1204,9 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
       title <- o .:? "title"
       description <- o .:? "description"
       case type_ of
+        "boolean" -> do
+          default <- o .:? "default"
+          Right $ CseBoolean { title, description, default }
         "integer" -> do
           minimum <- o .:? "minimum"
           maximum <- o .:? "maximum"
@@ -1231,6 +1238,7 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
 
 instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
   encodeJson = case _ of
+    CseBoolean x -> encodeJson x
     CseInteger x -> encodeJson x
     CseString x -> encodeJson x
     CseRegex x -> encodeJson x
@@ -1244,6 +1252,7 @@ instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
 
 configSchemaEntryTitle :: ConfigSchemaEntry -> Maybe String
 configSchemaEntryTitle = case _ of
+  CseBoolean x -> x.title
   CseInteger x -> x.title
   CseString x -> x.title
   CseRegex x -> x.title
@@ -1254,6 +1263,7 @@ configSchemaEntryTitle = case _ of
 
 configSchemaEntryDescription :: ConfigSchemaEntry -> Maybe String
 configSchemaEntryDescription = case _ of
+  CseBoolean x -> x.description
   CseInteger x -> x.description
   CseString x -> x.description
   CseRegex x -> x.description
@@ -1263,7 +1273,8 @@ configSchemaEntryDescription = case _ of
   CseOneOf _x -> Nothing
 
 data ConfigValue
-  = CvInteger Int
+  = CvBoolean Boolean
+  | CvInteger Int
   | CvString String
   | CvArray (Array ConfigValue)
   | CvObject (Map String ConfigValue)
@@ -1275,6 +1286,7 @@ derive instance ordConfigValue :: Ord ConfigValue
 
 instance showConfigValue :: Show ConfigValue where
   show = case _ of
+    CvBoolean v -> show v
     CvInteger v -> show v
     CvString v -> v
     CvArray v -> show v
@@ -1283,7 +1295,8 @@ instance showConfigValue :: Show ConfigValue where
 
 instance decodeJsonConfigValue :: DecodeJson ConfigValue where
   decodeJson json =
-    (CvInteger <$> decodeJson json)
+    (CvBoolean <$> decodeJson json)
+      <|> (CvInteger <$> decodeJson json)
       <|> (CvString <$> decodeJson json)
       <|> (CvArray <$> decodeJson json)
       <|> parseObject
@@ -1300,6 +1313,7 @@ instance decodeJsonConfigValue :: DecodeJson ConfigValue where
       pure CvNull
 
 instance encodeJsonConfigValue :: EncodeJson ConfigValue where
+  encodeJson (CvBoolean v) = encodeJson v
   encodeJson (CvInteger v) = encodeJson v
   encodeJson (CvString v) = encodeJson v
   encodeJson (CvArray v) = encodeJson v

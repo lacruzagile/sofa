@@ -375,6 +375,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.ConfigSchemaEntry ->
       H.ComponentHTML Action Slots m
     renderEntry act fallbackTitle value schemaEntry = case schemaEntry of
+      SS.CseBoolean _ ->
+        renderEntry' fallbackTitle schemaEntry
+          $ HH.input
+          $ [ HP.type_ HP.InputCheckbox
+            , HE.onValueChange
+                ( let
+                    boolFromString = case _ of
+                      "true" -> Just true
+                      "false" -> Just false
+                      _ -> Nothing
+                  in
+                    mact (act <<< const <<< SS.CvBoolean) <<< boolFromString
+                )
+            ]
+          <> opt (HP.value <<< show) value
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
@@ -755,6 +770,7 @@ mkDefaultConfigs (SS.Product p) =
         pure [ SS.OrderLineConfig { quantity: 1, config: Just default_ } ]
   where
   mkDefault = case _ of
+    SS.CseBoolean x -> SS.CvBoolean <$> x.default
     SS.CseInteger x -> SS.CvInteger <$> x.default
     SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum)
     SS.CseRegex x -> SS.CvString <$> x.default
