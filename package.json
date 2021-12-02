@@ -2,7 +2,7 @@
   "name": "sofa",
   "version": "1.0.0",
   "description": "SOFA",
-  "repository": "https://git.clxnetworks.net/ea/smart-spec/",
+  "repository": "https://git.clxnetworks.net/dev/business-process-automation/sofa",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
