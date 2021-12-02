@@ -995,7 +995,7 @@ mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>)
     if pbc.currency == c then
       [ Tuple sol.id
           [ { id: pb.id
-            , title: pb.title
+            , title: fromMaybe pb.id pb.title
             , version: pbv.version
             , currency: SS.ChargeCurrency (unwrap c)
             , rateCards: rateCardMap <$> pbc.rateCards

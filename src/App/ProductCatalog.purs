@@ -227,7 +227,7 @@ render state = HH.section_ [ HH.article_ content ]
     HH.li_
       [ HH.dl_
           ( dataItem "ID" p.id
-              <> dataItem "Title" p.title
+              <> opt (dataItem "Title") p.title
               <> opt (dataItem "Description") p.description
               <> (dataItemRaw "Versions" $ HH.ul_ $ map (renderPriceBookVersion prodMap) p.byVersion)
           )

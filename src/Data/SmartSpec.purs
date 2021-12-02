@@ -416,7 +416,7 @@ derive newtype instance encodeJsonChargeCurrencyPerUnit :: EncodeJson ChargeCurr
 newtype PriceBook
   = PriceBook
   { id :: String
-  , title :: String
+  , title :: Maybe String
   , description :: Maybe String
   , byVersion :: Array PriceBookVersion
   }
