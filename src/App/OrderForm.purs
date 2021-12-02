@@ -440,9 +440,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.CseConst _c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input [ HP.value "const", HP.disabled true ]
-      SS.CseArray _c ->
-        renderEntry' fallbackTitle schemaEntry
-          $ HH.input [ HP.value "Unsupported configuration type: array", HP.disabled true ]
+      SS.CseArray c ->
+        let
+          entries = case value of
+            Just (SS.CvArray vals) -> vals
+            _ -> []
+
+          toVal = case _ of
+            Just (SS.CvArray arr) -> arr
+            _ -> []
+
+          act' idx = \f -> act (SS.CvArray <<< fromMaybe [] <<< A.modifyAt idx (f <<< Just) <<< toVal)
+        in
+          renderEntry' fallbackTitle schemaEntry
+            $ HH.span_
+            $ A.mapWithIndex (\i -> renderListEntry (act' i) c.items) entries
+            <> [ renderAddListEntry c.items act ]
       SS.CseObject c ->
         let
           findVal k = Map.lookup k $ toVal value
@@ -470,6 +483,34 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ label, HH.sup_ [ HH.a_ [ HH.text "?" ] ] ]
 
       withDescription label = maybe label (tooltip label) $ SS.configSchemaEntryDescription schemaEntry
+
+    renderListEntry ::
+      ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
+      SS.ConfigSchemaEntry ->
+      SS.ConfigValue ->
+      H.ComponentHTML Action Slots m
+    renderListEntry act entry value =
+      HH.div [ HP.class_ Css.orderLineConfig ]
+        [ renderEntry act "" (Just value) entry ]
+
+    renderAddListEntry schemaEntry act =
+      HH.div [ HP.class_ Css.orderLineConfig ]
+        [ HH.button
+            [ HP.class_ Css.addOrderLineConfig
+            , HE.onClick \_ ->
+                let
+                  toVal = case _ of
+                    Just (SS.CvArray vals) -> vals
+                    _ -> []
+
+                  defValue = maybe [ SS.CvNull ] A.singleton (mkDefaultConfig schemaEntry)
+
+                  addEntry v = v <> defValue
+                in
+                  act (SS.CvArray <<< addEntry <<< toVal)
+            ]
+            [ HH.text "+" ]
+        ]
 
   renderSection ::
     StateOrderForm ->
@@ -765,31 +806,32 @@ loadCatalog = do
         <$> productCatalog
   H.put $ Initialized res
 
+mkDefaultConfig :: SS.ConfigSchemaEntry -> Maybe SS.ConfigValue
+mkDefaultConfig = case _ of
+  SS.CseBoolean x -> SS.CvBoolean <$> x.default
+  SS.CseInteger x -> SS.CvInteger <$> x.default
+  SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum)
+  SS.CseRegex x -> SS.CvString <$> x.default
+  SS.CseConst x -> Just x.const
+  SS.CseArray _ -> Just $ SS.CvArray []
+  SS.CseObject x ->
+    let
+      defaults :: Map String SS.ConfigValue
+      defaults =
+        Map.fromFoldable
+          $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefaultConfig v)
+          $ (Map.toUnfoldable x.properties :: List _)
+    in
+      Just $ SS.CvObject defaults
+  SS.CseOneOf _ -> Nothing
+
 mkDefaultConfigs :: SS.Product -> Array SS.OrderLineConfig
 mkDefaultConfigs (SS.Product p) =
   fromMaybe [ SS.OrderLineConfig { quantity: 1, config: Nothing } ]
     $ do
         schema <- p.orderConfigSchema
-        default_ <- mkDefault schema
+        default_ <- mkDefaultConfig schema
         pure [ SS.OrderLineConfig { quantity: 1, config: Just default_ } ]
-  where
-  mkDefault = case _ of
-    SS.CseBoolean x -> SS.CvBoolean <$> x.default
-    SS.CseInteger x -> SS.CvInteger <$> x.default
-    SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum)
-    SS.CseRegex x -> SS.CvString <$> x.default
-    SS.CseConst x -> Just x.const
-    SS.CseArray _ -> Just $ SS.CvArray []
-    SS.CseObject x ->
-      let
-        defaults :: Map String SS.ConfigValue
-        defaults =
-          Map.fromFoldable
-            $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefault v)
-            $ (Map.toUnfoldable x.properties :: List _)
-      in
-        Just $ SS.CvObject defaults
-    SS.CseOneOf _ -> Nothing
 
 calcSubTotal :: OrderSection -> OrderSection
 calcSubTotal os =
