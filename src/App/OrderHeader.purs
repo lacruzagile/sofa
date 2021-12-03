@@ -1,15 +1,15 @@
 module App.OrderForm.OrderHeader (Slot, Output, OrderHeader, proxy, component) where
 
 import Prelude
-import App.Requests (getBuyerContacts, getLegalEntities)
+import App.Requests (getBuyerContacts)
 import App.SelectBuyer as SelectBuyer
 import App.SelectCommercial as SelectCommercial
+import App.SelectLegalEntity as SelectLegalEntity
 import Css as Css
 import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Loadable (Loadable(..))
-import Data.Loadable as Loadable
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
@@ -33,6 +33,7 @@ proxy = Proxy
 type Slots
   = ( selectBuyer :: SelectBuyer.Slot Unit
     , selectCommercial :: SelectCommercial.Slot Unit
+    , selectLegalEntity :: SelectLegalEntity.Slot Unit
     )
 
 type OrderHeader
@@ -46,20 +47,18 @@ type Output
 
 type State
   = { legalEntity :: Maybe SS.LegalEntity -- ^ The chosen legal entity.
-    , legalEntities :: Loadable (Array SS.LegalEntity)
-    , commercial :: Maybe SS.Commercial
+    , seller :: Maybe SS.Seller
     , buyer :: Maybe SS.Buyer
     , buyerAvailableContacts :: Loadable (Array (SS.Contact))
-    , seller :: Maybe SS.Seller
+    , commercial :: Maybe SS.Commercial
     }
 
 data Action
   = NoOp
-  | Initialize
   | UpdateCommercial (SS.Commercial -> SS.Commercial)
   | UpdateBuyer (SS.Buyer -> SS.Buyer)
   | UpdateSeller (SS.Seller -> SS.Seller)
-  | SetLegalEntity SS.LegalEntity
+  | SetLegalEntity (Maybe SS.LegalEntity)
   | SetBuyer (Maybe SS.Buyer)
   | SetBuyerContactPrimary SS.Contact
   | SetBuyerContactFinance SS.Contact
@@ -72,22 +71,16 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval:
-        H.mkEval
-          H.defaultEval
-            { handleAction = handleAction
-            , initialize = initialize
-            }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
 
 initialState :: Input -> State
 initialState customer =
   { legalEntity: Nothing
-  , legalEntities: Idle
-  , commercial: _.commercial <$> customer
+  , seller: _.seller <$> customer
   , buyer: _.buyer <$> customer
   , buyerAvailableContacts: Idle
-  , seller: _.seller <$> customer
+  , commercial: _.commercial <$> customer
   }
 
 emptyCommercial :: SS.Commercial
@@ -119,9 +112,6 @@ emptySeller =
     , address: SS.emptyAddress
     , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
     }
-
-initialize :: Maybe Action
-initialize = Just Initialize
 
 render :: forall m. MonadAff m => CredentialStore m => State -> H.ComponentHTML Action Slots m
 render st =
@@ -449,46 +439,6 @@ render st =
     let
       update f = UpdateSeller $ \(SS.Seller old) -> SS.Seller (f old)
 
-      renderLegalEntityOption (SS.LegalEntity le) =
-        HH.option
-          [ HP.value le.novaShortName
-          , HP.selected
-              $ maybe
-                  false
-                  (\(SS.LegalEntity sel) -> le.novaShortName == sel.novaShortName)
-                  st.legalEntity
-          ]
-          [ HH.text le.registeredName ]
-
-      sellerOptions = case st.legalEntities of
-        Idle ->
-          [ HH.option
-              [ HP.value "", HP.disabled true, HP.selected true ]
-              [ HH.text "No legal entities loaded" ]
-          ]
-        Loaded legalEntities ->
-          [ HH.option
-              [ HP.value "", HP.disabled true, HP.selected $ isNothing st.legalEntity ]
-              [ HH.text "Please choose a legal entity" ]
-          ]
-            <> map renderLegalEntityOption legalEntities
-        Loading ->
-          [ HH.option
-              [ HP.value "", HP.disabled true, HP.selected true ]
-              [ HH.text "Loading legal entities…" ]
-          ]
-        Error _ ->
-          [ HH.option
-              [ HP.value "", HP.disabled true, HP.selected true ]
-              [ HH.text $ "Error loading legal entities" ]
-          ]
-
-      actionSetLegalEntity name = case st.legalEntities of
-        Loaded legalEntities ->
-          maybe NoOp SetLegalEntity
-            $ A.find (\(SS.LegalEntity le) -> name == le.novaShortName) legalEntities
-        _ -> NoOp
-
       defaultCurrencyStr = maybe "" (show <<< _.defaultBankCurrency <<< unwrap) st.legalEntity
 
       currenciesStr =
@@ -497,7 +447,15 @@ render st =
 
       renderSellerData (SS.Seller seller) =
         HH.div_
-          $ [ HH.div [ HP.classes [ Css.flex, Css.two ] ]
+          $ [ HH.label_
+                [ HH.text "Registered Name"
+                , HH.input
+                    [ HP.type_ HP.InputText
+                    , HP.value seller.registeredName
+                    , HP.readOnly true
+                    ]
+                ]
+            , HH.div [ HP.classes [ Css.flex, Css.two ] ]
                 [ HH.label_
                     [ HH.text "Default Bank Currency"
                     , HH.input
@@ -537,10 +495,8 @@ render st =
             , HH.text $ maybe "No seller selected" sellerName sellerOpt
             ]
         , Widgets.modal "of-seller" "Seller"
-            [ HH.label_
-                [ HH.text "Legal Entity"
-                , HH.select [ HE.onValueChange actionSetLegalEntity ] sellerOptions
-                ]
+            [ HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd SetLegalEntity
+            , HH.hr_
             , renderSellerData $ fromMaybe emptySeller sellerOpt
             ]
             [ HH.label
@@ -561,18 +517,6 @@ handleAction ::
   Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   NoOp -> pure unit
-  Initialize -> do
-    st' <- H.modify $ \st -> st { legalEntities = Loading }
-    legalEntities <- getLegalEntities
-    let
-      legalEntity = do
-        SS.Seller seller <- st'.seller
-        les <- Loadable.toMaybe legalEntities
-        A.find (\(SS.LegalEntity le) -> seller.novaShortName == le.novaShortName) les
-    H.modify_ $ \st -> st { legalEntity = legalEntity, legalEntities = legalEntities }
-    case legalEntities of
-      Error err -> Console.error $ "When fetching legal entities: " <> err
-      _ -> pure unit
   UpdateCommercial updater -> do
     H.modify_ $ \st -> st { commercial = updater <$> st.commercial }
     raiseOrderHeaderIfComplete
@@ -582,21 +526,25 @@ handleAction = case _ of
   UpdateSeller updater -> do
     H.modify_ $ \st -> st { seller = updater <$> st.seller }
     raiseOrderHeaderIfComplete
-  SetLegalEntity (SS.LegalEntity le) -> do
+  SetLegalEntity legalEntity -> do
     H.modify_
       $ \st ->
-          st
-            { legalEntity = Just $ SS.LegalEntity le
-            , seller =
-              Just
-                $ SS.Seller
-                    { registeredName: le.registeredName
-                    , novaShortName: le.novaShortName
-                    , address: le.address
-                    , contacts: le.contacts
-                    }
-            }
-    raiseOrderHeaderIfComplete
+          let
+            toSeller (SS.LegalEntity le) =
+              SS.Seller
+                { registeredName: le.registeredName
+                , novaShortName: le.novaShortName
+                , address: le.address
+                , contacts: le.contacts
+                }
+          in
+            st
+              { legalEntity = legalEntity
+              , seller = toSeller <$> legalEntity
+              , commercial = Nothing
+              , buyer = Nothing
+              , buyerAvailableContacts = Idle
+              }
   SetBuyer Nothing ->
     H.modify_
       _
