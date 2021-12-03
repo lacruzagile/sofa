@@ -394,6 +394,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
           $ [ HP.type_ HP.InputNumber
+            , HP.placeholder "Integer"
             , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
             ]
           <> opt (HP.value <<< show) value
@@ -427,14 +428,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   []
                 else
                   [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
+
+              placeholder = case Tuple mi ma of
+                Tuple "0" "" -> "String"
+                Tuple "0" ma' -> "String of max " <> ma' <> " characters"
+                Tuple mi' ma'
+                  | mi' == ma' -> "String of " <> mi' <> " characters"
+                  | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
             in
-              HH.input $ [ HE.onValueChange (act <<< const <<< SS.CvString) ]
+              HH.input
+                $ [ HP.placeholder placeholder
+                  , HE.onValueChange (act <<< const <<< SS.CvString)
+                  ]
                 <> opt HP.value (maybe c.default (Just <<< show) value)
                 <> pat
       SS.CseRegex c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
-          $ [ HE.onValueChange (act <<< const <<< SS.CvString)
+          $ [ HP.placeholder $ "String matching " <> c.pattern
+            , HE.onValueChange (act <<< const <<< SS.CvString)
             ]
           <> opt HP.value (maybe c.default (Just <<< show) value)
       SS.CseConst _c ->
