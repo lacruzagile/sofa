@@ -143,6 +143,7 @@ component =
               do
                 filtered <- Loadable.toMaybe st.filtered
                 filtered !! idx
+            , filtered = st.available
             , visibility = Sel.Off
             }
       -- Clear the input element.
