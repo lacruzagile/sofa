@@ -18,7 +18,7 @@ import Data.List.Lazy as List
 import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Data.SmartSpec as SS
@@ -376,20 +376,18 @@ render state = HH.section_ [ HH.article_ renderContent ]
       H.ComponentHTML Action Slots m
     renderEntry act fallbackTitle value schemaEntry = case schemaEntry of
       SS.CseBoolean _ ->
-        renderEntry' fallbackTitle schemaEntry
-          $ HH.input
-          $ [ HP.type_ HP.InputCheckbox
-            , HE.onValueChange
-                ( let
-                    boolFromString = case _ of
-                      "true" -> Just true
-                      "false" -> Just false
-                      _ -> Nothing
-                  in
-                    mact (act <<< const <<< SS.CvBoolean) <<< boolFromString
-                )
-            ]
-          <> opt (HP.value <<< show) value
+        let
+          checked = case value of
+            Just (SS.CvBoolean b) -> b
+            _ -> false
+        in
+          renderCheckbox fallbackTitle schemaEntry
+            $ HH.input
+                [ HP.type_ HP.InputCheckbox
+                , HP.class_ Css.checkable
+                , HP.checked checked
+                , HE.onChecked (act <<< const <<< SS.CvBoolean)
+                ]
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
@@ -482,6 +480,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
             $ map (\(Tuple k schema) -> renderEntry (act' k) k (findVal k) schema)
             $ Map.toUnfoldable c.properties
       SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
+
+    renderCheckbox fallbackTitle schemaEntry inner =
+      HH.div_
+        [ HH.label_
+            [ inner
+            , withDescription $ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            ]
+        ]
+      where
+      tooltip label text =
+        HH.span
+          [ HP.attr (H.AttrName "data-tooltip") text, HP.classes [ Css.checkable, Css.tooltipTop ] ]
+          [ label, HH.sup_ [ HH.a_ [ HH.text "?" ] ] ]
+
+      plainLabel label = HH.span [ HP.class_ Css.checkable ] [ label ]
+
+      withDescription label =
+        maybe' (const $ plainLabel label) (tooltip label)
+          $ SS.configSchemaEntryDescription schemaEntry
 
     renderEntry' fallbackTitle schemaEntry inner =
       HH.label_
