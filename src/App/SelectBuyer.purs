@@ -8,7 +8,7 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Loadable as Loadable
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.SmartSpec as SS
 import Data.String as S
@@ -34,6 +34,7 @@ type Output
 
 type State
   = ( selected :: Maybe SS.Buyer -- ^ The chosen buyer, if any.
+    , selectedFull :: Loadable SS.Buyer -- ^ The chosen buyer in full, if any.
     , available :: Loadable (Array SS.Buyer) -- ^ The available buyers.
     )
 
@@ -68,6 +69,7 @@ selectComponent =
     , search: Nothing
     , getItemCount: maybe 0 A.length <<< Loadable.toMaybe <<< _.available
     , selected: Nothing
+    , selectedFull: Idle
     , available: Idle
     }
 
@@ -83,10 +85,8 @@ selectComponent =
         H.modify \st ->
           st
             { search = ""
-            , selected =
-              do
-                available <- Loadable.toMaybe st.available
-                available !! idx
+            , selected = (_ !! idx) =<< Loadable.toMaybe st.available
+            , selectedFull = Loading
             , visibility = Sel.Off
             }
       -- Clear the input element.
@@ -95,14 +95,18 @@ selectComponent =
         $ maybe (pure unit) (H.liftEffect <<< HTMLInputElement.setValue "")
         <<< HTMLInputElement.fromHTMLElement
       -- Fetch the full representation of the selected buyer, if possible.
-      selected <-
-        fromMaybe (pure Nothing)
-          $ do
-              (SS.Buyer buyer) <- st'.selected
-              crmAccountId <- buyer.crmAccountId
-              pure $ H.lift $ Loadable.toMaybe <$> getBuyer crmAccountId
+      let
+        mCrmAccountId = do
+          (SS.Buyer buyer) <- st'.selected
+          buyer.crmAccountId
+      selectedFull <- case mCrmAccountId of
+        Nothing -> pure $ Error "No CRM account ID"
+        Just crmAccountId -> do
+          full <- H.lift $ getBuyer crmAccountId
+          H.modify_ \st -> st { selectedFull = full }
+          pure full
       -- Let the parent component know about the new selection.
-      H.raise selected
+      H.raise $ Loadable.toMaybe selectedFull
     _ -> pure unit
 
   render :: Sel.State State -> H.ComponentHTML Sel.Action' () m
@@ -118,7 +122,23 @@ selectComponent =
 
     renderResults :: Array (H.ComponentHTML Sel.Action' () m)
     renderResults
-      | st.visibility == Sel.Off = []
+      | st.visibility == Sel.Off = case st.selectedFull of
+        Error msg ->
+          let
+            renderError b =
+              [ HH.text "Error loading "
+              , HH.span_ $ renderBuyerSummary b
+              , HH.text ": "
+              , HH.text msg
+              ]
+          in
+            [ HH.div_ $ maybe [] renderError st.selected ]
+        Loading ->
+          let
+            renderLoading b = [ HH.text "Loading ", HH.span_ $ renderBuyerSummary b ]
+          in
+            [ HH.div_ $ maybe [] renderLoading st.selected ]
+        _ -> []
       | otherwise = case st.available of
         Idle -> [ HH.div_ [ HH.text "No active search …" ] ]
         Loading -> [ HH.div_ [ HH.text "Loading search results …" ] ]
@@ -143,5 +163,5 @@ selectComponent =
       , HH.text " "
       , HH.span
           [ HP.style "color:gray" ]
-          [ HH.text $ maybe "No CRM account ID" unwrap buyer.crmAccountId ]
+          [ HH.text $ maybe "(No CRM account ID)" unwrap buyer.crmAccountId ]
       ]
