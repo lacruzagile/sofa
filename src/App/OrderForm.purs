@@ -3,7 +3,7 @@ module App.OrderForm (Slot, proxy, component) where
 import Prelude
 import App.Charge (Slot, component, proxy) as Charge
 import App.OrderForm.OrderHeader as OrderHeader
-import App.Requests (getProductCatalog, postOrder)
+import App.Requests (getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Control.Alternative ((<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
@@ -21,7 +21,7 @@ import Data.List.Lazy as List
 import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Data.SmartSpec as SS
@@ -142,7 +142,8 @@ data Action
     , estimatedUsage :: QuantityMap
     }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
-  | PostOrder
+  | CreateUpdateOrder -- ^ Create or update the current order.
+  | FulfillOrder -- ^ Trigger order fulfillment.
 
 component ::
   forall query output m.
@@ -685,7 +686,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               HH.div_
                 [ HH.strong_ [ HH.text "Order ID" ]
                 , HH.text ": "
-                , HH.text $ fromMaybe "Not Available" o.id
+                , HH.text $ maybe "Not Available" show o.id
                 ]
           )
       <> [ HH.div_
@@ -772,14 +773,28 @@ render state = HH.section_ [ HH.article_ renderContent ]
     , renderSections sof sof.orderForm.sections
     , renderOrderSummary sof.orderForm.summary
     , HH.hr_
-    , HH.label [ HP.for "of-json", HP.class_ Css.button ] [ HH.text "Order Form JSON" ]
-    , Widgets.modal "of-json" "Order Form JSON"
-        [ HH.pre_
-            [ HH.code_ [ HH.text $ fromMaybe errMsg $ toJsonStr sof.orderForm ]
+    , HH.div_
+        [ HH.label
+            [ HP.for "of-json", HP.class_ Css.button ]
+            [ HH.text "Order Form JSON" ]
+        , Widgets.modal "of-json" "Order Form JSON"
+            [ HH.pre_
+                [ HH.code_ [ HH.text $ fromMaybe errMsg $ toJsonStr sof.orderForm ]
+                ]
             ]
+            []
         ]
-        []
-    , HH.button [ HE.onClick $ \_ -> PostOrder ] [ HH.text "Create Order" ]
+    , HH.button
+        [ HP.disabled $ maybe true (const false) sof.orderForm.orderHeader
+        , HE.onClick $ \_ -> CreateUpdateOrder
+        ]
+        [ HH.text $ maybe "Create Order" (const "Update Order") (getOrderId sof) ]
+    , HH.text " "
+    , HH.button
+        [ HP.disabled $ maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
+        , HE.onClick $ \_ -> FulfillOrder
+        ]
+        [ HH.text "Fulfill Order" ]
     ]
     where
     errMsg =
@@ -1135,6 +1150,12 @@ modifyInitialized f =
 toPricingCurrency :: SS.Commercial -> Maybe SS.PricingCurrency
 toPricingCurrency (SS.Commercial { billingCurrency }) = Just billingCurrency
 
+getOrderId :: StateOrderForm -> Maybe SS.OrderId
+getOrderId = (\(SS.OrderForm o) -> o.id) <=< _.orderForm.original
+
+getOriginalOrderStatus :: StateOrderForm -> Maybe SS.OrderStatus
+getOriginalOrderStatus = map (\(SS.OrderForm o) -> o.status) <<< _.orderForm.original
+
 -- | Assemble a map from solution ID to its associated price books. The price
 -- | books are limited to the given pricing currency.
 mkPriceBooks :: SS.ProductCatalog -> Maybe SS.PricingCurrency -> Map String (Array PriceBook)
@@ -1433,14 +1454,34 @@ handleAction = case _ of
               { charges = Just charges
               , estimatedUsage = estimatedUsage
               }
-  PostOrder -> do
+  CreateUpdateOrder -> do
     st <- H.get
     let
+      -- Updates the current state to match the response order object.
+      ld o = case o of
+        Loaded o' -> loadExisting o'
+        _ -> pure unit
+
+      run json =
+        maybe'
+          (\_ -> postOrder json)
+          (\id -> patchOrder id json)
+    case st of
+      Initialized (Loaded st') -> case toJson st'.orderForm of
+        Nothing -> pure unit
+        Just json -> ld =<< H.lift (run json (getOrderId st'))
+      _ -> pure unit
+  FulfillOrder -> do
+    st <- H.get
+    let
+      -- Updates the current state to match the response order object.
       ld o = case o of
         Loaded o' -> loadExisting o'
         _ -> pure unit
     case st of
-      Initialized (Loaded st') -> case toJson st'.orderForm of
-        Nothing -> pure unit
-        Just json -> ld =<< H.lift (postOrder json)
+      Initialized
+        ( Loaded
+          { orderForm: { original: Just (SS.OrderForm { id: Just id }) }
+        }
+      ) -> ld =<< H.lift (postOrderFulfillment id)
       _ -> pure unit

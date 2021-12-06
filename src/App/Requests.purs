@@ -3,19 +3,21 @@ module App.Requests
   ( getBillingAccount
   , getBillingAccounts
   , getBuyer
-  , getBuyers
   , getBuyerContacts
+  , getBuyers
   , getLegalEntities
   , getOrders
   , getProductCatalog
+  , patchOrder
   , postOrder
+  , postOrderFulfillment
   ) where
 
 import Prelude
 import Data.Auth (class CredentialStore)
-import Data.Loadable (Loadable, getJson, getRJson, postRJson)
+import Data.Loadable (Loadable, getJson, getRJson, patchRJson, postRJson, postRJson_)
 import Data.Maybe (fromMaybe)
-import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm, Orders, ProductCatalog)
+import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, Orders, ProductCatalog)
 import Effect.Aff.Class (class MonadAff)
 import JSURI (encodeURIComponent)
 
@@ -117,8 +119,18 @@ getLegalEntities = map (map conv) $ getJson url
 getOrders :: forall m. MonadAff m => CredentialStore m => m (Loadable Orders)
 getOrders = getRJson ordersUrl
 
+patchOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> OrderForm -> m (Loadable OrderForm)
+patchOrder orderId orderForm = patchRJson url orderForm
+  where
+  url = ordersUrl </> show orderId
+
 postOrder :: forall m. MonadAff m => CredentialStore m => OrderForm -> m (Loadable OrderForm)
 postOrder orderForm = postRJson ordersUrl orderForm
+
+postOrderFulfillment :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
+postOrderFulfillment orderId = postRJson_ url
+  where
+  url = ordersUrl </> show orderId <> ":fulfillment"
 
 -- | Fetches the product catalog. Note, we expect a _normalized_ product
 -- | catalog.

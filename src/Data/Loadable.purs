@@ -1,4 +1,12 @@
-module Data.Loadable (Loadable(..), toMaybe, getJson, getRJson, postRJson) where
+module Data.Loadable
+  ( Loadable(..)
+  , toMaybe
+  , getJson
+  , getRJson
+  , patchRJson
+  , postRJson
+  , postRJson_
+  ) where
 
 import Prelude
 import Affjax (printError)
@@ -83,6 +91,38 @@ getRJson url = do
                 $ error
             Right content -> Loaded content
 
+-- | Submit JSON using a PATCH request and parse the response.
+patchRJson ::
+  forall a b m.
+  EncodeJson a =>
+  DecodeJson b =>
+  MonadAff m =>
+  CredentialStore m =>
+  String ->
+  a ->
+  m (Loadable b)
+patchRJson url body = do
+  creds <- getAuthorizationHeader
+  case creds of
+    Left err -> pure $ Error err
+    Right authHdr -> do
+      res <-
+        liftAff
+          $ AJX.patchR
+              { headers: [ authHdr ] }
+              url
+              (Just body)
+      pure
+        $ case res of
+            Left error ->
+              Error
+                $ default "Generic error"
+                # on _affjaxError printError
+                # on _notFound (const "Not found")
+                # on _parseError printJsonDecodeError
+                $ error
+            Right content -> Loaded content
+
 -- | Submit JSON using a POST request and parse the response.
 postRJson ::
   forall a b m.
@@ -104,6 +144,31 @@ postRJson url body = do
               { headers: [ authHdr ] }
               url
               (Just body)
+      pure
+        $ case res of
+            Left error ->
+              Error
+                $ default "Generic error"
+                # on _affjaxError printError
+                # on _notFound (const "Not found")
+                # on _parseError printJsonDecodeError
+                $ error
+            Right content -> Loaded content
+
+-- | Submit an empty POST request and parse the response.
+postRJson_ ::
+  forall a m.
+  DecodeJson a =>
+  MonadAff m =>
+  CredentialStore m =>
+  String ->
+  m (Loadable a)
+postRJson_ url = do
+  creds <- getAuthorizationHeader
+  case creds of
+    Left err -> pure $ Error err
+    Right authHdr -> do
+      res <- liftAff $ AJX.postR { headers: [ authHdr ] } url (Nothing :: Maybe Int)
       pure
         $ case res of
             Left error ->

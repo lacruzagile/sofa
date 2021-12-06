@@ -40,6 +40,7 @@ module Data.SmartSpec
   , LegalEntityTraffic(..)
   , OrderApprovalStatus(..)
   , OrderForm(..)
+  , OrderId(..)
   , OrderLine(..)
   , OrderLineConfig(..)
   , OrderLineId
@@ -2293,7 +2294,6 @@ instance encodeJsonOrderLineConfig :: EncodeJson OrderLineConfig where
       ~> ("config" :=? x.config)
       ~>? jsonEmptyObject
 
-
 newtype OrderLineId
   = OrderLineId String
 
@@ -2302,7 +2302,6 @@ derive newtype instance showOrderLineId :: Show OrderLineId
 derive newtype instance decodeJsonOrderLineId :: DecodeJson OrderLineId
 
 derive newtype instance encodeJsonOrderLineId :: EncodeJson OrderLineId
-
 
 newtype OrderLine
   = OrderLine
@@ -2368,9 +2367,19 @@ derive newtype instance decodeJsonOrderNote :: DecodeJson OrderNote
 
 derive newtype instance encodeJsonOrderNote :: EncodeJson OrderNote
 
+newtype OrderId
+  = OrderId String
+
+instance showJsonOrderId :: Show OrderId where
+  show (OrderId id) = id
+
+derive newtype instance decodeJsonOrderId :: DecodeJson OrderId
+
+derive newtype instance encodeJsonOrderId :: EncodeJson OrderId
+
 newtype OrderForm
   = OrderForm
-  { id :: Maybe String
+  { id :: Maybe OrderId
   , status :: OrderStatus
   , approvalStatus :: OrderApprovalStatus
   , displayName :: Maybe String
@@ -2426,7 +2435,7 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
 abbreviatedOrderId :: OrderForm -> Maybe String
 abbreviatedOrderId (OrderForm { id: Nothing }) = Nothing
 
-abbreviatedOrderId (OrderForm { id: Just id }) =
+abbreviatedOrderId (OrderForm { id: Just (OrderId id) }) =
   let
     len = S.length id
   in
