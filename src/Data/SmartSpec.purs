@@ -1190,9 +1190,13 @@ data ConfigSchemaEntry
     | ConfigSchemaEntryMeta
     }
   | CseArray
-    { items :: ConfigSchemaEntry }
+    { items :: ConfigSchemaEntry
+    | ConfigSchemaEntryMeta
+    }
   | CseObject
-    { properties :: Map String ConfigSchemaEntry }
+    { properties :: Map String ConfigSchemaEntry
+    | ConfigSchemaEntryMeta
+    }
   | CseOneOf { oneOf :: Array ConfigSchemaEntry }
 
 instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
@@ -1224,12 +1228,12 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
           Right $ CseRegex { title, description, pattern, default }
         "array" -> do
           items <- o .: "items"
-          Right $ CseArray { items }
+          Right $ CseArray { title, description, items }
         "object" -> do
           propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
           let
             properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
-          Right $ CseObject { properties }
+          Right $ CseObject { title, description, properties }
         _ -> Left (TypeMismatch "ConfigSchemaEntry")
 
     constValue = CseConst <$> decodeJson json
@@ -1257,8 +1261,8 @@ configSchemaEntryTitle = case _ of
   CseString x -> x.title
   CseRegex x -> x.title
   CseConst x -> x.title
-  CseArray _x -> Nothing
-  CseObject _x -> Nothing
+  CseArray x -> x.title
+  CseObject x -> x.title
   CseOneOf _x -> Nothing
 
 configSchemaEntryDescription :: ConfigSchemaEntry -> Maybe String
@@ -1268,8 +1272,8 @@ configSchemaEntryDescription = case _ of
   CseString x -> x.description
   CseRegex x -> x.description
   CseConst x -> x.description
-  CseArray _x -> Nothing
-  CseObject _x -> Nothing
+  CseArray x -> x.description
+  CseObject x -> x.description
   CseOneOf _x -> Nothing
 
 data ConfigValue

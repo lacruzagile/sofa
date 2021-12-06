@@ -18,7 +18,7 @@ import Data.List.Lazy as List
 import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (unwrap)
 import Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Data.SmartSpec as SS
@@ -482,40 +482,42 @@ render state = HH.section_ [ HH.article_ renderContent ]
           if S.null fallbackTitle then
             HH.span_ renderFields
           else
-            HH.fieldset_ ([ HH.legend_ [ HH.text fallbackTitle ] ] <> renderFields)
+            HH.fieldset_
+              ( [ HH.legend_ [ withDescription [] fallbackTitle schemaEntry ] ]
+                  <> renderFields
+              )
       SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
 
     renderCheckbox fallbackTitle schemaEntry inner =
       HH.div_
         [ HH.label_
             [ inner
-            , withDescription $ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , withDescription [ Css.checkable ] fallbackTitle schemaEntry
             ]
         ]
-      where
-      tooltip label text =
-        HH.span
-          [ HP.attr (H.AttrName "data-tooltip") text, HP.classes [ Css.checkable, Css.tooltipTop ] ]
-          [ label, HH.sup_ [ HH.a_ [ HH.text "?" ] ] ]
-
-      plainLabel label = HH.span [ HP.class_ Css.checkable ] [ label ]
-
-      withDescription label =
-        maybe' (const $ plainLabel label) (tooltip label)
-          $ SS.configSchemaEntryDescription schemaEntry
 
     renderEntry' fallbackTitle schemaEntry inner =
       HH.label_
-        [ withDescription $ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+        [ withDescription [] fallbackTitle schemaEntry
         , inner
         ]
-      where
-      tooltip label text =
-        HH.span
-          [ HP.attr (H.AttrName "data-tooltip") text, HP.class_ Css.tooltipTop ]
-          [ label, HH.sup_ [ HH.a_ [ HH.text "?" ] ] ]
 
-      withDescription label = maybe label (tooltip label) $ SS.configSchemaEntryDescription schemaEntry
+    withDescription classes fallbackTitle schemaEntry =
+      withMaybeTooltip
+        classes
+        (HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry)
+        (SS.configSchemaEntryDescription schemaEntry)
+
+    withMaybeTooltip classes label description =
+      maybe
+        (if A.null classes then label else HH.span [ HP.classes classes ] [ label ])
+        tooltip
+        description
+      where
+      tooltip text =
+        HH.span
+          [ HP.attr (H.AttrName "data-tooltip") text, HP.classes $ [ Css.tooltipTop ] <> classes ]
+          [ label, HH.sup_ [ HH.a_ [ HH.text "?" ] ] ]
 
     renderListEntry ::
       ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
