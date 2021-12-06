@@ -855,7 +855,7 @@ mkDefaultConfig = case _ of
       defaults =
         Map.fromFoldable
           $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefaultConfig v)
-          $ (Map.toUnfoldable x.properties :: List _)
+          $ Map.toUnfoldable x.properties
     in
       Just $ SS.CvObject defaults
   SS.CseOneOf _ -> Nothing
