@@ -22,6 +22,7 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Data.SmartSpec as SS
+import Data.String as S
 import Data.SubTotal (SubTotal)
 import Data.SubTotal as SubTotal
 import Data.Traversable (sequence, traverse)
@@ -329,22 +330,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> case config of
               Nothing -> []
               Just c ->
-                [ HH.fieldset_ $ [ HH.legend_ [ HH.text "Configuration" ] ]
-                    <> maybe []
-                        ( A.singleton
-                            <<< renderConfigSchema
-                                ( \alter ->
-                                    OrderLineSetConfig
-                                      { sectionIndex: olIdx.sectionIndex
-                                      , orderLineIndex: olIdx.orderLineIndex
-                                      , configIndex: cfgIdx
-                                      , alter
-                                      }
-                                )
-                                c
-                        )
-                        product.orderConfigSchema
-                ]
+                maybe []
+                  ( A.singleton
+                      <<< renderConfigSchema
+                          ( \alter ->
+                              OrderLineSetConfig
+                                { sectionIndex: olIdx.sectionIndex
+                                , orderLineIndex: olIdx.orderLineIndex
+                                , configIndex: cfgIdx
+                                , alter
+                                }
+                          )
+                          c
+                  )
+                  product.orderConfigSchema
       ]
 
     renderAddProductConfig =
@@ -475,10 +474,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
             _ -> Map.empty
 
           act' k = \f -> act (SS.CvObject <<< Map.alter (Just <<< f) k <<< toVal)
+
+          renderFields =
+            map (\(Tuple k schema) -> renderEntry (act' k) k (findVal k) schema)
+              $ Map.toUnfoldable c.properties
         in
-          HH.span_
-            $ map (\(Tuple k schema) -> renderEntry (act' k) k (findVal k) schema)
-            $ Map.toUnfoldable c.properties
+          if S.null fallbackTitle then
+            HH.span_ renderFields
+          else
+            HH.fieldset_ ([ HH.legend_ [ HH.text fallbackTitle ] ] <> renderFields)
       SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
 
     renderCheckbox fallbackTitle schemaEntry inner =
