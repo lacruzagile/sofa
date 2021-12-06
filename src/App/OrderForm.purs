@@ -443,6 +443,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
           $ [ HP.placeholder $ "String matching " <> c.pattern
+            , HP.pattern c.pattern
             , HE.onValueChange (act <<< const <<< SS.CvString)
             ]
           <> opt HP.value (maybe c.default (Just <<< show) value)
