@@ -1,8 +1,18 @@
-module Widgets (withTooltip, TooltipDirection(..), tabbed2, Tab(..), modal) where
+module Widgets
+  ( withMaybeTooltip
+  , withMaybeTooltip_
+  , withTooltip
+  , withTooltip_
+  , TooltipDirection(..)
+  , tabbed2
+  , Tab(..)
+  , modal
+  ) where
 
 import Prelude
 import Css as Css
 import Data.Array as A
+import Data.Maybe (Maybe, maybe)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -13,23 +23,55 @@ data TooltipDirection
   | Left
   | Right
 
--- | Creates a span with a tooltip text.
-withTooltip ::
+withTooltip_ ::
   forall slot action.
   TooltipDirection ->
   String ->
   HH.HTML slot action ->
   HH.HTML slot action
-withTooltip direction tooltipText body =
+withTooltip_ = withTooltip []
+
+-- | Creates a span with a tooltip text.
+withTooltip ::
+  forall slot action.
+  Array HH.ClassName ->
+  TooltipDirection ->
+  String ->
+  HH.HTML slot action ->
+  HH.HTML slot action
+withTooltip classes direction tooltipText body =
   HH.span
-    [ HP.attr (H.AttrName "data-tooltip") tooltipText, cls ]
+    [ HP.attr (H.AttrName "data-tooltip") tooltipText, HP.classes $ cls <> classes ]
     [ body, HH.sup_ [ HH.text "?" ] ]
   where
   cls = case direction of
-    Top -> HP.class_ Css.tooltipTop
-    Bottom -> HP.classes []
-    Left -> HP.class_ Css.tooltipLeft
-    Right -> HP.class_ Css.tooltipRight
+    Top -> [ Css.tooltipTop ]
+    Bottom -> []
+    Left -> [ Css.tooltipLeft ]
+    Right -> [ Css.tooltipRight ]
+
+-- | Creates a span with an optional tooltip text.
+withMaybeTooltip_ ::
+  forall slot action.
+  TooltipDirection ->
+  Maybe String ->
+  HH.HTML slot action ->
+  HH.HTML slot action
+withMaybeTooltip_ direction mTooltipText body = maybe body (\tooltipText -> withTooltip_ direction tooltipText body) mTooltipText
+
+-- | Creates a span with an optional tooltip text.
+withMaybeTooltip ::
+  forall slot action.
+  Array HH.ClassName ->
+  TooltipDirection ->
+  Maybe String ->
+  HH.HTML slot action ->
+  HH.HTML slot action
+withMaybeTooltip classes direction mTooltipText body =
+  maybe
+    (if A.null classes then body else HH.span [ HP.classes classes ] [ body ])
+    (\tooltipText -> withTooltip classes direction tooltipText body)
+    mTooltipText
 
 -- Other stuff.
 type Tab slot action

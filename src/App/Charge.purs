@@ -221,7 +221,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
           ( \q ->
               [ HH.tr_
                   $ thColSpanAlignRight (A.length dims)
-                      [ Widgets.withTooltip Widgets.Top "Total Estimated Usage" (HH.text "Total #")
+                      [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
                       ]
                   <> [ HH.td_ [ q ] ]
               ]
@@ -310,7 +310,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       renderUnitLabels = mkLabel <$> units
         where
         mkLabel u =
-          Widgets.withTooltip Widgets.Top (show $ _.kind $ unwrap u)
+          Widgets.withTooltip_ Widgets.Top (show $ _.kind $ unwrap u)
             $ HH.text
             $ Charge.chargeUnitLabel u
 
@@ -326,7 +326,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
         | otherwise =
           [ HH.tr_
               $ thColSpanAlignRight (A.length dims)
-                  [ Widgets.withTooltip Widgets.Top "Total Estimated Usage" (HH.text "Total #")
+                  [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
                   ]
               <> (HH.td_ <$> totalEstimatedCells)
           ]

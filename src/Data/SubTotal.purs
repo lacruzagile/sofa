@@ -397,7 +397,7 @@ renderSubTotalEntry currencyCode amount =
   if amount.price == amount.listPrice then
     HH.text $ showMonetary amount.price <> " " <> show currencyCode
   else
-    Widgets.withTooltip Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
+    Widgets.withTooltip_ Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
       $ HH.span_
           [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.price ]
           , HH.text " "

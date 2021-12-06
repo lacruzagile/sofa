@@ -504,21 +504,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
 
     withDescription classes fallbackTitle schemaEntry =
-      withMaybeTooltip
+      Widgets.withMaybeTooltip
         classes
-        (HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry)
+        Widgets.Top
         (SS.configSchemaEntryDescription schemaEntry)
-
-    withMaybeTooltip classes label description =
-      maybe
-        (if A.null classes then label else HH.span [ HP.classes classes ] [ label ])
-        tooltip
-        description
-      where
-      tooltip text =
-        HH.span
-          [ HP.attr (H.AttrName "data-tooltip") text, HP.classes $ [ Css.tooltipTop ] <> classes ]
-          [ label, HH.sup_ [ HH.a_ [ HH.text "?" ] ] ]
+        (HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry)
 
     renderListEntry ::
       ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
