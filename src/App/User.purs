@@ -1,7 +1,7 @@
 module App.User (Slot, proxy, component) where
 
 import Prelude
-import Data.Auth (class CredentialStore, Credentials(..), getCredentials, login, logout)
+import Data.Auth (class CredentialStore, Credentials(..), credentialsAreReadOnly, getCredentials, login, logout)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Effect.Aff.Class (class MonadAff)
@@ -24,7 +24,10 @@ data State
     , pass :: Maybe String
     , error :: Maybe String
     }
-  | LoggedIn { user :: String }
+  | LoggedIn
+    { readOnly :: Boolean
+    , user :: String
+    }
 
 data Action
   = LoadCredentials -- ^ Load credentials from the credential store.
@@ -59,7 +62,7 @@ render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state =
   HH.section_
     [ HH.article_
-        [ HH.h1_ [ HH.text "Login" ]
+        [ HH.h1_ [ HH.text "User" ]
         , case state of
             LoggedOut s -> renderLoggedOut s
             LoggedIn s -> renderLoggedIn s
@@ -89,9 +92,12 @@ render state =
       , HH.button [ HP.type_ HP.ButtonSubmit ] [ HH.text "Login" ]
       ]
 
-  renderLoggedIn { user } =
-    HH.button [ HE.onClick $ \_ -> Logout ]
-      [ HH.text $ "Logout " <> user ]
+  renderLoggedIn { readOnly, user } =
+    if readOnly then
+      HH.text $ "Logged in as " <> user
+    else
+      HH.button [ HE.onClick $ \_ -> Logout ]
+        [ HH.text "Logout ", HH.text user ]
 
 handleAction ::
   forall output m.
@@ -100,9 +106,14 @@ handleAction ::
   Action -> H.HalogenM State Action () output m Unit
 handleAction = case _ of
   LoadCredentials -> do
-    st <-
-      maybe (LoggedOut mempty) (\(Credentials { user }) -> LoggedIn { user })
-        <$> H.lift getCredentials
+    readOnly <- H.lift credentialsAreReadOnly
+    credentials <- H.lift getCredentials
+    let
+      st =
+        maybe
+          (LoggedOut mempty)
+          (\(Credentials { user }) -> LoggedIn { readOnly, user })
+          credentials
     H.put st
   SetState st -> H.put st
   Login event -> do
@@ -119,7 +130,7 @@ handleAction = case _ of
         result <- H.lift $ login user pass
         case result of
           Left msg -> H.put $ LoggedOut $ s { error = Just msg }
-          Right _ -> H.put $ LoggedIn { user }
+          Right _ -> H.put $ LoggedIn { readOnly: false, user }
       LoggedOut s -> H.put $ LoggedOut $ s { error = Just "Need to enter username and password" }
   Logout -> do
     H.lift logout

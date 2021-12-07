@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+set -xeuo pipefail
+
+tmpPath="$(mktemp -d)"
+
+trap 'rm -rf "$tmpPath"' EXIT
+
+css=(dist/sofa.*.css)
+if (( ${#css[@]} != 2 )); then
+    echo "Expected two CSS files, got ${#css[@]}"
+    exit 1
+fi
+
+js=(dist/sofa.*.js)
+if (( ${#js[@]} != 1 )); then
+    echo "Expected one JavaScript file, got ${#js[@]}"
+    exit 1
+fi
+
+orderingBaseUrl=
+smartSpecBaseUrl=
+while (( $# > 0 )); do
+    opt="$1"
+    shift
+
+    case "$opt" in
+        --ordering-base-url)
+            orderingBaseUrl="$1"
+            shift
+            ;;
+        --smart-spec-base-url)
+            smartSpecBaseUrl="$1"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $opt"
+            exit 1
+            ;;
+    esac
+done
+
+sfdx force:project:create \
+     --template=empty \
+     --outputdir="$tmpPath" \
+     --projectname=sofa
+
+projectPath="$tmpPath/sofa"
+forceappPath="$projectPath/force-app"
+resourcePath="$forceappPath/main/default/staticresources"
+pagePath="$forceappPath/main/default/pages"
+
+mkdir -p "$resourcePath" "$pagePath"
+
+sed -e "s!@css0@!${css[0]}!" \
+    -e "s!@css1@!${css[1]}!" \
+    -e "s!@js@!${js[0]}!" \
+    -e "s!@orderingBaseUrl@!$orderingBaseUrl!" \
+    -e "s!@smartSpecBaseUrl@!$smartSpecBaseUrl!" \
+    salesforce/sofaPage.page \
+    > "$pagePath/sofaPage.page"
+
+cp salesforce/sofaPage.page-meta.xml "$pagePath"
+cp salesforce/sofaBundle.resource-meta.xml "$resourcePath"
+
+zip -r "$resourcePath/sofaBundle.resource" dist/
+
+pushd "$projectPath"
+sfdx force:source:convert -d "$tmpPath/dist/sofa"
+#sfdx force:mdapi:deploy -d "$tmpPath/dist/sofa" -w 10000
+popd
+
+cp -r "$tmpPath/dist/sofa" dist-sf

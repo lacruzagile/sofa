@@ -97,3 +97,16 @@ deploy-staging:
   only: [ master ]
   environment:
     name: eu1tst
+
+deploy-salesforce-staging:
+  image: salesforce/salesforcedx:7.130.1-slim
+  stage: deploy
+  only: [ master ]
+  when: manual
+  script:
+    - >-
+      ./salesforce/build-deployment
+      --ordering-base-url https://ordering.eu1tst.bpa.staging.sinch.com
+      --smart-spec-base-url https://ea.pages.sinch.com/smart-spec
+  artifacts:
+    paths: [ dist-sf ]

@@ -60,6 +60,10 @@ dependencies.
    in another terminal. When the code is edited it should
    automatically be reopened in the browser.
 
+## Salesforce deployment
+
+The `salesforce` directory contains the necessary files to produce a Salesforce deployment.
+
 [CUE]: https://cuelang.org/
 [Docker Compose]: https://docs.docker.com/compose/
 [GNU Bash]: https://www.gnu.org/software/bash/

@@ -8,6 +8,7 @@ module Data.Auth
   , login
   , logout
   , setCredentials
+  , credentialsAreReadOnly
   ) where
 
 import Prelude
@@ -77,6 +78,8 @@ instance encodeCredentials :: EncodeJson Credentials where
 
 class
   Monad m <= CredentialStore m where
+  -- | Whether this credential store supports the set and clear operations.
+  credentialsAreReadOnly :: m Boolean
   getCredentials :: m (Maybe Credentials)
   setCredentials :: Credentials -> m Unit
   clearCredentials :: m Unit

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<apex:page
+    showHeader="false"
+    sidebar="false"
+    standardStylesheets="false"
+    docType="html-5.0"
+    applyBodyTag="false"
+    applyHtmlTag="false"
+    >
+
+  <apex:stylesheet value="{!URLFOR($Resource.MyAppResource, '@css0@')}"/>
+  <apex:stylesheet value="{!URLFOR($Resource.MyAppResource, '@css1@')}"/>
+  <script type="module" src="{!URLFOR($Resource.MyAppZip, '@js@')}"></script>
+
+  <script>
+    const __ACCESSTOKEN__ = '{!$Api.Session_ID}';
+    const __ORGANIZATION_ID = '{!$Organization.Id}';
+    const __USER_ID__ = '{!$User.Id}';
+    const __USER_EMAIL__ = '{!$User.Email}';
+    const __ORDERING_BASE_URL__ = '@orderingBaseUrl@';
+    const __SMART_SPEC_BASE_URL__ = '@smartSpecBaseUrl@';
+  </script>
+
+  <div id="sofa-app"></div>
+
+</apex:page>

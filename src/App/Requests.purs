@@ -1,6 +1,7 @@
 -- | Contains various AJAX requests.
 module App.Requests
-  ( getBillingAccount
+  ( appendPathPiece
+  , getBillingAccount
   , getBillingAccounts
   , getBuyer
   , getBuyerContacts
@@ -23,14 +24,17 @@ import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, Crm
 import Effect.Aff.Class (class MonadAff)
 import JSURI (encodeURIComponent)
 
-baseUrl :: String
-baseUrl = "/v1alpha1"
+-- | Base URL to use for the ordering service.
+foreign import orderingBaseUrl :: String
+
+-- | Base URL to use for the Smart Spec repository.
+foreign import smartSpecBaseUrl :: String
 
 ordersUrl :: String
-ordersUrl = baseUrl <> "/orders"
+ordersUrl = orderingBaseUrl </> "v1alpha1" </> "orders"
 
 buyersUrl :: String
-buyersUrl = baseUrl <> "/buyers"
+buyersUrl = orderingBaseUrl </> "v1alpha1" </> "buyers"
 
 appendPathPiece :: String -> String -> String
 appendPathPiece a b = a <> "/" <> b
@@ -113,7 +117,7 @@ getBuyerContacts (CrmAccountId id) =
 getLegalEntities :: forall m. MonadAff m => m (Loadable (Array LegalEntity))
 getLegalEntities = map (map conv) $ getJson url
   where
-  url = baseUrl </> "examples" </> "legalentities.json"
+  url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> "legalentities.json"
 
   conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
   conv { legalEntities } = legalEntities
@@ -152,4 +156,4 @@ getProductCatalog = getJson url
   -- This URL is "virtual" in the sense that we fetch this URL but the reverse
   -- proxy will redirect the request to the product catalog suitable for the
   -- current deployment.
-  url = baseUrl </> "examples" </> "product-catalog.json"
+  url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> "product-catalog.json"
