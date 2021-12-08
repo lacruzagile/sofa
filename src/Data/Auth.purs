@@ -1,7 +1,7 @@
 -- | Types and functions useful for authentication.
 module Data.Auth
   ( class CredentialStore
-  , Credentials
+  , Credentials(..)
   , clearCredentials
   , getAuthorizationHeader
   , getCredentials
@@ -18,16 +18,18 @@ import Affjax.ResponseFormat as ResponseFormat
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (ExceptT(..), except, runExceptT, withExceptT)
 import Control.Monad.Except.Trans (lift)
-import Data.Argonaut (class DecodeJson, decodeJson, printJsonDecodeError, (.:))
+import Data.Argonaut (class DecodeJson, class EncodeJson, JsonDecodeError(..), decodeJson, jsonEmptyObject, printJsonDecodeError, (.:), (:=), (~>))
 import Data.DateTime (DateTime)
 import Data.DateTime as DateTime
+import Data.DateTime.Instant (fromDateTime, instant, toDateTime, unInstant)
 import Data.Either (Either(..))
 import Data.FormURLEncoded (FormURLEncoded(..))
 import Data.HTTP.Method (Method(..))
 import Data.Int as Int
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Newtype (unwrap)
 import Data.String.Base64 as Base64
-import Data.Time.Duration (Seconds(..))
+import Data.Time.Duration (Milliseconds(..), Seconds(..))
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
@@ -39,12 +41,39 @@ type Error
 type AuthConfig
   = { tokenUrl :: String }
 
-type Credentials
-  = { token :: String
-    , expiry :: DateTime
-    , user :: String
-    , pass :: String
-    }
+newtype Credentials
+  = Credentials
+  { token :: String
+  , expiry :: DateTime
+  , user :: String
+  , pass :: String
+  }
+
+instance decodeCredentials :: DecodeJson Credentials where
+  decodeJson json = do
+    o <- decodeJson json
+    token <- o .: "token"
+    expiry <- do
+      x <- o .: "expiry"
+      i <- maybe (Left $ TypeMismatch "invalid expiry") Right $ instant $ Milliseconds x
+      pure $ toDateTime i
+    user <- o .: "user"
+    pass <- o .: "pass"
+    pure
+      $ Credentials
+          { token
+          , expiry
+          , user
+          , pass
+          }
+
+instance encodeCredentials :: EncodeJson Credentials where
+  encodeJson (Credentials creds) =
+    ("token" := creds.token)
+      ~> ("expiry" := unwrap (unInstant (fromDateTime creds.expiry)))
+      ~> ("user" := creds.user)
+      ~> ("pass" := creds.pass)
+      ~> jsonEmptyObject
 
 class
   Monad m <= CredentialStore m where
@@ -103,7 +132,7 @@ login user pass =
 
           expiry = fromMaybe now $ DateTime.adjust offset now
 
-          creds = { token: tokenResp.accessToken, expiry, user, pass }
+          creds = Credentials { token: tokenResp.accessToken, expiry, user, pass }
         lift $ setCredentials creds
         pure creds
 
@@ -117,13 +146,13 @@ getActiveCredentials =
     mcreds <- lift getCredentials
     now <- liftEffect nowDateTime
     case mcreds of
-      Just creds
-        | creds.expiry > now -> pure creds
+      Just (Credentials creds)
+        | creds.expiry > now -> pure (Credentials creds)
         | otherwise -> ExceptT $ login creds.user creds.pass
       _ -> throwError "Not logged in"
 
 getAuthorizationHeader :: forall m. MonadAff m => CredentialStore m => m (Either Error RequestHeader)
 getAuthorizationHeader =
   runExceptT do
-    creds <- ExceptT getActiveCredentials
+    (Credentials creds) <- ExceptT getActiveCredentials
     pure $ RequestHeader "Authorization" ("Bearer " <> creds.token)

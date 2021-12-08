@@ -40,7 +40,6 @@ to generate this file without the comments in this block.
   , "prelude"
   , "psci-support"
   , "quickcheck"
-  , "refs"
   , "routing"
   , "simple-ajax"
   , "spec"
@@ -52,6 +51,7 @@ to generate this file without the comments in this block.
   , "web-dom"
   , "web-events"
   , "web-html"
+  , "web-storage"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

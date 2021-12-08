@@ -1,7 +1,7 @@
 module App.User (Slot, proxy, component) where
 
 import Prelude
-import Data.Auth (class CredentialStore, getCredentials, login, logout)
+import Data.Auth (class CredentialStore, Credentials(..), getCredentials, login, logout)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Effect.Aff.Class (class MonadAff)
@@ -100,7 +100,9 @@ handleAction ::
   Action -> H.HalogenM State Action () output m Unit
 handleAction = case _ of
   LoadCredentials -> do
-    st <- maybe (LoggedOut mempty) (\{ user } -> LoggedIn { user }) <$> H.lift getCredentials
+    st <-
+      maybe (LoggedOut mempty) (\(Credentials { user }) -> LoggedIn { user })
+        <$> H.lift getCredentials
     H.put st
   SetState st -> H.put st
   Login event -> do

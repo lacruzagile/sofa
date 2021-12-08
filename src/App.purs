@@ -5,16 +5,21 @@ module App
 
 import Prelude
 import Control.Monad.Reader (ReaderT(..), runReaderT)
-import Data.Auth (class CredentialStore, Credentials)
+import Data.Argonaut (decodeJson, encodeJson, jsonParser, stringify)
+import Data.Auth (class CredentialStore)
+import Data.Deployment (Deployment)
+import Data.Either (Either, either)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Effect.Ref (Ref)
-import Effect.Ref as Ref
+import Effect.Console (log)
+import Web.HTML as Html
+import Web.HTML.Window as HtmlWindow
+import Web.Storage.Storage as LS
 
 type Env
-  = { credentials :: Ref (Maybe Credentials)
+  = { deployment :: Deployment
     }
 
 newtype AppM a
@@ -37,14 +42,40 @@ derive newtype instance monadEffectAppM :: MonadEffect AppM
 instance credentialStoreAppM :: CredentialStore AppM where
   getCredentials =
     AppM
-      $ ReaderT \r -> liftEffect $ Ref.read r.credentials
+      $ ReaderT \_ ->
+          liftEffect
+            $ do
+                w <- Html.window
+                s <- HtmlWindow.sessionStorage w
+                mJsonStr <- LS.getItem "sofa-cred" s
+                pure
+                  $ do
+                      jsonStr <- mJsonStr
+                      json <- toMaybe (jsonParser jsonStr)
+                      toMaybe (decodeJson json)
+    where
+    toMaybe :: forall a b. Either a b -> Maybe b
+    toMaybe = either (const Nothing) Just
   setCredentials creds =
     AppM
-      $ ReaderT \r -> liftEffect $ Ref.write (Just creds) r.credentials
+      $ ReaderT \_ ->
+          liftEffect
+            $ do
+                w <- Html.window
+                s <- HtmlWindow.sessionStorage w
+                let
+                  jsonStr = stringify (encodeJson creds)
+                log $ "Storing " <> jsonStr
+                LS.setItem "sofa-cred" jsonStr s
   clearCredentials =
     AppM
-      $ ReaderT \r -> liftEffect $ Ref.write Nothing r.credentials
+      $ ReaderT \_ ->
+          liftEffect
+            $ do
+                w <- Html.window
+                s <- HtmlWindow.sessionStorage w
+                LS.removeItem "sofa-cred" s
 
 -- | Runs the `AppM` monad, takes the initial credentials as input.
-runAppM :: forall a. Ref (Maybe Credentials) -> AppM a -> Aff a
-runAppM credentials (AppM m) = runReaderT m { credentials }
+runAppM :: forall a. Deployment -> AppM a -> Aff a
+runAppM deployment (AppM m) = runReaderT m { deployment }
