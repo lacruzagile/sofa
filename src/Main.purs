@@ -7,15 +7,21 @@ import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Ref as Ref
 import Halogen as H
+import Halogen.Aff (awaitLoad)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
+import Web.DOM.ParentNode (QuerySelector(..))
 
 main :: Effect Unit
 main = do
   credentials <- Ref.new Nothing
   HA.runHalogenAff do
-    body <- HA.awaitBody
-    let
-      router = H.hoist (runAppM credentials) Router.component
-    app <- runUI router unit body
-    Router.startRouting app
+    awaitLoad
+    mBody <- HA.selectElement (QuerySelector "#sofa-app")
+    case mBody of
+      Nothing -> pure unit
+      Just body -> do
+        let
+          router = H.hoist (runAppM credentials) Router.component
+        app <- runUI router unit body
+        Router.startRouting app
