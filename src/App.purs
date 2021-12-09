@@ -8,7 +8,7 @@ import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser, stringify)
 import Data.Auth (class CredentialStore)
 import Data.Deployment (Deployment)
-import Data.Either (Either, either)
+import Data.Either (Either, either, hush)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
@@ -51,11 +51,8 @@ instance credentialStoreAppM :: CredentialStore AppM where
                 pure
                   $ do
                       jsonStr <- mJsonStr
-                      json <- toMaybe (jsonParser jsonStr)
-                      toMaybe (decodeJson json)
-    where
-    toMaybe :: forall a b. Either a b -> Maybe b
-    toMaybe = either (const Nothing) Just
+                      json <- hush (jsonParser jsonStr)
+                      hush (decodeJson json)
   setCredentials creds =
     AppM
       $ ReaderT \_ ->
