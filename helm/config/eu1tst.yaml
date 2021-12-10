@@ -2,6 +2,7 @@ ingress:
   host: sofa.eu1tst.bpa.staging.sinch.com
 
 app:
+  deploymentEnv: staging
   orderingServiceUrl: https://ordering.eu1tst.bpa.staging.sinch.com
   smartSpecUrl: https://ea.pages.sinch.com/smart-spec
   tokenServiceUrl: https://public.token-service.common-auth.staging.sinch.com

@@ -53,6 +53,8 @@ spec:
               memory: {{ .Values.resources.limits.memory }}
               cpu: {{ .Values.resources.limits.cpu }}
           env:
+            - name: DEPLOYMENT_ENV
+              value: {{ .Values.app.deploymentEnv }}
             - name: ORDERING_SERVICE_URL
               value: {{ .Values.app.orderingServiceUrl }}
             - name: SERVER_NAME

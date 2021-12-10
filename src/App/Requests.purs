@@ -120,7 +120,12 @@ getOrders = getRJson ordersUrl
 postOrder :: forall m. MonadAff m => CredentialStore m => OrderForm -> m (Loadable OrderForm)
 postOrder orderForm = postRJson ordersUrl orderForm
 
+-- | Fetches the product catalog. Note, we expect a _normalized_ product
+-- | catalog.
 getProductCatalog :: forall m. MonadAff m => m (Loadable ProductCatalog)
 getProductCatalog = getJson url
   where
-  url = baseUrl </> "examples" </> "product-catalog.normalized.json"
+  -- This URL is "virtual" in the sense that we fetch this URL but the reverse
+  -- proxy will redirect the request to the product catalog suitable for the
+  -- current deployment.
+  url = baseUrl </> "examples" </> "product-catalog.json"

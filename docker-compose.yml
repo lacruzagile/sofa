@@ -8,6 +8,7 @@ services:
     ports:
       - "8080:80"
     environment:
+      DEPLOYMENT_ENV: staging
       ORDERING_SERVICE_URL: https://ordering.eu1tst.bpa.staging.sinch.com
       SERVER_NAME: localhost:8080
       SMART_SPEC_URL: https://ea.pages.sinch.com/smart-spec
