@@ -6,6 +6,7 @@ module Data.SmartSpec
   , BillingCurrency(..)
   , BillingOption(..)
   , Buyer(..)
+  , BuyerId
   , Charge(..)
   , ChargeCurrency(..)
   , ChargeCurrencyPerUnit(..)
@@ -41,9 +42,11 @@ module Data.SmartSpec
   , OrderForm(..)
   , OrderLine(..)
   , OrderLineConfig(..)
+  , OrderLineId
   , OrderLineStatus(..)
   , OrderNote(..)
   , OrderSection(..)
+  , OrderSectionId
   , OrderStatus(..)
   , Orders(..)
   , PaymentCurrency(..)
@@ -86,6 +89,7 @@ module Data.SmartSpec
   , SegmentationPerUnit(..)
   , SegmentsPerDim(..)
   , Seller(..)
+  , SellerId
   , Severity(..)
   , SkuCode(..)
   , Solution(..)
@@ -1897,6 +1901,15 @@ instance encodeJsonContact :: EncodeJson Contact where
       ~>? ("phone" :=? x.phone)
       ~>? jsonEmptyObject
 
+newtype BuyerId
+  = BuyerId String
+
+derive newtype instance showBuyerId :: Show BuyerId
+
+derive newtype instance decodeJsonBuyerId :: DecodeJson BuyerId
+
+derive newtype instance encodeJsonBuyerId :: EncodeJson BuyerId
+
 newtype CrmAccountId
   = CrmAccountId String
 
@@ -1916,7 +1929,8 @@ derive newtype instance encodeJsonCrmAccountId :: EncodeJson CrmAccountId
 
 newtype Buyer
   = Buyer
-  { crmAccountId :: Maybe CrmAccountId
+  { buyerId :: Maybe BuyerId
+  , crmAccountId :: Maybe CrmAccountId
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
@@ -1928,6 +1942,7 @@ newtype Buyer
 instance decodeJsonBuyer :: DecodeJson Buyer where
   decodeJson json = do
     o <- decodeJson json
+    buyerId <- o .:? "buyerId"
     crmAccountId <- o .:? "crmAccountId"
     address <- o .:? "address" .!= emptyAddress
     contacts <- o .:? "contacts" .!= { primary: emptyContact, finance: emptyContact }
@@ -1937,7 +1952,8 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
     website <- o .: "website"
     pure
       $ Buyer
-          { crmAccountId
+          { buyerId
+          , crmAccountId
           , address
           , contacts
           , corporateName
@@ -1948,7 +1964,8 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
 
 instance encodeJsonBuyer :: EncodeJson Buyer where
   encodeJson (Buyer x) =
-    ("crmAccountId" :=? x.crmAccountId)
+    ("buyerId" :=? x.buyerId)
+      ~>? ("crmAccountId" :=? x.crmAccountId)
       ~>? ("address" := x.address)
       ~> ("contacts" := x.contacts)
       ~> ("corporateName" := x.corporateName)
@@ -1957,9 +1974,19 @@ instance encodeJsonBuyer :: EncodeJson Buyer where
       ~> ("website" := x.website)
       ~> jsonEmptyObject
 
+newtype SellerId
+  = SellerId String
+
+derive newtype instance showSellerId :: Show SellerId
+
+derive newtype instance decodeJsonSellerId :: DecodeJson SellerId
+
+derive newtype instance encodeJsonSellerId :: EncodeJson SellerId
+
 newtype Seller
   = Seller
-  { registeredName :: String
+  { sellerId :: Maybe SellerId
+  , registeredName :: String
   , novaShortName :: String
   , address :: Address
   , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
@@ -1967,7 +1994,14 @@ newtype Seller
 
 derive newtype instance decodeJsonSeller :: DecodeJson Seller
 
-derive newtype instance encodeJsonSeller :: EncodeJson Seller
+instance encodeJsonSeller :: EncodeJson Seller where
+  encodeJson (Seller x) =
+    ("sellerId" :=? x.sellerId)
+      ~>? ("registeredName" := x.registeredName)
+      ~> ("novaShortName" := x.novaShortName)
+      ~> ("address" := x.address)
+      ~> ("contacts" := x.contacts)
+      ~> jsonEmptyObject
 
 type Date
   = String
@@ -2094,6 +2128,10 @@ data OrderStatus
   | OsInFulfillment
   | OsFulfilled
   | OsCancelled
+
+derive instance genericOrderStatus :: Generic OrderStatus _
+
+derive instance eqOrderStatus :: Eq OrderStatus
 
 instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
   decodeJson json = do
@@ -2255,9 +2293,20 @@ instance encodeJsonOrderLineConfig :: EncodeJson OrderLineConfig where
       ~> ("config" :=? x.config)
       ~>? jsonEmptyObject
 
+
+newtype OrderLineId
+  = OrderLineId String
+
+derive newtype instance showOrderLineId :: Show OrderLineId
+
+derive newtype instance decodeJsonOrderLineId :: DecodeJson OrderLineId
+
+derive newtype instance encodeJsonOrderLineId :: EncodeJson OrderLineId
+
+
 newtype OrderLine
   = OrderLine
-  { orderLineId :: Maybe String
+  { orderLineId :: Maybe OrderLineId
   , status :: OrderLineStatus
   , sku :: SkuCode
   , charges :: Array Charge
@@ -2288,9 +2337,19 @@ instance encodeJsonOrderLine :: EncodeJson OrderLine where
       ~>? ("estimatedUsage" :=? ifNonEmpty x.estimatedUsage)
       ~>? jsonEmptyObject
 
+newtype OrderSectionId
+  = OrderSectionId String
+
+derive newtype instance showOrderSectionId :: Show OrderSectionId
+
+derive newtype instance decodeJsonOrderSectionId :: DecodeJson OrderSectionId
+
+derive newtype instance encodeJsonOrderSectionId :: EncodeJson OrderSectionId
+
 newtype OrderSection
   = OrderSection
-  { basePriceBook :: PriceBookRef
+  { orderSectionId :: Maybe OrderSectionId
+  , basePriceBook :: PriceBookRef
   , orderLines :: Array OrderLine
   }
 
@@ -2314,6 +2373,7 @@ newtype OrderForm
   { id :: Maybe String
   , status :: OrderStatus
   , approvalStatus :: OrderApprovalStatus
+  , displayName :: Maybe String
   , commercial :: Commercial
   , buyer :: Buyer
   , seller :: Seller
@@ -2328,6 +2388,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
     id <- o .:? "id"
     status <- o .:? "status" .!= OsInDraft
     approvalStatus <- o .:? "approvalStatus" .!= OasUndecided
+    displayName <- o .:? "displayName"
     commercial <- o .: "commercial"
     buyer <- o .: "buyer"
     seller <- o .: "seller"
@@ -2339,6 +2400,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
           { id
           , status
           , approvalStatus
+          , displayName
           , commercial
           , buyer
           , seller
@@ -2352,7 +2414,8 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
     ("id" :=? x.id)
       ~>? ("status" := x.status)
       ~> ("approvalStatus" := x.approvalStatus)
-      ~> ("commercial" := x.commercial)
+      ~> ("displayName" :=? x.displayName)
+      ~>? ("commercial" := x.commercial)
       ~> ("buyer" := x.buyer)
       ~> ("seller" := x.seller)
       ~> ("orderNotes" :=? ifNonEmpty x.orderNotes)

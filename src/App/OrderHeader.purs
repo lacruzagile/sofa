@@ -10,7 +10,7 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Set (Set)
 import Data.SmartSpec as SS
@@ -95,7 +95,8 @@ emptyCommercial =
 emptyBuyer :: SS.Buyer
 emptyBuyer =
   SS.Buyer
-    { crmAccountId: Nothing
+    { buyerId: Nothing
+    , crmAccountId: Nothing
     , address: SS.emptyAddress
     , contacts: { primary: SS.emptyContact, finance: SS.emptyContact }
     , corporateName: ""
@@ -107,7 +108,8 @@ emptyBuyer =
 emptySeller :: SS.Seller
 emptySeller =
   SS.Seller
-    { registeredName: ""
+    { sellerId: Nothing
+    , registeredName: ""
     , novaShortName: ""
     , address: SS.emptyAddress
     , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
@@ -126,51 +128,18 @@ render st =
     Newtype currency SS.Currency =>
     String ->
     currency ->
-    (SS.Currency -> Action) ->
     H.ComponentHTML Action Slots m
-  renderCurrency legend currency update =
+  renderCurrency legend currency =
     HH.div_
       [ HH.label_ [ HH.text legend ]
       , HH.input
           [ HP.type_ HP.InputText
-          , HP.required true
+          , HP.readOnly true
           , HP.pattern "[A-Z]{3}"
           , HP.placeholder "Currency (e.g. EUR)"
-          , HE.onValueChange $ \c -> update (SS.Currency c)
           , HP.value (let SS.Currency code = unwrap currency in code)
           ]
       ]
-
-  renderCurrencySelect ::
-    forall currency.
-    Newtype currency SS.Currency =>
-    String ->
-    currency ->
-    Set SS.Currency ->
-    (SS.Currency -> Action) ->
-    H.ComponentHTML Action Slots m
-  renderCurrencySelect legend currency availableCurrencies update =
-    let
-      mkOption c =
-        let
-          str = show c
-        in
-          HH.option [ HP.value str, HP.selected $ c == unwrap currency ] [ HH.text str ]
-    in
-      HH.div_
-        [ HH.label_ [ HH.text legend ]
-        , HH.select [ HE.onValueChange $ \c -> update (SS.Currency c) ]
-            $ [ HH.option
-                  [ HP.value "", HP.disabled true, HP.selected true ]
-                  [ HH.text
-                      $ if availableCurrencies == mempty then
-                          "No currencies available"
-                        else
-                          "Please choose a currency"
-                  ]
-              ]
-            <> map mkOption (A.fromFoldable availableCurrencies)
-        ]
 
   renderCommercial commercialOpt = case st.buyer of
     Just (SS.Buyer { crmAccountId: Just crmAccountId }) -> renderCommercial' crmAccountId
@@ -179,58 +148,31 @@ render st =
         [ HH.button [ HP.disabled true, HP.style "width:100%" ] [ HH.text "Commercial" ]
         ]
     where
-    update f = UpdateCommercial $ \(SS.Commercial old) -> SS.Commercial (f old)
-
-    updateBillingOption = case _ of
-      0 -> update (_ { billingOption = SS.Prepay })
-      _ -> update (_ { billingOption = SS.Postpay })
-
-    updateContractTerm = case _ of
-      0 -> update (_ { contractTerm = SS.Ongoing })
-      _ -> update (_ { contractTerm = SS.Fixed })
-
     renderCommercialData (SS.Commercial commercial) =
       HH.div_
         [ HH.label_
             [ HH.text "Billing Option"
-            , HH.select [ HE.onSelectedIndexChange updateBillingOption ]
-                [ HH.option
-                    [ HP.value "Prepay"
-                    , HP.selected (commercial.billingOption == SS.Prepay)
-                    ]
-                    [ HH.text "Pre-pay" ]
-                , HH.option
-                    [ HP.value "Postpay"
-                    , HP.selected (commercial.billingOption == SS.Postpay)
-                    ]
-                    [ HH.text "Post-pay" ]
+            , HH.input
+                [ HP.readOnly true
+                , HP.value
+                    $ case commercial.billingOption of
+                        SS.Prepay -> "Pre-pay"
+                        SS.Postpay -> "Post-pay"
                 ]
             ]
         , HH.label_
             [ HH.text "Contract Term"
-            , HH.select [ HE.onSelectedIndexChange updateContractTerm ]
-                [ HH.option
-                    [ HP.value "Ongoing"
-                    , HP.selected (commercial.contractTerm == SS.Ongoing)
-                    ]
-                    [ HH.text "Ongoing" ]
-                , HH.option
-                    [ HP.value "Fixed"
-                    , HP.selected (commercial.contractTerm == SS.Fixed)
-                    ]
-                    [ HH.text "Fixed" ]
+            , HH.input
+                [ HP.readOnly true
+                , HP.value
+                    $ case commercial.contractTerm of
+                        SS.Ongoing -> "Ongoing"
+                        SS.Fixed -> "Fixed"
                 ]
             ]
         , HH.div [ HP.classes [ Css.flex, Css.two ] ]
-            [ renderCurrency
-                "Payment Currency"
-                commercial.paymentCurrency
-                $ \currency -> update (\c -> c { paymentCurrency = SS.PaymentCurrency currency })
-            , renderCurrencySelect
-                "Billing Currency"
-                commercial.billingCurrency
-                (maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity)
-                $ \currency -> update (\c -> c { billingCurrency = SS.PricingCurrency currency })
+            [ renderCurrency "Payment Currency" commercial.paymentCurrency
+            , renderCurrency "Billing Currency" commercial.billingCurrency
             ]
         ]
 
@@ -415,6 +357,18 @@ render st =
               ]
             <> renderReadOnlyAddress buyer.address
 
+        buyerId = do
+          SS.Buyer buyer <- buyerOpt
+          buyer.buyerId
+
+        -- Only allow selecting a buyer for new orders.
+        buyerSelector
+          | isJust buyerId = []
+          | otherwise =
+            [ HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd SetBuyer
+            , HH.hr_
+            ]
+
         buyerName (SS.Buyer { corporateName }) = corporateName
       in
         HH.div_
@@ -425,10 +379,7 @@ render st =
               , HH.text $ maybe "No buyer selected" buyerName buyerOpt
               ]
           , Widgets.modal "of-buyer" "Buyer"
-              [ HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd SetBuyer
-              , HH.hr_
-              , renderBuyerData $ fromMaybe emptyBuyer buyerOpt
-              ]
+              (buyerSelector <> [ renderBuyerData $ fromMaybe emptyBuyer buyerOpt ])
               [ HH.label
                   [ HP.for "of-buyer", HP.class_ Css.button ]
                   [ HH.text "OK" ]
@@ -485,6 +436,18 @@ render st =
             ]
           <> renderReadOnlyAddress seller.address
 
+      sellerId = do
+        SS.Seller seller <- sellerOpt
+        seller.sellerId
+
+      -- Only allow selecting a seller for new orders.
+      sellerSelector
+        | isJust sellerId = []
+        | otherwise =
+          [ HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd SetLegalEntity
+          , HH.hr_
+          ]
+
       sellerName (SS.Seller { registeredName }) = registeredName
     in
       HH.div_
@@ -495,10 +458,7 @@ render st =
             , HH.text $ maybe "No seller selected" sellerName sellerOpt
             ]
         , Widgets.modal "of-seller" "Seller"
-            [ HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd SetLegalEntity
-            , HH.hr_
-            , renderSellerData $ fromMaybe emptySeller sellerOpt
-            ]
+            (sellerSelector <> [ renderSellerData $ fromMaybe emptySeller sellerOpt ])
             [ HH.label
                 [ HP.for "of-seller", HP.class_ Css.button ]
                 [ HH.text "OK" ]
@@ -532,7 +492,8 @@ handleAction = case _ of
           let
             toSeller (SS.LegalEntity le) =
               SS.Seller
-                { registeredName: le.registeredName
+                { sellerId: Nothing
+                , registeredName: le.registeredName
                 , novaShortName: le.novaShortName
                 , address: le.address
                 , contacts: le.contacts

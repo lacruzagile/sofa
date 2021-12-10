@@ -22,6 +22,7 @@ to generate this file without the comments in this block.
   , "datetime"
   , "effect"
   , "either"
+  , "enums"
   , "foldable-traversable"
   , "foreign-object"
   , "form-urlencoded"

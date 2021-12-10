@@ -10,8 +10,11 @@ import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (foldl, head, modifyAt, snoc)
 import Data.Array as A
 import Data.Auth (class CredentialStore)
+import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
 import Data.Either (Either(..))
+import Data.Enum (enumFromTo)
+import Data.Enum.Generic (genericFromEnum, genericToEnum)
 import Data.Int as Int
 import Data.List.Lazy (List)
 import Data.List.Lazy as List
@@ -65,13 +68,16 @@ type StateOrderForm
 type OrderForm
   = { original :: Maybe SS.OrderForm -- ^ The original order form, if one exists.
     , orderHeader :: Maybe OrderHeader.OrderHeader
-    , status :: Maybe SS.OrderStatus
+    , displayName :: Maybe String
+    , status :: SS.OrderStatus
+    , notes :: Array SS.OrderNote
     , summary :: SubTotal
     , sections :: Array (Maybe OrderSection)
     }
 
 type OrderSection
-  = { solution :: SS.Solution
+  = { orderSectionId :: Maybe SS.OrderSectionId
+    , solution :: SS.Solution
     , priceBook :: Maybe PriceBook
     , orderLines :: Array (Maybe OrderLine)
     -- ^ Order lines of the product options.
@@ -79,7 +85,7 @@ type OrderSection
     }
 
 type OrderLine
-  = { orderLineId :: Maybe String
+  = { orderLineId :: Maybe SS.OrderLineId
     , status :: SS.OrderLineStatus
     , product :: SS.Product
     , charges :: Maybe (Array SS.Charge)
@@ -102,7 +108,9 @@ type OrderLineIndex
 data Action
   = NoOp
   | Initialize
+  | SetOrderDisplayName String
   | SetOrderHeader (Maybe OrderHeader.OrderHeader)
+  | SetOrderStatus SS.OrderStatus
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
   | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
@@ -669,37 +677,86 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSummary = SubTotal.renderSubTotalTable "Totals"
 
-  renderOrderInfo :: Maybe SS.OrderForm -> H.ComponentHTML Action Slots m
-  renderOrderInfo Nothing = HH.span_ []
-
-  renderOrderInfo (Just (SS.OrderForm o)) =
+  renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
+  renderOrderInfo orderForm =
     HH.div [ HP.classes [ Css.flex, Css.two ] ]
-      [ HH.div_
-          [ HH.strong_ [ HH.text "Order ID" ]
-          , HH.text ": "
-          , HH.text $ fromMaybe "Not Available" o.id
-          ]
-      , HH.div_
-          [ HH.strong_ [ HH.text "Order Status" ]
-          , HH.text ": "
-          , HH.text $ SS.prettyOrderStatus o.status
-          ]
-      , HH.div_
-          [ HH.strong_ [ HH.text "Created" ]
-          , HH.text ": "
-          , HH.text $ maybe "Not Available" unwrap o.createTime
-          ]
-      , HH.div_
-          [ HH.strong_ [ HH.text "Order Approval" ]
-          , HH.text ": "
-          , HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus
-          ]
-      , HH.div_
-          [ HH.strong_ [ HH.text "Order Notes" ]
-          , HH.text ": "
-          , HH.text $ show $ A.length o.orderNotes
-          ]
+      $ withOriginal
+          ( \o ->
+              HH.div_
+                [ HH.strong_ [ HH.text "Order ID" ]
+                , HH.text ": "
+                , HH.text $ fromMaybe "Not Available" o.id
+                ]
+          )
+      <> [ HH.div_
+            [ HH.strong_ [ HH.text "Name" ]
+            , HH.text ": "
+            , renderOrderDisplayName orderForm.displayName
+            ]
+        ]
+      <> withOriginal
+          ( \o ->
+              HH.div_
+                [ HH.strong_ [ HH.text "Created" ]
+                , HH.text ": "
+                , HH.text $ maybe "Not Available" unwrap o.createTime
+                ]
+          )
+      <> [ HH.div_
+            [ HH.strong_ [ HH.text "Status" ]
+            , HH.text ": "
+            , renderOrderStatus orderForm.status
+            ]
+        ]
+      <> withOriginal
+          ( \o ->
+              HH.div_
+                [ HH.strong_ [ HH.text "Approval" ]
+                , HH.text ": "
+                , HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus
+                ]
+          )
+      <> [ HH.div_
+            [ HH.strong_ [ HH.text "Notes" ]
+            , HH.text ": "
+            , renderOrderNotes orderForm.notes
+            ]
+        ]
+    where
+    withOriginal renderEntry = case orderForm.original of
+      Nothing -> []
+      Just (SS.OrderForm o) -> [ renderEntry o ]
+
+  renderOrderDisplayName :: Maybe String -> H.ComponentHTML Action Slots m
+  renderOrderDisplayName name =
+    HH.input
+      [ HP.value $ fromMaybe "" name
+      , HP.style "width:auto"
+      , HE.onValueChange SetOrderDisplayName
       ]
+
+  renderOrderStatus :: SS.OrderStatus -> H.ComponentHTML Action Slots m
+  renderOrderStatus selected =
+    HH.select [ HP.style "width:auto", HE.onSelectedIndexChange actSetOrderStatus ]
+      $ map renderOption orderStatuses
+    where
+    orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
+
+    bottom = genericFromEnum (genericBottom :: SS.OrderStatus)
+
+    top = genericFromEnum (genericTop :: SS.OrderStatus)
+
+    actSetOrderStatus = maybe NoOp SetOrderStatus <<< A.index orderStatuses
+
+    renderOption s =
+      HH.option
+        [ HP.selected $ s == selected ]
+        [ HH.text $ SS.prettyOrderStatus s ]
+
+  renderOrderNotes :: Array SS.OrderNote -> H.ComponentHTML Action Slots m
+  renderOrderNotes [] = HH.text "No order notes"
+
+  renderOrderNotes notes = HH.text $ (show $ A.length notes) <> " notes"
 
   renderOrderHeader :: Maybe OrderHeader.OrderHeader -> H.ComponentHTML Action Slots m
   renderOrderHeader orderHeader =
@@ -710,7 +767,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
-    [ renderOrderInfo sof.orderForm.original
+    [ renderOrderInfo sof.orderForm
     , renderOrderHeader sof.orderForm.orderHeader
     , renderSections sof sof.orderForm.sections
     , renderOrderSummary sof.orderForm.summary
@@ -768,9 +825,10 @@ toJson orderForm = do
   sections <- traverse toOrderSection =<< sequence orderForm.sections
   pure
     $ SS.OrderForm
-        { id: Nothing
-        , status: SS.OsInDraft
+        { id: (\(SS.OrderForm { id }) -> id) =<< orderForm.original
+        , status: orderForm.status
         , approvalStatus: SS.OasUndecided
+        , displayName: orderForm.displayName
         , commercial: orderHeader.commercial
         , buyer: orderHeader.buyer
         , seller: orderHeader.seller
@@ -802,7 +860,12 @@ toJson orderForm = do
     solutionUri <- _.uri $ unwrap $ os.solution
     basePriceBook <- toPriceBookRef solutionUri <$> os.priceBook
     orderLines <- sequence $ map (toOrderLine <$> _) os.orderLines
-    pure $ SS.OrderSection { basePriceBook, orderLines }
+    pure
+      $ SS.OrderSection
+          { orderSectionId: os.orderSectionId
+          , basePriceBook
+          , orderLines
+          }
 
 toJsonStr :: OrderForm -> Maybe String
 toJsonStr = map (stringifyWithIndent 2 <<< encodeJson) <<< toJson
@@ -822,8 +885,10 @@ loadCatalog = do
           , priceBooks: Map.empty
           , orderForm:
               { original: Nothing
+              , displayName: Nothing
               , orderHeader: Nothing
-              , status: Nothing
+              , status: SS.OsInDraft
+              , notes: []
               , summary: mempty
               , sections: []
               }
@@ -1003,13 +1068,15 @@ loadExisting original@(SS.OrderForm orderForm) = do
       , orderForm:
           calcTotal
             { original: Just original
+            , displayName: orderForm.displayName
             , orderHeader:
                 Just
                   { commercial: orderForm.commercial
                   , buyer: orderForm.buyer
                   , seller: orderForm.seller
                   }
-            , status: Just orderForm.status
+            , status: orderForm.status
+            , notes: orderForm.orderNotes
             , summary: mempty
             , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
             }
@@ -1023,19 +1090,20 @@ loadExisting original@(SS.OrderForm orderForm) = do
       List.find
         ( \(SS.Solution { uri }) ->
             pbRef.solutionUri == uri
-              || ( pbRef.version == "NOVA"
+              || ( pbRef.solutionUri == Just "NOVA"
                     && uri
-                    == Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/solution.nova.json"
+                    == Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/phase1/solution.phase1.sms-prod.json"
                 )
         )
         $ Map.values solutions
     let
       SS.Solution sol = solution
 
-      priceBook = A.find (\pb -> Just pb.id == pbRef.solutionUri) =<< Map.lookup sol.id pbs
+      priceBook = A.find (\pb -> pb.id == pbRef.priceBookId) =<< Map.lookup sol.id pbs
     pure
       $ calcSubTotal
-          { solution
+          { orderSectionId: s.orderSectionId
+          , solution
           , priceBook
           , orderLines: map (convertOrderLine solution) s.orderLines
           , summary: mempty
@@ -1104,6 +1172,21 @@ handleAction = case _ of
       Initializing orderForm -> loadExisting orderForm
       Initialized Idle -> loadCatalog
       _ -> pure unit
+  SetOrderDisplayName name ->
+    modifyInitialized
+      $ \st ->
+          st
+            { orderForm =
+              st.orderForm
+                { displayName =
+                  let
+                    sname = S.trim name
+                  in
+                    if sname == "" then Nothing else Just sname
+                , summary = mempty
+                , sections = []
+                }
+            }
   SetOrderHeader Nothing ->
     modifyInitialized
       $ \st ->
@@ -1141,10 +1224,12 @@ handleAction = case _ of
                       map (map (_ { priceBook = Nothing, summary = mempty :: SubTotal })) st.orderForm.sections
                   }
               }
+  SetOrderStatus status ->
+    modifyInitialized
+      $ \st -> st { orderForm = st.orderForm { status = status } }
   AddSection ->
     modifyInitialized
-      $ \st ->
-          st { orderForm { sections = snoc st.orderForm.sections Nothing } }
+      $ \st -> st { orderForm { sections = snoc st.orderForm.sections Nothing } }
   SectionSetSolution { sectionIndex, solutionId } ->
     modifyInitialized
       $ \st ->
@@ -1158,9 +1243,10 @@ handleAction = case _ of
                     $ do
                         solution <- Map.lookup solutionId pc.solutions
                         modifyAt sectionIndex
-                          ( \_ ->
+                          ( \sec ->
                               Just
-                                { solution: solution
+                                { orderSectionId: _.orderSectionId =<< sec
+                                , solution: solution
                                 , priceBook: Nothing
                                 , orderLines: [ Nothing ]
                                 , summary: mempty
