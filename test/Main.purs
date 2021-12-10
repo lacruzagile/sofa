@@ -3,6 +3,7 @@ module Test.Main where
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, printJsonDecodeError)
 import Data.Currency (unsafeMkCurrency)
+import Data.BigNumber as BN
 import Data.Either (Either(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -36,6 +37,9 @@ main =
 -- | A EUR charge currency.
 eurChargeCurrency :: SS.ChargeCurrency
 eurChargeCurrency = SS.ChargeCurrency (unsafeMkCurrency "EUR")
+
+afn :: Number -> Additive BN.BigNumber
+afn = Additive <<< BN.fromNumber
 
 smartSpecPriceJsonCheck :: Spec Unit
 smartSpecPriceJsonCheck =
@@ -85,7 +89,7 @@ calcSubTotalChargeSimple = do
         , segment: IndexedSubTotalEntry Map.empty
         }
   it "can calculate sub-total"
-    $ subTotal { listPrice: Additive 250.0, price: Additive 225.0 }
+    $ subTotal { listPrice: afn 250.0, price: afn 225.0 }
         `shouldEqual`
           calcSubTotal 25 Map.empty unitMap eurChargeCurrency charge
 
@@ -117,7 +121,7 @@ calcSubTotalChargeSegVolume = do
         , segment: IndexedSubTotalEntry Map.empty
         }
   it "can calculate sub-total using volume segmentation"
-    $ subTotal { listPrice: Additive 25.0, price: Additive 12.5 }
+    $ subTotal { listPrice: afn 25.0, price: afn 12.5 }
         `shouldEqual`
           calcSubTotal 25 Map.empty unitMap eurChargeCurrency charge
 
@@ -149,27 +153,27 @@ calcSubTotalChargeSegTiered = do
         , segment: IndexedSubTotalEntry Map.empty
         }
   it "can calculate sub-total using tiered segmentation, zero"
-    $ subTotal { listPrice: Additive 0.0, price: Additive 0.0 }
+    $ subTotal { listPrice: afn 0.0, price: afn 0.0 }
         `shouldEqual`
           calcSubTotal 0 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, one tier"
-    $ subTotal { listPrice: Additive 50.0, price: Additive 45.0 }
+    $ subTotal { listPrice: afn 50.0, price: afn 45.0 }
         `shouldEqual`
           calcSubTotal 5 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, two tiers (min)"
-    $ subTotal { listPrice: Additive 105.0, price: Additive 94.0 }
+    $ subTotal { listPrice: afn 105.0, price: afn 94.0 }
         `shouldEqual`
           calcSubTotal 11 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, two tiers (max)"
-    $ subTotal { listPrice: Additive 150.0, price: Additive 130.0 }
+    $ subTotal { listPrice: afn 150.0, price: afn 130.0 }
         `shouldEqual`
           calcSubTotal 20 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, three tiers (min)"
-    $ subTotal { listPrice: Additive 151.0, price: Additive 130.5 }
+    $ subTotal { listPrice: afn 151.0, price: afn 130.5 }
         `shouldEqual`
           calcSubTotal 21 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, three tiers (bigger)"
-    $ subTotal { listPrice: Additive 160.0, price: Additive 135.0 }
+    $ subTotal { listPrice: afn 160.0, price: afn 135.0 }
         `shouldEqual`
           calcSubTotal 30 Map.empty unitMap eurChargeCurrency charge
 

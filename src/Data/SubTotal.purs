@@ -15,6 +15,8 @@ module Data.SubTotal
 import Prelude
 import Css as Css
 import Data.Array as A
+import Data.BigNumber (BigNumber)
+import Data.BigNumber as BN
 import Data.Charge (ChargeUnitMap)
 import Data.Currency as Currency
 import Data.Either (either)
@@ -37,8 +39,8 @@ import Halogen.HTML.Properties as HP
 import Widgets as Widgets
 
 type SubTotalEntry
-  = { price :: Additive Number
-    , listPrice :: Additive Number
+  = { price :: Additive BigNumber
+    , listPrice :: Additive BigNumber
     }
 
 newtype IndexedSubTotalEntry
@@ -282,22 +284,21 @@ calcTieredEntry quantity priceBySeg = calc quantity
       in
         acc <> scaleBy p qInSegment
 
--- | Scales the given price entry by the given quantity. Note, for performance
--- | reasons this works on non-estimated values. Estimation is expected to be
--- | handled separately.
+-- | Scales the given price entry by the given quantity. Note, the result will
+-- | use `BigNumber` to avoid inaccuracies in the following calculations.
 scaleBy ::
   forall r.
   { price :: Number, listPrice :: Number | r } ->
   Int ->
-  { price :: Additive Number
-  , listPrice :: Additive Number
+  { price :: Additive BigNumber
+  , listPrice :: Additive BigNumber
   }
 scaleBy pps quantity =
-  { price: Additive $ q * pps.price
-  , listPrice: Additive $ q * pps.listPrice
+  { price: Additive $ q * BN.fromNumber pps.price
+  , listPrice: Additive $ q * BN.fromNumber pps.listPrice
   }
   where
-  q = Int.toNumber quantity
+  q = BN.fromInt quantity
 
 calcForPricePerDimSeg :: Map DimValue Quantity -> SegmentationModel -> Array PricePerDimSeg -> SubTotalEntry
 calcForPricePerDimSeg quantities segmentationModel = A.foldl (\a b -> a <> lookup b) mempty
@@ -398,9 +399,10 @@ renderSubTotalEntry (ChargeCurrency currency) amount =
   if amount.price == amount.listPrice then
     priceText
   else
-    Widgets.withTooltip_ Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
+    Widgets.withTooltip_ Widgets.Top
+      ("Without discounts: " <> showMonetary amount.listPrice)
       $ HH.span [ HP.style "color:red" ] [ priceText ]
   where
   priceText = HH.text $ showMonetary amount.price
 
-  showMonetary (Additive n) = Currency.formatter currency n
+  showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)

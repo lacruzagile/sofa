@@ -1,9 +1,9 @@
 module App.EditablePrice (Slot, Input(..), Output(..), proxy, component) where
 
 import Prelude
+import Data.BigNumber as BN
 import Data.Currency as Currency
-import Data.Maybe (Maybe(..), isJust)
-import Data.Number as Number
+import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Number.Format (fixed, toStringWith)
 import Data.SmartSpec as SS
 import Data.String (Pattern(..), stripSuffix)
@@ -126,23 +126,29 @@ handleAction = case _ of
                   Editing c ->
                     let
                       SS.Price p = st.price
+
+                      percentNumStr = stripSuffix (Pattern "%") c
+
+                      numStr = fromMaybe c percentNumStr
                     in
                       SS.Price
-                        $ case Number.fromString c of
+                        $ case BN.fromString numStr of
                             Nothing -> p { price = p.listPrice, discount = Nothing }
                             Just n ->
                               let
-                                isPercent = isJust (stripSuffix (Pattern "%") c)
+                                isPercent = isJust percentNumStr
+
+                                lp = BN.fromNumber p.listPrice
                               in
-                                if isPercent && n /= 0.0 then
+                                if isPercent && n /= zero then
                                   p
-                                    { price = p.listPrice - p.listPrice * (n / 100.0)
-                                    , discount = Just $ SS.DiscountPercentage n
+                                    { price = BN.toNumber $ lp - lp * (n / BN.fromInt 100)
+                                    , discount = Just $ SS.DiscountPercentage $ BN.toNumber n
                                     }
-                                else if not isPercent && n /= p.listPrice then
+                                else if not isPercent && n /= lp then
                                   p
-                                    { price = n
-                                    , discount = Just $ SS.DiscountAbsolute $ n - p.listPrice
+                                    { price = BN.toNumber n
+                                    , discount = Just $ SS.DiscountAbsolute $ BN.toNumber $ n - lp
                                     }
                                 else
                                   p { price = p.listPrice, discount = Nothing }
