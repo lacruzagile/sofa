@@ -6,6 +6,7 @@ module App.Requests
   , getBuyerContacts
   , getBuyers
   , getLegalEntities
+  , getOrder
   , getOrders
   , getProductCatalog
   , patchOrder
@@ -118,6 +119,11 @@ getLegalEntities = map (map conv) $ getJson url
 
 getOrders :: forall m. MonadAff m => CredentialStore m => m (Loadable Orders)
 getOrders = getRJson ordersUrl
+
+getOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
+getOrder orderId = getRJson url
+  where
+  url = ordersUrl </> show orderId
 
 patchOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> OrderForm -> m (Loadable OrderForm)
 patchOrder orderId orderForm = patchRJson url orderForm

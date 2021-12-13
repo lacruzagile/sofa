@@ -103,6 +103,7 @@ module Data.SmartSpec
   , countryRegex
   , emptyAddress
   , emptyContact
+  , prettyDateTime
   , prettyOrderApprovalStatus
   , prettyOrderLineStatus
   , prettyOrderStatus
@@ -2029,6 +2030,9 @@ derive newtype instance decodeDateTime :: DecodeJson DateTime
 
 derive newtype instance encodeJsonDateTime :: EncodeJson DateTime
 
+prettyDateTime :: DateTime -> String
+prettyDateTime (DateTime dt) = S.replace (S.Pattern "T") (S.Replacement " ") dt
+
 newtype Asset
   = Asset
   { sku :: SkuCode
@@ -2380,12 +2384,21 @@ derive newtype instance encodeJsonOrderNote :: EncodeJson OrderNote
 newtype OrderId
   = OrderId String
 
+derive instance eqOrderId :: Eq OrderId
+
 instance showJsonOrderId :: Show OrderId where
   show (OrderId id) = id
 
 derive newtype instance decodeJsonOrderId :: DecodeJson OrderId
 
 derive newtype instance encodeJsonOrderId :: EncodeJson OrderId
+
+abbreviatedOrderId :: OrderId -> String
+abbreviatedOrderId (OrderId id) =
+  let
+    len = S.length id
+  in
+    if len > 10 then S.take 4 id <> "…" <> S.drop (len - 4) id else id
 
 newtype OrderForm
   = OrderForm
@@ -2441,19 +2454,6 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
       ~>? ("sections" := x.sections)
       ~> ("createTime" :=? x.createTime)
       ~>? jsonEmptyObject
-
-abbreviatedOrderId :: OrderForm -> Maybe String
-abbreviatedOrderId (OrderForm { id: Nothing }) = Nothing
-
-abbreviatedOrderId (OrderForm { id: Just (OrderId id) }) =
-  let
-    len = S.length id
-  in
-    Just
-      $ if len > 10 then
-          S.take 4 id <> "…" <> S.drop (len - 4) id
-        else
-          id
 
 newtype Orders
   = Orders

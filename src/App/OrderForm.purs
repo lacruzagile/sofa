@@ -1,9 +1,9 @@
-module App.OrderForm (Slot, proxy, component) where
+module App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
 import App.Charge (Slot, component, proxy) as Charge
 import App.OrderForm.OrderHeader as OrderHeader
-import App.Requests (getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
+import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Control.Alternative ((<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
@@ -49,11 +49,13 @@ type Slots
     , orderHeader :: OrderHeader.Slot Unit
     )
 
-type Input
-  = Maybe SS.OrderForm
+data Input
+  = NewOrder
+  | ExistingOrder SS.OrderForm
+  | ExistingOrderId SS.OrderId
 
 data State
-  = Initializing SS.OrderForm
+  = Initializing Input
   | Initialized (Loadable StateOrderForm)
 
 type StateOrderForm
@@ -163,7 +165,7 @@ component =
     }
 
 initialState :: Input -> State
-initialState = maybe (Initialized Idle) Initializing
+initialState = Initializing
 
 initialize :: Maybe Action
 initialize = Just Initialize
@@ -1198,8 +1200,16 @@ handleAction = case _ of
   Initialize -> do
     st <- H.get
     case st of
-      Initializing orderForm -> loadExisting orderForm
-      Initialized Idle -> loadCatalog
+      Initializing NewOrder -> loadCatalog
+      Initializing (ExistingOrder orderForm) -> loadExisting orderForm
+      Initializing (ExistingOrderId id) -> do
+        H.put $ Initialized Loading
+        orderForm <- H.lift $ getOrder id
+        case orderForm of
+          Error err -> H.put $ Initialized (Error err)
+          Idle -> H.put $ Initialized Idle
+          Loaded order -> loadExisting order
+          Loading -> H.put $ Initialized Loading
       _ -> pure unit
   SetOrderDisplayName name ->
     modifyInitialized

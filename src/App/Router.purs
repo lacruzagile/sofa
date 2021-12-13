@@ -79,14 +79,21 @@ render state =
         Just Route.Home -> slotHome
         Just Route.OrderForm -> slotOrderForm
         Just Route.Orders -> slotOrders
+        Just (Route.Order id) -> slotOrder id
         Just Route.ProductCatalog -> slotProductCatalog
         Just Route.User -> slotUser
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
-  slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component Nothing
+  slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component input
+    where
+    input = OrderForm.NewOrder
 
   slotOrders = HH.slot_ Orders.proxy unit Orders.component absurd
+
+  slotOrder id = HH.slot_ OrderForm.proxy unit OrderForm.component input
+    where
+    input = OrderForm.ExistingOrderId id
 
   slotProductCatalog = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component absurd
 

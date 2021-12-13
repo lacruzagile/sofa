@@ -6,13 +6,13 @@ import App.Requests (getOrders)
 import Css as Css
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Route as Route
 import Data.SmartSpec as SS
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 
@@ -27,17 +27,12 @@ type Slots
     )
 
 type State
-  = Loadable
-      { orders :: SS.Orders
-      , selected :: Maybe SS.OrderForm
-      }
+  = Loadable { orders :: SS.Orders }
 
 data Action
   = NoOp
   | ClearState
   | LoadOrders
-  | OpenOrder SS.OrderForm
-  | CloseOrder
 
 component ::
   forall query input output m.
@@ -96,16 +91,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Error err -> error err
 
   renderOrder :: SS.OrderForm -> H.ComponentHTML Action Slots m
-  renderOrder orderForm@(SS.OrderForm o) =
+  renderOrder (SS.OrderForm o) =
     HH.tr_
-      [ HH.td_ [ HH.text $ fromMaybe "N/A" $ SS.abbreviatedOrderId orderForm ]
+      [ HH.td_ [ maybe (HH.text "N/A") renderOrderId o.id ]
+      , HH.td_ [ HH.text $ maybe "N/A" SS.prettyDateTime o.createTime ]
       , HH.td_ [ HH.text $ SS.prettyOrderStatus o.status ]
       , HH.td_ [ HH.text buyer ]
       , HH.td_ [ HH.text seller ]
       , HH.td_ [ HH.text $ fromMaybe "" $ o.displayName ]
-      , HH.td_ [ HH.button [ HE.onClick \_ -> OpenOrder orderForm ] [ HH.text "Open" ] ]
       ]
     where
+    renderOrderId id =
+      HH.a [ Route.href (Route.Order id) ]
+        [ HH.text (SS.abbreviatedOrderId id) ]
+
     Tuple buyer seller =
       let
         SS.Buyer { corporateName: b } = o.buyer
@@ -114,26 +113,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         Tuple b s
 
-  renderOrders :: { orders :: SS.Orders, selected :: Maybe SS.OrderForm } -> Array (H.ComponentHTML Action Slots m)
-  renderOrders { orders: SS.Orders os, selected } = case selected of
-    Just orderForm ->
-      [ HH.button [ HE.onClick \_ -> CloseOrder ] [ HH.text "← Back" ]
-      , HH.slot_ OrderForm.proxy unit OrderForm.component (Just orderForm)
-      ]
-    Nothing ->
-      [ HH.h1_ [ HH.text "Orders" ]
-      , HH.table_
-          $ [ HH.tr_
-                [ HH.th_ [ HH.text "ID" ]
-                , HH.th_ [ HH.text "Status" ]
-                , HH.th_ [ HH.text "Buyer" ]
-                , HH.th_ [ HH.text "Seller" ]
-                , HH.th_ [ HH.text "Name" ]
-                , HH.th_ [ HH.text "Action" ]
-                ]
-            ]
-          <> map renderOrder os.orders
-      ]
+  renderOrders :: { orders :: SS.Orders } -> Array (H.ComponentHTML Action Slots m)
+  renderOrders { orders: SS.Orders os } =
+    [ HH.h1_ [ HH.text "Orders" ]
+    , HH.table [ HP.style "width: 100%" ]
+        $ [ HH.tr_
+              [ HH.th_ [ HH.text "ID" ]
+              , HH.th_ [ HH.text "Created" ]
+              , HH.th_ [ HH.text "Status" ]
+              , HH.th_ [ HH.text "Buyer" ]
+              , HH.th_ [ HH.text "Seller" ]
+              , HH.th_ [ HH.text "Name" ]
+              ]
+          ]
+        <> map renderOrder os.orders
+    ]
 
   renderContent = defRender state renderOrders
 
@@ -145,7 +139,7 @@ loadOrders ::
 loadOrders = do
   H.modify_ \_ -> Loading
   orders <- H.lift getOrders
-  H.modify_ \_ -> (\os -> { orders: os, selected: Nothing }) <$> orders
+  H.modify_ \_ -> (\os -> { orders: os }) <$> orders
 
 handleAction ::
   forall slots output m.
@@ -156,5 +150,3 @@ handleAction = case _ of
   NoOp -> pure unit
   ClearState -> H.put Idle
   LoadOrders -> loadOrders
-  OpenOrder orderForm -> H.modify_ $ map \st -> st { selected = Just orderForm }
-  CloseOrder -> H.modify_ $ map \st -> st { selected = Nothing }
