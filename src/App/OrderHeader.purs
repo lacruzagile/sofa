@@ -12,7 +12,6 @@ import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Loadable (Loadable(..))
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Newtype (class Newtype, unwrap)
-import Data.Set (Set)
 import Data.SmartSpec as SS
 import Data.String as S
 import Effect.Aff.Class (class MonadAff)
