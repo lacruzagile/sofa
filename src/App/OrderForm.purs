@@ -248,12 +248,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         body
           $ [ HH.div [ HP.classes [ Css.flex, Css.five ] ]
-                [ HH.label [ HP.classes [ Css.full, Css.fourFifth1000 ] ]
+                [ HH.label [ HP.classes [ Css.full, Css.threeFifth1000 ] ]
                     [ HH.text "Product"
                     , HH.input
                         [ HP.type_ HP.InputText
                         , HP.disabled true
                         , HP.value (show product.sku)
+                        ]
+                    ]
+                , HH.label [ HP.classes [ Css.full, Css.fifth1000 ] ]
+                    [ HH.text "Status"
+                    , HH.input
+                        [ HP.type_ HP.InputText
+                        , HP.disabled true
+                        , HP.value (SS.prettyOrderLineStatus ol.status)
                         ]
                     ]
                 , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]

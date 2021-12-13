@@ -104,6 +104,7 @@ module Data.SmartSpec
   , emptyAddress
   , emptyContact
   , prettyOrderApprovalStatus
+  , prettyOrderLineStatus
   , prettyOrderStatus
   , solutionProducts
   , subdivisionRegex
@@ -2195,7 +2196,7 @@ instance encodeOrderApprovalStatus :: EncodeJson OrderApprovalStatus where
           OasApproved -> "APPROVED"
           OasRejected -> "REJECTED"
 
--- | Show pretty order status.
+-- | Show pretty order approval status.
 prettyOrderApprovalStatus :: OrderApprovalStatus -> String
 prettyOrderApprovalStatus = case _ of
   OasUndecided -> "Undecided"
@@ -2229,6 +2230,15 @@ instance encodeOrderLineStatus :: EncodeJson OrderLineStatus where
           OlsSucceeded -> "SUCCEEDED"
           OlsFailed -> "FAILED"
           OlsCancelled -> "CANCELLED"
+
+-- | Show pretty order line status.
+prettyOrderLineStatus :: OrderLineStatus -> String
+prettyOrderLineStatus = case _ of
+  OlsNew -> "New"
+  OlsAccepted -> "Accepted"
+  OlsSucceeded -> "Succeeded"
+  OlsFailed -> "Failed"
+  OlsCancelled -> "Cancelled"
 
 newtype Segment
   = Segment
