@@ -49,7 +49,6 @@ module Data.SmartSpec
   , OrderSection(..)
   , OrderSectionId
   , OrderStatus(..)
-  , Orders(..)
   , PaymentCurrency(..)
   , Platform(..)
   , Price(..)
@@ -103,6 +102,7 @@ module Data.SmartSpec
   , countryRegex
   , emptyAddress
   , emptyContact
+  , prettyDate
   , prettyDateTime
   , prettyOrderApprovalStatus
   , prettyOrderLineStatus
@@ -2026,12 +2026,26 @@ newtype DateTime
 
 derive instance newtypeDateTime :: Newtype DateTime _
 
+derive instance eqDateTime :: Eq DateTime
+
+derive newtype instance ordDateTime :: Ord DateTime
+
 derive newtype instance decodeDateTime :: DecodeJson DateTime
 
 derive newtype instance encodeJsonDateTime :: EncodeJson DateTime
 
+-- | Prints the date in YYYY-MM-DD format.
+prettyDate :: DateTime -> String
+prettyDate (DateTime dt) = S.takeWhile (_ /= delim) dt
+  where
+  delim = S.codePointFromChar 'T'
+
+-- | A time pretty printer that prints a pretty ugly string.
 prettyDateTime :: DateTime -> String
-prettyDateTime (DateTime dt) = S.replace (S.Pattern "T") (S.Replacement " ") dt
+prettyDateTime (DateTime dt) =
+  S.replace (S.Pattern "Z") (S.Replacement " UTC")
+    $ S.replace (S.Pattern "T") (S.Replacement " ")
+    $ dt
 
 newtype Asset
   = Asset
@@ -2454,15 +2468,6 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
       ~>? ("sections" := x.sections)
       ~> ("createTime" :=? x.createTime)
       ~>? jsonEmptyObject
-
-newtype Orders
-  = Orders
-  { orders :: Array OrderForm
-  }
-
-derive newtype instance decodeJsonOrders :: DecodeJson Orders
-
-derive newtype instance encodeJsonOrders :: EncodeJson Orders
 
 newtype LegalEntityTraffic
   = LegalEntityTraffic

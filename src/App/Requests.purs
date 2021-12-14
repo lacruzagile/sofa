@@ -15,10 +15,11 @@ module App.Requests
   ) where
 
 import Prelude
+import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable, getJson, getRJson, patchRJson, postRJson, postRJson_)
 import Data.Maybe (fromMaybe)
-import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, Orders, ProductCatalog)
+import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm(..), OrderId, ProductCatalog)
 import Effect.Aff.Class (class MonadAff)
 import JSURI (encodeURIComponent)
 
@@ -117,8 +118,13 @@ getLegalEntities = map (map conv) $ getJson url
   conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
   conv { legalEntities } = legalEntities
 
-getOrders :: forall m. MonadAff m => CredentialStore m => m (Loadable Orders)
-getOrders = getRJson ordersUrl
+getOrders :: forall m. MonadAff m => CredentialStore m => m (Loadable (Array OrderForm))
+getOrders = map (map conv) $ getRJson ordersUrl
+  where
+  conv :: { orders :: Array OrderForm } -> Array OrderForm
+  conv { orders } = A.sortBy (comparing createTime) orders
+
+  createTime (OrderForm { createTime: t }) = t
 
 getOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
 getOrder orderId = getRJson url

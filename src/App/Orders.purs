@@ -15,6 +15,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
+import Widgets as Widgets
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -27,7 +28,7 @@ type Slots
     )
 
 type State
-  = Loadable { orders :: SS.Orders }
+  = Loadable { orders :: Array SS.OrderForm }
 
 data Action
   = NoOp
@@ -94,7 +95,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder (SS.OrderForm o) =
     HH.tr_
       [ HH.td_ [ maybe (HH.text "N/A") renderOrderId o.id ]
-      , HH.td_ [ HH.text $ maybe "N/A" SS.prettyDateTime o.createTime ]
+      , HH.td_ [ maybe (HH.text "N/A") renderDateTime o.createTime ]
       , HH.td_ [ HH.text $ SS.prettyOrderStatus o.status ]
       , HH.td_ [ HH.text buyer ]
       , HH.td_ [ HH.text seller ]
@@ -105,6 +106,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
       HH.a [ Route.href (Route.Order id) ]
         [ HH.text (SS.abbreviatedOrderId id) ]
 
+    renderDateTime t =
+      Widgets.withTooltip_
+        Widgets.Top
+        (SS.prettyDateTime t)
+        (HH.text $ SS.prettyDate t)
+
     Tuple buyer seller =
       let
         SS.Buyer { corporateName: b } = o.buyer
@@ -113,8 +120,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         Tuple b s
 
-  renderOrders :: { orders :: SS.Orders } -> Array (H.ComponentHTML Action Slots m)
-  renderOrders { orders: SS.Orders os } =
+  renderOrders :: { orders :: Array SS.OrderForm } -> Array (H.ComponentHTML Action Slots m)
+  renderOrders { orders: os } =
     [ HH.h1_ [ HH.text "Orders" ]
     , HH.table [ HP.style "width: 100%" ]
         $ [ HH.tr_
@@ -126,7 +133,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               , HH.th_ [ HH.text "Name" ]
               ]
           ]
-        <> map renderOrder os.orders
+        <> map renderOrder os
     ]
 
   renderContent = defRender state renderOrders
