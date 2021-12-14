@@ -61,7 +61,6 @@ instance credentialStoreAppM :: CredentialStore AppM where
                 s <- HtmlWindow.sessionStorage w
                 let
                   jsonStr = stringify (encodeJson creds)
-                log $ "Storing " <> jsonStr
                 LS.setItem "sofa-cred" jsonStr s
   clearCredentials =
     AppM
