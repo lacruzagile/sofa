@@ -710,7 +710,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               HH.div_
                 [ HH.strong_ [ HH.text "Created" ]
                 , HH.text ": "
-                , HH.text $ maybe "Not Available" unwrap o.createTime
+                , HH.text $ maybe "Not Available" SS.prettyDateTime o.createTime
                 ]
           )
       <> [ HH.div_
