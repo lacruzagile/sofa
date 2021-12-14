@@ -44,9 +44,6 @@ type State
     , available :: Loadable (Array SS.BillingAccount)
     )
 
-data Action
-  = Load
-
 component ::
   forall m.
   MonadAff m => CredentialStore m => H.Component Query Input Output m
@@ -72,11 +69,9 @@ component =
   selectComponent =
     Sel.component input
       $ Sel.defaultSpec
-          { handleAction = handleAction
-          , handleEvent = handleEvent
+          { handleEvent = handleEvent
           , handleQuery = handleQuery
           , render = render
-          , initialize = Just Load
           }
 
   input :: SS.CrmAccountId -> Sel.Input State
@@ -91,38 +86,31 @@ component =
     , available: Idle
     }
 
-  handleAction = case _ of
-    Load -> do
-      st <-
-        H.modify
-          _
-            { selected = Nothing
-            , available = Loading
-            , filtered = Loading
-            }
-      result <- H.lift $ getBillingAccounts st.crmAccountId
-      H.modify_ _ { available = result, filtered = result }
-
   handleQuery :: forall a. Query a -> H.HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = case _ of
     SetCrmAccountId crmAccountId next -> do
-      st <-
-        H.modify
-          _
-            { crmAccountId = crmAccountId
-            , selected = Nothing
-            , available = Loading
-            , filtered = Loading
-            }
-      result <- H.lift $ getBillingAccounts st.crmAccountId
-      H.modify_ _ { available = result, filtered = result }
+      H.modify_
+        _
+          { crmAccountId = crmAccountId
+          , selected = Nothing
+          , available = Idle
+          , filtered = Idle
+          }
       pure (Just next)
 
   handleEvent = case _ of
     Sel.Searched str -> do
+      state <- H.get
+      available <- case state.available of
+        Loaded _ -> pure state.available
+        Loading -> pure state.available
+        _ -> do
+          H.modify_ $ \st -> st { available = Loading, filtered = Loading }
+          H.lift $ getBillingAccounts state.crmAccountId
       H.modify_ \st ->
         st
-          { filtered =
+          { available = available
+          , filtered =
             let
               pat = S.Pattern $ S.toLower str
 
@@ -132,7 +120,7 @@ component =
                 containsNc ba.displayName
                   || containsNc ba.shortId
             in
-              A.filter match <$> st.available
+              A.filter match <$> available
           }
     Sel.Selected idx -> do
       st' <-
@@ -163,10 +151,10 @@ component =
       H.raise $ (\(SS.BillingAccount { commercial }) -> commercial) <$> selected
     _ -> pure unit
 
-  render :: Sel.State State -> H.ComponentHTML (Sel.Action Action) () m
+  render :: Sel.State State -> H.ComponentHTML _ () m
   render st = HH.div_ $ [ renderInput ] <> renderSelected <> renderResults
     where
-    renderInput :: H.ComponentHTML (Sel.Action Action) () m
+    renderInput :: H.ComponentHTML _ () m
     renderInput =
       HH.input
         $ SelSet.setInputProps
@@ -174,14 +162,14 @@ component =
             , HP.placeholder "Type to search billing account…"
             ]
 
-    renderSelected :: Array (H.ComponentHTML (Sel.Action Action) () m)
+    renderSelected :: Array (H.ComponentHTML _ () m)
     renderSelected
       | st.visibility == Sel.On = []
       | otherwise = case st.selected of
         Nothing -> [ HH.div_ [ HH.text "No billing account selected" ] ]
         Just billingAccount -> [ HH.div_ (renderSummary billingAccount) ]
 
-    renderResults :: Array (H.ComponentHTML (Sel.Action Action) () m)
+    renderResults :: Array (H.ComponentHTML _ () m)
     renderResults
       | st.visibility == Sel.Off = []
       | otherwise = case st.filtered of
