@@ -17,6 +17,7 @@ import Css as Css
 import Data.Array as A
 import Data.Charge (ChargeUnitMap)
 import Data.Either (either)
+import Data.Foldable (foldl)
 import Data.Int as Int
 import Data.List (List)
 import Data.List as List
@@ -132,7 +133,7 @@ calcSubTotal quantity estimatedUsageMap unitMap defaultCurrency = case _ of
     | x.unit == unitId = Just $ Price { price: x.price, listPrice: x.listPrice, discount: x.discount }
     | otherwise = Nothing
 
-  fromMultiUnit charge = A.foldl (\a unitId -> a <> forUnit unitId) mempty $ charge.units
+  fromMultiUnit charge = foldl (\a unitId -> a <> forUnit unitId) mempty $ charge.units
     where
     bubbled = bubblePricePerDimUnitOptSeg charge.priceByUnitByDim
 

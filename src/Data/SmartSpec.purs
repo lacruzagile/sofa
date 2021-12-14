@@ -416,6 +416,8 @@ newtype ChargeCurrencyPerUnit
   , currency :: ChargeCurrency
   }
 
+derive instance newtypeChargeCurrencyPerUnit :: Newtype ChargeCurrencyPerUnit _
+
 derive newtype instance decodeJsonChargeCurrencyPerUnit :: DecodeJson ChargeCurrencyPerUnit
 
 derive newtype instance encodeJsonChargeCurrencyPerUnit :: EncodeJson ChargeCurrencyPerUnit
@@ -577,8 +579,8 @@ data Charge
     , periodMinimum :: Maybe Number
     }
   | ChargeDimUnitOptSeg
-    { units :: Array ChargeUnitId
-    , currencyByUnit :: Array ChargeCurrencyPerUnit
+    { units :: Set ChargeUnitId
+    , currencyByUnit :: Array ChargeCurrencyPerUnit -- ^ Ordered by unit ID.
     , description :: Maybe String
     , segmentationByUnit :: Array SegmentationOptDimPerUnit
     , priceByUnitByDim :: Array PricePerDimUnitOptSeg
@@ -605,7 +607,7 @@ instance decodeJsonCharge :: DecodeJson Charge where
       pure
         $ ChargeDimUnitOptSeg
             { units
-            , currencyByUnit
+            , currencyByUnit: A.sortBy (comparing (_.unit <<< unwrap)) currencyByUnit
             , description
             , segmentationByUnit
             , priceByUnitByDim
@@ -908,7 +910,7 @@ instance encodeJsonPricePerDimSeg :: EncodeJson PricePerDimSeg where
 newtype PricePerDimUnit
   = PricePerDimUnit
   { dim :: DimValue
-  , priceByUnit :: Array PricePerUnit
+  , priceByUnit :: Array PricePerUnit -- ^ Ordered by unit ID.
   , periodMinimum :: Number
   }
 
@@ -918,7 +920,12 @@ instance decodeJsonPricePerDimUnit :: DecodeJson PricePerDimUnit where
     dim <- o .: "dim"
     priceByUnit <- o .: "priceByUnit"
     periodMinimum <- o .:? "periodMinimum" .!= 0.0
-    pure $ PricePerDimUnit { dim, priceByUnit, periodMinimum }
+    pure
+      $ PricePerDimUnit
+          { dim
+          , priceByUnit: A.sortBy (comparing (_.unit <<< unwrap)) priceByUnit
+          , periodMinimum
+          }
 
 instance encodeJsonPricePerDimUnit :: EncodeJson PricePerDimUnit where
   encodeJson (PricePerDimUnit x) =
@@ -930,17 +937,22 @@ instance encodeJsonPricePerDimUnit :: EncodeJson PricePerDimUnit where
 newtype PricePerDimUnitSeg
   = PricePerDimUnitSeg
   { dim :: DimValue
-  , priceBySegmentByUnit :: Array PricePerUnitSeg
+  , priceBySegmentByUnit :: Array PricePerUnitSeg -- ^ Ordered by unit ID.
   , periodMinimum :: Maybe Number
   }
 
 instance decodeJsonPricePerDimUnitSeg :: DecodeJson PricePerDimUnitSeg where
-  decodeJson json =
-    map PricePerDimUnitSeg
-      $ { dim: _, priceBySegmentByUnit: _, periodMinimum: _ }
-      <$> decodeJson json
-      <*> decodeJson json
-      <*> decodeJson json
+  decodeJson json = do
+    o <- decodeJson json
+    dim <- o .: "dim"
+    priceBySegmentByUnit <- o .: "priceBySegmentByUnit"
+    periodMinimum <- o .: "periodMinimum"
+    pure
+      $ PricePerDimUnitSeg
+          { dim
+          , priceBySegmentByUnit: A.sortBy (comparing (_.unit <<< unwrap)) priceBySegmentByUnit
+          , periodMinimum
+          }
 
 instance encodeJsonPricePerDimUnitSeg :: EncodeJson PricePerDimUnitSeg where
   encodeJson (PricePerDimUnitSeg x) =
@@ -1045,7 +1057,7 @@ derive newtype instance encodeJsonDefaultPricePerUnit :: EncodeJson DefaultPrice
 newtype PriceByUnitPerDim
   = PriceByUnitPerDim
   { dim :: DimValue
-  , prices :: Array PricePerUnit
+  , prices :: Array PricePerUnit -- ^ Prices ordered by unit ID.
   , periodMinimum :: Number
   }
 
@@ -1381,7 +1393,7 @@ newtype Product
   , assetConfigSchema :: Maybe ConfigSchemaEntry
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
-  , chargeUnits :: Array ChargeUnit
+  , chargeUnits :: Array ChargeUnit -- ^ Charge units ordered by unit ID.
   , rules :: Maybe (Array Rule)
   }
 
@@ -1400,7 +1412,7 @@ instance decodeJsonProduct :: DecodeJson Product where
     assetConfigSchema <- o .:? "assetConfigSchema"
     options <- o .:? "options"
     features <- o .:? "features"
-    chargeUnits <- o .: "chargeUnits"
+    chargeUnits <- A.sortBy (comparing (_.id <<< unwrap)) <$> o .: "chargeUnits"
     rules <- o .:? "rules"
     pure
       $ Product

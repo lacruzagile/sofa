@@ -305,7 +305,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
           <> totalEstimatedRow
       ]
       where
-      units = A.mapMaybe (\id -> Map.lookup id unitMap) charge.units
+      units = A.mapMaybe (\id -> Map.lookup id unitMap) $ Set.toUnfoldable charge.units
 
       renderUnitLabels = mkLabel <$> units
         where
@@ -331,7 +331,9 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
               <> (HH.td_ <$> totalEstimatedCells)
           ]
 
-      totalEstimatedCells = map (maybe [] A.singleton <<< renderTotalEstimatedVolume) charge.units
+      totalEstimatedCells =
+        map (maybe [] A.singleton <<< renderTotalEstimatedVolume)
+          $ A.fromFoldable charge.units
 
       currency unitId =
         A.findMap
