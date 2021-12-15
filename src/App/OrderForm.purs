@@ -12,6 +12,7 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
+import Data.Currency (unsafeMkCurrency)
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Enum.Generic (genericFromEnum, genericToEnum)
@@ -623,7 +624,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     where
     SS.ProductCatalog pc = sof.productCatalog
 
-    defaultCurrency = maybe (SS.ChargeCurrency (SS.Currency "FIX")) (SS.ChargeCurrency <<< unwrap) sof.currency
+    defaultCurrency = maybe (SS.ChargeCurrency (unsafeMkCurrency "FIX")) (SS.ChargeCurrency <<< unwrap) sof.currency
 
     body subBody =
       HH.div [ HP.class_ Css.orderSection ]
@@ -956,7 +957,7 @@ calcSubTotal os =
     , summary = sumOrderLines orderLines'
     }
   where
-  defaultCurrency = maybe (SS.ChargeCurrency (SS.Currency "FIX")) _.currency os.priceBook
+  defaultCurrency = maybe (SS.ChargeCurrency (unsafeMkCurrency "FIX")) _.currency os.priceBook
 
   orderLines' = map (map (updateOrderLineCharges os.priceBook)) os.orderLines
 

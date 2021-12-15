@@ -16,6 +16,7 @@ import Prelude
 import Css as Css
 import Data.Array as A
 import Data.Charge (ChargeUnitMap)
+import Data.Currency as Currency
 import Data.Either (either)
 import Data.Foldable (foldl)
 import Data.Int as Int
@@ -25,11 +26,10 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
-import Data.Number.Format (toStringWith, fixed)
 import Data.Quantity (Quantity, QuantityMap)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeKind(..), ChargeSingleUnit(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
+import Data.SmartSpec (Charge(..), ChargeCurrency(..), ChargeCurrencyPerUnit(..), ChargeKind(..), ChargeSingleUnit(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
 import Data.Tuple (Tuple(..), uncurry)
 import Halogen as H
 import Halogen.HTML as HH
@@ -394,16 +394,13 @@ renderSubTotalEntry ::
   ChargeCurrency ->
   SubTotalEntry ->
   H.ComponentHTML action slots m
-renderSubTotalEntry currencyCode amount =
+renderSubTotalEntry (ChargeCurrency currency) amount =
   if amount.price == amount.listPrice then
-    HH.text $ showMonetary amount.price <> " " <> show currencyCode
+    priceText
   else
     Widgets.withTooltip_ Widgets.Top ("Without discounts: " <> showMonetary amount.listPrice)
-      $ HH.span_
-          [ HH.span [ HP.style "color:red" ] [ HH.text $ showMonetary amount.price ]
-          , HH.text " "
-          , HH.text (show currencyCode)
-          ]
+      $ HH.span [ HP.style "color:red" ] [ priceText ]
+  where
+  priceText = HH.text $ showMonetary amount.price
 
-showMonetary :: Additive Number -> String
-showMonetary (Additive n) = toStringWith (fixed 2) n
+  showMonetary (Additive n) = Currency.formatter currency n

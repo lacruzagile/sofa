@@ -11,7 +11,7 @@ import Data.Auth (class CredentialStore)
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Loadable (Loadable(..))
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (unwrap)
 import Data.SmartSpec as SS
 import Data.String as S
 import Effect.Aff.Class (class MonadAff)
@@ -82,15 +82,6 @@ initialState customer =
   , commercial: _.commercial <$> customer
   }
 
-emptyCommercial :: SS.Commercial
-emptyCommercial =
-  SS.Commercial
-    { billingOption: SS.Prepay
-    , contractTerm: SS.Ongoing
-    , paymentCurrency: SS.PaymentCurrency (SS.Currency "")
-    , billingCurrency: SS.PricingCurrency (SS.Currency "")
-    }
-
 emptyBuyer :: SS.Buyer
 emptyBuyer =
   SS.Buyer
@@ -122,24 +113,6 @@ render st =
       , renderCommercial st.commercial
       ]
   where
-  renderCurrency ::
-    forall currency.
-    Newtype currency SS.Currency =>
-    String ->
-    currency ->
-    H.ComponentHTML Action Slots m
-  renderCurrency legend currency =
-    HH.div_
-      [ HH.label_ [ HH.text legend ]
-      , HH.input
-          [ HP.type_ HP.InputText
-          , HP.readOnly true
-          , HP.pattern "[A-Z]{3}"
-          , HP.placeholder "Currency (e.g. EUR)"
-          , HP.value (let SS.Currency code = unwrap currency in code)
-          ]
-      ]
-
   renderCommercial commercialOpt = case st.buyer of
     Just (SS.Buyer { crmAccountId: Just crmAccountId }) -> renderCommercial' crmAccountId
     _ ->
@@ -147,31 +120,45 @@ render st =
         [ HH.button [ HP.disabled true, HP.style "width:100%" ] [ HH.text "Commercial" ]
         ]
     where
-    renderCommercialData (SS.Commercial commercial) =
+    toData = case _ of
+      Nothing ->
+        { billingOption: ""
+        , contractTerm: ""
+        , paymentCurrency: ""
+        , billingCurrency: ""
+        }
+      Just (SS.Commercial c) ->
+        { billingOption:
+            case c.billingOption of
+              SS.Prepay -> "Pre-pay"
+              SS.Postpay -> "Post-pay"
+        , contractTerm:
+            case c.contractTerm of
+              SS.Ongoing -> "Ongoing"
+              SS.Fixed -> "Fixed"
+        , paymentCurrency: show c.paymentCurrency
+        , billingCurrency: show c.billingCurrency
+        }
+
+    renderCommercialData cd =
       HH.div_
         [ HH.label_
             [ HH.text "Billing Option"
-            , HH.input
-                [ HP.readOnly true
-                , HP.value
-                    $ case commercial.billingOption of
-                        SS.Prepay -> "Pre-pay"
-                        SS.Postpay -> "Post-pay"
-                ]
+            , HH.input [ HP.readOnly true, HP.value cd.billingOption ]
             ]
         , HH.label_
             [ HH.text "Contract Term"
-            , HH.input
-                [ HP.readOnly true
-                , HP.value
-                    $ case commercial.contractTerm of
-                        SS.Ongoing -> "Ongoing"
-                        SS.Fixed -> "Fixed"
-                ]
+            , HH.input [ HP.readOnly true, HP.value cd.contractTerm ]
             ]
         , HH.div [ HP.classes [ Css.flex, Css.two ] ]
-            [ renderCurrency "Payment Currency" commercial.paymentCurrency
-            , renderCurrency "Billing Currency" commercial.billingCurrency
+            [ HH.label_
+                [ HH.text "Payment Currency"
+                , HH.input [ HP.readOnly true, HP.value cd.paymentCurrency ]
+                ]
+            , HH.label_
+                [ HH.text "Billing Currency"
+                , HH.input [ HP.readOnly true, HP.value cd.billingCurrency ]
+                ]
             ]
         ]
 
@@ -182,7 +169,7 @@ render st =
         , Widgets.modal "of-commercial" "Commercial"
             [ HH.slot SelectCommercial.proxy unit SelectCommercial.component crmAccountId SetCommercial
             , HH.hr_
-            , renderCommercialData $ fromMaybe emptyCommercial commercialOpt
+            , renderCommercialData $ toData commercialOpt
             ]
             [ HH.label
                 [ HP.for "of-commercial", HP.class_ Css.button ]

@@ -23,7 +23,6 @@ module Data.SmartSpec
   , ContractTerm(..)
   , Country(..)
   , CrmAccountId(..)
-  , Currency(..)
   , Date(..)
   , DateTime(..)
   , DefaultPricePerUnit(..)
@@ -116,6 +115,7 @@ import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (:=?), (~>), (~>?))
 import Data.Array as A
 import Data.Array.NonEmpty (fromNonEmpty)
+import Data.Currency (Currency, unsafeMkCurrency)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.List.Lazy (List)
@@ -332,29 +332,6 @@ instance decodeJsonSubdivision :: DecodeJson Subdivision where
     error = Left (TypeMismatch "Subdivision (ISO 3166-2 subdivision code)")
 
 derive newtype instance encodeJsonSubdivision :: EncodeJson Subdivision
-
-newtype Currency
-  = Currency String
-
-derive instance eqCurrency :: Eq Currency
-
-derive instance ordCurrency :: Ord Currency
-
-derive instance newtypeCurrency :: Newtype Currency _
-
-instance showCurrency :: Show Currency where
-  show (Currency code) = code
-
-instance decodeJsonCurrency :: DecodeJson Currency where
-  decodeJson json = do
-    s <- decodeJson json
-    if check s then pure (Currency s) else error
-    where
-    check = Re.test (unsafeRegex "^[A-Z]{3}$" mempty)
-
-    error = Left (TypeMismatch "Currency (ISO 4217 alphabetic code)")
-
-derive newtype instance encodeJsonCurrency :: EncodeJson Currency
 
 -- | The billing currency. This is the currency that is used for the buyer's
 -- | invoice. It is always the same as the pricing currency and is therefore an
@@ -1778,8 +1755,8 @@ instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
       Commercial
         { billingOption: Prepay
         , contractTerm: Ongoing
-        , paymentCurrency: PaymentCurrency (Currency "EUR")
-        , billingCurrency: PricingCurrency (Currency "EUR")
+        , paymentCurrency: PaymentCurrency (unsafeMkCurrency "EUR")
+        , billingCurrency: PricingCurrency (unsafeMkCurrency "EUR")
         }
 
 derive newtype instance encodeJsonBillingAccount :: EncodeJson BillingAccount

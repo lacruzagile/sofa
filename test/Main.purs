@@ -2,7 +2,9 @@ module Test.Main where
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, printJsonDecodeError)
+import Data.Currency (unsafeMkCurrency)
 import Data.Either (Either(..))
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Monoid.Additive (Additive(..))
 import Data.SmartSpec as SS
@@ -16,7 +18,6 @@ import Test.Spec.Assertions (shouldEqual)
 import Test.Spec.QuickCheck (quickCheck)
 import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner (runSpec)
-import Data.Map as Map
 
 main :: Effect Unit
 main =
@@ -31,6 +32,10 @@ main =
           describe "ChargeSeg" do
             calcSubTotalChargeSegVolume
             calcSubTotalChargeSegTiered
+
+-- | A EUR charge currency.
+eurChargeCurrency :: SS.ChargeCurrency
+eurChargeCurrency = SS.ChargeCurrency (unsafeMkCurrency "EUR")
 
 smartSpecPriceJsonCheck :: Spec Unit
 smartSpecPriceJsonCheck =
@@ -58,8 +63,6 @@ calcSubTotalChargeSimple = do
   let
     charge = exampleChargeSimple
 
-    currency = SS.ChargeCurrency (SS.Currency "EUR")
-
     unitId = SS.ChargeUnitId "uid"
 
     unitMap =
@@ -75,7 +78,7 @@ calcSubTotalChargeSimple = do
 
     subTotal n =
       SubTotal
-        { onetime: IndexedSubTotalEntry (Map.singleton currency n)
+        { onetime: IndexedSubTotalEntry (Map.singleton eurChargeCurrency n)
         , monthly: IndexedSubTotalEntry Map.empty
         , quarterly: IndexedSubTotalEntry Map.empty
         , usage: IndexedSubTotalEntry Map.empty
@@ -84,14 +87,12 @@ calcSubTotalChargeSimple = do
   it "can calculate sub-total"
     $ subTotal { listPrice: Additive 250.0, price: Additive 225.0 }
         `shouldEqual`
-          calcSubTotal 25 Map.empty unitMap currency charge
+          calcSubTotal 25 Map.empty unitMap eurChargeCurrency charge
 
 calcSubTotalChargeSegVolume :: Spec Unit
 calcSubTotalChargeSegVolume = do
   let
     charge = exampleChargeSeg SS.SegmentationModelVolume
-
-    currency = SS.ChargeCurrency (SS.Currency "EUR")
 
     unitId = SS.ChargeUnitId "uid"
 
@@ -109,7 +110,7 @@ calcSubTotalChargeSegVolume = do
 
     subTotal n =
       SubTotal
-        { onetime: IndexedSubTotalEntry (Map.singleton currency n)
+        { onetime: IndexedSubTotalEntry (Map.singleton eurChargeCurrency n)
         , monthly: IndexedSubTotalEntry Map.empty
         , quarterly: IndexedSubTotalEntry Map.empty
         , usage: IndexedSubTotalEntry Map.empty
@@ -118,14 +119,12 @@ calcSubTotalChargeSegVolume = do
   it "can calculate sub-total using volume segmentation"
     $ subTotal { listPrice: Additive 25.0, price: Additive 12.5 }
         `shouldEqual`
-          calcSubTotal 25 Map.empty unitMap currency charge
+          calcSubTotal 25 Map.empty unitMap eurChargeCurrency charge
 
 calcSubTotalChargeSegTiered :: Spec Unit
 calcSubTotalChargeSegTiered = do
   let
     charge = exampleChargeSeg SS.SegmentationModelTiered
-
-    currency = SS.ChargeCurrency (SS.Currency "EUR")
 
     unitId = SS.ChargeUnitId "uid"
 
@@ -143,7 +142,7 @@ calcSubTotalChargeSegTiered = do
 
     subTotal n =
       SubTotal
-        { onetime: IndexedSubTotalEntry (Map.singleton currency n)
+        { onetime: IndexedSubTotalEntry (Map.singleton eurChargeCurrency n)
         , monthly: IndexedSubTotalEntry Map.empty
         , quarterly: IndexedSubTotalEntry Map.empty
         , usage: IndexedSubTotalEntry Map.empty
@@ -152,27 +151,27 @@ calcSubTotalChargeSegTiered = do
   it "can calculate sub-total using tiered segmentation, zero"
     $ subTotal { listPrice: Additive 0.0, price: Additive 0.0 }
         `shouldEqual`
-          calcSubTotal 0 Map.empty unitMap currency charge
+          calcSubTotal 0 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, one tier"
     $ subTotal { listPrice: Additive 50.0, price: Additive 45.0 }
         `shouldEqual`
-          calcSubTotal 5 Map.empty unitMap currency charge
+          calcSubTotal 5 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, two tiers (min)"
     $ subTotal { listPrice: Additive 105.0, price: Additive 94.0 }
         `shouldEqual`
-          calcSubTotal 11 Map.empty unitMap currency charge
+          calcSubTotal 11 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, two tiers (max)"
     $ subTotal { listPrice: Additive 150.0, price: Additive 130.0 }
         `shouldEqual`
-          calcSubTotal 20 Map.empty unitMap currency charge
+          calcSubTotal 20 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, three tiers (min)"
     $ subTotal { listPrice: Additive 151.0, price: Additive 130.5 }
         `shouldEqual`
-          calcSubTotal 21 Map.empty unitMap currency charge
+          calcSubTotal 21 Map.empty unitMap eurChargeCurrency charge
   it "can calculate sub-total using tiered segmentation, three tiers (bigger)"
     $ subTotal { listPrice: Additive 160.0, price: Additive 135.0 }
         `shouldEqual`
-          calcSubTotal 30 Map.empty unitMap currency charge
+          calcSubTotal 30 Map.empty unitMap eurChargeCurrency charge
 
 exampleChargeSimple :: SS.Charge
 exampleChargeSimple =

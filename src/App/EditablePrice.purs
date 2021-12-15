@@ -1,6 +1,7 @@
 module App.EditablePrice (Slot, Input(..), Output(..), proxy, component) where
 
 import Prelude
+import Data.Currency as Currency
 import Data.Maybe (Maybe(..), isJust)
 import Data.Number as Number
 import Data.Number.Format (fixed, toStringWith)
@@ -79,7 +80,7 @@ render state = case state.editState of
       ]
   where
   renderPrice :: SS.Price -> SS.ChargeCurrency -> Array (H.ComponentHTML Action slots m)
-  renderPrice (SS.Price p) currency = case p.discount of
+  renderPrice (SS.Price p) (SS.ChargeCurrency currency) = case p.discount of
     Nothing -> [ price ]
     Just d -> [ price, discount d ]
     where
@@ -87,16 +88,13 @@ render state = case state.editState of
       Nothing -> HH.text $ showPrice p.listPrice
       Just _ -> HH.span [ HP.style "color:red" ] [ HH.text $ showPrice p.price ]
 
-    showPrice priceToShow = showMonetary priceToShow <> " " <> show currency
+    showPrice = Currency.formatter currency
 
     discount d = HH.small_ [ HH.text $ " (" <> showDiscount d <> ")" ]
 
     showDiscount = case _ of
       SS.DiscountPercentage d -> show d <> "%"
-      SS.DiscountAbsolute d -> showMonetary d
-
-showMonetary :: Number -> String
-showMonetary = toStringWith (fixed 3)
+      SS.DiscountAbsolute d -> toStringWith (fixed 3) d
 
 handleAction ::
   forall m.
