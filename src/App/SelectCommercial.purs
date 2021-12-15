@@ -135,7 +135,8 @@ component =
       for_ inputElement
         $ maybe (pure unit) (H.liftEffect <<< HTMLInputElement.setValue "")
         <<< HTMLInputElement.fromHTMLElement
-      -- Fetch the full representation of the selected billing account, if possible.
+      -- Fetch the full representation of the selected billing account, if
+      -- possible.
       selected <-
         fromMaybe (pure Nothing)
           $ do
@@ -201,9 +202,9 @@ filterAvailable ::
   f (Array SS.BillingAccount)
 filterAvailable needle available =
   let
-    -- The string we're searching for. Note, we don't use the
-    -- string passed in `Sel.Searched` since it may be out of date
-    -- at the time `getBillingAccounts` finishes.
+    -- The string we're searching for. Note, we don't use the string passed in
+    -- `Sel.Searched` since it may be out of date at the time
+    -- `getBillingAccounts` finishes.
     pat = S.Pattern $ S.toLower needle
 
     containsNc = S.contains pat <<< S.toLower
