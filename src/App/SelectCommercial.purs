@@ -99,29 +99,25 @@ component =
       pure (Just next)
 
   handleEvent = case _ of
-    Sel.Searched str -> do
+    Sel.Searched _ -> do
       state <- H.get
-      available <- case state.available of
-        Loaded _ -> pure state.available
-        Loading -> pure state.available
+      mAvailable <- case state.available of
+        Loaded _ -> pure $ Just state.available
+        Loading -> pure $ Nothing
         _ -> do
           H.modify_ $ \st -> st { available = Loading, filtered = Loading }
-          H.lift $ getBillingAccounts state.crmAccountId
-      H.modify_ \st ->
-        st
-          { available = available
-          , filtered =
-            let
-              pat = S.Pattern $ S.toLower str
-
-              containsNc = S.contains pat <<< S.toLower
-
-              match (SS.BillingAccount ba) =
-                containsNc ba.displayName
-                  || containsNc ba.shortId
-            in
-              A.filter match <$> available
-          }
+          H.lift $ Just <$> getBillingAccounts state.crmAccountId
+      case mAvailable of
+        Nothing -> pure unit
+        Just available ->
+          H.modify_ \st ->
+            st
+              { available = available
+              -- Update the array of filtered matches. Note, we don't filter
+              -- using the string passed in `Sel.Searched` since it may be out
+              -- of date at the time `getBillingAccounts` finishes.
+              , filtered = filterAvailable st.search available
+              }
     Sel.Selected idx -> do
       st' <-
         H.modify \st ->
@@ -196,3 +192,24 @@ component =
       , HH.text " "
       , HH.span [ HP.style "color:gray" ] [ HH.text ba.shortId ]
       ]
+
+filterAvailable ::
+  forall f.
+  Functor f =>
+  String ->
+  f (Array SS.BillingAccount) ->
+  f (Array SS.BillingAccount)
+filterAvailable needle available =
+  let
+    -- The string we're searching for. Note, we don't use the
+    -- string passed in `Sel.Searched` since it may be out of date
+    -- at the time `getBillingAccounts` finishes.
+    pat = S.Pattern $ S.toLower needle
+
+    containsNc = S.contains pat <<< S.toLower
+
+    match (SS.BillingAccount ba) =
+      containsNc ba.displayName
+        || containsNc ba.shortId
+  in
+    A.filter match <$> available
