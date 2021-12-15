@@ -21,7 +21,6 @@ import Data.Charge (ChargeUnitMap)
 import Data.Currency as Currency
 import Data.Either (either)
 import Data.Foldable (foldl)
-import Data.Int as Int
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
