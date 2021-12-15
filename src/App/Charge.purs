@@ -351,13 +351,11 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
             $ map (HH.td_ <<< A.singleton)
             $ (if A.null dims then [] else renderDimVals dims p.dim)
             <> A.mapWithIndex (renderPriceBySegmentPerUnit p.dim dimIdx) p.priceBySegmentByUnit
-            <> [ HH.text $ show p.periodMinimum ]
         SS.PricePerDimUnitOptNoSeg (SS.PricePerDimUnit p) ->
           HH.tr_
             $ map (HH.td_ <<< A.singleton)
             $ (if A.null dims then [] else renderDimVals dims p.dim)
             <> A.mapWithIndex (renderPricePerUnit p.dim dimIdx) p.priceByUnit
-            <> [ HH.text $ show p.periodMinimum ]
 
       renderPriceBySegmentPerUnit _dim _dimIdx _priceIdx (SS.PricePerUnitSeg _ppus) = HH.text "TODO"
 
@@ -378,7 +376,6 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       $ renderChargeInner chargeIdx charge
       <> [ HH.dl_
             $ opt (renderDataItemString "Description") (Charge.description charge)
-            <> opt (renderDataItemString "Period Minimum" <<< show) (Charge.periodMinimum charge)
         -- <> renderDataItemString "Term of Price Change" (show c.termOfPriceChangeInDays <> " days")
         ]
 

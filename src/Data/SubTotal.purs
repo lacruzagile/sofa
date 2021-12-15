@@ -181,7 +181,6 @@ bubblePricePerDimUnitOptSeg = Map.fromFoldableWith (<>) <<< List.concatMap foo <
       $ PricePerDimSeg
           { dim: ppdu.dim
           , priceBySegment: ppu.priceBySegment
-          , periodMinimum: ppdu.periodMinimum
           }
 
   baz ppdu (PricePerUnit ppu) = do

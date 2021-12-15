@@ -37,6 +37,8 @@ module Data.SmartSpec
   , EstimatedWapPerUnit(..)
   , LegalEntity(..)
   , LegalEntityTraffic(..)
+  , Minimum(..)
+  , MinimumPerDim(..)
   , OrderApprovalStatus(..)
   , OrderForm(..)
   , OrderId(..)
@@ -447,7 +449,6 @@ data ChargeSingleUnit
     , listPrice :: Number
     , price :: Number
     , discount :: Maybe Discount
-    , periodMinimum :: Maybe Number
     }
   | ChargeDim
     { unit :: ChargeUnitId
@@ -455,7 +456,6 @@ data ChargeSingleUnit
     , description :: Maybe String
     , priceByDim :: Array PricePerDim
     , defaultPrice :: Maybe Price
-    , periodMinimum :: Maybe Number
     }
   | ChargeSeg
     { unit :: ChargeUnitId
@@ -463,7 +463,6 @@ data ChargeSingleUnit
     , description :: Maybe String
     , segmentation :: Segmentation
     , priceBySegment :: Array PricePerSeg
-    , periodMinimum :: Maybe Number
     }
   | ChargeDimSeg
     { unit :: ChargeUnitId
@@ -472,7 +471,6 @@ data ChargeSingleUnit
     , segmentation :: SegmentationOptDim
     , priceBySegmentByDim :: Array PricePerDimSeg
     , defaultPrice :: Maybe Price
-    , periodMinimum :: Maybe Number
     }
 
 instance decodeJsonChargeSingleUnit :: DecodeJson ChargeSingleUnit where
@@ -490,7 +488,6 @@ instance decodeJsonChargeSingleUnit :: DecodeJson ChargeSingleUnit where
       price <- o .: "price"
       listPrice <- o .:? "listPrice" .!= price
       discount <- o .:? "discount"
-      periodMinimum <- o .:? "periodMinimum"
       pure
         $ ChargeSimple
             { unit
@@ -499,7 +496,6 @@ instance decodeJsonChargeSingleUnit :: DecodeJson ChargeSingleUnit where
             , price
             , listPrice
             , discount
-            , periodMinimum
             }
 
 instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
@@ -537,7 +533,6 @@ instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
       { unit :: ChargeUnitId
       , currency :: Maybe ChargeCurrency
       , description :: Maybe String
-      , periodMinimum :: Maybe Number
       | r
       } ->
       a -> Json
@@ -545,7 +540,6 @@ instance encodeJsonChargeSingleUnit :: EncodeJson ChargeSingleUnit where
       ("unit" := x.unit)
         ~> ("currency" :=? x.currency)
         ~>? ("description" :=? x.description)
-        ~>? ("periodMinimum" :=? x.periodMinimum)
         ~>? rest
 
 data Charge
@@ -553,7 +547,6 @@ data Charge
   | ChargeList
     { description :: Maybe String
     , charges :: Array ChargeSingleUnit
-    , periodMinimum :: Maybe Number
     }
   | ChargeDimUnitOptSeg
     { units :: Set ChargeUnitId
@@ -562,7 +555,6 @@ data Charge
     , segmentationByUnit :: Array SegmentationOptDimPerUnit
     , priceByUnitByDim :: Array PricePerDimUnitOptSeg
     , defaultPriceByUnit :: Array DefaultPricePerUnit
-    , periodMinimum :: Maybe Number
     -- estimatedWAPByUnit :: Maybe _ // FIXME
     }
 
@@ -580,7 +572,6 @@ instance decodeJsonCharge :: DecodeJson Charge where
       segmentationByUnit <- o .:? "segmentationByUnit" .!= []
       priceByUnitByDim <- o .: "priceByUnitByDim"
       defaultPriceByUnit <- o .:? "defaultPriceByUnit" .!= []
-      periodMinimum <- o .:? "periodMinimum"
       pure
         $ ChargeDimUnitOptSeg
             { units
@@ -589,7 +580,6 @@ instance decodeJsonCharge :: DecodeJson Charge where
             , segmentationByUnit
             , priceByUnitByDim
             , defaultPriceByUnit
-            , periodMinimum
             }
 
 instance encodeJsonCharge :: EncodeJson Charge where
@@ -599,8 +589,7 @@ instance encodeJsonCharge :: EncodeJson Charge where
       ("type" := "CHARGE_LIST")
         ~> ("description" :=? x.description)
         ~>? ("charges" := x.charges)
-        ~> ("periodMinimum" :=? x.periodMinimum)
-        ~>? jsonEmptyObject
+        ~> jsonEmptyObject
     ChargeDimUnitOptSeg x ->
       ("type" := "CHARGE_PER_DIM_UNIT_OPT_SEG")
         ~> ("units" := x.units)
@@ -609,7 +598,6 @@ instance encodeJsonCharge :: EncodeJson Charge where
         ~>? ("segmentationByUnit" :=? ifNonEmpty x.segmentationByUnit)
         ~>? ("priceByUnitByDim" := x.priceByUnitByDim)
         ~> ("defaultPriceByUnit" :=? ifNonEmpty x.defaultPriceByUnit)
-        ~>? ("periodMinimum" :=? x.periodMinimum)
         ~>? jsonEmptyObject
 
 newtype DimValue
@@ -769,17 +757,84 @@ derive newtype instance decodeJsonSegmentsPerDim :: DecodeJson SegmentsPerDim
 
 derive newtype instance encodeJsonSegmentsPerDim :: EncodeJson SegmentsPerDim
 
+data Minimum
+  = MinimumOneCharge
+    { unit :: ChargeUnitId
+    , minimum :: Number
+    }
+  | MinimumOneChargeDim
+    { unit :: ChargeUnitId, minimumByDim :: Array MinimumPerDim }
+  | MinimumManyCharge
+    { units :: Array ChargeUnitId, minimum :: Number
+    }
+  | MinimumManyChargeDim { units :: Array ChargeUnitId, minimumByDim :: Array MinimumPerDim }
+
+instance decodeJsonMinimum :: DecodeJson Minimum where
+  decodeJson json =
+    decodeMinimumOneCharge
+      <|> decodeMinimumOneChargeDim
+      <|> decodeMinimumManyCharge
+      <|> decodeMinimumManyChargeDim
+    where
+    decodeMinimumOneCharge = MinimumOneCharge <$> decodeJson json
+
+    decodeMinimumOneChargeDim = MinimumOneChargeDim <$> decodeJson json
+
+    decodeMinimumManyCharge = MinimumManyCharge <$> decodeJson json
+
+    decodeMinimumManyChargeDim = MinimumManyChargeDim <$> decodeJson json
+
+instance encodeJsonMinimum :: EncodeJson Minimum where
+  encodeJson = case _ of
+    MinimumOneCharge x -> ("type" := "MinimumOneCharge") ~> encodeJson x
+    MinimumOneChargeDim x -> ("type" := "MinimumOneChargeDim") ~> encodeJson x
+    MinimumManyCharge x -> ("type" := "MinimumManyCharge") ~> encodeJson x
+    MinimumManyChargeDim x -> ("type" := "MinimumManyChargeDim") ~> encodeJson x
+
+newtype MinimumPerDim
+  = MinimumPerDim
+  { dim :: DimValue
+  , minimum :: Number
+  }
+
+derive newtype instance decodeJsonMinimumPerDim :: DecodeJson MinimumPerDim
+
+derive newtype instance encodeJsonMinimumPerDim :: EncodeJson MinimumPerDim
+
 newtype RateCard
   = RateCard
   { sku :: SkuCode
   , title :: Maybe String
   , description :: Maybe String
   , charges :: Array Charge
+  , minimums :: Array Minimum
   }
 
-derive newtype instance decodeJsonRateCard :: DecodeJson RateCard
+instance decodeJsonRateCard :: DecodeJson RateCard where
+  decodeJson json = do
+    o <- decodeJson json
+    sku <- o .: "sku"
+    title <- o .:? "title"
+    description <- o .:? "description"
+    charges <- o .: "charges"
+    minimums <- o .:? "minimums" .!= []
+    pure
+      $ RateCard
+          { sku
+          , title
+          , description
+          , charges
+          , minimums
+          }
 
-derive newtype instance encodeJsonRateCard :: EncodeJson RateCard
+instance encodeJsonRateCard :: EncodeJson RateCard where
+  encodeJson (RateCard x) =
+    ("sku" := x.sku)
+      ~> ("title" :=? x.title)
+      ~>? ("description" :=? x.description)
+      ~>? ("charges" := x.charges)
+      ~> ("minimums" :=? ifNonEmpty x.minimums)
+      ~>? jsonEmptyObject
 
 type PriceRow
   = ( listPrice :: Number
@@ -866,29 +921,25 @@ newtype PricePerDimSeg
   = PricePerDimSeg
   { dim :: DimValue
   , priceBySegment :: Array PricePerSeg
-  , periodMinimum :: Maybe Number
   }
 
 instance decodeJsonPricePerDimSeg :: DecodeJson PricePerDimSeg where
   decodeJson json =
     map PricePerDimSeg
-      $ { dim: _, priceBySegment: _, periodMinimum: _ }
+      $ { dim: _, priceBySegment: _ }
       <$> decodeJson json
-      <*> decodeJson json
       <*> decodeJson json
 
 instance encodeJsonPricePerDimSeg :: EncodeJson PricePerDimSeg where
   encodeJson (PricePerDimSeg x) =
     ("dim" := x.dim)
       ~> ("priceBySegment" := x.priceBySegment)
-      ~> ("periodMinimum" :=? x.periodMinimum)
-      ~>? jsonEmptyObject
+      ~> jsonEmptyObject
 
 newtype PricePerDimUnit
   = PricePerDimUnit
   { dim :: DimValue
   , priceByUnit :: Array PricePerUnit -- ^ Ordered by unit ID.
-  , periodMinimum :: Number
   }
 
 instance decodeJsonPricePerDimUnit :: DecodeJson PricePerDimUnit where
@@ -896,26 +947,22 @@ instance decodeJsonPricePerDimUnit :: DecodeJson PricePerDimUnit where
     o <- decodeJson json
     dim <- o .: "dim"
     priceByUnit <- o .: "priceByUnit"
-    periodMinimum <- o .:? "periodMinimum" .!= 0.0
     pure
       $ PricePerDimUnit
           { dim
           , priceByUnit: A.sortBy (comparing (_.unit <<< unwrap)) priceByUnit
-          , periodMinimum
           }
 
 instance encodeJsonPricePerDimUnit :: EncodeJson PricePerDimUnit where
   encodeJson (PricePerDimUnit x) =
     ("dim" := x.dim)
       ~> ("priceByUnit" := x.priceByUnit)
-      ~> ("periodMinimum" :=? ifNonZero x.periodMinimum)
-      ~>? jsonEmptyObject
+      ~> jsonEmptyObject
 
 newtype PricePerDimUnitSeg
   = PricePerDimUnitSeg
   { dim :: DimValue
   , priceBySegmentByUnit :: Array PricePerUnitSeg -- ^ Ordered by unit ID.
-  , periodMinimum :: Maybe Number
   }
 
 instance decodeJsonPricePerDimUnitSeg :: DecodeJson PricePerDimUnitSeg where
@@ -923,20 +970,17 @@ instance decodeJsonPricePerDimUnitSeg :: DecodeJson PricePerDimUnitSeg where
     o <- decodeJson json
     dim <- o .: "dim"
     priceBySegmentByUnit <- o .: "priceBySegmentByUnit"
-    periodMinimum <- o .: "periodMinimum"
     pure
       $ PricePerDimUnitSeg
           { dim
           , priceBySegmentByUnit: A.sortBy (comparing (_.unit <<< unwrap)) priceBySegmentByUnit
-          , periodMinimum
           }
 
 instance encodeJsonPricePerDimUnitSeg :: EncodeJson PricePerDimUnitSeg where
   encodeJson (PricePerDimUnitSeg x) =
     ("dim" := x.dim)
       ~> ("priceBySegmentByUnit" := x.priceBySegmentByUnit)
-      ~> ("periodMinimum" :=? x.periodMinimum)
-      ~>? jsonEmptyObject
+      ~> jsonEmptyObject
 
 data PricePerDimUnitOptSeg
   = PricePerDimUnitOptSeg PricePerDimUnitSeg
@@ -1035,7 +1079,6 @@ newtype PriceByUnitPerDim
   = PriceByUnitPerDim
   { dim :: DimValue
   , prices :: Array PricePerUnit -- ^ Prices ordered by unit ID.
-  , periodMinimum :: Number
   }
 
 instance decodeJsonPriceByUnitPerDim :: DecodeJson PriceByUnitPerDim where
@@ -1043,12 +1086,10 @@ instance decodeJsonPriceByUnitPerDim :: DecodeJson PriceByUnitPerDim where
     o <- decodeJson json
     dim <- o .: "dim"
     prices <- o .: "prices"
-    periodMinimum <- o .:? "periodMinimum" .!= 0.0
     pure
       $ PriceByUnitPerDim
           { dim
           , prices: A.sortBy (comparing (_.unit <<< unwrap)) prices
-          , periodMinimum
           }
 
 instance encodeJsonPriceByUnitPerDim :: EncodeJson PriceByUnitPerDim where

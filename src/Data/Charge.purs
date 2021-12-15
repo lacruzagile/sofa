@@ -1,11 +1,11 @@
--- A few helper functions to make it easier to work with Smart Spec charges and charge units.
+-- A few helper functions to make it easier to work with Smart Spec charges and
+-- charge units.
 module Data.Charge
   ( ChargeUnitMap
   , chargeUnitLabel
   , description
   , dims
   , lookupChargeKind
-  , periodMinimum
   , productChargeUnitMap
   , unitIds
   ) where
@@ -60,16 +60,6 @@ description = case _ of
     ChargeDimSeg { description: d } -> d
   ChargeList { description: d } -> d
   ChargeDimUnitOptSeg { description: d } -> d
-
-periodMinimum :: Charge -> Maybe Number
-periodMinimum = case _ of
-  ChargeSingleUnit c -> case c of
-    ChargeSimple { periodMinimum: n } -> n
-    ChargeDim { periodMinimum: n } -> n
-    ChargeSeg { periodMinimum: n } -> n
-    ChargeDimSeg { periodMinimum: n } -> n
-  ChargeList { periodMinimum: n } -> n
-  ChargeDimUnitOptSeg { periodMinimum: n } -> n
 
 -- | Finds the charge kind of the given identified charge unit.
 lookupChargeKind :: ChargeUnitId -> ChargeUnitMap -> Maybe ChargeKind

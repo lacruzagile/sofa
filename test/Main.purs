@@ -187,7 +187,6 @@ exampleChargeSimple =
         , listPrice: 10.0
         , price: 9.0
         , discount: Nothing
-        , periodMinimum: Nothing
         }
 
 exampleChargeSeg :: SS.SegmentationModel -> SS.Charge
@@ -230,5 +229,4 @@ exampleChargeSeg model =
                 , discount: Just $ SS.DiscountAbsolute 0.5
                 }
             ]
-        , periodMinimum: Nothing
         }
