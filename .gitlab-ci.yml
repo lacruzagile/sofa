@@ -89,7 +89,7 @@ neuvector:
     - >-
       helm upgrade
       --install sofa
-      --values ./sofa/helm/config/$CI_ENVIRONMENT_NAME.yaml
+      --values ./helm/config/$CI_ENVIRONMENT_NAME.yaml
       ./helm
 
 deploy-staging:

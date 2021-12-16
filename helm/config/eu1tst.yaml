@@ -1,5 +1,5 @@
 ingress:
-  host: sofa.eu1tst.bpa.staging.sinch.com
+  host: sofa.eu1tst.bpa.unauth.int.staging.sinch.com
 
 app:
   deploymentEnv: staging
