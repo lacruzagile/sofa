@@ -2,18 +2,21 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Values.app.name }}
+  labels:
+    app: {{ .Values.app.name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
     rollingUpdate:
+      maxSurge: {{ .Values.maxSurge }}
       maxUnavailable: {{ .Values.maxUnavailable }}
   selector:
     matchLabels:
-      name: {{ .Values.app.name }}
+      app: {{ .Values.app.name }}
   template:
     metadata:
       labels:
-        name: {{ .Values.app.name }}
+        app: {{ .Values.app.name }}
       annotations:
         sidecar.istio.io/inject: "{{ .Values.istio.sidecar.enabled }}"
         sidecar.istio.io/proxyCPU: {{ .Values.istio.sidecar.resources.requests.cpu }}

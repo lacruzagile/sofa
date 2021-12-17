@@ -2,6 +2,8 @@ apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: {{ .Values.app.name }}
+  labels:
+    app: {{ .Values.app.name }}
 spec:
   hosts:
     - {{ .Values.ingress.host }}

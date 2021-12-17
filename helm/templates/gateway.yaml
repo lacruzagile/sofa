@@ -2,6 +2,8 @@ apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
   name: {{ .Values.app.name }}-gateway
+  labels:
+    app: {{ .Values.app.name }}
 spec:
   selector:
     istio: istio-ingressgateway-int-no-auth

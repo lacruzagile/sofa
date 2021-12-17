@@ -1,4 +1,5 @@
 replicaCount: 2
+maxSurge: 1
 maxUnavailable: 1
 podDisruptionBudget:
   minAvailable: 1

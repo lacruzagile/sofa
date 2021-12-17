@@ -2,6 +2,8 @@ kind: Certificate
 apiVersion: cert-manager.io/v1
 metadata:
   name: {{ .Values.app.name }}-certificate
+  labels:
+    app: {{ .Values.app.name }}
 spec:
   dnsNames:
     - {{ .Values.ingress.host }}
