@@ -7,4 +7,4 @@ spec:
     name: {{ .Values.app.name }}
   ports:
     - port: {{ .Values.ports.http }}
-      targetPort: {{ .Values.ports.http }}
+      name: http
