@@ -76,7 +76,7 @@ neuvector:
       - ./nvreport/security-report.csv
       - ./nvreport/scan-repository.json
 
-.deploy:
+.deploy-k8s:
   image: alpine:latest
   stage: deploy
   when: manual
@@ -92,11 +92,33 @@ neuvector:
       --values ./helm/config/$CI_ENVIRONMENT_NAME.yaml
       ./helm
 
-deploy-staging:
-  extends: .deploy
+.stop-k8s:
+  image: alpine:latest
+  stage: deploy
+  when: manual
+  extends:
+    - .kubernetes-components
+  script:
+    - install_dependencies
+    - configure_kubectl
+    - ensure_namespace
+    - helm uninstall sofa
+    - kubectl get deployment
+    - helm list
+
+deploy-k8s-staging:
+  extends: .deploy-k8s
   only: [ master ]
   environment:
     name: eu1tst
+    on_stop: stop-k8s-staging
+
+stop-k8s-staging:
+  extends: .stop-k8s
+  only: [ master ]
+  environment:
+    name: eu1tst
+    action: stop
 
 deploy-salesforce-staging:
   image: salesforce/salesforcedx:7.130.1-slim
