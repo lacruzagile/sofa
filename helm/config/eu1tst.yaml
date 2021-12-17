@@ -3,6 +3,6 @@ ingress:
 
 app:
   deploymentEnv: staging
-  orderingServiceUrl: https://ordering.eu1tst.bpa.staging.sinch.com
+  orderingServiceUrl: http://ordering
   smartSpecUrl: https://ea.pages.sinch.com/smart-spec
   tokenServiceUrl: https://public.token-service.common-auth.staging.sinch.com
