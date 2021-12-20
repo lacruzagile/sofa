@@ -1,4 +1,4 @@
-module App.SelectLegalEntity (Slot, Output(..), proxy, component) where
+module App.OrderForm.SelectLegalEntity (Slot, Output(..), proxy, component) where
 
 import Prelude
 import App.Requests (getLegalEntities)
@@ -17,6 +17,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import HtmlUtils (focusElementByQuery)
 import Select as Sel
 import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
@@ -80,6 +81,8 @@ selectComponent =
   handleAction :: Action -> H.HalogenM (Sel.State State) (Sel.Action Action) () Output m Unit
   handleAction = case _ of
     Load -> do
+      -- Focus the search box to allow immediate typing.
+      focusElementByQuery "input#le-search"
       H.modify_ _ { selected = Nothing, available = Loading, filtered = Loading }
       result <- H.lift $ getLegalEntities
       H.modify_ _ { available = result, filtered = result }
@@ -119,43 +122,67 @@ selectComponent =
     _ -> pure unit
 
   render :: Sel.State State -> H.ComponentHTML (Sel.Action Action) () m
-  render st = HH.div_ $ [ renderInput ] <> renderSelected <> renderResults
+  render st = HH.span_ $ [ renderInput ] <> renderResults
     where
     renderInput :: H.ComponentHTML (Sel.Action Action) () m
     renderInput =
       HH.input
         $ SelSet.setInputProps
-            [ HP.class_ Css.taInput
+            [ HP.id "le-search"
+            , HP.classes
+                [ Css.tw.w72
+                , Css.tw.mr5
+                , Css.tw.focusOutline
+                , Css.tw.outline1
+                , Css.tw.outlineGray300
+                , Css.tw.placeholderItalic
+                , Css.tw.roundedSm
+                ]
             , HP.placeholder "Type to search legal entity…"
             ]
-
-    renderSelected :: Array (H.ComponentHTML (Sel.Action Action) () m)
-    renderSelected
-      | st.visibility == Sel.On = []
-      | otherwise = case st.selected of
-        Nothing -> [ HH.div_ [ HH.text "No legal entity selected" ] ]
-        Just _ -> []
 
     renderResults :: Array (H.ComponentHTML (Sel.Action Action) () m)
     renderResults
       | st.visibility == Sel.Off = []
       | otherwise = case st.filtered of
-        Idle -> [ HH.div_ [ HH.text "No active search …" ] ]
-        Loading -> [ HH.div_ [ HH.text "Loading search results …" ] ]
-        Error msg -> [ HH.div_ [ HH.text "Error: ", HH.text msg ] ]
-        Loaded [] -> [ HH.div_ [ HH.text "No matching legal entitys …" ] ]
+        Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
+        Loading -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Loading search results …" ] ]
+        Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
+        Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching legal entities …" ] ]
         Loaded filtered ->
-          [ HH.div (SelSet.setContainerProps [ HP.class_ Css.taContainer ])
+          [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
               $ A.mapWithIndex renderItem filtered
           ]
+        where
+        containerClasses =
+          [ Css.tw.absolute
+          , Css.tw.mt1
+          , Css.tw.flex
+          , Css.tw.flexCol
+          , Css.tw.bgWhite
+          , Css.tw.w72
+          , Css.tw.maxH72
+          , Css.tw.overflowAuto
+          , Css.tw.border
+          , Css.tw.roundedMd
+          ]
+
+        infoClasses = containerClasses <> [ Css.tw.p2 ]
 
     renderItem idx legalEntity =
       HH.div
         ( SelSet.setItemProps idx
-            [ HP.classes $ [ Css.taItem ]
-                <> if st.highlightedIndex == Just idx then [ Css.taHighlight ] else []
+            [ HP.classes
+                $ if st.highlightedIndex == Just idx then
+                    selectedClasses
+                  else
+                    itemClasses
             ]
         )
         (renderSummary legalEntity)
+      where
+      itemClasses = [ Css.tw.p2 ]
+
+      selectedClasses = [ Css.tw.p2, Css.tw.bgSky100 ]
 
     renderSummary (SS.LegalEntity le) = [ HH.text le.registeredName ]

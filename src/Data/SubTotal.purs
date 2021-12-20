@@ -7,7 +7,6 @@ module Data.SubTotal
   , calcSubTotal
   , isEmpty
   , renderSubTotalTable
-  , renderSubTotalText
   , toCurrencies
   , toSubTotalEntry
   ) where
@@ -31,7 +30,7 @@ import Data.Quantity (Quantity, QuantityMap)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.SmartSpec (Charge(..), ChargeCurrency(..), ChargeCurrencyPerUnit(..), ChargeKind(..), ChargeSingleUnit(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
-import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -317,33 +316,6 @@ isEmpty (IndexedSubTotalEntry es) = Map.isEmpty es
 toSubTotalEntry :: ChargeCurrency -> IndexedSubTotalEntry -> Maybe SubTotalEntry
 toSubTotalEntry currency (IndexedSubTotalEntry es) = Map.lookup currency es
 
--- | Render a sub-total as a single text entry.
-renderSubTotalText ::
-  forall action slots m.
-  Monad m =>
-  SubTotal ->
-  H.ComponentHTML action slots m
-renderSubTotalText (SubTotal subTotal) =
-  HH.span_ $ handleEmpty
-    $ renderIndexedSubTotalEntry "" subTotal.onetime
-    <> renderIndexedSubTotalEntry " per month" subTotal.monthly
-    <> renderIndexedSubTotalEntry " per quarter" subTotal.quarterly
-    <> renderIndexedSubTotalEntry " per month" subTotal.usage
-    <> renderIndexedSubTotalEntry "" subTotal.segment
-  where
-  handleEmpty = case _ of
-    [] -> [ HH.text "N/A" ]
-    xs -> xs
-
-  renderIndexedSubTotalEntry suffix (IndexedSubTotalEntry entry)
-    | Map.isEmpty entry = []
-    | otherwise =
-      A.intercalate [ HH.text ", " ]
-        $ map (\r -> [ r, HH.text suffix ])
-        $ renderSubTotalEntries entry
-
-  renderSubTotalEntries = map (uncurry renderSubTotalEntry) <<< Map.toUnfoldable
-
 -- | Render a sub-total using a simple table.
 renderSubTotalTable :: forall action slots m. Monad m => String -> SubTotal -> H.ComponentHTML action slots m
 renderSubTotalTable title (SubTotal summary) =
@@ -357,14 +329,22 @@ renderSubTotalTable title (SubTotal summary) =
             , toCurrencies summary.onetime
             ]
 
-    th sumry name = if isEmpty sumry then [] else [ HH.th_ [ HH.text name ] ]
+    th sumry name =
+      if isEmpty sumry then
+        []
+      else
+        [ HH.th [ HP.classes [ Css.tw.px5 ] ] [ HH.text name ] ]
 
     td sumry =
       if isEmpty sumry then
         const []
       else
         let
-          td' currency s = [ HH.td_ [ renderSubTotalEntry currency s ] ]
+          td' currency s =
+            [ HH.td
+                [ HP.classes [ Css.tw.px5, Css.tw.textRight ] ]
+                (renderSubTotalEntry currency s)
+            ]
         in
           \currency -> td' currency $ fromMaybe mempty $ toSubTotalEntry currency sumry
 
@@ -376,13 +356,12 @@ renderSubTotalTable title (SubTotal summary) =
         <> td summary.quarterly currency
         <> td summary.onetime currency
   in
-    HH.table [ HP.class_ Css.subTotal ]
-      $ [ HH.tr_
-            $ [ HH.th [ HP.rowSpan (1 + A.length currencies) ] [ HH.text title ] ]
-            <> th summary.usage "Usage"
-            <> th summary.monthly "Monthly"
-            <> th summary.quarterly "Quarterly"
-            <> th summary.onetime "Onetime"
+    HH.table [ HP.classes [ Css.tw.p5, Css.tw.tableAuto ] ]
+      $ [ HH.tr [ HP.classes [ Css.tw.bgGray200, Css.tw.uppercase, Css.tw.textSm, Css.tw.textGray600 ] ]
+            $ th summary.usage (title <> "Usage")
+            <> th summary.monthly (title <> "Monthly")
+            <> th summary.quarterly (title <> "Quarterly")
+            <> th summary.onetime (title <> "Onetime")
         ]
       <> map renderRow currencies
 
@@ -392,15 +371,31 @@ renderSubTotalEntry ::
   Monad m =>
   ChargeCurrency ->
   SubTotalEntry ->
-  H.ComponentHTML action slots m
+  Array (H.ComponentHTML action slots m)
 renderSubTotalEntry (ChargeCurrency currency) amount =
   if amount.price == amount.listPrice then
-    priceText
+    [ renderPrice listPriceClasses, renderCurrency ]
   else
-    Widgets.withTooltip_ Widgets.Top
-      ("Without discounts: " <> showMonetary amount.listPrice)
-      $ HH.span [ HP.style "color:red" ] [ priceText ]
+    [ Widgets.withTooltip_ Widgets.Top
+        ("Without discounts: " <> showMonetary amount.listPrice)
+        $ renderPrice discountPriceClasses
+    , renderCurrency
+    ]
   where
-  priceText = HH.text $ showMonetary amount.price
+  listPriceClasses = [ Css.tw.px3, Css.tw.textRight ]
+
+  discountPriceClasses = [ Css.tw.px3, Css.tw.textRight, Css.tw.textRed700 ]
+
+  renderPrice classes =
+    HH.span
+      [ HP.classes classes ]
+      [ HH.text $ showNumber amount.price ]
+
+  renderCurrency =
+    HH.span
+      [ HP.classes [ Css.tw.textSm, Css.tw.textGray600 ] ]
+      [ HH.text $ show currency ]
 
   showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)
+
+  showNumber (Additive n) = Currency.numberFormatter (BN.toNumber n)

@@ -1924,6 +1924,8 @@ newtype Contact
 emptyContact :: Contact
 emptyContact = Contact { contactId: Nothing, email: Nothing, displayName: Nothing, phone: Nothing }
 
+derive instance eqContact :: Eq Contact
+
 derive newtype instance decodeJsonContact :: DecodeJson Contact
 
 instance encodeJsonContact :: EncodeJson Contact where

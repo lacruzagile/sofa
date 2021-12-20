@@ -20,6 +20,7 @@ to generate this file without the comments in this block.
   , "console"
   , "control"
   , "datetime"
+  , "dom-indexed"
   , "effect"
   , "either"
   , "enums"

@@ -2,7 +2,10 @@ module App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
 import App.Charge (Slot, component, proxy) as Charge
-import App.OrderForm.OrderHeader as OrderHeader
+import App.OrderForm.Buyer as Buyer
+import App.OrderForm.Commercial as Commercial
+import App.OrderForm.SelectProduct as SelectProduct
+import App.OrderForm.Seller as Seller
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Control.Alternative ((<|>))
 import Css as Css
@@ -16,6 +19,7 @@ import Data.Currency (unsafeMkCurrency)
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Enum.Generic (genericFromEnum, genericToEnum)
+import Data.Foldable (sum)
 import Data.Int as Int
 import Data.List.Lazy (List)
 import Data.List.Lazy as List
@@ -46,8 +50,11 @@ proxy :: Proxy "orderForm"
 proxy = Proxy
 
 type Slots
-  = ( charge :: Charge.Slot OrderLineIndex
-    , orderHeader :: OrderHeader.Slot Unit
+  = ( seller :: Seller.Slot Unit
+    , buyer :: Buyer.Slot Unit
+    , commercial :: Commercial.Slot Unit
+    , selectProduct :: SelectProduct.Slot OrderLineIndex
+    , charge :: Charge.Slot OrderLineIndex
     )
 
 data Input
@@ -70,7 +77,9 @@ type StateOrderForm
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
   = { original :: Maybe SS.OrderForm -- ^ The original order form, if one exists.
-    , orderHeader :: Maybe OrderHeader.OrderHeader
+    , commercial :: Maybe SS.Commercial
+    , buyer :: Maybe SS.Buyer
+    , seller :: Maybe SS.Seller
     , displayName :: Maybe String
     , status :: SS.OrderStatus
     , notes :: Array SS.OrderNote
@@ -112,14 +121,18 @@ data Action
   = NoOp
   | Initialize
   | SetOrderDisplayName String
-  | SetOrderHeader (Maybe OrderHeader.OrderHeader)
+  | SetSeller SS.Seller
+  | SetBuyer SS.Buyer
+  | SetCommercial SS.Commercial
   | SetOrderStatus SS.OrderStatus
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
   | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
   | RemoveSection { sectionIndex :: Int }
   | AddOrderLine { sectionIndex :: Int }
-  | OrderLineSetProduct { sectionIndex :: Int, orderLineIndex :: Int, sku :: SS.SkuCode }
+  | OrderLineSetProduct
+    { sectionIndex :: Int, orderLineIndex :: Int, product :: SS.Product
+    }
   | OrderLineSetQuantity
     { sectionIndex :: Int
     , orderLineIndex :: Int
@@ -174,6 +187,8 @@ initialize = Just Initialize
 render :: forall m. MonadAff m => CredentialStore m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
+  renderSmallTitle t = HH.div [ HP.class_ Css.smallTitle ] [ HH.text t ]
+
   renderCharges ::
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
@@ -193,38 +208,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
             }
       )
 
-  renderChargeModal ::
+  renderChargeDetails ::
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
     QuantityMap ->
     Maybe (Array SS.Charge) ->
     Array (H.ComponentHTML Action Slots m)
-  renderChargeModal olIdx unitMap defaultCurrency estimatedUsage = maybe noCharges withCharges
+  renderChargeDetails olIdx unitMap defaultCurrency estimatedUsage = maybe [] withCharges
     where
-    chargeText = HH.text "Charge"
-
-    noMargin :: forall r t. HP.IProp ( style :: String | r ) t
-    noMargin = HP.style "margin:0"
-
-    noCharges =
-      [ HH.br_
-      , HH.button [ HP.disabled true, noMargin ] [ chargeText ]
-      ]
-
     withCharges = case _ of
-      [] -> noCharges
+      [] -> []
       charges ->
-        [ HH.br_
-        , HH.label
-            [ HP.for modalLabel, HP.class_ Css.button, noMargin ]
-            [ chargeText ]
-        , Widgets.modal modalLabel "Charge"
-            [ renderCharges olIdx unitMap defaultCurrency estimatedUsage charges ]
-            []
+        [ HH.details [ HP.class_ Css.tw.mt5 ]
+            [ HH.summary
+                [ HP.classes [ Css.tw.textLg, Css.tw.cursorPointer ] ]
+                [ HH.text "Charges" ]
+            , renderCharges olIdx unitMap defaultCurrency estimatedUsage charges
+            ]
         ]
-
-    modalLabel = "of-charge-" <> show olIdx.sectionIndex <> "-" <> show olIdx.orderLineIndex
 
   renderOrderLine ::
     SS.Solution ->
@@ -236,13 +238,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Nothing ->
       body
         [ HH.label_
-            [ HH.text "Product"
-            , HH.select [ HE.onValueChange actionSetProduct ]
-                $ [ HH.option
-                      [ HP.value "", HP.disabled true, HP.selected true ]
-                      [ HH.text "Please choose a product" ]
-                  ]
-                <> products
+            [ renderSmallTitle "Product"
+            , HH.slot SelectProduct.proxy olIdx SelectProduct.component
+                sol.products
+                ( \product ->
+                    OrderLineSetProduct
+                      { sectionIndex: olIdx.sectionIndex
+                      , orderLineIndex: olIdx.orderLineIndex
+                      , product
+                      }
+                )
             ]
         ]
     Just ol ->
@@ -250,103 +255,117 @@ render state = HH.section_ [ HH.article_ renderContent ]
         SS.Product product = ol.product
       in
         body
-          $ [ HH.div [ HP.classes [ Css.flex, Css.five ] ]
-                [ HH.label [ HP.classes [ Css.full, Css.threeFifth1000 ] ]
-                    [ HH.text "Product"
-                    , HH.input
-                        [ HP.type_ HP.InputText
-                        , HP.disabled true
-                        , HP.value (show product.sku)
-                        ]
-                    ]
-                , HH.label [ HP.classes [ Css.full, Css.fifth1000 ] ]
-                    [ HH.text "Status"
-                    , HH.input
-                        [ HP.type_ HP.InputText
-                        , HP.disabled true
-                        , HP.value (SS.prettyOrderLineStatus ol.status)
-                        ]
-                    ]
-                , HH.div [ HP.classes [ Css.full, Css.fifth1000 ] ]
-                    $ renderChargeModal olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
-                ]
+          $ [ HH.div [ HP.classes [ Css.tw.flex ] ]
+                $ [ HH.div [ HP.class_ Css.tw.w3_5 ]
+                      [ renderSmallTitle "Product"
+                      , HH.span
+                          [ HP.classes [ Css.tw.textLg ] ]
+                          [ HH.text $ show product.sku ]
+                      ]
+                  , HH.div [ HP.class_ Css.tw.w1_5 ]
+                      [ renderSmallTitle "Status"
+                      , HH.text $ SS.prettyOrderLineStatus ol.status
+                      ]
+                  ]
+                <> ( if isJust product.orderConfigSchema then
+                      [ HH.div [ HP.class_ Css.tw.w1_5 ]
+                          [ renderSmallTitle "Total Quantity"
+                          , HH.text $ show $ sum $ map (\(SS.OrderLineConfig { quantity }) -> quantity) ol.configs
+                          ]
+                      ]
+                    else
+                      [ HH.label [ HP.class_ Css.tw.w1_5 ]
+                          [ renderSmallTitle "Quantity"
+                          , renderQuantityInput 0
+                              $ fromMaybe (SS.OrderLineConfig { quantity: 0, config: Nothing })
+                              $ head ol.configs
+                          ]
+                      ]
+                  )
             ]
-          <> ( if isJust product.orderConfigSchema then
-                renderProductConfigs product ol.configs <> renderAddProductConfig
+          <> renderChargeDetails olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
+          <> ( if isNothing product.orderConfigSchema then
+                []
               else
-                renderQuantity 0 $ fromMaybe (SS.OrderLineConfig { quantity: 0, config: Nothing }) $ head ol.configs
+                [ HH.details [ HP.class_ Css.tw.mt5 ]
+                    $ [ HH.summary
+                          [ HP.classes [ Css.tw.textLg, Css.tw.cursorPointer ] ]
+                          [ HH.text "Configurations" ]
+                      ]
+                    <> renderProductConfigs product ol.configs
+                    <> renderAddProductConfig
+                ]
             )
     where
+    removeBtn
+      | not isInDraft = []
+      | otherwise =
+        [ HH.button
+            [ HP.classes
+                [ Css.tw.relative
+                , Css.tw.floatRight
+                , Css.tw.textLg
+                , Css.tw.cursorPointer
+                ]
+            , HE.onClick \_ -> RemoveOrderLine olIdx
+            ]
+            [ HH.text "×" ]
+        ]
+
     body subBody =
-      HH.div [ HP.classes [ Css.orderLine ] ]
-        $ [ HH.a
-              [ HP.class_ Css.close
-              , HE.onClick \_ -> RemoveOrderLine olIdx
-              ]
-              [ HH.text "×" ]
-          ]
-        <> subBody
+      HH.div
+        [ HP.classes [ Css.tw.m5, Css.tw.borderT ] ]
+        (removeBtn <> subBody)
 
-    products =
-      map
-        ( \(SS.Product p) ->
-            let
-              sku = show p.sku
-            in
-              HH.option [ HP.value sku ] [ HH.text sku ]
-        )
-        sol.products
-
-    actionSetProduct sku =
-      OrderLineSetProduct
-        { sectionIndex: olIdx.sectionIndex
-        , orderLineIndex: olIdx.orderLineIndex
-        , sku: SS.SkuCode sku
-        }
-
-    renderQuantity cfgIdx (SS.OrderLineConfig olc) =
-      [ HH.div_
-          [ HH.label_ [ HH.text "Quantity" ]
-          , HH.input
-              [ HP.type_ HP.InputNumber
-              , HP.min 1.0
-              , HP.value $ show olc.quantity
-              , HE.onValueChange
-                  $ \v ->
-                      OrderLineSetQuantity
-                        { sectionIndex: olIdx.sectionIndex
-                        , orderLineIndex: olIdx.orderLineIndex
-                        , configIndex: cfgIdx
-                        , quantity: fromMaybe olc.quantity $ Int.fromString v
-                        }
-              ]
-          ]
-      ]
+    renderQuantityInput cfgIdx (SS.OrderLineConfig olc) =
+      HH.input
+        [ HP.classes [ Css.tw.border, Css.tw.textRight ]
+        , HP.type_ HP.InputNumber
+        , HP.min 1.0
+        , HP.value $ show olc.quantity
+        , HE.onValueChange
+            $ \v ->
+                OrderLineSetQuantity
+                  { sectionIndex: olIdx.sectionIndex
+                  , orderLineIndex: olIdx.orderLineIndex
+                  , configIndex: cfgIdx
+                  , quantity: fromMaybe olc.quantity $ Int.fromString v
+                  }
+        ]
 
     renderProductConfigs product configs =
       let
-        allowRemove = A.length configs > 1
+        allowRemove = A.length configs > 1 && isInDraft
       in
         A.concat (A.mapWithIndex (renderProductConfig allowRemove product) configs)
 
     renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { config }) =
-      [ HH.div [ HP.classes [ Css.orderLineConfig ] ]
-          $ ( if allowRemove then
-                [ HH.a
-                    [ HP.class_ Css.close
-                    , HE.onClick \_ ->
-                        OrderLineRemoveConfig
-                          { sectionIndex: olIdx.sectionIndex
-                          , orderLineIndex: olIdx.orderLineIndex
-                          , configIndex: cfgIdx
-                          }
-                    ]
-                    [ HH.text "×" ]
+      [ HH.div [ HP.classes [ Css.tw.my5, Css.tw.p5, Css.tw.borderL8, Css.tw.borderGray100 ] ]
+          $ [ HH.label_
+                [ HH.span [ HP.classes [ Css.smallTitle, Css.tw.mr5 ] ] [ HH.text "Quantity" ]
+                , renderQuantityInput cfgIdx olc
                 ]
+            , if allowRemove then
+                HH.button
+                  [ HP.classes
+                      [ Css.tw.relative
+                      , Css.tw.floatRight
+                      , Css.btnRed100
+                      , Css.tw.ml2
+                      , Css.tw.py0
+                      ]
+                  , HE.onClick \_ ->
+                      OrderLineRemoveConfig
+                        { sectionIndex: olIdx.sectionIndex
+                        , orderLineIndex: olIdx.orderLineIndex
+                        , configIndex: cfgIdx
+                        }
+                  ]
+                  [ HH.text "Remove Configuration" ]
               else
-                []
-            )
-          <> renderQuantity cfgIdx olc
+                HH.text ""
+            , HH.hr [ HP.class_ Css.tw.my2 ]
+            ]
           <> case config of
               Nothing -> []
               Just c ->
@@ -366,20 +385,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   product.orderConfigSchema
       ]
 
-    renderAddProductConfig =
-      [ HH.div [ HP.class_ Css.orderLineConfig ]
-          [ HH.button
-              [ HP.class_ Css.addOrderLineConfig, HE.onClick \_ -> OrderLineAddConfig olIdx ]
-              [ HH.text "+" ]
-          ]
-      ]
+    renderAddProductConfig
+      | not isInDraft = []
+      | otherwise =
+        [ HH.button
+            [ HP.class_ Css.btnSky100
+            , HE.onClick \_ -> OrderLineAddConfig olIdx
+            ]
+            [ HH.text "+ Add Configuration" ]
+        ]
 
   renderConfigSchema ::
     ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
     SS.ConfigValue ->
     SS.ConfigSchemaEntry ->
     H.ComponentHTML Action Slots m
-  renderConfigSchema onChange config = renderEntry onChange "Configuration" (Just config)
+  renderConfigSchema onChange config = renderEntry onChange "" (Just config)
     where
     mact :: forall a. (a -> Action) -> Maybe a -> Action
     mact = maybe NoOp
@@ -403,14 +424,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
           renderCheckbox fallbackTitle schemaEntry
             $ HH.input
                 [ HP.type_ HP.InputCheckbox
-                , HP.class_ Css.checkable
+                , HP.classes [ Css.tw.mr5 ]
                 , HP.checked checked
                 , HE.onChecked (act <<< const <<< SS.CvBoolean)
                 ]
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
-          $ [ HP.type_ HP.InputNumber
+          $ [ HP.class_ Css.tw.border
+            , HP.type_ HP.InputNumber
             , HP.placeholder "Integer"
             , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
             ]
@@ -430,7 +452,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
                 onIndexChange i = mact (act <<< const <<< SS.CvString) $ A.index c.enum (i - 1)
               in
-                HH.select [ HE.onSelectedIndexChange onIndexChange ]
+                HH.select [ HP.class_ Css.tw.border, HE.onSelectedIndexChange onIndexChange ]
                   $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
                   <> map (\e -> HH.option (props e) [ HH.text e ]) c.enum
       SS.CseString c ->
@@ -454,7 +476,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
             in
               HH.input
-                $ [ HP.placeholder placeholder
+                $ [ HP.class_ Css.tw.border
+                  , HP.placeholder placeholder
                   , HE.onValueChange (act <<< const <<< SS.CvString)
                   ]
                 <> opt HP.value (maybe c.default (Just <<< show) value)
@@ -462,7 +485,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.CseRegex c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
-          $ [ HP.placeholder $ "String matching " <> c.pattern
+          $ [ HP.class_ Css.tw.border
+            , HP.placeholder $ "String matching " <> c.pattern
             , HP.pattern c.pattern
             , HE.onValueChange (act <<< const <<< SS.CvString)
             ]
@@ -481,11 +505,23 @@ render state = HH.section_ [ HH.article_ renderContent ]
             _ -> []
 
           act' idx = \f -> act (SS.CvArray <<< fromMaybe [] <<< A.modifyAt idx (f <<< Just) <<< toVal)
+
+          mkElement content =
+            if S.null fallbackTitle then
+              HH.div
+                [ HP.classes [ Css.tw.flex, Css.tw.flexCol ] ]
+                (content <> [ renderAddListEntry c.items act ])
+            else
+              HH.fieldset [ HP.classes [ Css.tw.my2, Css.tw.flex, Css.tw.flexCol, Css.tw.border ] ]
+                ( [ HH.legend
+                      [ HP.classes [ Css.tw.ml2, Css.tw.px3 ] ]
+                      [ withDescription [] fallbackTitle schemaEntry ]
+                  ]
+                    <> content
+                    <> [ renderAddListEntry c.items act ]
+                )
         in
-          renderEntry' fallbackTitle schemaEntry
-            $ HH.span_
-            $ A.mapWithIndex (\i -> renderListEntry (act' i) c.items) entries
-            <> [ renderAddListEntry c.items act ]
+          mkElement $ A.mapWithIndex (\i -> renderListEntry (act' i) c.items) entries
       SS.CseObject c ->
         let
           findVal k = Map.lookup k $ toVal value
@@ -501,34 +537,40 @@ render state = HH.section_ [ HH.article_ renderContent ]
               $ Map.toUnfoldable c.properties
         in
           if S.null fallbackTitle then
-            HH.span_ renderFields
+            HH.div
+              [ HP.classes [ Css.tw.flex, Css.tw.flexCol ] ]
+              renderFields
           else
-            HH.fieldset_
+            HH.fieldset [ HP.classes [ Css.tw.my2, Css.tw.p3, Css.tw.flex, Css.tw.flexCol, Css.tw.border ] ]
               ( [ HH.legend_ [ withDescription [] fallbackTitle schemaEntry ] ]
                   <> renderFields
               )
       SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
 
     renderCheckbox fallbackTitle schemaEntry inner =
-      HH.div_
-        [ HH.label_
-            [ inner
-            , withDescription [ Css.checkable ] fallbackTitle schemaEntry
-            ]
+      HH.label [ HP.classes [ Css.tw.my2 ] ]
+        [ inner
+        , withDescription [] fallbackTitle schemaEntry
         ]
 
     renderEntry' fallbackTitle schemaEntry inner =
-      HH.label_
-        [ withDescription [] fallbackTitle schemaEntry
-        , inner
-        ]
+      if S.null fallbackTitle then
+        inner
+      else
+        HH.label [ HP.classes [ Css.tw.my2 ] ]
+          [ withDescription [] fallbackTitle schemaEntry
+          , inner
+          ]
 
     withDescription classes fallbackTitle schemaEntry =
       Widgets.withMaybeTooltip
         classes
         Widgets.Top
         (SS.configSchemaEntryDescription schemaEntry)
-        (HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry)
+        ( HH.span
+            [ HP.classes [ Css.smallTitle, Css.tw.mr5 ] ]
+            [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry ]
+        )
 
     renderListEntry ::
       ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
@@ -536,27 +578,46 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.ConfigValue ->
       H.ComponentHTML Action Slots m
     renderListEntry act entry value =
-      HH.div [ HP.class_ Css.orderLineConfig ]
-        [ renderEntry act "" (Just value) entry ]
-
-    renderAddListEntry schemaEntry act =
-      HH.div [ HP.class_ Css.orderLineConfig ]
-        [ HH.button
-            [ HP.class_ Css.addOrderLineConfig
-            , HE.onClick \_ ->
-                let
-                  toVal = case _ of
-                    Just (SS.CvArray vals) -> vals
-                    _ -> []
-
-                  defValue = maybe [ SS.CvNull ] A.singleton (mkDefaultConfig schemaEntry)
-
-                  addEntry v = v <> defValue
-                in
-                  act (SS.CvArray <<< addEntry <<< toVal)
-            ]
-            [ HH.text "+" ]
+      HH.div [ HP.classes classes ]
+        [ renderRemoveListEntry
+        , renderEntry act "" (Just value) entry
         ]
+      where
+      classes = [ Css.tw.p3, Css.tw.borderB ]
+
+    -- | not isInDraft = HH.text ""
+    -- | otherwise = --   HH.button
+    --     [ HP.classes
+    --         [ Css.tw.relative
+    --         , Css.tw.floatRight
+    --         , Css.btnRed100
+    --         , Css.tw.py0
+    --         , Css.tw.cursorPointer
+    --         ]
+    --     ]
+    --     [ HH.text "- Remove" ]
+    renderRemoveListEntry = HH.text ""
+
+    renderAddListEntry schemaEntry act
+      | not isInDraft = HH.text ""
+      | otherwise =
+        HH.div_
+          [ HH.button
+              [ HP.classes [ Css.btnSky100, Css.tw.m5, Css.tw.py0 ]
+              , HE.onClick \_ ->
+                  let
+                    toVal = case _ of
+                      Just (SS.CvArray vals) -> vals
+                      _ -> []
+
+                    defValue = maybe [ SS.CvNull ] A.singleton (mkDefaultConfig schemaEntry)
+
+                    addEntry v = v <> defValue
+                  in
+                    act (SS.CvArray <<< addEntry <<< toVal)
+              ]
+              [ HH.text "+ Add New" ]
+          ]
 
   renderSection ::
     StateOrderForm ->
@@ -567,8 +628,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Nothing ->
       body
         [ HH.label_
-            [ HH.text "Solution"
-            , HH.select [ HE.onValueChange actionSetSolution ]
+            [ renderSmallTitle "Solution"
+            , HH.select
+                [ HP.classes [ Css.tw.textLg, Css.tw.border, Css.tw.bgWhite ]
+                , HE.onValueChange actionSetSolution
+                ]
                 $ [ HH.option
                       [ HP.value "", HP.disabled true, HP.selected true ]
                       [ HH.text "Please choose a solution" ]
@@ -593,18 +657,24 @@ render state = HH.section_ [ HH.article_ renderContent ]
               "Please choose a price book"
       in
         body
-          $ [ HH.div [ HP.classes [ Css.flex, Css.two ] ]
-                [ HH.label_
-                    [ HH.text "Solution"
-                    , HH.input
-                        [ HP.type_ HP.InputText
-                        , HP.disabled true
-                        , HP.value $ solutionLabel sec.solution
-                        ]
+          $ [ HH.div [ HP.classes [ Css.tw.flex ] ]
+                [ HH.div [ HP.class_ Css.tw.w1_2 ]
+                    [ renderSmallTitle "Solution"
+                    , HH.text $ solutionLabel sec.solution
                     ]
-                , HH.label_
-                    [ HH.text "Price Book"
-                    , HH.select [ HE.onSelectedIndexChange $ actionSetPriceBook priceBooks ]
+                , HH.label [ HP.class_ Css.tw.w1_2 ]
+                    [ renderSmallTitle "Price Book"
+                    , HH.select
+                        [ HP.classes
+                            [ Css.tw.appearanceNone
+                            , Css.tw.bgTransparent
+                            , Css.tw.textEllipsis
+                            , Css.tw.underline
+                            , Css.tw.underlineOffset4
+                            , Css.tw.decorationSky300
+                            ]
+                        , HE.onSelectedIndexChange $ actionSetPriceBook priceBooks
+                        ]
                         $ [ HH.option
                               [ HP.disabled true, HP.selected (isNothing sec.priceBook) ]
                               [ HH.text priceBookSel ]
@@ -612,14 +682,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         <> priceBookOpts
                     ]
                 ]
-            ]
-          <> sectionOrderLines sec.solution sec.orderLines
-          <> [ HH.div [ HP.class_ Css.orderLine ]
-                [ HH.button
-                    [ HP.class_ Css.addOrderLine, HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx } ]
-                    [ HH.text "+" ]
+            , renderOrderLines sec.solution sec.orderLines
+            , HH.div [ HP.classes [ Css.tw.flex, Css.tw.m5, Css.tw.pt5, Css.tw.borderT ] ]
+                [ if not isInDraft then
+                    HH.text ""
+                  else
+                    HH.button
+                      [ HP.classes [ Css.btnSky100 ]
+                      , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
+                      ]
+                      [ HH.text "+ Add Order Line" ]
+                , HH.div [ HP.class_ Css.tw.grow ] []
+                , renderOrderSectionSummary sec.summary
                 ]
-            , renderOrderSectionSummary sec.summary
             ]
     where
     SS.ProductCatalog pc = sof.productCatalog
@@ -627,10 +702,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
     defaultCurrency = maybe (SS.ChargeCurrency (unsafeMkCurrency "FIX")) (SS.ChargeCurrency <<< unwrap) sof.currency
 
     body subBody =
-      HH.div [ HP.class_ Css.orderSection ]
-        $ [ HH.a [ HP.class_ Css.close, HE.onClick \_ -> RemoveSection { sectionIndex: secIdx } ] [ HH.text "×" ]
-          ]
-        <> subBody
+      let
+        removeBtn
+          | not isInDraft = []
+          | otherwise =
+            [ HH.button
+                [ HP.classes
+                    [ Css.tw.relative
+                    , Css.tw.floatRight
+                    , Css.tw.textLg
+                    , Css.tw.cursorPointer
+                    ]
+                , HE.onClick \_ -> RemoveSection { sectionIndex: secIdx }
+                ]
+                [ HH.text "×" ]
+            ]
+      in
+        HH.div
+          [ HP.classes [ Css.tw.p3, Css.tw.my5, Css.tw.bgWhite, Css.tw.roundedSm, Css.tw.shadowSm ] ]
+          (removeBtn <> subBody)
 
     solutionLabel (SS.Solution s) = fromMaybe s.id s.title
 
@@ -663,7 +753,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               [ HH.text $ pb.title <> " (" <> pb.version <> ")" ]
         )
 
-    sectionOrderLines sol orderLines = [ HH.div_ $ A.mapWithIndex renderOrderLine' orderLines ]
+    renderOrderLines sol orderLines = HH.div_ $ A.mapWithIndex renderOrderLine' orderLines
       where
       renderOrderLine' olIdx = renderOrderLine sol defaultCurrency { sectionIndex: secIdx, orderLineIndex: olIdx }
 
@@ -673,68 +763,72 @@ render state = HH.section_ [ HH.article_ renderContent ]
     H.ComponentHTML Action Slots m
   renderSections sof secs =
     HH.div_
-      $ [ HH.h3_ [ HH.text "Sections" ]
-        ]
-      <> A.mapWithIndex (renderSection sof) secs
-      <> [ HH.div [ HP.class_ Css.orderSection ]
-            [ HH.button
-                [ HP.class_ Css.addSection, HE.onClick \_ -> AddSection ]
-                [ HH.text "+" ]
-            ]
-        ]
+      $ A.mapWithIndex (renderSection sof) secs
+      <> if not isInDraft then
+          []
+        else
+          [ HH.div
+              [ HP.classes [ Css.tw.p3, Css.tw.my5, Css.tw.bgWhite, Css.tw.roundedSm, Css.tw.shadowSm ] ]
+              [ HH.button
+                  [ HP.class_ Css.btnSky100
+                  , HE.onClick \_ -> AddSection
+                  ]
+                  [ HH.text "+ Add Section" ]
+              ]
+          ]
 
   renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSectionSummary = SubTotal.renderSubTotalTable "Sub-totals"
+  renderOrderSectionSummary = SubTotal.renderSubTotalTable ""
 
   renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSummary = SubTotal.renderSubTotalTable "Totals"
+  renderOrderSummary = SubTotal.renderSubTotalTable "Total "
 
   renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo orderForm =
-    HH.div [ HP.classes [ Css.flex, Css.two ] ]
-      $ withOriginal
-          ( \o ->
-              HH.div_
-                [ HH.strong_ [ HH.text "Order ID" ]
-                , HH.text ": "
-                , HH.text $ maybe "Not Available" show o.id
-                ]
-          )
-      <> [ HH.div_
-            [ HH.strong_ [ HH.text "Name" ]
-            , HH.text ": "
+    HH.div [ HP.classes [ Css.tw.flex, Css.tw.flexWrap, Css.tw.p3, Css.tw.bgWhite, Css.tw.roundedSm, Css.tw.shadowSm ] ]
+      $ [ HH.div [ HP.class_ Css.tw.wFull ]
+            [ title [ HH.text "Order Name" ]
             , renderOrderDisplayName orderForm.displayName
             ]
         ]
       <> withOriginal
           ( \o ->
-              HH.div_
-                [ HH.strong_ [ HH.text "Created" ]
-                , HH.text ": "
-                , HH.text $ maybe "Not Available" SS.prettyDateTime o.createTime
+              entry
+                [ title [ HH.text "Order ID" ]
+                , value [ HH.text $ maybe "Not Available" show o.id ]
                 ]
           )
-      <> [ HH.div_
-            [ HH.strong_ [ HH.text "Status" ]
-            , HH.text ": "
-            , renderOrderStatus orderForm.status
+      <> withOriginal
+          ( \o ->
+              entry
+                [ title [ HH.text "Created" ]
+                , value [ HH.text $ maybe "Not Available" SS.prettyDateTime o.createTime ]
+                ]
+          )
+      <> [ entry
+            [ title [ HH.text "Status" ]
+            , value [ renderOrderStatus orderForm.status ]
             ]
         ]
       <> withOriginal
           ( \o ->
-              HH.div_
-                [ HH.strong_ [ HH.text "Approval" ]
-                , HH.text ": "
-                , HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus
+              entry
+                [ title [ HH.text "Approval" ]
+                , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
                 ]
           )
-      <> [ HH.div_
-            [ HH.strong_ [ HH.text "Notes" ]
-            , HH.text ": "
+      <> [ entry
+            [ title [ HH.text "Notes" ]
             , renderOrderNotes orderForm.notes
             ]
         ]
     where
+    entry = HH.div [ HP.classes [ Css.tw.mr10, Css.tw.my2 ] ]
+
+    title = HH.div [ HP.classes [ Css.tw.uppercase, Css.tw.mb2, Css.tw.textSm, Css.tw.textGray600 ] ]
+
+    value = HH.div [ HP.classes [ Css.tw.textLg ] ]
+
     withOriginal renderEntry = case orderForm.original of
       Nothing -> []
       Just (SS.OrderForm o) -> [ renderEntry o ]
@@ -742,14 +836,34 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderDisplayName :: Maybe String -> H.ComponentHTML Action Slots m
   renderOrderDisplayName name =
     HH.input
-      [ HP.value $ fromMaybe "" name
-      , HP.style "width:auto"
+      [ HP.classes
+          [ Css.tw.wFull
+          , Css.tw.text2Xl
+          , Css.tw.truncate
+          , Css.tw.outlineNone
+          , Css.tw.underline
+          , Css.tw.underlineOffset4
+          , Css.tw.decorationSky300
+          , Css.tw.placeholderItalic
+          , Css.tw.placeholderTextGray400
+          ]
+      , HP.value $ fromMaybe "" name
+      , HP.placeholder "Unnamed order"
       , HE.onValueChange SetOrderDisplayName
       ]
 
   renderOrderStatus :: SS.OrderStatus -> H.ComponentHTML Action Slots m
   renderOrderStatus selected =
-    HH.select [ HP.style "width:auto", HE.onSelectedIndexChange actSetOrderStatus ]
+    HH.select
+      [ HP.classes
+          [ Css.tw.appearanceNone
+          , Css.tw.bgTransparent
+          , Css.tw.underline
+          , Css.tw.underlineOffset4
+          , Css.tw.decorationSky300
+          ]
+      , HE.onSelectedIndexChange actSetOrderStatus
+      ]
       $ map renderOption orderStatuses
     where
     orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
@@ -770,42 +884,113 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrderNotes notes = HH.text $ (show $ A.length notes) <> " notes"
 
-  renderOrderHeader :: Maybe OrderHeader.OrderHeader -> H.ComponentHTML Action Slots m
-  renderOrderHeader orderHeader =
-    HH.div_
-      [ HH.h3_ [ HH.text "Header" ]
-      , HH.slot OrderHeader.proxy unit OrderHeader.component orderHeader SetOrderHeader
+  isInDraft = case state of
+    Initialized (Loaded { orderForm: { status: SS.OsInDraft } }) -> true
+    _ -> false
+
+  renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
+  renderOrderHeader orderForm =
+    HH.div [ HP.classes [ Css.tw.p3, Css.tw.bgWhite, Css.tw.roundedSm, Css.tw.shadowSm ] ]
+      [ title "Seller"
+      , renderSeller
+      , HH.br_
+      , title "Buyer"
+      , renderBuyer
+      , HH.br_
+      , title "Commercial"
+      , renderCommercial
       ]
+    where
+    title t =
+      HH.div
+        [ HP.classes
+            [ Css.tw.uppercase
+            , Css.tw.mb2
+            , Css.tw.textSm
+            , Css.tw.textGray600
+            ]
+        ]
+        [ HH.text t ]
+
+    renderSeller =
+      HH.slot Seller.proxy unit Seller.component
+        ((\s -> { seller: s, readOnly: not isInDraft }) <$> orderForm.seller)
+        SetSeller
+
+    renderBuyer =
+      HH.slot Buyer.proxy unit Buyer.component
+        ((\b -> { buyer: b, readOnly: not isInDraft }) <$> orderForm.buyer)
+        SetBuyer
+
+    renderCommercial =
+      HH.slot Commercial.proxy unit Commercial.component
+        ( (\c cai -> { commercial: c, crmAccountId: cai, readOnly: not isInDraft })
+            <$> orderForm.commercial
+            <*> getCrmAccountId
+        )
+        SetCommercial
+      where
+      getCrmAccountId = orderForm.buyer >>= (\(SS.Buyer { crmAccountId }) -> crmAccountId)
+
+  renderOrderFooter sof =
+    footerDiv
+      [ btnsDiv
+          [ HH.button
+              [ HP.class_ Css.btnSky100
+              , HP.disabled preventCreate
+              , HE.onClick $ \_ -> CreateUpdateOrder
+              ]
+              [ HH.text $ maybe "Create Order" (const "Update Order") (getOrderId sof) ]
+          , HH.button
+              [ HP.class_ Css.btnSky100
+              , HP.disabled $ maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
+              , HE.onClick $ \_ -> FulfillOrder
+              ]
+              [ HH.text "Fulfill Order" ]
+          ]
+      , HH.div [ HP.class_ Css.tw.grow ] []
+      , renderOrderSummary sof.orderForm.summary
+      ]
+    where
+    preventCreate =
+      fromMaybe true do
+        _ <- sof.orderForm.seller
+        _ <- sof.orderForm.buyer
+        _ <- sof.orderForm.commercial
+        pure false
+
+    footerDiv =
+      HH.div
+        [ HP.classes
+            [ Css.tw.flex
+            , Css.tw.flexWrapReverse
+            , Css.tw.p5
+            , Css.tw.my5
+            , Css.tw.bgWhite
+            , Css.tw.roundedSm
+            , Css.tw.shadowSm
+            ]
+        ]
+
+    btnsDiv = HH.div [ HP.classes [ Css.tw.spaceX5, Css.tw.mAuto ] ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
-    [ renderOrderInfo sof.orderForm
-    , renderOrderHeader sof.orderForm.orderHeader
+    [ HH.div [ HP.classes [ Css.tw.flex, Css.tw.spaceX5 ] ]
+        [ HH.div [ HP.class_ Css.tw.w1_3 ] [ renderOrderHeader sof.orderForm ]
+        , HH.div [ HP.class_ Css.tw.w2_3 ] [ renderOrderInfo sof.orderForm ]
+        ]
     , renderSections sof sof.orderForm.sections
-    , renderOrderSummary sof.orderForm.summary
-    , HH.hr_
-    , HH.div_
-        [ HH.label
-            [ HP.for "of-json", HP.class_ Css.button ]
-            [ HH.text "Order Form JSON" ]
-        , Widgets.modal "of-json" "Order Form JSON"
-            [ HH.pre_
-                [ HH.code_ [ HH.text $ fromMaybe errMsg $ toJsonStr sof.orderForm ]
+    , renderOrderFooter sof
+    , HH.hr [ HP.class_ Css.tw.my5 ]
+    , HH.details_
+        [ HH.summary_ [ HH.text "Order Form JSON" ]
+        , HH.pre_
+            [ HH.code_
+                [ HH.text $ fromMaybe errMsg $ toJsonStr sof.orderForm
                 ]
             ]
-            []
         ]
-    , HH.button
-        [ HP.disabled $ maybe true (const false) sof.orderForm.orderHeader
-        , HE.onClick $ \_ -> CreateUpdateOrder
-        ]
-        [ HH.text $ maybe "Create Order" (const "Update Order") (getOrderId sof) ]
-    , HH.text " "
-    , HH.button
-        [ HP.disabled $ maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
-        , HE.onClick $ \_ -> FulfillOrder
-        ]
-        [ HH.text "Fulfill Order" ]
     ]
     where
     errMsg =
@@ -813,19 +998,23 @@ render state = HH.section_ [ HH.article_ renderContent ]
            \price currency and a price book for each order section."
 
   error err =
-    [ HH.div [ HP.class_ Css.card ]
-        [ HH.header_
-            [ HH.h3_ [ HH.text "Error" ]
+    [ HH.div
+        [ HP.classes
+            [ Css.tw.p5
+            , Css.tw.bgRed100
+            , Css.tw.border
+            , Css.tw.borderRed400
+            , Css.tw.textRed700
             ]
-        , HH.footer_
-            [ HH.text err
-            ]
+        ]
+        [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
+        , HH.p_ [ HH.text err ]
         ]
     ]
 
-  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Idle …" ] ]
+  idle = [ HH.p_ [ HH.text "Idle …" ] ]
 
-  loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
+  loading = [ HH.p_ [ HH.text "Loading …" ] ]
 
   defRender ::
     forall a.
@@ -847,7 +1036,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
 toJson :: OrderForm -> Maybe SS.OrderForm
 toJson orderForm = do
-  orderHeader <- orderForm.orderHeader
+  commercial <- orderForm.commercial
+  buyer <- orderForm.buyer
+  seller <- orderForm.seller
   sections <- traverse toOrderSection =<< sequence orderForm.sections
   pure
     $ SS.OrderForm
@@ -855,9 +1046,9 @@ toJson orderForm = do
         , status: orderForm.status
         , approvalStatus: SS.OasUndecided
         , displayName: orderForm.displayName
-        , commercial: orderHeader.commercial
-        , buyer: orderHeader.buyer
-        , seller: orderHeader.seller
+        , commercial
+        , buyer
+        , seller
         , orderNotes: []
         , sections
         , createTime: Nothing
@@ -912,7 +1103,9 @@ loadCatalog = do
           , orderForm:
               { original: Nothing
               , displayName: Nothing
-              , orderHeader: Nothing
+              , commercial: Nothing
+              , buyer: Nothing
+              , seller: Nothing
               , status: SS.OsInDraft
               , notes: []
               , summary: mempty
@@ -1095,12 +1288,9 @@ loadExisting original@(SS.OrderForm orderForm) = do
           calcTotal
             { original: Just original
             , displayName: orderForm.displayName
-            , orderHeader:
-                Just
-                  { commercial: orderForm.commercial
-                  , buyer: orderForm.buyer
-                  , seller: orderForm.seller
-                  }
+            , commercial: Just orderForm.commercial
+            , buyer: Just orderForm.buyer
+            , seller: Just orderForm.seller
             , status: orderForm.status
             , notes: orderForm.orderNotes
             , summary: mempty
@@ -1223,28 +1413,26 @@ handleAction = case _ of
                     sname = S.trim name
                   in
                     if sname == "" then Nothing else Just sname
-                , summary = mempty
-                , sections = []
                 }
             }
-  SetOrderHeader Nothing ->
+  SetSeller seller -> do
     modifyInitialized
-      $ \st ->
-          st
-            { currency = Nothing
-            , priceBooks = Map.empty
-            , orderForm =
-              st.orderForm
-                { orderHeader = Nothing
-                , summary = mempty
-                , sections = []
-                }
-            }
-  SetOrderHeader (Just orderHeader) ->
+      $ \st -> st { orderForm = st.orderForm { seller = Just seller } }
+    H.tell Buyer.proxy unit (Buyer.ResetBuyer Nothing true)
+    H.tell Commercial.proxy unit
+      (Commercial.ResetCommercial { commercial: Nothing, crmAccountId: Nothing, enabled: false })
+  SetBuyer buyer -> do
+    modifyInitialized
+      $ \st -> st { orderForm = st.orderForm { buyer = Just buyer } }
+    let
+      SS.Buyer { crmAccountId } = buyer
+    H.tell Commercial.proxy unit
+      (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
+  SetCommercial commercial ->
     modifyInitialized
       $ \st ->
           let
-            currency = toPricingCurrency orderHeader.commercial
+            currency = toPricingCurrency commercial
 
             priceBooks = mkPriceBooks st.productCatalog currency
           in
@@ -1253,9 +1441,9 @@ handleAction = case _ of
               , priceBooks = priceBooks
               , orderForm =
                 st.orderForm
-                  { orderHeader = Just orderHeader
+                  { commercial = Just commercial
                   --  If the currency changed then we can't use the same price
-                  --  book so the summary and all sections need to be updated.
+                  --  book, so the summary and all sections need to be updated.
                   , summary = if st.currency == currency then st.orderForm.summary else mempty
                   , sections =
                     if st.currency == currency then
@@ -1356,28 +1544,28 @@ handleAction = case _ of
                       fromMaybe st.orderForm.sections (modifyAt sectionIndex removeOrderLine st.orderForm.sections)
                     }
               }
-  OrderLineSetProduct { sectionIndex, orderLineIndex, sku } ->
+  OrderLineSetProduct { sectionIndex, orderLineIndex, product } ->
     let
       mkOrderLine :: SS.Product -> OrderLine
-      mkOrderLine product =
+      mkOrderLine prod =
         { orderLineId: Nothing
         , status: SS.OlsNew
-        , product
+        , product: prod
         , charges: Nothing
         , unitMap: Charge.productChargeUnitMap product
         , configs: mkDefaultConfigs product
         , estimatedUsage: Map.empty
         }
 
-      updateOrderLine :: SS.Product -> Maybe OrderLine -> OrderLine
-      updateOrderLine product = case _ of
-        Nothing -> mkOrderLine product
-        Just _ol -> mkOrderLine product
+      updateOrderLine :: Maybe OrderLine -> OrderLine
+      updateOrderLine _ = mkOrderLine product
 
       -- | Build order lines for all required product options.
-      requiredOptions :: SS.Product -> Map SS.SkuCode SS.Product -> Array (Maybe OrderLine)
-      requiredOptions (SS.Product p) solProds =
+      requiredOptions :: Map SS.SkuCode SS.Product -> Array (Maybe OrderLine)
+      requiredOptions solProds =
         let
+          SS.Product p = product
+
           requiredSkuCode = case _ of
             SS.ProdOptSkuCode _ -> Nothing
             SS.ProductOption po -> if po.required then Just po.sku else Nothing
@@ -1396,11 +1584,10 @@ handleAction = case _ of
               { orderLines =
                 maybe
                   section.orderLines
-                  (\(Tuple product ls) -> ls <> requiredOptions product solProds)
+                  (\ls -> ls <> requiredOptions solProds)
                   ( do
-                      product <- Map.lookup sku solProds
-                      ls <- modifyAt orderLineIndex (Just <<< updateOrderLine product) section.orderLines
-                      pure $ Tuple product ls
+                      ls <- modifyAt orderLineIndex (Just <<< updateOrderLine) section.orderLines
+                      pure ls
                   )
               }
 

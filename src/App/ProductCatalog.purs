@@ -5,6 +5,7 @@ import App.Charge (Slot, component, proxy) as Charge
 import App.Requests (getProductCatalog)
 import Css as Css
 import Data.Array (concatMap, fromFoldable, singleton)
+import Data.Charge (ChargeUnitMap, productChargeUnitMap) as Charge
 import Data.Loadable (Loadable(..))
 import Data.Map (Map)
 import Data.Map as Map
@@ -17,7 +18,6 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
-import Data.Charge (ChargeUnitMap, productChargeUnitMap) as Charge
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -63,7 +63,7 @@ render state = HH.section_ [ HH.article_ content ]
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
   opt = maybe []
 
-  blockList = HH.ul [ HP.class_ Css.blocklisthl ]
+  blockList = HH.ul_
 
   dataItem label value =
     [ HH.dt_ [ HH.text label ]
@@ -237,19 +237,23 @@ render state = HH.section_ [ HH.article_ content ]
       ]
 
   error err =
-    [ HH.div [ HP.class_ Css.card ]
-        [ HH.header_
-            [ HH.h3_ [ HH.text "Error" ]
+    [ HH.div
+        [ HP.classes
+            [ Css.tw.p5
+            , Css.tw.bgRed100
+            , Css.tw.border
+            , Css.tw.borderRed400
+            , Css.tw.textRed700
             ]
-        , HH.footer_
-            [ HH.text err
-            ]
+        ]
+        [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
+        , HH.p_ [ HH.text err ]
         ]
     ]
 
-  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Idle …" ] ]
+  idle = [ HH.p_ [ HH.text "Idle …" ] ]
 
-  loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
+  loading = [ HH.p_ [ HH.text "Loading …" ] ]
 
   defRender ::
     forall a.

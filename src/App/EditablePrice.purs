@@ -15,6 +15,7 @@ import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
+import Css as Css
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -66,12 +67,20 @@ render :: forall slots m. State -> H.ComponentHTML Action slots m
 render state = case state.editState of
   Viewing ->
     HH.a
-      [ HP.href "javascript:void(0);", HE.onClick \_ -> SetEditing ]
+      [ HP.href "javascript:void(0);"
+      , HP.classes
+          [ Css.tw.underline
+          , Css.tw.underlineOffset4
+          , Css.tw.decorationSky300
+          ]
+      , HE.onClick \_ -> SetEditing
+      ]
       $ renderPrice state.price state.currency
   Editing value ->
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
-          [ HP.pattern """\d+(\.\d+)?%?"""
+          [ HP.classes [ Css.tw.bgTransparent, Css.tw.border ]
+          , HP.pattern """\d+(\.\d+)?%?"""
           , HP.placeholder $ "E.g. 80 or 10%"
           , HP.autofocus state.initial
           , HP.value value

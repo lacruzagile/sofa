@@ -1,154 +1,47 @@
-body {
-    background-color: #fff;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-input[disabled] {
-    color: #555
-}
+@layer base {
+  h1 {
+    @apply text-2xl my-5;
+  }
 
-input:invalid {
-    color: red;
-    border-color: red;
-}
+  h2 {
+    @apply text-xl my-5;
+  }
 
-fieldset {
-    border: 1px solid darkgray;
-    padding: 0.5em;
-    margin: 0.2em;
-}
+  .sofa-small-title {
+    @apply
+      uppercase
+      my-2
+      text-sm
+      text-gray-600;
+  }
 
-nav {
-    position: static;
-    padding: 0.5em 2vw;
-    background-color: #eaeaea;
-    border-bottom: 3px solid darkgray;
-}
+  .sofa-btn-sky-100 {
+    @apply
+      px-3
+      py-2
+      bg-sky-100
+      hover:bg-sky-200
+      active:bg-sky-300
+      disabled:bg-gray-100
+      text-gray-700
+      shadow-sm
+      rounded-md;
+  }
 
-.content {
-    margin: 0 2vw;
-}
-
-ul.blocklist, ul.blocklisthl {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-}
-
-ul.blocklist li {
-    padding: 0.2em 1vw;
-}
-
-ul.blocklisthl li, .hblock {
-    background: rgba(0, 0, 0, 0.05);
-    padding: 0.2em 1vw;
-}
-
-ul.pricelist {
-    margin: 0;
-    padding: 0;
-    list-style-type: none;
-}
-
-ul.pricelist li {
-    padding: 0;
-}
-
-dt {
-    font-style: italic;
-}
-
-.tabbody {
-    margin-top: 0;
-    padding: 0.5em;
-    border: 1px solid black;
-}
-
-.ordersection, .charge {
-    border: 1px solid darkgray;
-    border-radius: 4px;
-    background: #f0f3fb;
-    padding: 0.5em;
-    margin: 0.5em;
-    overflow: auto;
-}
-
-.addsection, .addorderline, .addorderlineconfig {
-    width: 100%;
-    background-color: transparent;
-    color: #0074d9;
-    margin: 0;
-    padding: 0;
-    font-size: larger;
-}
-
-.ordersection .close {
-    float: right;
-    font-size: 1.2em;
-    padding: 0 .5em;
-    cursor: pointer;
-}
-
-.orderline {
-    border: 1px solid darkgray;
-    border-radius: 4px;
-    background: #d8e5f0;
-    padding: 0.5em;
-    margin: 0.5em;
-}
-
-.orderlineconfig {
-    border: 1px solid darkgray;
-    border-radius: 4px;
-    background: #c3d3e1;
-    padding: 0.5em;
-    margin: 0.5em;
-}
-
-.landing {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    width: 100%;
-    color: #444;
-}
-
-.sidemenu {
-    padding: .5em;
-}
-
-.sidemenu .button {
-    background-color: #eaeaea;
-    color: black;
-}
-
-table.subtotal {
-    margin-right: 0.5em;
-    margin-left: auto;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-table.subtotal th {
-    background-color: #94a1ac;
-}
-
-.ta-input {
-}
-
-.ta-container {
-    border: 2px solid darkgray;
-    position: relative;
-    height: 0;
-    z-index: 1;
-}
-
-.ta-item {
-    background: #eaeaea;
-    border: 1px solid #f0f3fb;
-    cursor: default;
-}
-
-.ta-highlight {
-    background: lightblue;
+  .sofa-btn-red-100 {
+    @apply
+      px-3
+      py-2
+      bg-red-200
+      hover:bg-red-300
+      active:bg-red-400
+      disabled:bg-gray-100
+      text-gray-700
+      shadow-sm
+      rounded-md;
+  }
 }

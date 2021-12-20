@@ -5,6 +5,7 @@ import Prelude
 import App.EditablePrice as EditablePrice
 import App.EditableQuantity as EditableQuantity
 import Css as Css
+import DOM.HTML.Indexed as HTML
 import Data.Array (mapWithIndex)
 import Data.Array as A
 import Data.Charge as Charge
@@ -109,7 +110,7 @@ initialState input =
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity } =
-  HH.ul [ HP.class_ Css.blocklist ]
+  HH.ul_
     $ A.mapWithIndex (\i r -> HH.li_ [ renderCharge i r ]) charges
   where
   opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
@@ -172,7 +173,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
     where
     go = case _ of
       SS.CvObject m -> A.concat $ (\d -> maybe [ HH.text "N/A" ] go $ Map.lookup d m) <$> dimKeys
-      SS.CvArray ms -> [ HH.ul [ HP.class_ Css.priceList ] $ (HH.li_ <<< go) <$> ms ]
+      SS.CvArray ms -> [ HH.ul_ $ (HH.li_ <<< go) <$> ms ]
       v -> [ HH.text $ show v ]
 
   renderSingleUnitCharge :: Int -> Int -> SS.ChargeSingleUnit -> Array (H.ComponentHTML Action Slots m)
@@ -191,7 +192,11 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
     nullDim = SS.DimValue SS.CvNull
 
     renderUnitHdr :: String -> SS.ChargeUnitId -> H.ComponentHTML Action Slots m
-    renderUnitHdr kind u = HH.h4_ [ HH.text $ showChargeUnitRef u, HH.sup_ [ HH.text " (", HH.text kind, HH.text ")" ] ]
+    renderUnitHdr kind u =
+      HH.h4_
+        [ HH.text $ showChargeUnitRef u
+        , HH.sup_ [ HH.text " (", HH.text kind, HH.text ")" ]
+        ]
 
     renderChargeSimple charge =
       [ renderUnitHdr "ChargeSimple" charge.unit
@@ -206,9 +211,15 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
     renderChargeDim charge =
       [ renderUnitHdr "ChargeDim" charge.unit
-      , HH.table_
-          $ [ HH.tr_ $ thColSpan (A.length dims) [ HH.text "Dimension" ] <> [ HH.th_ [ HH.text "Price" ] ]
-            , HH.tr_ $ map (HH.th_ <<< A.singleton <<< HH.text) dims <> [ HH.th_ [] ]
+      , table
+          $ [ thead
+                [ HH.tr_
+                    $ thColSpan (A.length dims) [ HH.text "Dimension" ]
+                    <> [ th_ [ HH.text "Price" ] ]
+                , HH.tr_
+                    $ map (th_ <<< A.singleton <<< HH.text) dims
+                    <> [ th_ [] ]
+                ]
             ]
           <> A.mapWithIndex renderChargeRow charge.priceByDim
           <> renderTotalEstimatedVolumeRow
@@ -219,11 +230,13 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       renderTotalEstimatedVolumeRow =
         maybe []
           ( \q ->
-              [ HH.tr_
-                  $ thColSpanAlignRight (A.length dims)
-                      [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
-                      ]
-                  <> [ HH.td_ [ q ] ]
+              [ thead
+                  [ HH.tr_
+                      $ thColSpanAlignRight (A.length dims)
+                          [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
+                          ]
+                      <> [ td_ [ q ] ]
+                  ]
               ]
           )
           (renderTotalEstimatedVolume unitId)
@@ -236,8 +249,8 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
       renderChargeRow dimIdx (SS.PricePerDim p) =
         HH.tr_
-          $ map (HH.td_ <<< A.singleton) (if A.null dims then [] else renderDimVals dims p.dim)
-          <> [ HH.td_
+          $ map (td_ <<< A.singleton) (if A.null dims then [] else renderDimVals dims p.dim)
+          <> [ td_
                 $ [ renderEditablePrice pIdx
                       price
                       charge.currency
@@ -253,7 +266,14 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
     renderChargeSeg c =
       [ renderUnitHdr "ChargeSeg" c.unit
-      , HH.table_ $ [ HH.tr_ [ HH.th_ [ HH.text "Segment" ], HH.th_ [ HH.text "Price" ] ] ]
+      , table
+          $ [ thead
+                [ HH.tr_
+                    [ th_ [ HH.text "Segment" ]
+                    , th_ [ HH.text "Price" ]
+                    ]
+                ]
+            ]
           <> map renderChargeSegRow segments
       , HH.text "Segmentation model: "
       , HH.text $ show model
@@ -272,8 +292,8 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
       renderChargeSegRow seg@(SS.Segment { minimum }) =
         HH.tr_
-          [ HH.td_ [ HH.text $ showSegment seg ]
-          , HH.td_
+          [ td_ [ HH.text $ showSegment seg ]
+          , td_
               [ fromMaybe (HH.text "N/A")
                   $ findMapWithIndex
                       ( \i (SS.PricePerSeg p) ->
@@ -293,13 +313,19 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
     SS.ChargeDimUnitOptSeg c -> renderChargeDimUnitOptSeg c
     where
     renderChargeDimUnitOptSeg charge =
-      [ HH.table_
-          $ [ HH.tr_
-                $ thColSpan (A.length dims) [ HH.text "Dimension" ]
-                <> [ HH.th [ HP.colSpan $ A.length units ] [ HH.text "Unit" ]
-                  , HH.th_ [ HH.text "Monthly Minimum" ]
-                  ]
-            , HH.tr_ $ map (HH.th_ <<< A.singleton) $ (HH.text <$> dims) <> renderUnitLabels <> [ HH.text "" ]
+      [ table
+          $ [ thead
+                [ HH.tr_
+                    $ thColSpan (A.length dims) [ HH.text "Dimension" ]
+                    <> [ th [ HP.colSpan $ A.length units ] [ HH.text "Unit" ]
+                      , th_ [ HH.text "Monthly Minimum" ]
+                      ]
+                , HH.tr_
+                    $ map (th_ <<< A.singleton)
+                    $ (HH.text <$> dims)
+                    <> renderUnitLabels
+                    <> [ HH.text "" ]
+                ]
             ]
           <> mapWithIndex renderChargeRow charge.priceByUnitByDim
           <> totalEstimatedRow
@@ -324,11 +350,14 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       totalEstimatedRow
         | A.all A.null totalEstimatedCells = []
         | otherwise =
-          [ HH.tr_
-              $ thColSpanAlignRight (A.length dims)
-                  [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
-                  ]
-              <> (HH.td_ <$> totalEstimatedCells)
+          [ thead
+              [ HH.tr_
+                  $ thColSpanAlignRight (A.length dims)
+                      [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
+                      ]
+                  <> (td_ <$> totalEstimatedCells)
+                  <> [ td_ [] ]
+              ]
           ]
 
       totalEstimatedCells =
@@ -348,12 +377,12 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       renderChargeRow dimIdx = case _ of
         SS.PricePerDimUnitOptSeg (SS.PricePerDimUnitSeg p) ->
           HH.tr_
-            $ map (HH.td_ <<< A.singleton)
+            $ map (td_ <<< A.singleton)
             $ (if A.null dims then [] else renderDimVals dims p.dim)
             <> A.mapWithIndex (renderPriceBySegmentPerUnit p.dim dimIdx) p.priceBySegmentByUnit
         SS.PricePerDimUnitOptNoSeg (SS.PricePerDimUnit p) ->
           HH.tr_
-            $ map (HH.td_ <<< A.singleton)
+            $ map (td_ <<< A.singleton)
             $ (if A.null dims then [] else renderDimVals dims p.dim)
             <> A.mapWithIndex (renderPricePerUnit p.dim dimIdx) p.priceByUnit
 
@@ -372,22 +401,78 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
   renderCharge :: Int -> SS.Charge -> H.ComponentHTML Action Slots m
   renderCharge chargeIdx charge =
-    HH.section [ HP.class_ Css.charge ]
+    HH.section_
       $ renderChargeInner chargeIdx charge
       <> [ HH.dl_
             $ opt (renderDataItemString "Description") (Charge.description charge)
         -- <> renderDataItemString "Term of Price Change" (show c.termOfPriceChangeInDays <> " days")
         ]
 
+table :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
+table =
+  HH.table
+    [ HP.classes
+        [ Css.tw.shadowSm
+        , Css.tw.roundedMd
+        , Css.tw.overflowHidden
+        ]
+    ]
+
+thead :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
+thead =
+  HH.thead
+    [ HP.classes
+        [ Css.tw.bgGray200
+        ]
+    ]
+
+th :: forall w i. HH.Node HTML.HTMLth w i
+th props =
+  HH.th
+    $ [ HP.classes
+          [ Css.tw.p3
+          , Css.tw.fontNormal
+          , Css.tw.textCenter
+          , Css.tw.textSm
+          , Css.tw.textGray600
+          , Css.tw.uppercase
+          ]
+      ]
+    <> props
+
+thRight :: forall w i. HH.Node HTML.HTMLth w i
+thRight props =
+  HH.th
+    $ [ HP.classes
+          [ Css.tw.p3
+          , Css.tw.fontNormal
+          , Css.tw.textRight
+          , Css.tw.textSm
+          , Css.tw.textGray600
+          , Css.tw.uppercase
+          ]
+      ]
+    <> props
+
+th_ :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
+th_ = th []
+
+td_ :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
+td_ = HH.td [ HP.classes [ Css.tw.p3 ] ]
+
 thColSpan :: forall m. Int -> Array (H.ComponentHTML Action Slots m) -> Array (H.ComponentHTML Action Slots m)
 thColSpan colSpan els
   | colSpan == 0 = []
-  | otherwise = [ HH.th [ HP.colSpan colSpan, HP.style "text-align:center" ] els ]
+  | otherwise = [ th [ HP.colSpan colSpan ] els ]
 
-thColSpanAlignRight :: forall m. Int -> Array (H.ComponentHTML Action Slots m) -> Array (H.ComponentHTML Action Slots m)
+thColSpanAlignRight ::
+  forall m.
+  Int ->
+  Array (H.ComponentHTML Action Slots m) ->
+  Array (H.ComponentHTML Action Slots m)
 thColSpanAlignRight colSpan els
   | colSpan == 0 = []
-  | otherwise = [ HH.th [ HP.colSpan colSpan, HP.style "text-align:right" ] els ]
+  | otherwise = [ thRight [ HP.colSpan colSpan ] els ]
 
 showChargeUnitRef :: SS.ChargeUnitId -> String
 showChargeUnitRef (SS.ChargeUnitId id) = id

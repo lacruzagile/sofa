@@ -1,4 +1,4 @@
-module App.SelectBuyer (Slot, Output(..), proxy, component) where
+module App.OrderForm.SelectBuyer (Slot, Output(..), proxy, component) where
 
 import Prelude
 import App.Requests (getBuyer, getBuyers)
@@ -18,6 +18,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import HtmlUtils (focusElementByQuery)
 import Select as Sel
 import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
@@ -37,6 +38,12 @@ type State
     , selectedFull :: Loadable SS.Buyer -- ^ The chosen buyer in full, if any.
     , available :: Loadable (Array SS.Buyer) -- ^ The available buyers.
     )
+
+data Action
+  = Initialize
+
+type Action'
+  = Sel.Action Action
 
 component ::
   forall query input m.
@@ -58,7 +65,9 @@ selectComponent ::
 selectComponent =
   Sel.component (const input)
     $ Sel.defaultSpec
-        { handleEvent = handleEvent
+        { initialize = Just Initialize
+        , handleAction = handleAction
+        , handleEvent = handleEvent
         , render = render
         }
   where
@@ -72,6 +81,9 @@ selectComponent =
     , selectedFull: Idle
     , available: Idle
     }
+
+  handleAction = case _ of
+    Initialize -> focusElementByQuery "input#buyer-search"
 
   handleEvent = case _ of
     Sel.Searched str ->
@@ -109,59 +121,74 @@ selectComponent =
       H.raise $ Loadable.toMaybe selectedFull
     _ -> pure unit
 
-  render :: Sel.State State -> H.ComponentHTML Sel.Action' () m
-  render st = HH.div_ $ [ renderInput ] <> renderResults
+  render :: Sel.State State -> H.ComponentHTML Action' () m
+  render st = HH.span_ $ [ renderInput ] <> renderResults
     where
-    renderInput :: H.ComponentHTML Sel.Action' () m
+    renderInput :: H.ComponentHTML Action' () m
     renderInput =
       HH.input
         $ SelSet.setInputProps
-            [ HP.class_ Css.taInput
+            [ HP.id "buyer-search"
+            , HP.classes
+                [ Css.tw.w72
+                , Css.tw.mr5
+                , Css.tw.focusOutline
+                , Css.tw.outline1
+                , Css.tw.outlineGray300
+                , Css.tw.placeholderItalic
+                , Css.tw.roundedSm
+                ]
             , HP.placeholder "Type to search buyer…"
             ]
 
-    renderResults :: Array (H.ComponentHTML Sel.Action' () m)
+    renderResults :: Array (H.ComponentHTML Action' () m)
     renderResults
-      | st.visibility == Sel.Off = case st.selectedFull of
-        Error msg ->
-          let
-            renderError b =
-              [ HH.text "Error loading "
-              , HH.span_ $ renderBuyerSummary b
-              , HH.text ": "
-              , HH.text msg
-              ]
-          in
-            [ HH.div_ $ maybe [] renderError st.selected ]
-        Loading ->
-          let
-            renderLoading b = [ HH.text "Loading ", HH.span_ $ renderBuyerSummary b ]
-          in
-            [ HH.div_ $ maybe [] renderLoading st.selected ]
-        _ -> []
+      | st.visibility == Sel.Off = []
       | otherwise = case st.available of
-        Idle -> [ HH.div_ [ HH.text "No active search …" ] ]
-        Loading -> [ HH.div_ [ HH.text "Loading search results …" ] ]
-        Error msg -> [ HH.div_ [ HH.text "Error: ", HH.text msg ] ]
-        Loaded [] -> [ HH.div_ [ HH.text "No matching buyers …" ] ]
+        Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
+        Loading -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Loading search results …" ] ]
+        Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
+        Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching buyers …" ] ]
         Loaded available ->
-          [ HH.div (SelSet.setContainerProps [ HP.class_ Css.taContainer ])
+          [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
               $ A.mapWithIndex renderItem available
           ]
+        where
+        containerClasses =
+          [ Css.tw.absolute
+          , Css.tw.mt1
+          , Css.tw.flex
+          , Css.tw.flexCol
+          , Css.tw.bgWhite
+          , Css.tw.w72
+          , Css.tw.maxH72
+          , Css.tw.overflowAuto
+          , Css.tw.border
+          , Css.tw.roundedMd
+          ]
+
+        infoClasses = containerClasses <> [ Css.tw.p2 ]
 
     renderItem idx buyer =
       HH.div
         ( SelSet.setItemProps idx
-            [ HP.classes $ [ Css.taItem ]
-                <> if st.highlightedIndex == Just idx then [ Css.taHighlight ] else []
+            [ HP.classes
+                $ if st.highlightedIndex == Just idx then
+                    selectedClasses
+                  else
+                    itemClasses
             ]
         )
         (renderBuyerSummary buyer)
+      where
+      itemClasses = [ Css.tw.p2 ]
+
+      selectedClasses = [ Css.tw.p2, Css.tw.bgSky100 ]
 
     renderBuyerSummary (SS.Buyer buyer) =
       [ HH.text buyer.corporateName
       , HH.text " "
       , HH.span
-          [ HP.style "color:gray" ]
+          [ HP.class_ Css.tw.textGray400 ]
           [ HH.text $ maybe "(No CRM account ID)" unwrap buyer.crmAccountId ]
       ]

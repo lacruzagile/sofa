@@ -66,19 +66,23 @@ render ::
 render state = HH.section_ [ HH.article_ renderContent ]
   where
   error err =
-    [ HH.div [ HP.class_ Css.card ]
-        [ HH.header_
-            [ HH.h3_ [ HH.text "Error" ]
+    [ HH.div
+        [ HP.classes
+            [ Css.tw.p5
+            , Css.tw.bgRed100
+            , Css.tw.border
+            , Css.tw.borderRed400
+            , Css.tw.textRed700
             ]
-        , HH.footer_
-            [ HH.text err
-            ]
+        ]
+        [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
+        , HH.p_ [ HH.text err ]
         ]
     ]
 
-  idle = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Idle …" ] ]
+  idle = [ HH.p_ [ HH.text "Idle …" ] ]
 
-  loading = [ HH.p [ HP.class_ Css.landing ] [ HH.text "Loading …" ] ]
+  loading = [ HH.p_ [ HH.text "Loading …" ] ]
 
   defRender ::
     forall a.
@@ -93,18 +97,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrder :: SS.OrderForm -> H.ComponentHTML Action Slots m
   renderOrder (SS.OrderForm o) =
-    HH.tr_
-      [ HH.td_ [ maybe (HH.text "N/A") renderOrderId o.id ]
-      , HH.td_ [ maybe (HH.text "N/A") renderDateTime o.createTime ]
-      , HH.td_ [ HH.text $ SS.prettyOrderStatus o.status ]
-      , HH.td_ [ HH.text buyer ]
-      , HH.td_ [ HH.text seller ]
-      , HH.td_ [ HH.text $ fromMaybe "" $ o.displayName ]
+    trow
+      [ tcell [ maybe (HH.text "N/A") renderDateTime o.createTime ]
+      , tcell [ HH.text $ SS.prettyOrderStatus o.status ]
+      , tcell [ HH.text buyer ]
+      , tcell [ HH.text seller ]
+      , tcell [ HH.text $ fromMaybe "" $ o.displayName ]
       ]
     where
-    renderOrderId id =
-      HH.a [ Route.href (Route.Order id) ]
-        [ HH.text (SS.abbreviatedOrderId id) ]
+    rowClasses = [ Css.tw.tableRow, Css.tw.hoverBgGray100 ]
+
+    trow = case o.id of
+      Nothing -> HH.div [ HP.classes rowClasses ]
+      Just id -> HH.a [ Route.href (Route.Order id), HP.classes rowClasses ]
+
+    tcell = HH.div [ HP.classes [ Css.tw.tableCell, Css.tw.p5 ] ]
 
     renderDateTime t =
       Widgets.withTooltip_
@@ -122,19 +129,64 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrders :: { orders :: Array SS.OrderForm } -> Array (H.ComponentHTML Action Slots m)
   renderOrders { orders: os } =
-    [ HH.h1_ [ HH.text "Orders" ]
-    , HH.table [ HP.style "width: 100%" ]
-        $ [ HH.tr_
-              [ HH.th_ [ HH.text "ID" ]
-              , HH.th_ [ HH.text "Created" ]
-              , HH.th_ [ HH.text "Status" ]
-              , HH.th_ [ HH.text "Buyer" ]
-              , HH.th_ [ HH.text "Seller" ]
-              , HH.th_ [ HH.text "Name" ]
-              ]
-          ]
-        <> map renderOrder os
+    [ renderNewOrderLink
+    , HH.h1_ [ HH.text "Orders" ]
+    , table
+        [ thead
+            [ trow
+                [ tcell [ HH.text "Created" ]
+                , tcell [ HH.text "Status" ]
+                , tcell [ HH.text "Buyer" ]
+                , tcell [ HH.text "Seller" ]
+                , tcell [ HH.text "Name" ]
+                ]
+            ]
+        , tbody $ map renderOrder os
+        ]
     ]
+    where
+    renderNewOrderLink =
+      HH.a
+        [ Route.href Route.OrderForm
+        , HP.classes
+            [ Css.tw.absolute
+            , Css.tw.right0
+            , Css.tw.mx5
+            , Css.btnSky100
+            ]
+        ]
+        [ HH.text "+ New Order" ]
+
+    table =
+      HH.div
+        [ HP.classes
+            [ Css.tw.table
+            , Css.tw.wFull
+            , Css.tw.bgWhite
+            , Css.tw.shadowSm
+            , Css.tw.roundedMd
+            , Css.tw.overflowHidden
+            ]
+        ]
+
+    thead =
+      HH.div
+        [ HP.classes
+            [ Css.tw.tableHeaderGroup
+            , Css.tw.bgGray200
+            , Css.tw.uppercase
+            , Css.tw.textLeft
+            , Css.tw.textSm
+            , Css.tw.textGray600
+            , Css.tw.borderB
+            ]
+        ]
+
+    tbody = HH.div [ HP.classes [ Css.tw.tableRowGroup ] ]
+
+    trow = HH.div [ HP.classes [ Css.tw.tableRow ] ]
+
+    tcell = HH.div [ HP.classes [ Css.tw.tableCell, Css.tw.px5, Css.tw.py3 ] ]
 
   renderContent = defRender state renderOrders
 

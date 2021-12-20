@@ -3,6 +3,7 @@ module Data.Currency
   , mkCurrency
   , unsafeMkCurrency
   , formatter
+  , numberFormatter
   ) where
 
 import Prelude
@@ -13,6 +14,8 @@ import Data.String.Regex as Re
 import Data.String.Regex.Unsafe (unsafeRegex)
 
 foreign import formatter :: Currency -> Number -> String
+
+foreign import numberFormatter :: Number -> String
 
 newtype Currency
   = Currency String

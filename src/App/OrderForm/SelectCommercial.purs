@@ -1,4 +1,4 @@
-module App.SelectCommercial (Slot, Query(..), Output(..), proxy, component) where
+module App.OrderForm.SelectCommercial (Slot, Query(..), Output(..), proxy, component) where
 
 import Prelude
 import App.Requests (getBillingAccount, getBillingAccounts)
@@ -17,6 +17,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import HtmlUtils (focusElementByQuery)
 import Select as Sel
 import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
@@ -44,6 +45,12 @@ type State
     , available :: Loadable (Array SS.BillingAccount)
     )
 
+data Action
+  = Initialize
+
+type Action'
+  = Sel.Action Action
+
 component ::
   forall m.
   MonadAff m => CredentialStore m => H.Component Query Input Output m
@@ -69,7 +76,9 @@ component =
   selectComponent =
     Sel.component input
       $ Sel.defaultSpec
-          { handleEvent = handleEvent
+          { initialize = Just Initialize
+          , handleAction = handleAction
+          , handleEvent = handleEvent
           , handleQuery = handleQuery
           , render = render
           }
@@ -85,6 +94,9 @@ component =
     , filtered: Idle
     , available: Idle
     }
+
+  handleAction = case _ of
+    Initialize -> focusElementByQuery "input#commercial-search"
 
   handleQuery :: forall a. Query a -> H.HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = case _ of
@@ -148,45 +160,69 @@ component =
       H.raise $ (\(SS.BillingAccount { commercial }) -> commercial) <$> selected
     _ -> pure unit
 
-  render :: Sel.State State -> H.ComponentHTML _ () m
-  render st = HH.div_ $ [ renderInput ] <> renderSelected <> renderResults
+  render :: Sel.State State -> H.ComponentHTML Action' () m
+  render st = HH.span_ $ [ renderInput ] <> renderResults
     where
-    renderInput :: H.ComponentHTML _ () m
+    renderInput :: H.ComponentHTML Action' () m
     renderInput =
       HH.input
         $ SelSet.setInputProps
-            [ HP.class_ Css.taInput
+            [ HP.id "commercial-search"
+            , HP.classes
+                [ Css.tw.w72
+                , Css.tw.mr5
+                , Css.tw.focusOutline
+                , Css.tw.outline1
+                , Css.tw.outlineGray300
+                , Css.tw.placeholderItalic
+                , Css.tw.roundedSm
+                ]
             , HP.placeholder "Type to search billing account…"
             ]
 
-    renderSelected :: Array (H.ComponentHTML _ () m)
-    renderSelected
-      | st.visibility == Sel.On = []
-      | otherwise = case st.selected of
-        Nothing -> [ HH.div_ [ HH.text "No billing account selected" ] ]
-        Just billingAccount -> [ HH.div_ (renderSummary billingAccount) ]
-
-    renderResults :: Array (H.ComponentHTML _ () m)
+    renderResults :: Array (H.ComponentHTML Action' () m)
     renderResults
       | st.visibility == Sel.Off = []
       | otherwise = case st.filtered of
-        Idle -> [ HH.div_ [ HH.text "No active search …" ] ]
-        Loading -> [ HH.div_ [ HH.text "Loading search results …" ] ]
-        Error msg -> [ HH.div_ [ HH.text "Error: ", HH.text msg ] ]
-        Loaded [] -> [ HH.div_ [ HH.text "No matching billing accounts …" ] ]
+        Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
+        Loading -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Loading search results …" ] ]
+        Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
+        Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching billing accounts …" ] ]
         Loaded filtered ->
-          [ HH.div (SelSet.setContainerProps [ HP.class_ Css.taContainer ])
+          [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
               $ A.mapWithIndex renderItem filtered
           ]
+        where
+        containerClasses =
+          [ Css.tw.absolute
+          , Css.tw.mt1
+          , Css.tw.flex
+          , Css.tw.flexCol
+          , Css.tw.bgWhite
+          , Css.tw.w72
+          , Css.tw.maxH72
+          , Css.tw.overflowAuto
+          , Css.tw.border
+          , Css.tw.roundedMd
+          ]
+
+        infoClasses = containerClasses <> [ Css.tw.p2 ]
 
     renderItem idx billingAccount =
       HH.div
         ( SelSet.setItemProps idx
-            [ HP.classes $ [ Css.taItem ]
-                <> if st.highlightedIndex == Just idx then [ Css.taHighlight ] else []
+            [ HP.classes
+                $ if st.highlightedIndex == Just idx then
+                    selectedClasses
+                  else
+                    itemClasses
             ]
         )
         (renderSummary billingAccount)
+      where
+      itemClasses = [ Css.tw.p2 ]
+
+      selectedClasses = [ Css.tw.p2, Css.tw.bgSky100 ]
 
     renderSummary (SS.BillingAccount ba) =
       [ HH.text ba.displayName

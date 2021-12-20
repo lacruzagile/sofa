@@ -2,10 +2,10 @@ module App.Router where
 
 import Prelude
 import App.Home as Home
+import App.NavbarItemUser as NavbarItemUser
 import App.OrderForm as OrderForm
 import App.Orders as Orders
 import App.ProductCatalog as ProductCatalog
-import App.User as User
 import Css as Css
 import Data.Auth (class CredentialStore)
 import Data.Maybe (Maybe(..))
@@ -39,7 +39,7 @@ type Slots
     , productCatalog :: ProductCatalog.Slot Unit
     , orderForm :: OrderForm.Slot Unit
     , orders :: Orders.Slot Unit
-    , user :: User.Slot Unit
+    , navbarItemUser :: NavbarItemUser.Slot Unit
     )
 
 data Query a
@@ -73,14 +73,86 @@ render ::
   CredentialStore m =>
   State -> H.ComponentHTML Action Slots m
 render state =
-  navbar state
-    $ case state.route of
+  HH.div_
+    [ renderNavbar state
+    , renderBody state
+    ]
+
+renderNavbar ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  State ->
+  H.ComponentHTML Action Slots m
+renderNavbar state =
+  HH.nav [ HP.classes navbarClasses ]
+    [ primaryItem Route.Home "SOFA"
+    , navbarItem Route.Home "Home"
+    , navbarItem Route.ProductCatalog "Product Catalog"
+    , navbarItem Route.Orders "Orders"
+    , navbarItem Route.OrderForm "Order Form"
+    , expander
+    , navbarItemUser
+    ]
+  where
+  navbarClasses =
+    [ Css.tw.wFull
+    , Css.tw.px3
+    , Css.tw.py3
+    , Css.tw.flex
+    , Css.tw.justifyBetween
+    , Css.tw.shadowSm
+    , Css.tw.bgWhite
+    , Css.tw.itemsCenter
+    ]
+
+  logoClasses = [ Css.tw.text2Xl, Css.tw.smallCaps, Css.tw.mr5 ]
+
+  navbarItemClasses route
+    | state.route == route =
+      [ Css.tw.px3
+      , Css.tw.underline
+      , Css.tw.underlineOffset8
+      , Css.tw.decoration2
+      , Css.tw.decorationSky500
+      ]
+    | otherwise =
+      [ Css.tw.px3
+      , Css.tw.hover_underline
+      , Css.tw.underlineOffset8
+      , Css.tw.decoration2
+      , Css.tw.decorationSky500_30
+      ]
+
+  primaryItem route text =
+    HH.a
+      [ Route.href route, HP.classes logoClasses ]
+      [ HH.text text ]
+
+  navbarItem route text =
+    HH.a
+      [ Route.href route, HP.classes (navbarItemClasses route) ]
+      [ HH.text text ]
+
+  navbarItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
+
+  expander = HH.div [ HP.class_ Css.tw.grow ] []
+
+renderBody ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  State ->
+  H.ComponentHTML Action Slots m
+renderBody state =
+  HH.main [ HP.class_ Css.tw.m5 ]
+    [ case state.route of
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm
         Route.Orders -> slotOrders
         (Route.Order id) -> slotOrder id
         Route.ProductCatalog -> slotProductCatalog
-        Route.User -> slotUser
+    ]
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
@@ -95,53 +167,6 @@ render state =
     input = OrderForm.ExistingOrderId id
 
   slotProductCatalog = HH.slot_ ProductCatalog.proxy unit ProductCatalog.component absurd
-
-  slotUser = HH.slot_ User.proxy unit User.component absurd
-
-navbar ::
-  forall m.
-  MonadAff m =>
-  CredentialStore m =>
-  State ->
-  H.ComponentHTML Action Slots m ->
-  H.ComponentHTML Action Slots m
-navbar state body =
-  HH.div_
-    [ HH.nav_
-        [ HH.a
-            [ Route.href Route.Home
-            , HP.class_ Css.brand
-            ]
-            [ HH.text "Sinch Smart Spec" ]
-        , HH.input
-            [ HP.id "navmenu"
-            , HP.type_ HP.InputCheckbox
-            , HP.class_ Css.show
-            ]
-        , HH.label
-            [ HP.for "navmenu"
-            , HP.classes [ Css.burger, Css.pseudo, Css.button ]
-            ]
-            [ HH.text "🍔" ]
-        , HH.div [ HP.class_ Css.menu ]
-            [ navbarItem Route.Home "🏠 Home"
-            , navbarItem Route.ProductCatalog "Product Catalog"
-            , navbarItem Route.Orders "Orders"
-            , navbarItem Route.OrderForm "Order Form"
-            , navbarItem Route.User "User"
-            ]
-        ]
-    , HH.main [ HP.class_ (H.ClassName "content") ] [ body ]
-    ]
-  where
-  navbarItemClasses route =
-    [ Css.pseudo, Css.button ]
-      <> if state.route == route then [ Css.active ] else []
-
-  navbarItem route text =
-    HH.a
-      [ Route.href route, HP.classes (navbarItemClasses route) ]
-      [ HH.text text ]
 
 handleQuery ::
   forall action slots output m a.

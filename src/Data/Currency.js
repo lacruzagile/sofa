@@ -1,12 +1,18 @@
 "use strict";
 
 exports.formatter = currency => {
-  var formatter = new Intl.NumberFormat('en-US', {
+  const format = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
     currencyDisplay: 'code',
     maximumFractionDigits: undefined
   });
 
-  return number => formatter.format(number);
+  return number => format.format(number);
 };
+
+const numberFormat = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: undefined
+});
+
+exports.numberFormatter = number => numberFormat.format(number);

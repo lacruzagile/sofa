@@ -14,13 +14,11 @@ data Route
   | Orders
   | Order OrderId
   | ProductCatalog
-  | User
 
 derive instance genericRoute :: Generic Route _
 
 derive instance eqRoute :: Eq Route
 
--- derive instance ordRoute :: Ord Route
 instance showRoute :: Show Route where
   show = genericShow
 
@@ -32,7 +30,6 @@ routes =
           <|> orders
           <|> order
           <|> productCatalog
-          <|> user
       )
   where
   home = Home <$ end
@@ -45,8 +42,6 @@ routes =
 
   productCatalog = ProductCatalog <$ lit "product-catalog" <* end
 
-  user = User <$ lit "user" <* end
-
 rawHref :: Route -> String
 rawHref = case _ of
   Home -> "/"
@@ -54,7 +49,6 @@ rawHref = case _ of
   Orders -> "/orders"
   Order id -> "/orders/" <> show id
   ProductCatalog -> "/product-catalog"
-  User -> "/user"
 
 href :: forall r i. Route -> HP.IProp ( href :: String | r ) i
 href route = HP.href $ "#" <> rawHref route
