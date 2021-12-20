@@ -31,7 +31,7 @@ startRouting app =
           $ GotoRoute newRoute
 
 type State
-  = { route :: Maybe Route
+  = { route :: Route
     }
 
 type Slots
@@ -65,7 +65,7 @@ component =
     }
 
 initialState :: forall input. input -> State
-initialState _ = { route: Nothing }
+initialState _ = { route: Route.Home }
 
 render ::
   forall m.
@@ -75,13 +75,12 @@ render ::
 render state =
   navbar state
     $ case state.route of
-        Nothing -> slotHome
-        Just Route.Home -> slotHome
-        Just Route.OrderForm -> slotOrderForm
-        Just Route.Orders -> slotOrders
-        Just (Route.Order id) -> slotOrder id
-        Just Route.ProductCatalog -> slotProductCatalog
-        Just Route.User -> slotUser
+        Route.Home -> slotHome
+        Route.OrderForm -> slotOrderForm
+        Route.Orders -> slotOrders
+        (Route.Order id) -> slotOrder id
+        Route.ProductCatalog -> slotProductCatalog
+        Route.User -> slotUser
   where
   slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
@@ -137,7 +136,7 @@ navbar state body =
   where
   navbarItemClasses route =
     [ Css.pseudo, Css.button ]
-      <> if state.route == Just route then [ Css.active ] else []
+      <> if state.route == route then [ Css.active ] else []
 
   navbarItem route text =
     HH.a
@@ -150,5 +149,5 @@ handleQuery ::
   Query a -> H.HalogenM State action slots output m (Maybe a)
 handleQuery = case _ of
   GotoRoute route next -> do
-    H.modify_ _ { route = Just route }
+    H.modify_ _ { route = route }
     pure (Just next)
