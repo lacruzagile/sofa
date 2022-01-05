@@ -34,7 +34,6 @@ import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Widgets as Widgets
 
 type SubTotalEntry
   = { price :: Additive BigNumber
@@ -376,9 +375,9 @@ renderSubTotalEntry (ChargeCurrency currency) amount =
   if amount.price == amount.listPrice then
     [ renderPrice listPriceClasses, renderCurrency ]
   else
-    [ Widgets.withTooltip_ Widgets.Top
-        ("Without discounts: " <> showMonetary amount.listPrice)
-        $ renderPrice discountPriceClasses
+    [ HH.span
+        [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
+        [ renderPrice discountPriceClasses ]
     , renderCurrency
     ]
   where
