@@ -57,7 +57,7 @@ build-and-push-image:
       /kaniko/executor
       --context .
       --dockerfile ./docker/Dockerfile
-      --destination $NEXUS_REGISTRY/$CI_PROJECT_PATH:latest
+      --destination $NEXUS_REGISTRY/$CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
 
 neuvector:
   stage: pre-deploy
@@ -66,7 +66,7 @@ neuvector:
   variables:
     nexus_user: $NEXUS_USER
     nexus_password: $NEXUS_PASSWORD
-    scan_target: $CI_PROJECT_PATH:latest
+    scan_target: $CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
   script:
     - scan
   artifacts:
@@ -90,6 +90,7 @@ neuvector:
       helm upgrade
       --install sofa
       --values ./helm/config/$CI_ENVIRONMENT_NAME.yaml
+      --set image.tag=$CI_COMMIT_SHORT_SHA
       ./helm
 
 .stop-k8s:
