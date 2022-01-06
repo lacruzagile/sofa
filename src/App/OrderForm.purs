@@ -688,7 +688,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.btnSky100 ]
+                      [ HP.classes [ Css.btnSky100, Css.tw.mAuto ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
                       [ HH.text "+ Add Order Line" ]
