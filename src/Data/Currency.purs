@@ -1,9 +1,11 @@
 module Data.Currency
   ( Currency
-  , mkCurrency
-  , unsafeMkCurrency
+  , FormatPart
+  , formatToParts
   , formatter
+  , mkCurrency
   , numberFormatter
+  , unsafeMkCurrency
   ) where
 
 import Prelude
@@ -13,9 +15,14 @@ import Data.Maybe (Maybe(..))
 import Data.String.Regex as Re
 import Data.String.Regex.Unsafe (unsafeRegex)
 
+type FormatPart
+  = { "type" :: String, value :: String }
+
 foreign import formatter :: Currency -> Number -> String
 
 foreign import numberFormatter :: Number -> String
+
+foreign import formatToParts :: Currency -> Number -> Array FormatPart
 
 newtype Currency
   = Currency String

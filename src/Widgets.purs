@@ -4,6 +4,7 @@ module Widgets
   , address
   , modal
   , modalCloseBtn
+  , monetaryAmount
   , withMaybeTooltip
   , withMaybeTooltip_
   , withTooltip
@@ -13,6 +14,8 @@ module Widgets
 import Prelude
 import Css as Css
 import Data.Array as A
+import Data.Currency (Currency)
+import Data.Currency as Currency
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
@@ -187,3 +190,13 @@ address (SS.Address addr) =
               country <- countryForCode cCode
               pure country.name
           )
+
+monetaryAmount :: forall slot action. Currency -> Number -> Array (HH.HTML slot action)
+monetaryAmount currency amount = format <$> Currency.formatToParts currency amount
+  where
+  format = case _ of
+    { "type": "currency", value } ->
+      HH.span
+        [ HP.classes [ Css.tw.textSm, Css.tw.textGray600 ] ]
+        [ HH.text value ]
+    { value } -> HH.text value

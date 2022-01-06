@@ -34,6 +34,7 @@ import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Widgets as Widgets
 
 type SubTotalEntry
   = { price :: Additive BigNumber
@@ -342,7 +343,7 @@ renderSubTotalTable title (SubTotal summary) =
           td' currency s =
             [ HH.td
                 [ HP.classes [ Css.tw.px5, Css.tw.textRight ] ]
-                (renderSubTotalEntry currency s)
+                [ renderSubTotalEntry currency s ]
             ]
         in
           \currency -> td' currency $ fromMaybe mempty $ toSubTotalEntry currency sumry
@@ -370,31 +371,22 @@ renderSubTotalEntry ::
   Monad m =>
   ChargeCurrency ->
   SubTotalEntry ->
-  Array (H.ComponentHTML action slots m)
+  H.ComponentHTML action slots m
 renderSubTotalEntry (ChargeCurrency currency) amount =
   if amount.price == amount.listPrice then
-    [ renderPrice listPriceClasses, renderCurrency ]
+    renderPrice listPriceClasses amount.price
   else
-    [ HH.span
-        [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
-        [ renderPrice discountPriceClasses ]
-    , renderCurrency
-    ]
+    HH.span
+      [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
+      [ renderPrice discountPriceClasses amount.price ]
   where
   listPriceClasses = [ Css.tw.px3, Css.tw.textRight ]
 
   discountPriceClasses = [ Css.tw.px3, Css.tw.textRight, Css.tw.textRed700 ]
 
-  renderPrice classes =
+  renderPrice classes (Additive n) =
     HH.span
       [ HP.classes classes ]
-      [ HH.text $ showNumber amount.price ]
-
-  renderCurrency =
-    HH.span
-      [ HP.classes [ Css.tw.textSm, Css.tw.textGray600 ] ]
-      [ HH.text $ show currency ]
+      (Widgets.monetaryAmount currency (BN.toNumber n))
 
   showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)
-
-  showNumber (Additive n) = Currency.numberFormatter (BN.toNumber n)

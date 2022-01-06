@@ -1,6 +1,7 @@
 module App.EditablePrice (Slot, Input(..), Output(..), proxy, component) where
 
 import Prelude
+import Css as Css
 import Data.BigNumber as BN
 import Data.Currency as Currency
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
@@ -15,7 +16,7 @@ import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
-import Css as Css
+import Widgets as Widgets
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -90,14 +91,14 @@ render state = case state.editState of
   where
   renderPrice :: SS.Price -> SS.ChargeCurrency -> Array (H.ComponentHTML Action slots m)
   renderPrice (SS.Price p) (SS.ChargeCurrency currency) = case p.discount of
-    Nothing -> [ price ]
-    Just d -> [ price, discount d ]
+    Nothing -> price
+    Just d -> price <> [ discount d ]
     where
     price = case p.discount of
-      Nothing -> HH.text $ showPrice p.listPrice
-      Just _ -> HH.span [ HP.style "color:red" ] [ HH.text $ showPrice p.price ]
+      Nothing -> showPrice p.listPrice
+      Just _ -> [ HH.span [ HP.class_ Css.tw.textRed700 ] (showPrice p.price) ]
 
-    showPrice = Currency.formatter currency
+    showPrice = Widgets.monetaryAmount currency
 
     discount d = HH.small_ [ HH.text $ " (" <> showDiscount d <> ")" ]
 
