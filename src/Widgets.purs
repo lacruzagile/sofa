@@ -211,7 +211,7 @@ monetaryAmount currency amount = format <$> Currency.formatToParts currency amou
 subTotalTable :: forall w i. String -> SubTotal -> HH.HTML w i
 subTotalTable title (SubTotal summary) =
   HH.table [ HP.classes [ Css.tw.p5, Css.tw.tableAuto ] ]
-    $ [ HH.tr [ HP.classes [ Css.tw.bgGray200, Css.tw.uppercase, Css.tw.textSm, Css.tw.textGray600 ] ]
+    $ [ HH.tr [ HP.classes [ Css.tw.uppercase, Css.tw.textSm, Css.tw.textGray600 ] ]
           $ th summary.usage (title <> "Usage")
           <> th summary.monthly (title <> "Monthly")
           <> th summary.quarterly (title <> "Quarterly")
@@ -232,7 +232,7 @@ subTotalTable title (SubTotal summary) =
     if SubTotal.isEmpty sumry then
       []
     else
-      [ HH.th [ HP.classes [ Css.tw.px5 ] ] [ HH.text name ] ]
+      [ HH.th [ HP.classes [ Css.tw.px5, Css.tw.fontNormal ] ] [ HH.text name ] ]
 
   td sumry =
     if SubTotal.isEmpty sumry then
@@ -268,9 +268,9 @@ subTotalTable title (SubTotal summary) =
         [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
         [ renderPrice discountPriceClasses amount.price ]
     where
-    listPriceClasses = [ Css.tw.px3, Css.tw.textRight ]
+    listPriceClasses = [ Css.tw.px3, Css.tw.textLg, Css.tw.textRight ]
 
-    discountPriceClasses = [ Css.tw.px3, Css.tw.textRight, Css.tw.textRed700 ]
+    discountPriceClasses = [ Css.tw.px3, Css.tw.textLg, Css.tw.textRight, Css.tw.textRed700 ]
 
     renderPrice classes (Additive n) =
       HH.span
