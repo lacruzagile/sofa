@@ -73,7 +73,7 @@ render ::
   CredentialStore m =>
   State -> H.ComponentHTML Action Slots m
 render state =
-  HH.div_
+  HH.div [ HP.classes [ Css.tw.mxAuto ], HP.style "max-width: 80rem" ]
     [ renderNavbar state
     , renderBody state
     ]
@@ -96,7 +96,7 @@ renderNavbar state =
     ]
   where
   navbarClasses =
-    [ Css.tw.wFull
+    [ Css.tw.mx5
     , Css.tw.px3
     , Css.tw.py3
     , Css.tw.flex
