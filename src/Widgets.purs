@@ -5,6 +5,7 @@ module Widgets
   , modal
   , modalCloseBtn
   , monetaryAmount
+  , subTotalTable
   , withMaybeTooltip
   , withMaybeTooltip_
   , withTooltip
@@ -14,11 +15,16 @@ module Widgets
 import Prelude
 import Css as Css
 import Data.Array as A
+import Data.BigNumber as BN
 import Data.Currency (Currency)
 import Data.Currency as Currency
 import Data.Iso3166 (countryForCode, subdivisionForCode)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Monoid.Additive (Additive(..))
+import Data.Set as Set
 import Data.SmartSpec as SS
+import Data.SubTotal (SubTotal(..))
+import Data.SubTotal as SubTotal
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -200,3 +206,75 @@ monetaryAmount currency amount = format <$> Currency.formatToParts currency amou
         [ HP.classes [ Css.tw.textSm, Css.tw.textGray600 ] ]
         [ HH.text value ]
     { value } -> HH.text value
+
+-- | Render a sub-total using a simple table.
+subTotalTable :: forall w i. String -> SubTotal -> HH.HTML w i
+subTotalTable title (SubTotal summary) =
+  HH.table [ HP.classes [ Css.tw.p5, Css.tw.tableAuto ] ]
+    $ [ HH.tr [ HP.classes [ Css.tw.bgGray200, Css.tw.uppercase, Css.tw.textSm, Css.tw.textGray600 ] ]
+          $ th summary.usage (title <> "Usage")
+          <> th summary.monthly (title <> "Monthly")
+          <> th summary.quarterly (title <> "Quarterly")
+          <> th summary.onetime (title <> "Onetime")
+      ]
+    <> map renderRow currencies
+  where
+  currencies =
+    A.fromFoldable
+      $ Set.unions
+          [ SubTotal.toCurrencies summary.usage
+          , SubTotal.toCurrencies summary.monthly
+          , SubTotal.toCurrencies summary.quarterly
+          , SubTotal.toCurrencies summary.onetime
+          ]
+
+  th sumry name =
+    if SubTotal.isEmpty sumry then
+      []
+    else
+      [ HH.th [ HP.classes [ Css.tw.px5 ] ] [ HH.text name ] ]
+
+  td sumry =
+    if SubTotal.isEmpty sumry then
+      const []
+    else
+      let
+        td' currency s =
+          [ HH.td
+              [ HP.classes [ Css.tw.px5, Css.tw.textRight ] ]
+              [ renderSubTotalEntry currency s ]
+          ]
+      in
+        \currency ->
+          td' currency
+            $ fromMaybe mempty
+            $ SubTotal.toSubTotalEntry currency sumry
+
+  renderRow currency =
+    HH.tr_
+      $ []
+      <> td summary.usage currency
+      <> td summary.monthly currency
+      <> td summary.quarterly currency
+      <> td summary.onetime currency
+
+  -- | Render a sub-total entry.
+  renderSubTotalEntry :: SS.ChargeCurrency -> SubTotal.SubTotalEntry -> HH.HTML w i
+  renderSubTotalEntry (SS.ChargeCurrency currency) amount =
+    if amount.price == amount.listPrice then
+      renderPrice listPriceClasses amount.price
+    else
+      HH.span
+        [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
+        [ renderPrice discountPriceClasses amount.price ]
+    where
+    listPriceClasses = [ Css.tw.px3, Css.tw.textRight ]
+
+    discountPriceClasses = [ Css.tw.px3, Css.tw.textRight, Css.tw.textRed700 ]
+
+    renderPrice classes (Additive n) =
+      HH.span
+        [ HP.classes classes ]
+        (monetaryAmount currency (BN.toNumber n))
+
+    showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)

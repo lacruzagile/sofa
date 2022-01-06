@@ -6,18 +6,15 @@ module Data.SubTotal
   , SubTotalEntry(..)
   , calcSubTotal
   , isEmpty
-  , renderSubTotalTable
   , toCurrencies
   , toSubTotalEntry
   ) where
 
 import Prelude
-import Css as Css
 import Data.Array as A
 import Data.BigNumber (BigNumber)
 import Data.BigNumber as BN
 import Data.Charge (ChargeUnitMap)
-import Data.Currency as Currency
 import Data.Either (either)
 import Data.Foldable (foldl)
 import Data.List (List)
@@ -28,13 +25,8 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Quantity (Quantity, QuantityMap)
 import Data.Set (Set)
-import Data.Set as Set
-import Data.SmartSpec (Charge(..), ChargeCurrency(..), ChargeCurrencyPerUnit(..), ChargeKind(..), ChargeSingleUnit(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
+import Data.SmartSpec (Charge(..), ChargeCurrency, ChargeCurrencyPerUnit(..), ChargeKind(..), ChargeSingleUnit(..), ChargeUnit(..), ChargeUnitId, DefaultPricePerUnit(..), DimValue, Price(..), PricePerDim(..), PricePerDimSeg(..), PricePerDimUnit(..), PricePerDimUnitOptSeg(..), PricePerDimUnitSeg(..), PricePerSeg(..), PricePerUnit(..), PricePerUnitSeg(..), Segmentation(..), SegmentationDim(..), SegmentationDimPerUnit(..), SegmentationModel(..), SegmentationOptDim(..), SegmentationOptDimPerUnit(..), SegmentationPerUnit(..))
 import Data.Tuple (Tuple(..))
-import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
-import Widgets as Widgets
 
 type SubTotalEntry
   = { price :: Additive BigNumber
@@ -315,78 +307,3 @@ isEmpty (IndexedSubTotalEntry es) = Map.isEmpty es
 
 toSubTotalEntry :: ChargeCurrency -> IndexedSubTotalEntry -> Maybe SubTotalEntry
 toSubTotalEntry currency (IndexedSubTotalEntry es) = Map.lookup currency es
-
--- | Render a sub-total using a simple table.
-renderSubTotalTable :: forall action slots m. Monad m => String -> SubTotal -> H.ComponentHTML action slots m
-renderSubTotalTable title (SubTotal summary) =
-  let
-    currencies =
-      A.fromFoldable
-        $ Set.unions
-            [ toCurrencies summary.usage
-            , toCurrencies summary.monthly
-            , toCurrencies summary.quarterly
-            , toCurrencies summary.onetime
-            ]
-
-    th sumry name =
-      if isEmpty sumry then
-        []
-      else
-        [ HH.th [ HP.classes [ Css.tw.px5 ] ] [ HH.text name ] ]
-
-    td sumry =
-      if isEmpty sumry then
-        const []
-      else
-        let
-          td' currency s =
-            [ HH.td
-                [ HP.classes [ Css.tw.px5, Css.tw.textRight ] ]
-                [ renderSubTotalEntry currency s ]
-            ]
-        in
-          \currency -> td' currency $ fromMaybe mempty $ toSubTotalEntry currency sumry
-
-    renderRow currency =
-      HH.tr_
-        $ []
-        <> td summary.usage currency
-        <> td summary.monthly currency
-        <> td summary.quarterly currency
-        <> td summary.onetime currency
-  in
-    HH.table [ HP.classes [ Css.tw.p5, Css.tw.tableAuto ] ]
-      $ [ HH.tr [ HP.classes [ Css.tw.bgGray200, Css.tw.uppercase, Css.tw.textSm, Css.tw.textGray600 ] ]
-            $ th summary.usage (title <> "Usage")
-            <> th summary.monthly (title <> "Monthly")
-            <> th summary.quarterly (title <> "Quarterly")
-            <> th summary.onetime (title <> "Onetime")
-        ]
-      <> map renderRow currencies
-
--- | Render a sub-total entry.
-renderSubTotalEntry ::
-  forall action slots m.
-  Monad m =>
-  ChargeCurrency ->
-  SubTotalEntry ->
-  H.ComponentHTML action slots m
-renderSubTotalEntry (ChargeCurrency currency) amount =
-  if amount.price == amount.listPrice then
-    renderPrice listPriceClasses amount.price
-  else
-    HH.span
-      [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
-      [ renderPrice discountPriceClasses amount.price ]
-  where
-  listPriceClasses = [ Css.tw.px3, Css.tw.textRight ]
-
-  discountPriceClasses = [ Css.tw.px3, Css.tw.textRight, Css.tw.textRed700 ]
-
-  renderPrice classes (Additive n) =
-    HH.span
-      [ HP.classes classes ]
-      (Widgets.monetaryAmount currency (BN.toNumber n))
-
-  showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)

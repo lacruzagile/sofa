@@ -778,10 +778,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
 
   renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSectionSummary = SubTotal.renderSubTotalTable ""
+  renderOrderSectionSummary = Widgets.subTotalTable ""
 
   renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSummary = SubTotal.renderSubTotalTable "Total "
+  renderOrderSummary = Widgets.subTotalTable "Total "
 
   renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo orderForm =
