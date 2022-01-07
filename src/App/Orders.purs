@@ -149,9 +149,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       HH.a
         [ Route.href Route.OrderForm
         , HP.classes
-            [ Css.tw.absolute
-            , Css.tw.right0
-            , Css.tw.mx5
+            [ Css.tw.relative
+            , Css.tw.floatRight
             , Css.btnSky100
             ]
         ]
