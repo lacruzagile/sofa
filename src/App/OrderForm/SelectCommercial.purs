@@ -8,7 +8,7 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Loadable as Loadable
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
@@ -41,6 +41,7 @@ data Query a
 type State
   = ( crmAccountId :: SS.CrmAccountId
     , selected :: Maybe SS.BillingAccount
+    , selectedFull :: Loadable SS.BillingAccount
     , filtered :: Loadable (Array SS.BillingAccount)
     , available :: Loadable (Array SS.BillingAccount)
     )
@@ -91,6 +92,7 @@ component =
     , getItemCount: maybe 0 A.length <<< Loadable.toMaybe <<< _.filtered
     , crmAccountId: crmAccountId
     , selected: Nothing
+    , selectedFull: Idle
     , filtered: Idle
     , available: Idle
     }
@@ -105,6 +107,7 @@ component =
         _
           { crmAccountId = crmAccountId
           , selected = Nothing
+          , selectedFull = Idle
           , available = Idle
           , filtered = Idle
           }
@@ -139,6 +142,7 @@ component =
               do
                 filtered <- Loadable.toMaybe st.filtered
                 filtered !! idx
+            , selectedFull = Loading
             , filtered = st.available
             , visibility = Sel.Off
             }
@@ -149,15 +153,16 @@ component =
         <<< HTMLInputElement.fromHTMLElement
       -- Fetch the full representation of the selected billing account, if
       -- possible.
-      selected <-
-        fromMaybe (pure Nothing)
-          $ do
-              (SS.BillingAccount ba) <- st'.selected
-              let
-                baId = ba.billingAccountId
-              pure $ H.lift $ Loadable.toMaybe <$> getBillingAccount st'.crmAccountId baId
+      selectedFull <- case st'.selected of
+        Just (SS.BillingAccount ba) ->
+          H.lift
+            $ getBillingAccount st'.crmAccountId ba.billingAccountId
+        _ -> pure Idle
+      H.modify_ \st -> st { selectedFull = selectedFull }
       -- Let the parent component know about the new selection.
-      H.raise $ (\(SS.BillingAccount { commercial }) -> commercial) <$> selected
+      H.raise
+        $ (\(SS.BillingAccount { commercial }) -> commercial)
+        <$> Loadable.toMaybe selectedFull
     _ -> pure unit
 
   render :: Sel.State State -> H.ComponentHTML Action' () m
@@ -180,33 +185,37 @@ component =
             , HP.placeholder "Type to search billing account…"
             ]
 
+    containerClasses =
+      [ Css.tw.absolute
+      , Css.tw.mt1
+      , Css.tw.flex
+      , Css.tw.flexCol
+      , Css.tw.bgWhite
+      , Css.tw.w72
+      , Css.tw.maxH72
+      , Css.tw.overflowAuto
+      , Css.tw.border
+      , Css.tw.roundedMd
+      ]
+
+    infoClasses = containerClasses <> [ Css.tw.p2 ]
+
+    loadingClasses = infoClasses <> [ Css.tw.animatePulse ]
+
     renderResults :: Array (H.ComponentHTML Action' () m)
     renderResults
-      | st.visibility == Sel.Off = []
+      | st.visibility == Sel.Off = case st.selectedFull of
+        Loading -> [ HH.div [ HP.classes loadingClasses ] [ HH.text "Loading commercial …" ] ]
+        _ -> []
       | otherwise = case st.filtered of
         Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
-        Loading -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Loading search results …" ] ]
+        Loading -> [ HH.div [ HP.classes loadingClasses ] [ HH.text "Loading search results …" ] ]
         Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
         Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching billing accounts …" ] ]
         Loaded filtered ->
           [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
               $ A.mapWithIndex renderItem filtered
           ]
-        where
-        containerClasses =
-          [ Css.tw.absolute
-          , Css.tw.mt1
-          , Css.tw.flex
-          , Css.tw.flexCol
-          , Css.tw.bgWhite
-          , Css.tw.w72
-          , Css.tw.maxH72
-          , Css.tw.overflowAuto
-          , Css.tw.border
-          , Css.tw.roundedMd
-          ]
-
-        infoClasses = containerClasses <> [ Css.tw.p2 ]
 
     renderItem idx billingAccount =
       HH.div

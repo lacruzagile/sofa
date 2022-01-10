@@ -18,6 +18,7 @@ tw =
   { absolute: ClassName "absolute"
   , activeBgSky300: ClassName "active:bg-sky-300"
   , alignMiddle: ClassName "align-middle"
+  , animatePulse: ClassName "animate-pulse"
   , appearanceNone: ClassName "appearance-none"
   , bgBlack_60: ClassName "bg-black/60"
   , bgBlue600: ClassName "bg-blue-600"

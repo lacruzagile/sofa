@@ -141,33 +141,37 @@ selectComponent =
             , HP.placeholder "Type to search buyer…"
             ]
 
+    containerClasses =
+      [ Css.tw.absolute
+      , Css.tw.mt1
+      , Css.tw.flex
+      , Css.tw.flexCol
+      , Css.tw.bgWhite
+      , Css.tw.w72
+      , Css.tw.maxH72
+      , Css.tw.overflowAuto
+      , Css.tw.border
+      , Css.tw.roundedMd
+      ]
+
+    infoClasses = containerClasses <> [ Css.tw.p2 ]
+
+    loadingClasses = infoClasses <> [ Css.tw.animatePulse ]
+
     renderResults :: Array (H.ComponentHTML Action' () m)
     renderResults
-      | st.visibility == Sel.Off = []
+      | st.visibility == Sel.Off = case st.selectedFull of
+        Loading -> [ HH.div [ HP.classes loadingClasses ] [ HH.text "Loading buyer …" ] ]
+        _ -> []
       | otherwise = case st.available of
         Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
-        Loading -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Loading search results …" ] ]
+        Loading -> [ HH.div [ HP.classes loadingClasses ] [ HH.text "Loading search results …" ] ]
         Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
         Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching buyers …" ] ]
         Loaded available ->
           [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
               $ A.mapWithIndex renderItem available
           ]
-        where
-        containerClasses =
-          [ Css.tw.absolute
-          , Css.tw.mt1
-          , Css.tw.flex
-          , Css.tw.flexCol
-          , Css.tw.bgWhite
-          , Css.tw.w72
-          , Css.tw.maxH72
-          , Css.tw.overflowAuto
-          , Css.tw.border
-          , Css.tw.roundedMd
-          ]
-
-        infoClasses = containerClasses <> [ Css.tw.p2 ]
 
     renderItem idx buyer =
       HH.div
