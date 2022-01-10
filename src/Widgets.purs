@@ -5,6 +5,7 @@ module Widgets
   , modal
   , modalCloseBtn
   , monetaryAmount
+  , spinner
   , subTotalTable
   , withMaybeTooltip
   , withMaybeTooltip_
@@ -278,3 +279,9 @@ subTotalTable title (SubTotal summary) =
         (monetaryAmount currency (BN.toNumber n))
 
     showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)
+
+spinner :: forall w i. Array HH.ClassName -> HH.HTML w i
+spinner classes =
+  HH.div
+    [ HP.classes $ [ Css.spinner ] <> classes ]
+    []

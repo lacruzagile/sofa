@@ -72,6 +72,8 @@ type StateOrderForm
     , priceBooks :: Map String (Array PriceBook)
     -- ^ Map from solution title to price books in the current currency.
     , orderForm :: OrderForm
+    , orderUpdateInFlight :: Boolean -- ^ Whether a current order update request is in flight.
+    , orderFulfillInFlight :: Boolean -- ^ Whether a current order fulfillment request is in flight.
     }
 
 -- Similar to SS.OrderForm but with a few optional fields.
@@ -940,24 +942,45 @@ render state = HH.section_ [ HH.article_ renderContent ]
               , HP.disabled preventCreate
               , HE.onClick $ \_ -> CreateUpdateOrder
               ]
-              [ HH.text $ maybe "Create Order" (const "Update Order") (getOrderId sof) ]
+              [ HH.text $ maybe "Create Order" (const "Update Order") (getOrderId sof)
+              , if sof.orderUpdateInFlight then
+                  Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+                else
+                  HH.text ""
+              ]
           , HH.button
               [ HP.class_ Css.btnSky100
-              , HP.disabled $ maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
+              , HP.disabled preventFulfill
               , HE.onClick $ \_ -> FulfillOrder
               ]
-              [ HH.text "Fulfill Order" ]
+              [ HH.text "Fulfill Order"
+              , if sof.orderFulfillInFlight then
+                  Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+                else
+                  HH.text ""
+              ]
           ]
       , HH.div [ HP.class_ Css.tw.grow ] []
       , renderOrderSummary sof.orderForm.summary
       ]
     where
     preventCreate =
-      fromMaybe true do
-        _ <- sof.orderForm.seller
-        _ <- sof.orderForm.buyer
-        _ <- sof.orderForm.commercial
-        pure false
+      sof.orderUpdateInFlight
+        || fromMaybe true do
+            _ <- sof.orderForm.seller
+            _ <- sof.orderForm.buyer
+            _ <- sof.orderForm.commercial
+            _ <- traverse checkOrderSection =<< sequence sof.orderForm.sections
+            pure false
+      where
+      checkOrderSection os = do
+        _ <- _.uri $ unwrap $ os.solution
+        _ <- os.priceBook
+        pure unit
+
+    preventFulfill =
+      sof.orderFulfillInFlight
+        || maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
 
     footerDiv =
       HH.div
@@ -1111,6 +1134,8 @@ loadCatalog = do
               , summary: mempty
               , sections: []
               }
+          , orderUpdateInFlight: false
+          , orderFulfillInFlight: false
           }
       )
         <$> productCatalog
@@ -1296,6 +1321,8 @@ loadExisting original@(SS.OrderForm orderForm) = do
             , summary: mempty
             , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
             }
+      , orderUpdateInFlight: false
+      , orderFulfillInFlight: false
       }
 
   convertOrderSection :: SS.ProductCatalog -> Map String (Array PriceBook) -> SS.OrderSection -> Maybe OrderSection
@@ -1666,7 +1693,7 @@ handleAction = case _ of
       -- Updates the current state to match the response order object.
       ld o = case o of
         Loaded o' -> loadExisting o'
-        _ -> pure unit
+        _ -> modifyInitialized $ _ { orderUpdateInFlight = false }
 
       run json =
         maybe'
@@ -1675,7 +1702,10 @@ handleAction = case _ of
     case st of
       Initialized (Loaded st') -> case toJson st'.orderForm of
         Nothing -> pure unit
-        Just json -> ld =<< H.lift (run json (getOrderId st'))
+        Just json -> do
+          modifyInitialized $ _ { orderUpdateInFlight = true }
+          order <- H.lift $ run json (getOrderId st')
+          ld order
       _ -> pure unit
   FulfillOrder -> do
     st <- H.get
@@ -1683,11 +1713,14 @@ handleAction = case _ of
       -- Updates the current state to match the response order object.
       ld o = case o of
         Loaded o' -> loadExisting o'
-        _ -> pure unit
+        _ -> modifyInitialized $ _ { orderFulfillInFlight = false }
     case st of
       Initialized
         ( Loaded
           { orderForm: { original: Just (SS.OrderForm { id: Just id }) }
         }
-      ) -> ld =<< H.lift (postOrderFulfillment id)
+      ) -> do
+        modifyInitialized $ _ { orderFulfillInFlight = true }
+        order <- H.lift $ postOrderFulfillment id
+        ld order
       _ -> pure unit

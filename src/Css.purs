@@ -12,12 +12,16 @@ btnSky100 = ClassName "sofa-btn-sky-100"
 smallTitle :: ClassName
 smallTitle = ClassName "sofa-small-title"
 
+spinner :: ClassName
+spinner = ClassName "sofa-spinner"
+
 -- | Tailwind CSS classes.
 tw :: _
 tw =
   { absolute: ClassName "absolute"
   , activeBgSky300: ClassName "active:bg-sky-300"
   , alignMiddle: ClassName "align-middle"
+  , alignTextBottom: ClassName "align-text-bottom"
   , animatePulse: ClassName "animate-pulse"
   , appearanceNone: ClassName "appearance-none"
   , bgBlack_60: ClassName "bg-black/60"
