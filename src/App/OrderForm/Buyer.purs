@@ -122,6 +122,7 @@ renderSummary st
 
     okClasses =
       [ Css.tw.block
+      , Css.tw.textLeft
       , Css.tw.text2Xl
       , Css.tw.underline
       , Css.tw.underlineOffset4
@@ -130,6 +131,7 @@ renderSummary st
 
     badClasses =
       [ Css.tw.block
+      , Css.tw.textLeft
       , Css.tw.text2Xl
       , Css.tw.underline
       , Css.tw.underlineOffset4
