@@ -184,17 +184,19 @@ renderDetails st =
       ]
 
   renderBody mCommercial =
-    HH.div [ HP.classes [ Css.tw.wFull, Css.tw.minW96, Css.tw.flex, Css.tw.flexCol, Css.tw.spaceY4 ] ]
-      $ [ HH.div_
-            [ renderSmallTitle "Billing Option"
-            , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
-                [ maybe empty renderBillingOption mCommercial
+    HH.div [ HP.classes [ Css.tw.mt5, Css.tw.wFull, Css.tw.minW96, Css.tw.flex, Css.tw.flexCol, Css.tw.spaceY4 ] ]
+      $ [ HH.div [ HP.classes [ Css.tw.flex ] ]
+            [ HH.div [ HP.class_ Css.tw.w1_2 ]
+                [ renderSmallTitle "Billing Option"
+                , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
+                    [ maybe empty renderBillingOption mCommercial
+                    ]
                 ]
-            ]
-        , HH.div_
-            [ renderSmallTitle "Contract Term"
-            , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
-                [ maybe empty renderContractTerm mCommercial
+            , HH.div [ HP.class_ Css.tw.w1_2 ]
+                [ renderSmallTitle "Contract Term"
+                , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
+                    [ maybe empty renderContractTerm mCommercial
+                    ]
                 ]
             ]
         , HH.div [ HP.classes [ Css.tw.flex ] ]
