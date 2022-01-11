@@ -12,7 +12,7 @@
     "changeOrigin": true,
     "secure": false,
     "pathRewrite": {
-      "^/v1alpha1/examples/product-catalog.json$": "/v1alpha1/examples/product-catalog.phase1.staging.json"
+      "^/v1alpha1/examples/product-catalog.json$": "/v1alpha1/examples/product-catalog.phase1.staging.n.json"
     }
   },
   "/v1alpha1/orders": {

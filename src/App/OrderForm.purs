@@ -1092,7 +1092,7 @@ toJson orderForm = do
     SS.PriceBookRef
       { priceBookId: pb.id
       , version: pb.version
-      , solutionUri: Just "NOVA" -- FIXME: Should be solutionUri.
+      , solutionUri: Just solutionUri
       }
 
   toOrderSection :: OrderSection -> Maybe SS.OrderSection
@@ -1330,14 +1330,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
     let
       SS.PriceBookRef pbRef = s.basePriceBook
     solution <-
-      List.find
-        ( \(SS.Solution { uri }) ->
-            pbRef.solutionUri == uri
-              || ( pbRef.solutionUri == Just "NOVA"
-                    && uri
-                    == Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/phase1/solution.phase1.sms-prod.json"
-                )
-        )
+      List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri)
         $ Map.values solutions
     let
       SS.Solution sol = solution
