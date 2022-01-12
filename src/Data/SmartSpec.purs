@@ -446,9 +446,7 @@ data ChargeSingleUnit
     { unit :: ChargeUnitId
     , currency :: Maybe ChargeCurrency
     , description :: Maybe String
-    , listPrice :: Number
-    , price :: Number
-    , discount :: Maybe Discount
+    | PriceRow
     }
   | ChargeDim
     { unit :: ChargeUnitId
