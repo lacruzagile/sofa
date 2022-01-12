@@ -761,11 +761,17 @@ data Minimum
     , minimum :: Number
     }
   | MinimumOneChargeDim
-    { unit :: ChargeUnitId, minimumByDim :: Array MinimumPerDim }
-  | MinimumManyCharge
-    { units :: Array ChargeUnitId, minimum :: Number
+    { unit :: ChargeUnitId
+    , minimumByDim :: Array MinimumPerDim
     }
-  | MinimumManyChargeDim { units :: Array ChargeUnitId, minimumByDim :: Array MinimumPerDim }
+  | MinimumManyCharge
+    { units :: Array ChargeUnitId
+    , minimum :: Number
+    }
+  | MinimumManyChargeDim
+    { units :: Array ChargeUnitId
+    , minimumByDim :: Array MinimumPerDim
+    }
 
 instance decodeJsonMinimum :: DecodeJson Minimum where
   decodeJson json =
@@ -784,10 +790,10 @@ instance decodeJsonMinimum :: DecodeJson Minimum where
 
 instance encodeJsonMinimum :: EncodeJson Minimum where
   encodeJson = case _ of
-    MinimumOneCharge x -> ("type" := "MinimumOneCharge") ~> encodeJson x
-    MinimumOneChargeDim x -> ("type" := "MinimumOneChargeDim") ~> encodeJson x
-    MinimumManyCharge x -> ("type" := "MinimumManyCharge") ~> encodeJson x
-    MinimumManyChargeDim x -> ("type" := "MinimumManyChargeDim") ~> encodeJson x
+    MinimumOneCharge x -> ("type" := "MINIMUM_ONE_CHARGE") ~> encodeJson x
+    MinimumOneChargeDim x -> ("type" := "MINIMUM_ONE_CHARGE_DIM") ~> encodeJson x
+    MinimumManyCharge x -> ("type" := "MINIMUM_MANY_CHARGE") ~> encodeJson x
+    MinimumManyChargeDim x -> ("type" := "MINIMUM_MANY_CHARGE_DIM") ~> encodeJson x
 
 newtype MinimumPerDim
   = MinimumPerDim
