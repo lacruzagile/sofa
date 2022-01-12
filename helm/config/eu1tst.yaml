@@ -1,3 +1,5 @@
+replicaCount: 1
+
 ingress:
   host: sofa.eu1tst.bpa.unauth.int.staging.sinch.com
 
