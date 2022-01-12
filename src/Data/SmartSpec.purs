@@ -2130,8 +2130,9 @@ newtype PriceOverride
   = PriceOverride
   { basePriceBook :: PriceBookRef
   , charges :: Array Charge
-  , validity :: Validity
+  , validity :: Maybe Validity
   , discountProfileByUnit :: Maybe (Array DiscountProfilePerUnit)
+  , minimums :: Array Minimum
   }
 
 derive newtype instance decodeJsonPriceOverride :: DecodeJson PriceOverride
