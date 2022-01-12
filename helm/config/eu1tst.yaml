@@ -4,5 +4,5 @@ ingress:
 app:
   deploymentEnv: staging
   orderingServiceUrl: http://ordering
-  smartSpecUrl: https://ea.pages.sinch.com/smart-spec
+  smartSpecUrl: http://smart-solution:8080
   tokenServiceUrl: https://public.token-service.common-auth.staging.sinch.com
