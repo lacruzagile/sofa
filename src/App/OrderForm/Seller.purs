@@ -39,6 +39,7 @@ type Output
 type State
   = { legalEntity :: Maybe SS.LegalEntity -- ^ The currently chosen legal entity.
     , seller :: Maybe SS.Seller -- ^ The currently chosen seller.
+    , acceptedLegalEntity :: Maybe SS.LegalEntity -- ^ The latest accepted legal entity.
     , acceptedSeller :: Maybe SS.Seller -- ^ The latest accepted seller.
     , readOnly :: Boolean
     , open :: Boolean -- ^ Whether the details modal is open.
@@ -78,6 +79,7 @@ initialState input = case input of
   Nothing ->
     { legalEntity: Nothing
     , seller: Nothing
+    , acceptedLegalEntity: Nothing
     , acceptedSeller: Nothing
     , readOnly: false
     , open: false
@@ -85,6 +87,8 @@ initialState input = case input of
   Just { seller, readOnly } ->
     { legalEntity: Nothing
     , seller: Just seller
+    -- TODO: Fetch legal entity and populate this field.
+    , acceptedLegalEntity: Nothing
     , acceptedSeller: Just seller
     , readOnly
     , open: false
@@ -273,7 +277,7 @@ handleAction = case _ of
     st' <-
       H.modify \st ->
         st
-          { legalEntity = Nothing
+          { acceptedLegalEntity = st.legalEntity
           , acceptedSeller = st.seller
           , open = false
           }
@@ -283,7 +287,7 @@ handleAction = case _ of
   CancelAndCloseDetails ->
     H.modify_ \st ->
       st
-        { legalEntity = Nothing
+        { legalEntity = st.acceptedLegalEntity
         , seller = st.acceptedSeller
         , open = false
         }
