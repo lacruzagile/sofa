@@ -95,6 +95,8 @@ modalCloseBtn closeAction =
     [ HP.classes
         [ Css.tw.textLg
         , Css.tw.cursorPointer
+        , Css.tw.px3
+        , Css.tw.py2
         ]
     , HE.onClick $ \_ -> closeAction unit
     ]
@@ -134,7 +136,7 @@ modal toolbarContent body =
       [ HP.classes
           [ Css.tw.mxAuto
           , Css.tw.myAuto
-          , Css.tw.p5
+          , Css.tw.p8
           , Css.tw.bgWhite
           , Css.tw.shadowMd
           , Css.tw.roundedMd
@@ -144,12 +146,9 @@ modal toolbarContent body =
   toolbar =
     HH.div
       [ HP.classes
-          [ Css.tw.inline
-          , Css.tw.relative
+          [ Css.tw.relative
           , Css.tw.floatRight
-          , Css.tw.minusM5
-          , Css.tw.px3
-          , Css.tw.py2
+          , Css.tw.minusM8
           ]
       ]
 
