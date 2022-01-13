@@ -3,7 +3,6 @@ module App.EditablePrice (Slot, Input(..), Output(..), proxy, component) where
 import Prelude
 import Css as Css
 import Data.BigNumber as BN
-import Data.Currency as Currency
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Number.Format (fixed, toStringWith)
 import Data.SmartSpec as SS
