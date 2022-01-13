@@ -4,6 +4,7 @@ import Prelude
 import App.Charge (Slot, component, proxy) as Charge
 import App.OrderForm.Buyer as Buyer
 import App.OrderForm.Commercial as Commercial
+import App.OrderForm.Notes as Notes
 import App.OrderForm.SelectProduct as SelectProduct
 import App.OrderForm.Seller as Seller
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
@@ -53,6 +54,7 @@ type Slots
   = ( seller :: Seller.Slot Unit
     , buyer :: Buyer.Slot Unit
     , commercial :: Commercial.Slot Unit
+    , notes :: Notes.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , charge :: Charge.Slot OrderLineIndex
     )
@@ -126,6 +128,7 @@ data Action
   | SetSeller SS.Seller
   | SetBuyer SS.Buyer
   | SetCommercial SS.Commercial
+  | SetNotes (Array SS.OrderNote)
   | SetOrderStatus SS.OrderStatus
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
@@ -882,9 +885,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HH.text $ SS.prettyOrderStatus s ]
 
   renderOrderNotes :: Array SS.OrderNote -> H.ComponentHTML Action Slots m
-  renderOrderNotes [] = HH.text "No order notes"
-
-  renderOrderNotes notes = HH.text $ (show $ A.length notes) <> " notes"
+  renderOrderNotes notes = HH.slot Notes.proxy unit Notes.component notes SetNotes
 
   isInDraft = case state of
     Initialized (Loaded { orderForm: { status: SS.OsInDraft } }) -> true
@@ -1072,7 +1073,7 @@ toJson orderForm = do
         , commercial
         , buyer
         , seller
-        , orderNotes: []
+        , orderNotes: orderForm.notes
         , sections
         , createTime: Nothing
         }
@@ -1472,6 +1473,9 @@ handleAction = case _ of
                       map (map (_ { priceBook = Nothing, summary = mempty :: SubTotal })) st.orderForm.sections
                   }
               }
+  SetNotes notes ->
+    modifyInitialized
+      $ \st -> st { orderForm = st.orderForm { notes = notes } }
   SetOrderStatus status ->
     modifyInitialized
       $ \st -> st { orderForm = st.orderForm { status = status } }

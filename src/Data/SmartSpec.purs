@@ -2424,14 +2424,19 @@ derive newtype instance encodeJsonOrderSection :: EncodeJson OrderSection
 
 newtype OrderNote
   = OrderNote
-  { orderNoteId :: String
+  { orderNoteId :: Maybe String
+  , createTime :: Maybe DateTime
   , note :: String
-  , createTime :: DateTime
   }
 
 derive newtype instance decodeJsonOrderNote :: DecodeJson OrderNote
 
-derive newtype instance encodeJsonOrderNote :: EncodeJson OrderNote
+instance encodeJsonOrderNote :: EncodeJson OrderNote where
+  encodeJson (OrderNote x) =
+    ("note" := x.note)
+      ~> ("orderNoteId" :=? x.orderNoteId)
+      ~>? ("createTime" :=? x.createTime)
+      ~>? jsonEmptyObject
 
 newtype OrderId
   = OrderId String

@@ -4,6 +4,12 @@ module.exports = {
   content: ["./*.html", "output/Css/index.js"],
   theme: {
     extend: {
+      maxHeight: {
+        '128': '32rem',
+      },
+      maxWidth: {
+        '128': '32rem',
+      },
       minWidth: {
         '96': '24rem',
         '128': '32rem',
