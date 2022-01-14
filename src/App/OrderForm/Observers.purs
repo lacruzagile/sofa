@@ -137,7 +137,7 @@ renderDetails st =
           [ HP.classes
               [ Css.tw.flex
               , Css.tw.flexCol
-              , Css.tw.spaceY5
+              , Css.tw.spaceY4
               , Css.tw.maxH128
               , Css.tw.overflowAuto
               ]
@@ -193,19 +193,30 @@ renderDetails st =
     _ -> renderShowObserver idx n
 
   renderShowObserver idx (SS.OrderObserver n) =
-    HH.div_
+    HH.div [ HP.classes [ Css.tw.group, Css.tw.py3 ] ]
       [ HH.text n.observerEmail
       , HH.div
           [ HP.classes [ Css.tw.textSm, Css.tw.textGray600, Css.tw.flex ] ]
           [ HH.div_ [ HH.text $ maybe "New" SS.prettyDateTime n.createTime ]
           , HH.div [ HP.class_ Css.tw.grow ] []
           , HH.button
-              [ HP.classes [ Css.btnSky100, Css.tw.py0 ]
+              [ HP.classes
+                  [ Css.btnSky100
+                  , Css.tw.py0
+                  , Css.tw.hidden
+                  , Css.tw.groupHoverBlock
+                  ]
               , HE.onClick $ \_ -> StartEditObserver idx
               ]
               [ HH.text "Edit" ]
           , HH.button
-              [ HP.classes [ Css.btnRed100, Css.tw.py0, Css.tw.ml2 ]
+              [ HP.classes
+                  [ Css.btnRed100
+                  , Css.tw.py0
+                  , Css.tw.ml2
+                  , Css.tw.hidden
+                  , Css.tw.groupHoverBlock
+                  ]
               , HE.onClick $ \_ -> RemoveObserver idx
               ]
               [ HH.text "Remove" ]
