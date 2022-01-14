@@ -5,6 +5,7 @@ import App.Charge (Slot, component, proxy) as Charge
 import App.OrderForm.Buyer as Buyer
 import App.OrderForm.Commercial as Commercial
 import App.OrderForm.Notes as Notes
+import App.OrderForm.Observers as Observers
 import App.OrderForm.SelectProduct as SelectProduct
 import App.OrderForm.Seller as Seller
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
@@ -55,6 +56,7 @@ type Slots
     , buyer :: Buyer.Slot Unit
     , commercial :: Commercial.Slot Unit
     , notes :: Notes.Slot Unit
+    , observers :: Observers.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , charge :: Charge.Slot OrderLineIndex
     )
@@ -86,6 +88,7 @@ type OrderForm
     , seller :: Maybe SS.Seller
     , displayName :: Maybe String
     , status :: SS.OrderStatus
+    , observers :: Array SS.OrderObserver
     , notes :: Array SS.OrderNote
     , summary :: SubTotal
     , sections :: Array (Maybe OrderSection)
@@ -128,6 +131,7 @@ data Action
   | SetSeller SS.Seller
   | SetBuyer SS.Buyer
   | SetCommercial SS.Commercial
+  | SetObservers (Array SS.OrderObserver)
   | SetNotes (Array SS.OrderNote)
   | SetOrderStatus SS.OrderStatus
   | AddSection
@@ -826,6 +830,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ title [ HH.text "Notes" ]
             , renderOrderNotes orderForm.notes
             ]
+        , entry
+            [ title [ HH.text "Observers" ]
+            , renderOrderObservers orderForm.observers
+            ]
         ]
     where
     entry = HH.div [ HP.classes [ Css.tw.mr10, Css.tw.my2 ] ]
@@ -886,6 +894,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrderNotes :: Array SS.OrderNote -> H.ComponentHTML Action Slots m
   renderOrderNotes notes = HH.slot Notes.proxy unit Notes.component notes SetNotes
+
+  renderOrderObservers :: Array SS.OrderObserver -> H.ComponentHTML Action Slots m
+  renderOrderObservers observers =
+    HH.slot
+      Observers.proxy
+      unit
+      Observers.component
+      observers
+      SetObservers
 
   isInDraft = case state of
     Initialized (Loaded { orderForm: { status: SS.OsInDraft } }) -> true
@@ -1073,6 +1090,7 @@ toJson orderForm = do
         , commercial
         , buyer
         , seller
+        , orderObservers: orderForm.observers
         , orderNotes: orderForm.notes
         , sections
         , createTime: Nothing
@@ -1131,6 +1149,7 @@ loadCatalog = do
               , buyer: Nothing
               , seller: Nothing
               , status: SS.OsInDraft
+              , observers: []
               , notes: []
               , summary: mempty
               , sections: []
@@ -1318,6 +1337,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
             , buyer: Just orderForm.buyer
             , seller: Just orderForm.seller
             , status: orderForm.status
+            , observers: orderForm.orderObservers
             , notes: orderForm.orderNotes
             , summary: mempty
             , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
@@ -1473,6 +1493,9 @@ handleAction = case _ of
                       map (map (_ { priceBook = Nothing, summary = mempty :: SubTotal })) st.orderForm.sections
                   }
               }
+  SetObservers observers ->
+    modifyInitialized
+      $ \st -> st { orderForm = st.orderForm { observers = observers } }
   SetNotes notes ->
     modifyInitialized
       $ \st -> st { orderForm = st.orderForm { notes = notes } }

@@ -47,6 +47,7 @@ module Data.SmartSpec
   , OrderLineId
   , OrderLineStatus(..)
   , OrderNote(..)
+  , OrderObserver(..)
   , OrderSection(..)
   , OrderSectionId
   , OrderStatus(..)
@@ -2422,6 +2423,22 @@ derive newtype instance decodeJsonOrderSection :: DecodeJson OrderSection
 
 derive newtype instance encodeJsonOrderSection :: EncodeJson OrderSection
 
+newtype OrderObserver
+  = OrderObserver
+  { observerId :: Maybe String
+  , observerEmail :: String
+  , createTime :: Maybe DateTime
+  }
+
+derive newtype instance decodeJsonOrderObserver :: DecodeJson OrderObserver
+
+instance encodeJsonOrderObserver :: EncodeJson OrderObserver where
+  encodeJson (OrderObserver x) =
+    ("observerEmail" := x.observerEmail)
+      ~> ("observerId" :=? x.observerId)
+      ~>? ("createTime" :=? x.createTime)
+      ~>? jsonEmptyObject
+
 newtype OrderNote
   = OrderNote
   { orderNoteId :: Maybe String
@@ -2466,6 +2483,7 @@ newtype OrderForm
   , commercial :: Commercial
   , buyer :: Buyer
   , seller :: Seller
+  , orderObservers :: Array OrderObserver
   , orderNotes :: Array OrderNote
   , sections :: Array OrderSection
   , createTime :: Maybe DateTime
@@ -2481,6 +2499,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
     commercial <- o .: "commercial"
     buyer <- o .: "buyer"
     seller <- o .: "seller"
+    orderObservers <- o .:? "orderObservers" .!= []
     orderNotes <- o .:? "orderNotes" .!= []
     sections <- o .: "sections"
     createTime <- o .:? "createTime"
@@ -2493,6 +2512,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
           , commercial
           , buyer
           , seller
+          , orderObservers
           , orderNotes
           , sections
           , createTime
@@ -2507,7 +2527,8 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
       ~>? ("commercial" := x.commercial)
       ~> ("buyer" := x.buyer)
       ~> ("seller" := x.seller)
-      ~> ("orderNotes" :=? ifNonEmpty x.orderNotes)
+      ~> ("orderObservers" :=? ifNonEmpty x.orderObservers)
+      ~>? ("orderNotes" :=? ifNonEmpty x.orderNotes)
       ~>? ("sections" := x.sections)
       ~> ("createTime" :=? x.createTime)
       ~>? jsonEmptyObject
