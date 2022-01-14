@@ -2079,7 +2079,8 @@ prettyDate (DateTime dt) = S.takeWhile (_ /= delim) dt
 -- | A time pretty printer that prints a pretty ugly string.
 prettyDateTime :: DateTime -> String
 prettyDateTime (DateTime dt) =
-  S.replace (S.Pattern "Z") (S.Replacement " UTC")
+  Re.replace (unsafeRegex "\\.\\d+" mempty) ""
+    $ S.replace (S.Pattern "Z") (S.Replacement " UTC")
     $ S.replace (S.Pattern "T") (S.Replacement " ")
     $ dt
 
