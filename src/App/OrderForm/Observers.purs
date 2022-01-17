@@ -192,12 +192,12 @@ renderDetails st =
       | idx == index -> renderEditObserver observer
     _ -> renderShowObserver idx n
 
-  renderShowObserver idx (SS.OrderObserver n) =
+  renderShowObserver idx (SS.OrderObserver o) =
     HH.div [ HP.classes [ Css.tw.group, Css.tw.py3 ] ]
-      [ HH.text n.observerEmail
+      [ HH.text o.observerEmail
       , HH.div
           [ HP.classes [ Css.tw.textSm, Css.tw.textGray600, Css.tw.flex ] ]
-          [ HH.div_ [ HH.text $ maybe "New" SS.prettyDateTime n.createTime ]
+          [ HH.div_ [ maybe (HH.text "New") Widgets.dateWithTimeTooltip o.createTime ]
           , HH.div [ HP.class_ Css.tw.grow ] []
           , HH.button
               [ HP.classes

@@ -192,7 +192,7 @@ renderDetails st =
       [ HH.text n.note
       , HH.div
           [ HP.classes [ Css.tw.textSm, Css.tw.textGray600, Css.tw.flex ] ]
-          [ HH.div_ [ HH.text $ maybe "New" SS.prettyDateTime n.createTime ]
+          [ HH.div_ [ maybe (HH.text "New") Widgets.dateWithTimeTooltip n.createTime ]
           , HH.div [ HP.class_ Css.tw.grow ] []
           , HH.button
               [ HP.classes

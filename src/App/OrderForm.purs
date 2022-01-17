@@ -811,7 +811,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ( \o ->
               entry
                 [ title [ HH.text "Created" ]
-                , value [ HH.text $ maybe "Not Available" SS.prettyDateTime o.createTime ]
+                , value
+                    [ maybe
+                        (HH.text "Not Available")
+                        Widgets.dateWithTimeTooltip
+                        o.createTime
+                    ]
                 ]
           )
       <> [ entry
@@ -1414,7 +1419,7 @@ mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>)
       [ Tuple sol.id
           [ { id: pb.id
             , title: fromMaybe pb.id pb.title
-            , version: pbv.version
+            , version: SS.prettyDate pbv.version
             , currency: SS.ChargeCurrency (unwrap c)
             , rateCards: rateCardMap <$> pbc.rateCards
             }

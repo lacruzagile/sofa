@@ -220,7 +220,7 @@ render state = HH.section_ [ HH.article_ content ]
   renderPriceBookVersion prodMap (SS.PriceBookVersion p) =
     HH.li_
       [ HH.dl_
-          ( dataItem "Version" p.version
+          ( dataItem "Version" (SS.prettyDate p.version)
               <> (dataItemRaw "Currencies" $ HH.ul_ $ map (renderPriceBookCurrency prodMap) p.byCurrency)
           )
       ]

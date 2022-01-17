@@ -23,8 +23,6 @@ module Data.SmartSpec
   , ContractTerm(..)
   , Country(..)
   , CrmAccountId(..)
-  , Date(..)
-  , DateTime(..)
   , DefaultPricePerUnit(..)
   , DimValue(..)
   , Discount(..)
@@ -119,12 +117,18 @@ import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(
 import Data.Array as A
 import Data.Array.NonEmpty (fromNonEmpty)
 import Data.Currency (Currency, unsafeMkCurrency)
-import Data.Either (Either(..))
+import Data.DateTime (Date, DateTime(..))
+import Data.DateTime as DateTime
+import Data.DateTimeUtils as DateTimeUtils
+import Data.Either (Either(..), either, note)
+import Data.Formatter.DateTime as F
 import Data.Generic.Rep (class Generic)
-import Data.List.Lazy (List)
+import Data.List ((:))
+import Data.List as SL
+import Data.List.Lazy as LL
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.NonEmpty ((:|))
 import Data.Set (Set)
@@ -425,9 +429,20 @@ newtype PriceBookVersion
 
 derive instance newtypePriceBookVersion :: Newtype PriceBookVersion _
 
-derive newtype instance decodeJsonPriceBookVersion :: DecodeJson PriceBookVersion
+instance decodeJsonPriceBookVersion :: DecodeJson PriceBookVersion where
+  decodeJson json = do
+    o <- decodeJson json
+    version <- decodeJsonDate =<< o .: "version"
+    parent <- o .:? "parent"
+    byCurrency <- o .: "byCurrency"
+    pure $ PriceBookVersion { version, parent, byCurrency }
 
-derive newtype instance encodeJsonPriceBookVersion :: EncodeJson PriceBookVersion
+instance encodeJsonPriceBookVersion :: EncodeJson PriceBookVersion where
+  encodeJson (PriceBookVersion x) =
+    ("version" := dateToIsoString x.version)
+      ~> ("parent" :=? x.parent)
+      ~>? ("byCurrency" := x.byCurrency)
+      ~> jsonEmptyObject
 
 newtype PriceBookCurrency
   = PriceBookCurrency
@@ -1292,7 +1307,7 @@ instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
     CseArray x -> encodeJson x
     CseObject x ->
       ("type" := "object")
-        ~> ("properties" := encodeJson (FO.fromFoldable (Map.toUnfoldable x.properties :: List _)))
+        ~> ("properties" := encodeJson (FO.fromFoldable (Map.toUnfoldable x.properties :: LL.List _)))
         ~> jsonEmptyObject
     CseOneOf x -> encodeJson x
 
@@ -1363,7 +1378,7 @@ instance encodeJsonConfigValue :: EncodeJson ConfigValue where
   encodeJson (CvInteger v) = encodeJson v
   encodeJson (CvString v) = encodeJson v
   encodeJson (CvArray v) = encodeJson v
-  encodeJson (CvObject v) = encodeJson $ FO.fromFoldable (Map.toUnfoldable v :: List _)
+  encodeJson (CvObject v) = encodeJson $ FO.fromFoldable (Map.toUnfoldable v :: LL.List _)
   encodeJson (CvNull) = encodeJson (Nothing :: Maybe Int)
 
 newtype ChargeUnit
@@ -2043,9 +2058,6 @@ instance encodeJsonSeller :: EncodeJson Seller where
       ~> ("contacts" := x.contacts)
       ~> jsonEmptyObject
 
-type Date
-  = String
-
 newtype Validity
   = Validity
   { startDate :: Date
@@ -2053,37 +2065,78 @@ newtype Validity
   }
 
 instance decodeJsonValidity :: DecodeJson Validity where
-  decodeJson json = Validity <$> decodeJson json
+  decodeJson json = do
+    o <- decodeJson json
+    startDate <- decodeJsonDate =<< o .: "startDate"
+    endDateExclusive <- decodeJsonDate' =<< o .:? "endDateExclusive"
+    pure $ Validity { startDate, endDateExclusive }
 
 instance encodeJsonValidity :: EncodeJson Validity where
-  encodeJson (Validity x) = encodeJson x
+  encodeJson (Validity x) =
+    ("startDate" := dateToIsoString x.startDate)
+      ~> ("endDateExclusive" :=? (dateToIsoString <$> x.endDateExclusive))
+      ~>? jsonEmptyObject
 
-newtype DateTime
-  = DateTime String
+isoDateFormat :: F.Formatter
+isoDateFormat =
+  F.YearFull
+    : F.Placeholder "-"
+    : F.MonthTwoDigits
+    : F.Placeholder "-"
+    : F.DayOfMonthTwoDigits
+    : SL.Nil
 
-derive instance newtypeDateTime :: Newtype DateTime _
+dateToIsoString :: Date -> String
+dateToIsoString d = F.format isoDateFormat $ DateTime d bottom
 
-derive instance eqDateTime :: Eq DateTime
+decodeJsonDate :: String -> Either JsonDecodeError Date
+decodeJsonDate =
+  either (const $ Left (TypeMismatch "Bad date time")) Right
+    <<< map DateTime.date
+    <<< F.unformat isoDateFormat
 
-derive newtype instance ordDateTime :: Ord DateTime
+decodeJsonDate' :: Maybe String -> Either JsonDecodeError (Maybe Date)
+decodeJsonDate' = maybe (pure Nothing) (map Just <<< decodeJsonDate)
 
-derive newtype instance decodeDateTime :: DecodeJson DateTime
+decodeJsonDateTime :: String -> Either JsonDecodeError DateTime
+decodeJsonDateTime = note (TypeMismatch "Bad date time") <<< DateTimeUtils.fromIsoString
 
-derive newtype instance encodeJsonDateTime :: EncodeJson DateTime
+decodeJsonDateTime' :: Maybe String -> Either JsonDecodeError (Maybe DateTime)
+decodeJsonDateTime' = maybe (pure Nothing) (map Just <<< decodeJsonDateTime)
+
+dateTimeToIsoDateString :: DateTime -> String
+dateTimeToIsoDateString = DateTimeUtils.toIsoString
 
 -- | Prints the date in YYYY-MM-DD format.
-prettyDate :: DateTime -> String
-prettyDate (DateTime dt) = S.takeWhile (_ /= delim) dt
+prettyDate :: Date -> String
+prettyDate d = F.format fmt $ DateTime.DateTime d bottom
   where
-  delim = S.codePointFromChar 'T'
+  fmt =
+    F.DayOfMonth
+      : F.Placeholder " "
+      : F.MonthShort
+      : F.Placeholder " "
+      : F.YearFull
+      : SL.Nil
 
 -- | A time pretty printer that prints a pretty ugly string.
 prettyDateTime :: DateTime -> String
-prettyDateTime (DateTime dt) =
-  Re.replace (unsafeRegex "\\.\\d+" mempty) ""
-    $ S.replace (S.Pattern "Z") (S.Replacement " UTC")
-    $ S.replace (S.Pattern "T") (S.Replacement " ")
-    $ dt
+prettyDateTime = F.format fmt
+  where
+  fmt =
+    F.DayOfMonth
+      : F.Placeholder " "
+      : F.MonthShort
+      : F.Placeholder " "
+      : F.YearFull
+      : F.Placeholder " at "
+      : F.Hours24
+      : F.Placeholder ":"
+      : F.MinutesTwoDigits
+      : F.Placeholder ":"
+      : F.SecondsTwoDigits
+      : F.Placeholder " UTC"
+      : SL.Nil
 
 newtype Asset
   = Asset
@@ -2102,8 +2155,8 @@ instance decodeJsonAsset :: DecodeJson Asset where
     sku <- o .: "sku"
     configs <- o .: "configs"
     billingAccount <- o .: "billingAccount"
-    createTime <- o .: "createTime"
-    updateTime <- o .: "updateTime"
+    createTime <- decodeJsonDateTime =<< o .: "createTime"
+    updateTime <- decodeJsonDateTime =<< o .: "updateTime"
     priceOverrides <- o .: "priceOverrides"
     priceChangeNotificationInDays <- o .:? "priceChangeNotificationInDays" .!= 0
     pure
@@ -2122,8 +2175,8 @@ instance encodeJsonAsset :: EncodeJson Asset where
     ("sku" := x.sku)
       ~> ("configs" := x.configs)
       ~> ("billingAccount" := x.billingAccount)
-      ~> ("createTime" := x.createTime)
-      ~> ("updateTime" := x.updateTime)
+      ~> ("createTime" := dateTimeToIsoDateString x.createTime)
+      ~> ("updateTime" := dateTimeToIsoDateString x.updateTime)
       ~> ("priceOverrides" := x.priceOverrides)
       ~> ("priceChangeNotificationInDays" :=? ifNonZero x.priceChangeNotificationInDays)
       ~>? jsonEmptyObject
@@ -2430,13 +2483,19 @@ newtype OrderObserver
   , createTime :: Maybe DateTime
   }
 
-derive newtype instance decodeJsonOrderObserver :: DecodeJson OrderObserver
+instance decodeJsonOrderObserver :: DecodeJson OrderObserver where
+  decodeJson json = do
+    o <- decodeJson json
+    observerId <- o .:? "observerId"
+    observerEmail <- o .: "observerEmail"
+    createTime <- decodeJsonDateTime' =<< o .:? "createTime"
+    pure $ OrderObserver { observerId, observerEmail, createTime }
 
 instance encodeJsonOrderObserver :: EncodeJson OrderObserver where
   encodeJson (OrderObserver x) =
     ("observerEmail" := x.observerEmail)
       ~> ("observerId" :=? x.observerId)
-      ~>? ("createTime" :=? x.createTime)
+      ~>? ("createTime" :=? (dateTimeToIsoDateString <$> x.createTime))
       ~>? jsonEmptyObject
 
 newtype OrderNote
@@ -2446,13 +2505,19 @@ newtype OrderNote
   , note :: String
   }
 
-derive newtype instance decodeJsonOrderNote :: DecodeJson OrderNote
+instance decodeJsonOrderNote :: DecodeJson OrderNote where
+  decodeJson json = do
+    o <- decodeJson json
+    orderNoteId <- o .:? "orderNoteId"
+    createTime <- decodeJsonDateTime' =<< o .:? "createTime"
+    note <- o .: "note"
+    pure $ OrderNote { orderNoteId, createTime, note }
 
 instance encodeJsonOrderNote :: EncodeJson OrderNote where
   encodeJson (OrderNote x) =
     ("note" := x.note)
       ~> ("orderNoteId" :=? x.orderNoteId)
-      ~>? ("createTime" :=? x.createTime)
+      ~>? ("createTime" :=? (dateTimeToIsoDateString <$> x.createTime))
       ~>? jsonEmptyObject
 
 newtype OrderId
@@ -2502,7 +2567,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
     orderObservers <- o .:? "orderObservers" .!= []
     orderNotes <- o .:? "orderNotes" .!= []
     sections <- o .: "sections"
-    createTime <- o .:? "createTime"
+    createTime <- decodeJsonDateTime' =<< o .:? "createTime"
     pure
       $ OrderForm
           { id
@@ -2530,7 +2595,7 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
       ~> ("orderObservers" :=? ifNonEmpty x.orderObservers)
       ~>? ("orderNotes" :=? ifNonEmpty x.orderNotes)
       ~>? ("sections" := x.sections)
-      ~> ("createTime" :=? x.createTime)
+      ~> ("createTime" :=? (dateTimeToIsoDateString <$> x.createTime))
       ~>? jsonEmptyObject
 
 newtype LegalEntityTraffic

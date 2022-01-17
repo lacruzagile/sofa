@@ -2,6 +2,7 @@ module Widgets
   ( Tab(..)
   , TooltipDirection(..)
   , address
+  , dateWithTimeTooltip
   , modal
   , modalCloseBtn
   , monetaryAmount
@@ -19,6 +20,8 @@ import Data.Array as A
 import Data.BigNumber as BN
 import Data.Currency (Currency)
 import Data.Currency as Currency
+import Data.DateTime (DateTime)
+import Data.DateTime as DateTime
 import Data.Iso3166 (countryForCode, subdivisionForCode)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
@@ -88,6 +91,13 @@ type Tab slot action
   = { label :: HH.HTML slot action
     , content :: HH.HTML slot action
     }
+
+dateWithTimeTooltip :: forall slot action. DateTime -> HH.HTML slot action
+dateWithTimeTooltip t =
+  withTooltip_
+    Top
+    (SS.prettyDateTime t)
+    (HH.text $ SS.prettyDate (DateTime.date t))
 
 modalCloseBtn :: forall slot action. (Unit -> action) -> HH.HTML slot action
 modalCloseBtn closeAction =

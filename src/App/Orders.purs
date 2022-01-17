@@ -98,7 +98,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder :: SS.OrderForm -> H.ComponentHTML Action Slots m
   renderOrder (SS.OrderForm o) =
     trow
-      [ tcell [ maybe (HH.text "N/A") renderDateTime o.createTime ]
+      [ tcell [ maybe (HH.text "N/A") Widgets.dateWithTimeTooltip o.createTime ]
       , tcell [ HH.text $ SS.prettyOrderStatus o.status ]
       , tcell [ HH.text buyer ]
       , tcell [ HH.text seller ]
@@ -112,12 +112,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
       Just id -> HH.a [ Route.href (Route.Order id), HP.classes rowClasses ]
 
     tcell = HH.div [ HP.classes [ Css.tw.tableCell, Css.tw.p5 ] ]
-
-    renderDateTime t =
-      Widgets.withTooltip_
-        Widgets.Top
-        (SS.prettyDateTime t)
-        (HH.text $ SS.prettyDate t)
 
     Tuple buyer seller =
       let
