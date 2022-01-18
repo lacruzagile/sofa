@@ -2074,7 +2074,7 @@ instance decodeJsonValidity :: DecodeJson Validity where
 instance encodeJsonValidity :: EncodeJson Validity where
   encodeJson (Validity x) =
     ("startDate" := dateToIsoString x.startDate)
-      ~> ("endDateExclusive" :=? (dateToIsoString <$> x.endDateExclusive))
+      ~> ("endDateExclusive" :=? map dateToIsoString x.endDateExclusive)
       ~>? jsonEmptyObject
 
 isoDateFormat :: F.Formatter
@@ -2495,7 +2495,7 @@ instance encodeJsonOrderObserver :: EncodeJson OrderObserver where
   encodeJson (OrderObserver x) =
     ("observerEmail" := x.observerEmail)
       ~> ("observerId" :=? x.observerId)
-      ~>? ("createTime" :=? (dateTimeToIsoDateString <$> x.createTime))
+      ~>? ("createTime" :=? map dateTimeToIsoDateString x.createTime)
       ~>? jsonEmptyObject
 
 newtype OrderNote
@@ -2517,7 +2517,7 @@ instance encodeJsonOrderNote :: EncodeJson OrderNote where
   encodeJson (OrderNote x) =
     ("note" := x.note)
       ~> ("orderNoteId" :=? x.orderNoteId)
-      ~>? ("createTime" :=? (dateTimeToIsoDateString <$> x.createTime))
+      ~>? ("createTime" :=? map dateTimeToIsoDateString x.createTime)
       ~>? jsonEmptyObject
 
 newtype OrderId
@@ -2595,7 +2595,7 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
       ~> ("orderObservers" :=? ifNonEmpty x.orderObservers)
       ~>? ("orderNotes" :=? ifNonEmpty x.orderNotes)
       ~>? ("sections" := x.sections)
-      ~> ("createTime" :=? (dateTimeToIsoDateString <$> x.createTime))
+      ~> ("createTime" :=? map dateTimeToIsoDateString x.createTime)
       ~>? jsonEmptyObject
 
 newtype LegalEntityTraffic
