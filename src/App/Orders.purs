@@ -66,29 +66,31 @@ render ::
 render state = HH.section_ [ HH.article_ renderContent ]
   where
   error err =
-    [ HH.div
-        [ HP.classes
-            [ Css.tw.p5
-            , Css.tw.bgRed100
-            , Css.tw.border
-            , Css.tw.borderRed400
-            , Css.tw.textRed700
-            ]
-        ]
-        [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
-        , HH.p_ [ HH.text err ]
-        ]
-    ]
+    HH.div
+      [ HP.classes
+          [ Css.tw.p5
+          , Css.tw.bgRed100
+          , Css.tw.border
+          , Css.tw.borderRed400
+          , Css.tw.textRed700
+          ]
+      ]
+      [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
+      , HH.p_ [ HH.text err ]
+      ]
 
-  idle = [ HH.p_ [ HH.text "Idle …" ] ]
+  idle = HH.p_ [ HH.text "Idle …" ]
 
-  loading = [ HH.p_ [ HH.text "Loading …" ] ]
+  loading =
+    HH.p
+      [ HP.classes [ Css.tw.animatePulse, Css.tw.text2Xl, Css.tw.textCenter ] ]
+      [ HH.text "Loading …" ]
 
   defRender ::
     forall a.
     Loadable a ->
-    (a -> Array (H.ComponentHTML Action Slots m)) ->
-    Array (H.ComponentHTML Action Slots m)
+    (a -> H.ComponentHTML Action Slots m) ->
+    H.ComponentHTML Action Slots m
   defRender s rend = case s of
     Idle -> idle
     Loading -> loading
@@ -121,35 +123,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         Tuple b s
 
-  renderOrders :: { orders :: Array SS.OrderForm } -> Array (H.ComponentHTML Action Slots m)
+  renderOrders :: { orders :: Array SS.OrderForm } -> H.ComponentHTML Action Slots m
   renderOrders { orders: os } =
-    [ renderNewOrderLink
-    , HH.h1_ [ HH.text "Orders" ]
-    , table
-        [ thead
-            [ trow
-                [ tcell [ HH.text "Created" ]
-                , tcell [ HH.text "Status" ]
-                , tcell [ HH.text "Buyer" ]
-                , tcell [ HH.text "Seller" ]
-                , tcell [ HH.text "Name" ]
-                ]
-            ]
-        , tbody $ map renderOrder os
-        ]
-    ]
+    table
+      [ thead
+          [ trow
+              [ tcell [ HH.text "Created" ]
+              , tcell [ HH.text "Status" ]
+              , tcell [ HH.text "Buyer" ]
+              , tcell [ HH.text "Seller" ]
+              , tcell [ HH.text "Name" ]
+              ]
+          ]
+      , tbody $ map renderOrder os
+      ]
     where
-    renderNewOrderLink =
-      HH.a
-        [ Route.href Route.OrderForm
-        , HP.classes
-            [ Css.tw.relative
-            , Css.tw.floatRight
-            , Css.btnSky100
-            ]
-        ]
-        [ HH.text "+ New Order" ]
-
     table =
       HH.div
         [ HP.classes
@@ -181,7 +169,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     tcell = HH.div [ HP.classes [ Css.tw.tableCell, Css.tw.px5, Css.tw.py3 ] ]
 
-  renderContent = defRender state renderOrders
+  renderNewOrderLink =
+    HH.a
+      [ Route.href Route.OrderForm
+      , HP.classes
+          [ Css.tw.relative
+          , Css.tw.floatRight
+          , Css.btnSky100
+          ]
+      ]
+      [ HH.text "+ New Order" ]
+
+  renderContent =
+    [ renderNewOrderLink
+    , HH.h1_ [ HH.text "Orders" ]
+    , defRender state renderOrders
+    ]
 
 loadOrders ::
   forall slots output m.

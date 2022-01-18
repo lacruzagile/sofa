@@ -1060,7 +1060,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   idle = [ HH.p_ [ HH.text "Idle …" ] ]
 
-  loading = [ HH.p_ [ HH.text "Loading …" ] ]
+  loading =
+    [ HH.p
+        [ HP.classes [ Css.tw.animatePulse, Css.tw.text2Xl, Css.tw.textCenter ] ]
+        [ HH.text "Loading …" ]
+    ]
 
   defRender ::
     forall a.
