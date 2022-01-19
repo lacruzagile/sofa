@@ -27,7 +27,7 @@ render :: forall action cs m. Unit -> H.ComponentHTML action cs m
 render _ = do
   HH.div_
     [ HH.h1_
-        [ HH.text "Smart Spec" ]
+        [ HH.text "SOFA" ]
     , HH.p_
         [ HH.text "This is a basic tool to experiment with Smart Spec." ]
     , HH.p_
