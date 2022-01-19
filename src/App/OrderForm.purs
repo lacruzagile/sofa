@@ -1009,7 +1009,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HP.classes
             [ Css.tw.flex
             , Css.tw.flexWrapReverse
-            , Css.tw.p5
+            , Css.tw.p3
             , Css.tw.my5
             , Css.tw.bgWhite
             , Css.tw.roundedSm
