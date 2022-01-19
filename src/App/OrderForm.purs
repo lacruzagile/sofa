@@ -691,12 +691,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     ]
                 ]
             , renderOrderLines sec.solution sec.orderLines
-            , HH.div [ HP.classes [ Css.tw.flex, Css.tw.m5, Css.tw.pt5, Css.tw.borderT ] ]
+            , HH.div
+                [ HP.classes
+                    [ Css.tw.flex
+                    , Css.tw.flexWrapReverse
+                    , Css.tw.itemsCenter
+                    , Css.tw.m5
+                    , Css.tw.pt5
+                    , Css.tw.borderT
+                    ]
+                ]
                 [ if not isInDraft then
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.btnSky100, Css.tw.mAuto ]
+                      [ HP.classes [ Css.btnSky100 ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
                       [ HH.text "+ Add Order Line" ]
@@ -1009,6 +1018,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HP.classes
             [ Css.tw.flex
             , Css.tw.flexWrapReverse
+            , Css.tw.itemsCenter
             , Css.tw.p3
             , Css.tw.my5
             , Css.tw.bgWhite
@@ -1017,7 +1027,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
 
-    btnsDiv = HH.div [ HP.classes [ Css.tw.spaceX5, Css.tw.mAuto ] ]
+    btnsDiv = HH.div [ HP.classes [ Css.tw.spaceX5 ] ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
