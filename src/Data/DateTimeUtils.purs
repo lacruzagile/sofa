@@ -4,7 +4,6 @@ module Data.DateTimeUtils
   ) where
 
 import Prelude
-
 import Data.DateTime (DateTime)
 import Data.JSDate (JSDate)
 import Data.JSDate as JSDate
