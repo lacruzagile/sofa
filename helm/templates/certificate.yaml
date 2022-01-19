@@ -9,5 +9,5 @@ spec:
     - {{ .Values.ingress.host }}
   issuerRef:
     kind: ClusterIssuer
-    name: acme-cluster-issuer-dns01
-  secretName: {{ .Values.app.name }}-gateway-credentials
+    name: {{ .Values.ingress.tls.issuer }}
+  secretName: {{ .Values.ingress.tls.secretName }}

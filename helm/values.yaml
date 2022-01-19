@@ -19,6 +19,7 @@ image:
 ingress:
   tls:
     issuer: acme-cluster-issuer-dns01
+    secretName: sofa-gateway-credentials
   class:
     name: 'private-nginx-ingress'
 

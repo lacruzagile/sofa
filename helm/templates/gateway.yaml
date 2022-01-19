@@ -15,5 +15,5 @@ spec:
         number: {{ .Values.ports.https }}
         protocol: HTTPS
       tls:
-        credentialName: {{ .Values.app.name }}-gateway-credentials
+        credentialName: {{ .Values.ingress.tls.secretName }}
         mode: SIMPLE
