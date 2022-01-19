@@ -176,15 +176,15 @@ renderDetails st =
             , HE.onValueChange SetNewEmail
             ]
         , HH.button
-            [ HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.ml2, Css.tw.floatRight ]
+            [ HP.type_ HP.ButtonSubmit
+            , HP.classes [ Css.btnSky100, Css.tw.mt2 ]
+            ]
+            [ HH.text "Save" ]
+        , HH.button
+            [ HP.classes [ Css.btnSky100, Css.tw.mt2, Css.tw.ml2 ]
             , HE.onClick \_ -> CancelNewObserver
             ]
             [ HH.text "Cancel" ]
-        , HH.button
-            [ HP.type_ HP.ButtonSubmit
-            , HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.floatRight ]
-            ]
-            [ HH.text "Save" ]
         ]
 
   renderObserver idx n = case st.editObserver of

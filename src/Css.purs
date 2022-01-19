@@ -84,6 +84,7 @@ tw =
   , mr10: ClassName "mr-10"
   , mr5: ClassName "mr-5"
   , mt1: ClassName "mt-1"
+  , mt2: ClassName "mt-2"
   , mt5: ClassName "mt-5"
   , mx5: ClassName "mx-5"
   , mxAuto: ClassName "mx-auto"
