@@ -171,7 +171,7 @@ renderDetails st =
         [ HH.input
             [ HP.type_ HP.InputEmail
             , HP.classes [ Css.tw.p1, Css.tw.border, Css.tw.wFull ]
-            , HP.placeholder "Observer email."
+            , HP.placeholder "Observer email address"
             , HP.value email
             , HE.onValueChange SetNewEmail
             ]
@@ -228,7 +228,7 @@ renderDetails st =
       [ HH.input
           [ HP.type_ HP.InputEmail
           , HP.classes [ Css.tw.p1, Css.tw.border, Css.tw.wFull ]
-          , HP.placeholder "Observer email."
+          , HP.placeholder "Observer email address"
           , HP.value observer
           , HE.onValueChange SetEditEmail
           ]
