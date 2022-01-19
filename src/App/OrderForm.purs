@@ -350,48 +350,47 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { config }) =
       [ HH.div [ HP.classes [ Css.tw.my5, Css.tw.p5, Css.tw.borderL8, Css.tw.borderGray100 ] ]
-          $ [ HH.label_
-                [ HH.span [ HP.classes [ Css.smallTitle, Css.tw.mr5 ] ] [ HH.text "Quantity" ]
-                , renderQuantityInput cfgIdx olc
+          [ HH.label_
+              [ HH.span [ HP.classes [ Css.smallTitle, Css.tw.mr5 ] ] [ HH.text "Quantity" ]
+              , renderQuantityInput cfgIdx olc
+              ]
+          , if allowRemove then
+              HH.button
+                [ HP.classes
+                    [ Css.tw.relative
+                    , Css.tw.floatRight
+                    , Css.btnRed100
+                    , Css.tw.ml2
+                    , Css.tw.py0
+                    ]
+                , HE.onClick \_ ->
+                    OrderLineRemoveConfig
+                      { sectionIndex: olIdx.sectionIndex
+                      , orderLineIndex: olIdx.orderLineIndex
+                      , configIndex: cfgIdx
+                      }
                 ]
-            , if allowRemove then
-                HH.button
-                  [ HP.classes
-                      [ Css.tw.relative
-                      , Css.tw.floatRight
-                      , Css.btnRed100
-                      , Css.tw.ml2
-                      , Css.tw.py0
-                      ]
-                  , HE.onClick \_ ->
-                      OrderLineRemoveConfig
-                        { sectionIndex: olIdx.sectionIndex
-                        , orderLineIndex: olIdx.orderLineIndex
-                        , configIndex: cfgIdx
-                        }
-                  ]
-                  [ HH.text "Remove Configuration" ]
-              else
-                HH.text ""
-            , HH.hr [ HP.class_ Css.tw.my2 ]
-            ]
-          <> case config of
-              Nothing -> []
+                [ HH.text "Remove Configuration" ]
+            else
+              HH.text ""
+          , HH.hr [ HP.class_ Css.tw.my2 ]
+          , case config of
+              Nothing -> HH.text ""
               Just c ->
-                maybe []
-                  ( A.singleton
-                      <<< renderConfigSchema
-                          ( \alter ->
-                              OrderLineSetConfig
-                                { sectionIndex: olIdx.sectionIndex
-                                , orderLineIndex: olIdx.orderLineIndex
-                                , configIndex: cfgIdx
-                                , alter
-                                }
-                          )
-                          c
+                maybe (HH.text "")
+                  ( renderConfigSchema
+                      ( \alter ->
+                          OrderLineSetConfig
+                            { sectionIndex: olIdx.sectionIndex
+                            , orderLineIndex: olIdx.orderLineIndex
+                            , configIndex: cfgIdx
+                            , alter
+                            }
+                      )
+                      c
                   )
                   product.orderConfigSchema
+          ]
       ]
 
     renderAddProductConfig
