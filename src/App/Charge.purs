@@ -398,7 +398,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
   renderCharge :: Int -> SS.Charge -> H.ComponentHTML Action Slots m
   renderCharge chargeIdx charge =
-    HH.section_
+    HH.section [ HP.class_ Css.tw.overflowAuto ]
       $ renderChargeInner chargeIdx charge
       <> [ HH.dl_
             $ opt (renderDataItemString "Description") (Charge.description charge)
