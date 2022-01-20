@@ -317,14 +317,11 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
           $ [ thead
                 [ HH.tr_
                     $ thColSpan (A.length dims) [ HH.text "Dimension" ]
-                    <> [ th [ HP.colSpan $ A.length units ] [ HH.text "Unit" ]
-                      , th_ [ HH.text "Monthly Minimum" ]
-                      ]
+                    <> [ th [ HP.colSpan $ A.length units ] [ HH.text "Unit" ] ]
                 , HH.tr_
                     $ map (th_ <<< A.singleton)
                     $ (HH.text <$> dims)
                     <> renderUnitLabels
-                    <> [ HH.text "" ]
                 ]
             ]
           <> mapWithIndex renderChargeRow charge.priceByUnitByDim
