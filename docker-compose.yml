@@ -11,5 +11,5 @@ services:
       DEPLOYMENT_ENV: staging
       ORDERING_SERVICE_URL: https://ordering.eu1tst.bpa.staging.sinch.com
       SERVER_NAME: localhost:8080
-      SMART_SPEC_URL: https://ea.pages.sinch.com/smart-spec
+      SMART_SPEC_URL: https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com
       TOKEN_SERVICE_URL: https://public.token-service.common-auth.staging.sinch.com

@@ -2228,7 +2228,15 @@ instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
     priceBookId <- o .: "priceBookId"
     version <- decodeJsonDate =<< o .: "version"
     solutionUri <- o .:? "solutionUri"
-    pure $ PriceBookRef { priceBookId, version, solutionUri }
+    pure
+      $ PriceBookRef
+          { priceBookId
+          , version
+          , solutionUri:
+              case solutionUri of
+                Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/solution.phase1.sms-prod.json" -> Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/v1alpha1/examples/solution.phase1.sms-prod.json"
+                _ -> solutionUri
+          }
 
 instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
   encodeJson (PriceBookRef x) =
