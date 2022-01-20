@@ -12,6 +12,7 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Newtype (unwrap)
 import Data.SmartSpec as SS
 import Data.String as S
+import Data.String.Utils (startsWith)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console as Console
 import Halogen as H
@@ -157,6 +158,10 @@ renderDetails st =
       , Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails)
       ]
 
+  mkWebsiteUrl s
+    | startsWith "http://" s || startsWith "https://" s = s
+    | otherwise = "https://" <> s
+
   renderBody buyerOpt =
     let
       renderBuyerData (SS.Buyer buyer) =
@@ -183,7 +188,7 @@ renderDetails st =
                     $ if S.null buyer.website then
                         []
                       else
-                        [ HH.a [ HP.href buyer.website ] [ HH.text buyer.website ] ]
+                        [ HH.a [ HP.href (mkWebsiteUrl buyer.website) ] [ HH.text buyer.website ] ]
                 ]
             , renderContact "Primary Contact" buyer.contacts.primary SetContactPrimary
             , renderContact "Finance Contact" buyer.contacts.finance SetContactFinance
