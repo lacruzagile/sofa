@@ -18,6 +18,7 @@ import Data.Auth (class CredentialStore)
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
 import Data.Currency (unsafeMkCurrency)
+import Data.Date (Date)
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Enum.Generic (genericFromEnum, genericToEnum)
@@ -116,7 +117,7 @@ type OrderLine
 type PriceBook
   = { id :: String
     , title :: String
-    , version :: String
+    , version :: Date
     , currency :: SS.ChargeCurrency -- ^ The default charge currency.
     , rateCards :: Maybe (Map SS.SkuCode SS.RateCard) -- ^ Maybe a map from SKU to rate cards.
     }
@@ -767,7 +768,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             HH.option
               [ HP.selected (Just pb.id == map _.id curPriceBook)
               ]
-              [ HH.text $ pb.title <> " (" <> pb.version <> ")" ]
+              [ HH.text $ pb.title <> " (" <> SS.prettyDate pb.version <> ")" ]
         )
 
     renderOrderLines sol orderLines = HH.div_ $ A.mapWithIndex renderOrderLine' orderLines
@@ -1432,7 +1433,7 @@ mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>)
       [ Tuple sol.id
           [ { id: pb.id
             , title: fromMaybe pb.id pb.title
-            , version: SS.prettyDate pbv.version
+            , version: pbv.version
             , currency: SS.ChargeCurrency (unwrap c)
             , rateCards: rateCardMap <$> pbc.rateCards
             }

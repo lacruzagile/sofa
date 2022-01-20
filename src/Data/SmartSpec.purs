@@ -2218,16 +2218,22 @@ derive newtype instance encodeJsonDiscountPerDim :: EncodeJson DiscountPerDim
 newtype PriceBookRef
   = PriceBookRef
   { priceBookId :: String
-  , version :: String
+  , version :: Date
   , solutionUri :: Maybe Uri
   }
 
-derive newtype instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef
+instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
+  decodeJson json = do
+    o <- decodeJson json
+    priceBookId <- o .: "priceBookId"
+    version <- decodeJsonDate =<< o .: "version"
+    solutionUri <- o .:? "solutionUri"
+    pure $ PriceBookRef { priceBookId, version, solutionUri }
 
 instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
   encodeJson (PriceBookRef x) =
     ("priceBookId" := x.priceBookId)
-      ~> ("version" := x.version)
+      ~> ("version" := dateToIsoString x.version)
       ~> ((\uri -> "solutionUri" := uri) <$> x.solutionUri)
       ~>? jsonEmptyObject
 
