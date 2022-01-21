@@ -66,6 +66,7 @@ tw =
   , hoverCursorPointer: ClassName "hover:cursor-pointer"
   , hover_underline: ClassName "hover:underline"
   , inline: ClassName "inline"
+  , inlineBlock: ClassName "inline-block"
   , inset0: ClassName "inset-0"
   , itemsCenter: ClassName "items-center"
   , justifyBetween: ClassName "justify-between"

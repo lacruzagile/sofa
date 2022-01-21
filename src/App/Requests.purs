@@ -6,6 +6,7 @@ module App.Requests
   , getBuyer
   , getBuyerContacts
   , getBuyers
+  , getDataSourceEnum
   , getLegalEntities
   , getOrder
   , getOrders
@@ -28,8 +29,10 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable, deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
 import Data.Maybe (fromMaybe)
-import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm(..), OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog)
+import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm(..), OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
+import Data.Tuple (Tuple)
 import Effect.Aff.Class (class MonadAff)
+import Foreign.Object as FO
 import JSURI (encodeURIComponent)
 
 -- | Base URL to use for the ordering service.
@@ -242,3 +245,11 @@ getProductCatalog = getJson url
   -- proxy will redirect the request to the product catalog suitable for the
   -- current deployment.
   url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> smartSpecProdCatalogFilename
+
+-- | Fetches data source key/value pairs from the given URL.
+getDataSourceEnum ::
+  forall m.
+  MonadAff m =>
+  Uri ->
+  m (Loadable (Array (Tuple String ConfigValue)))
+getDataSourceEnum url = map FO.toUnfoldable <$> getJson url

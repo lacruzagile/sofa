@@ -81,6 +81,8 @@ module Data.SmartSpec
   , Rule(..)
   , RuleConditionExpr(..)
   , RuleStage(..)
+  , SchemaDataSourceEnum(..)
+  , SchemaWidget(..)
   , Segment(..)
   , Segmentation(..)
   , SegmentationDim(..)
@@ -1216,6 +1218,93 @@ instance decodeJsonChargeKind :: DecodeJson ChargeKind where
 instance encodeJsonChargeKind :: EncodeJson ChargeKind where
   encodeJson = encodeJson <<< show
 
+data SchemaDataSourceEnum
+  = SdsEnumMap
+    { entries :: Map String ConfigValue
+    }
+  | SdsEnumHttpGet
+    { url :: Uri
+    }
+
+instance decodeJsonSchemaDataSourceEnum :: DecodeJson SchemaDataSourceEnum where
+  decodeJson json = do
+    o <- decodeJson json
+    type_ <- o .: "type"
+    case type_ of
+      "map" -> do
+        entriesObj :: FO.Object ConfigValue <- o .: "entries"
+        let
+          entries = Map.fromFoldable (FO.toUnfoldable entriesObj :: Array _)
+        pure $ SdsEnumMap { entries }
+      "http-get" -> do
+        url <- o .: "url"
+        pure $ SdsEnumHttpGet { url }
+      _ -> Left (TypeMismatch "SchemaDataSourceEnum")
+
+instance encodeJsonSchemaDataSourceEnum :: EncodeJson SchemaDataSourceEnum where
+  encodeJson = case _ of
+    SdsEnumMap x ->
+      ("type" := "map")
+        ~> ("entries" := x.entries)
+        ~> jsonEmptyObject
+    SdsEnumHttpGet x ->
+      ("type" := "http-get")
+        ~> ("url" := x.url)
+        ~> jsonEmptyObject
+
+data SchemaWidget
+  = SwTextarea
+  | SwDropdown { dataSource :: Maybe SchemaDataSourceEnum }
+  | SwRadio { dataSource :: Maybe SchemaDataSourceEnum }
+  | SwTypeahead
+    { minInputLength :: Int
+    , debounceMs :: Int
+    , dataSource :: Maybe SchemaDataSourceEnum
+    }
+  | SwCheckbox { dataSource :: Maybe SchemaDataSourceEnum }
+
+instance decodeJsonSchemaWidget :: DecodeJson SchemaWidget where
+  decodeJson json = do
+    o <- decodeJson json
+    type_ <- o .: "type"
+    case type_ of
+      "textarea" -> pure SwTextarea
+      "dropdown" -> do
+        dataSource <- o .:? "dataSource"
+        pure $ SwDropdown { dataSource }
+      "radio" -> do
+        dataSource <- o .:? "dataSource"
+        pure $ SwRadio { dataSource }
+      "typeahead" -> do
+        minInputLength <- o .: "minInputLength"
+        debounceMs <- o .: "debounceMs"
+        dataSource <- o .:? "dataSource"
+        pure $ SwTypeahead { minInputLength, debounceMs, dataSource }
+      "checkbox" -> do
+        dataSource <- o .:? "dataSource"
+        pure $ SwCheckbox { dataSource }
+      _ -> Left (TypeMismatch "SchemaWidget")
+
+instance encodeJsonSchemaWidget :: EncodeJson SchemaWidget where
+  encodeJson = case _ of
+    SwTextarea -> ("type" := "textarea") ~> jsonEmptyObject
+    SwDropdown x ->
+      ("type" := "dropdown")
+        ~> ("dataSource" :=? x.dataSource)
+        ~>? jsonEmptyObject
+    SwRadio x ->
+      ("type" := "radio")
+        ~> ("dataSource" :=? x.dataSource)
+        ~>? jsonEmptyObject
+    SwTypeahead x ->
+      ("type" := "typeahead")
+        ~> ("dataSource" :=? x.dataSource)
+        ~>? jsonEmptyObject
+    SwCheckbox x ->
+      ("type" := "checkbox")
+        ~> ("dataSource" :=? x.dataSource)
+        ~>? jsonEmptyObject
+
 type ConfigSchemaEntryMeta
   = ( title :: Maybe String
     , description :: Maybe String
@@ -1231,6 +1320,7 @@ data ConfigSchemaEntry
     , maximum :: Maybe Int
     , enum :: Array Int
     , default :: Maybe Int
+    , widget :: Maybe SchemaWidget
     | ConfigSchemaEntryMeta
     }
   | CseString
@@ -1238,11 +1328,13 @@ data ConfigSchemaEntry
     , maxLength :: Maybe Int
     , enum :: Array String
     , default :: Maybe String
+    , widget :: Maybe SchemaWidget
     | ConfigSchemaEntryMeta
     }
   | CseRegex
     { pattern :: String
     , default :: Maybe String
+    , widget :: Maybe SchemaWidget
     | ConfigSchemaEntryMeta
     }
   | CseConst
@@ -1251,6 +1343,7 @@ data ConfigSchemaEntry
     }
   | CseArray
     { items :: ConfigSchemaEntry
+    , widget :: Maybe SchemaWidget
     | ConfigSchemaEntryMeta
     }
   | CseObject
@@ -1276,20 +1369,33 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
           maximum <- o .:? "maximum"
           enum <- o .:? "enum" .!= []
           default <- o .:? "default"
-          Right $ CseInteger { title, description, minimum, maximum, enum, default }
+          widget <- o .:? "widget"
+          Right $ CseInteger { title, description, minimum, maximum, enum, default, widget }
         "string" -> do
           minLength <- o .:? "minLength"
           maxLength <- o .:? "maxLength"
           enum <- o .:? "enum" .!= []
           default <- o .:? "default"
-          Right $ CseString { title, description, minLength, maxLength, enum, default }
+          widget <- o .:? "widget"
+          Right
+            $ CseString
+                { title
+                , description
+                , minLength
+                , maxLength
+                , enum
+                , default
+                , widget
+                }
         "regex" -> do
           pattern <- o .: "pattern"
           default <- o .:? "default"
-          Right $ CseRegex { title, description, pattern, default }
+          widget <- o .:? "widget"
+          Right $ CseRegex { title, description, pattern, default, widget }
         "array" -> do
           items <- o .: "items"
-          Right $ CseArray { title, description, items }
+          widget <- o .:? "widget"
+          Right $ CseArray { title, description, items, widget }
         "object" -> do
           propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
           let

@@ -8,6 +8,11 @@ import App.OrderForm.Notes as Notes
 import App.OrderForm.Observers as Observers
 import App.OrderForm.SelectProduct as SelectProduct
 import App.OrderForm.Seller as Seller
+import App.OrderForm.Widget.Checkbox as WCheckbox
+import App.OrderForm.Widget.Dropdown as WDropdown
+import App.OrderForm.Widget.Radio as WRadio
+import App.OrderForm.Widget.Textarea as WTextarea
+import App.OrderForm.Widget.Typeahead as WTypeahead
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Control.Alternative ((<|>))
 import Css as Css
@@ -19,11 +24,12 @@ import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
 import Data.Currency (unsafeMkCurrency)
 import Data.Date (Date)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either, note)
 import Data.Enum (enumFromTo)
 import Data.Enum.Generic (genericFromEnum, genericToEnum)
 import Data.Foldable (sum)
 import Data.Int as Int
+import Data.List as SList
 import Data.List.Lazy (List)
 import Data.List.Lazy as List
 import Data.Loadable (Loadable(..))
@@ -39,6 +45,7 @@ import Data.SubTotal as SubTotal
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -60,6 +67,11 @@ type Slots
     , observers :: Observers.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , charge :: Charge.Slot OrderLineIndex
+    , widgetCheckbox :: WCheckbox.Slot ConfigEntryIndex
+    , widgetDropdown :: WDropdown.Slot ConfigEntryIndex
+    , widgetRadio :: WRadio.Slot ConfigEntryIndex
+    , widgetTextarea :: WTextarea.Slot ConfigEntryIndex
+    , widgetTypeahead :: WTypeahead.Slot ConfigEntryIndex
     )
 
 data Input
@@ -124,6 +136,17 @@ type PriceBook
 
 type OrderLineIndex
   = { sectionIndex :: Int, orderLineIndex :: Int }
+
+type ConfigIndex
+  = { sectionIndex :: Int
+    , orderLineIndex :: Int
+    , configIndex :: Int
+    }
+
+type ConfigEntryIndex
+  = { configIndex :: ConfigIndex
+    , entryIndex :: SList.List Int -- ^ Index within array or object.
+    }
 
 data Action
   = NoOp
@@ -380,6 +403,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
               Just c ->
                 maybe (HH.text "")
                   ( renderConfigSchema
+                      { sectionIndex: olIdx.sectionIndex
+                      , orderLineIndex: olIdx.orderLineIndex
+                      , configIndex: cfgIdx
+                      }
                       ( \alter ->
                           OrderLineSetConfig
                             { sectionIndex: olIdx.sectionIndex
@@ -405,12 +432,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
 
   renderConfigSchema ::
+    ConfigIndex ->
     ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
     SS.ConfigValue ->
     SS.ConfigSchemaEntry ->
     H.ComponentHTML Action Slots m
-  renderConfigSchema onChange config = renderEntry onChange "" (Just config)
+  renderConfigSchema configIdx onChange config = renderEntry rootEntryIdx onChange "" (Just config)
     where
+    rootEntryIdx = { configIndex: configIdx, entryIndex: SList.Nil }
+
     mact :: forall a. (a -> Action) -> Maybe a -> Action
     mact = maybe NoOp
 
@@ -418,12 +448,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
     opt f = maybe [] (\x -> [ f x ])
 
     renderEntry ::
+      ConfigEntryIndex ->
       ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
       String ->
       Maybe SS.ConfigValue ->
       SS.ConfigSchemaEntry ->
       H.ComponentHTML Action Slots m
-    renderEntry act fallbackTitle value schemaEntry = case schemaEntry of
+    renderEntry entryIdx act fallbackTitle value schemaEntry = case schemaEntry of
       SS.CseBoolean _ ->
         let
           checked = case value of
@@ -437,6 +468,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , HP.checked checked
                 , HE.onChecked (act <<< const <<< SS.CvBoolean)
                 ]
+      SS.CseInteger { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseInteger c
         | not (A.null c.enum) -> renderEnumEntry act fallbackTitle value schemaEntry c SS.CvInteger show
       SS.CseInteger c ->
@@ -450,6 +482,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> opt (HP.value <<< show) value
           <> opt (HP.min <<< Int.toNumber) c.minimum
           <> opt (HP.max <<< Int.toNumber) c.maximum
+      SS.CseString { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseString c
         | not (A.null c.enum) -> renderEnumEntry act fallbackTitle value schemaEntry c SS.CvString identity
       SS.CseString c ->
@@ -479,6 +512,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ]
                 <> opt HP.value (maybe c.default (Just <<< show) value)
                 <> pat
+      SS.CseRegex { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseRegex c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
@@ -491,6 +525,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.CseConst _c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input [ HP.value "const", HP.disabled true ]
+      SS.CseArray { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseArray c ->
         let
           entries = case value of
@@ -518,7 +553,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     <> [ renderAddListEntry c.items act ]
                 )
         in
-          mkElement $ A.mapWithIndex (\i -> renderListEntry (act' i) c.items) entries
+          mkElement
+            $ A.mapWithIndex
+                (\i -> renderListEntry (pushEntryIndex entryIdx i) (act' i) c.items)
+                entries
       SS.CseObject c ->
         let
           findVal k = Map.lookup k $ toVal value
@@ -530,7 +568,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
           act' k = \f -> act (SS.CvObject <<< Map.alter (Just <<< f) k <<< toVal)
 
           renderFields =
-            map (\(Tuple k schema) -> renderEntry (act' k) k (findVal k) schema)
+            A.mapWithIndex
+              ( \i (Tuple k schema) ->
+                  renderEntry (pushEntryIndex entryIdx i) (act' k) k (findVal k) schema
+              )
               $ Map.toUnfoldable c.properties
         in
           if S.null fallbackTitle then
@@ -544,11 +585,70 @@ render state = HH.section_ [ HH.article_ renderContent ]
               )
       SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
 
+    pushEntryIndex :: ConfigEntryIndex -> Int -> ConfigEntryIndex
+    pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
+
     renderCheckbox fallbackTitle schemaEntry inner =
       HH.label [ HP.classes [ Css.tw.my2 ] ]
         [ inner
         , withDescription [] fallbackTitle schemaEntry
         ]
+
+    renderWidget entryIdx fallbackTitle value schemaEntry act widget =
+      renderEntry' fallbackTitle schemaEntry
+        $ case widget of
+            SS.SwTextarea ->
+              HH.slot
+                WTextarea.proxy
+                entryIdx
+                WTextarea.component
+                { value:
+                    case value of
+                      Just (SS.CvString string) -> Just string
+                      _ -> Nothing
+                }
+                (mact (act <<< const <<< SS.CvString))
+            SS.SwCheckbox { dataSource: Just ds } ->
+              HH.slot
+                WCheckbox.proxy
+                entryIdx
+                WCheckbox.component
+                { value:
+                    case value of
+                      Just (SS.CvArray vs) -> vs
+                      _ -> []
+                , dataSource: ds
+                }
+                (mact (act <<< const <<< SS.CvArray) <<< Just)
+            SS.SwCheckbox _ -> HH.text "TODO: checkbox without data source"
+            SS.SwDropdown { dataSource: Just ds } ->
+              HH.slot
+                WDropdown.proxy
+                entryIdx
+                WDropdown.component
+                { value, dataSource: ds }
+                (mact (act <<< const))
+            SS.SwDropdown _ -> HH.text "TODO: dropdown without data source"
+            SS.SwRadio { dataSource: Just ds } ->
+              HH.slot
+                WRadio.proxy
+                entryIdx
+                WRadio.component
+                { value, dataSource: ds }
+                (mact (act <<< const))
+            SS.SwRadio _ -> HH.text "TODO: radio without data source"
+            SS.SwTypeahead { minInputLength, debounceMs, dataSource: Just ds } ->
+              HH.slot
+                WTypeahead.proxy
+                entryIdx
+                WTypeahead.component
+                { value
+                , minInputLength
+                , debounceMs
+                , dataSource: ds
+                }
+                (mact (act <<< const))
+            SS.SwTypeahead _ -> HH.text "TODO: typeahead without data source"
 
     renderEntry' fallbackTitle schemaEntry inner =
       if S.null fallbackTitle then
@@ -597,14 +697,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
         )
 
     renderListEntry ::
+      ConfigEntryIndex ->
       ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
       SS.ConfigSchemaEntry ->
       SS.ConfigValue ->
       H.ComponentHTML Action Slots m
-    renderListEntry act entry value =
+    renderListEntry entryIdx act entry value =
       HH.div [ HP.classes classes ]
         [ renderRemoveListEntry
-        , renderEntry act "" (Just value) entry
+        , renderEntry entryIdx act "" (Just value) entry
         ]
       where
       classes = [ Css.tw.p3, Css.tw.borderB ]
@@ -1066,15 +1167,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HH.summary_ [ HH.text "Order Form JSON" ]
         , HH.pre_
             [ HH.code_
-                [ HH.text $ fromMaybe errMsg $ toJsonStr sof.orderForm
+                [ HH.text
+                    $ either ("Cannot produce JSON: " <> _) identity
+                    $ toJsonStr sof.orderForm
                 ]
             ]
         ]
     ]
-    where
-    errMsg =
-      "Cannot produce JSON. You need to select a customer\n\
-           \price currency and a price book for each order section."
 
   error err =
     [ HH.div
@@ -1117,12 +1216,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
 
-toJson :: OrderForm -> Maybe SS.OrderForm
+toJson :: OrderForm -> Either String SS.OrderForm
 toJson orderForm = do
-  commercial <- orderForm.commercial
-  buyer <- orderForm.buyer
-  seller <- orderForm.seller
-  sections <- traverse toOrderSection =<< sequence orderForm.sections
+  commercial <- note "Missing commercial" $ orderForm.commercial
+  buyer <- note "Missing buyer" $ orderForm.buyer
+  seller <- note "Missing seller" $ orderForm.seller
+  sections <-
+    traverse toOrderSection
+      =<< note "Incomplete order section" (sequence orderForm.sections)
   pure
     $ SS.OrderForm
         { id: (\(SS.OrderForm { id }) -> id) =<< orderForm.original
@@ -1156,11 +1257,11 @@ toJson orderForm = do
       , solutionUri: Just solutionUri
       }
 
-  toOrderSection :: OrderSection -> Maybe SS.OrderSection
+  toOrderSection :: OrderSection -> Either String SS.OrderSection
   toOrderSection os = do
-    solutionUri <- _.uri $ unwrap $ os.solution
-    basePriceBook <- toPriceBookRef solutionUri <$> os.priceBook
-    orderLines <- sequence $ map (toOrderLine <$> _) os.orderLines
+    solutionUri <- note "Missing solution URI" $ _.uri $ unwrap $ os.solution
+    basePriceBook <- note "Missing price book" $ toPriceBookRef solutionUri <$> os.priceBook
+    orderLines <- sequence $ map (note "Incomplete order line" <<< map toOrderLine) os.orderLines
     pure
       $ SS.OrderSection
           { orderSectionId: os.orderSectionId
@@ -1168,7 +1269,7 @@ toJson orderForm = do
           , orderLines
           }
 
-toJsonStr :: OrderForm -> Maybe String
+toJsonStr :: OrderForm -> Either String String
 toJsonStr = map (stringifyWithIndent 2 <<< encodeJson) <<< toJson
 
 loadCatalog ::
@@ -1763,8 +1864,10 @@ handleAction = case _ of
           (\id -> patchOrder id json)
     case st of
       Initialized (Loaded st') -> case toJson st'.orderForm of
-        Nothing -> pure unit
-        Just json -> do
+        Left msg -> do
+          H.liftEffect $ Console.error $ "Could not produce order JSON: " <> msg
+          pure unit
+        Right json -> do
           modifyInitialized $ _ { orderUpdateInFlight = true }
           order <- H.lift $ run json (getOrderId st')
           ld order
