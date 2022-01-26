@@ -1803,7 +1803,7 @@ instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
     billingAccountId <- o .: "billingAccountId"
     displayName <- o .: "displayName"
     shortId <- o .: "shortId"
-    commercial <- o .:? "commercial" .!= defaultCommercial
+    commercial <- o .:? "commercial" .!= defaultCommercial billingAccountId
     pure
       $ BillingAccount
           { billingAccountId
@@ -1812,9 +1812,10 @@ instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
           , commercial
           }
     where
-    defaultCommercial =
+    defaultCommercial billingAccountId =
       Commercial
-        { billingOption: Prepay
+        { billingAccountId
+        , billingOption: Prepay
         , contractTerm: Ongoing
         , paymentCurrency: PaymentCurrency (unsafeMkCurrency "EUR")
         , billingCurrency: PricingCurrency (unsafeMkCurrency "EUR")
@@ -1824,7 +1825,8 @@ derive newtype instance encodeJsonBillingAccount :: EncodeJson BillingAccount
 
 newtype Commercial
   = Commercial
-  { billingOption :: BillingOption
+  { billingAccountId :: BillingAccountId
+  , billingOption :: BillingOption
   , contractTerm :: ContractTerm
   , paymentCurrency :: PaymentCurrency
   , billingCurrency :: BillingCurrency
