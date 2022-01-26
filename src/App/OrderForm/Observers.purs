@@ -2,10 +2,15 @@
 module App.OrderForm.Observers (Slot, Input(..), Output(..), proxy, component) where
 
 import Prelude
+import App.Requests (deleteOrderObserver, patchOrderObserver, postOrderObserver)
 import Css as Css
 import Data.Array as A
+import Data.Auth (class CredentialStore)
+import Data.Loadable (Loadable(..))
+import Data.Loadable as Loadable
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.SmartSpec as SS
+import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -21,17 +26,28 @@ proxy :: Proxy "observers"
 proxy = Proxy
 
 type Input
-  = Array SS.OrderObserver
+  = { orderId :: Maybe SS.OrderId
+    , observers :: Array SS.OrderObserver
+    }
 
 type Output
   = Array SS.OrderObserver
 
 type State
-  = { observers :: Array SS.OrderObserver
+  = { orderId :: Maybe SS.OrderId
+    , observers :: Array SS.OrderObserver
     , editObserver :: Maybe EditObserver -- ^ Observer currently being edited.
     , newObserver :: Maybe String -- ^ Observer currently being built.
     , open :: Boolean -- ^ Whether the observers modal is open.
+    , observerAction :: ObserverAction
     }
+
+-- | An observer action currently being performed.
+data ObserverAction
+  = ObserverIdle (Maybe ObserverAction) -- ^ No action currently in progress, previous action may be provided.
+  | ObserverCreating (Loadable Unit)
+  | ObserverDeleting Int (Loadable Unit)
+  | ObserverUpdating Int (Loadable Unit)
 
 -- | A observer with the given index being edited.
 type EditObserver
@@ -48,11 +64,12 @@ data Action
   | SetEditEmail String -- ^ Set email of current node edit.
   | StartEditObserver Int -- ^ Starts editing the observer with the given index.
   | CancelEditObserver -- ^ Cancel current observer edit.
-  | StopEditObserver -- ^ Stop and save current observer edit.
+  | StopEditObserver Int -- ^ Stop and save current observer edit with the given index.
 
 component ::
   forall query m.
   MonadAff m =>
+  CredentialStore m =>
   H.Component query Input Output m
 component =
   H.mkComponent
@@ -63,10 +80,12 @@ component =
 
 initialState :: Input -> State
 initialState input =
-  { observers: input
+  { orderId: input.orderId
+  , observers: input.observers
   , editObserver: Nothing
   , newObserver: Nothing
   , open: false
+  , observerAction: ObserverIdle Nothing
   }
 
 mkObserver :: String -> SS.OrderObserver
@@ -151,17 +170,23 @@ renderDetails st =
       , renderFooter
       ]
 
+  actionsAllowed = case st.observerAction of
+    ObserverIdle _ -> true
+    _ -> false
+
   renderFooter = case st.newObserver of
     Nothing ->
       HH.div [ HP.class_ Css.tw.flex ]
         [ HH.button
             [ HP.classes [ Css.btnSky100 ]
+            , HP.enabled actionsAllowed
             , HE.onClick \_ -> StartNewObserver
             ]
             [ HH.text "+ Add Observer" ]
         , HH.div [ HP.class_ Css.tw.grow ] []
         , HH.button
             [ HP.classes [ Css.btnSky100 ]
+            , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
             [ HH.text "Close" ]
@@ -175,21 +200,39 @@ renderDetails st =
             , HP.value email
             , HE.onValueChange SetNewEmail
             ]
+        , HH.div [ HP.class_ Css.tw.textRed700 ]
+            $ maybe [] (\msg -> [ HH.text msg ])
+            $ createError
         , HH.button
             [ HP.type_ HP.ButtonSubmit
             , HP.classes [ Css.btnSky100, Css.tw.mt2 ]
+            , HP.enabled actionsAllowed
             ]
-            [ HH.text "Save" ]
+            [ HH.text "Save"
+            , if isCreating then
+                Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+              else
+                HH.text ""
+            ]
         , HH.button
             [ HP.classes [ Css.btnSky100, Css.tw.mt2, Css.tw.ml2 ]
+            , HP.enabled actionsAllowed
             , HE.onClick \_ -> CancelNewObserver
             ]
             [ HH.text "Cancel" ]
         ]
+      where
+      isCreating = case st.observerAction of
+        ObserverCreating Loading -> true
+        _ -> false
+
+      createError = case st.observerAction of
+        ObserverIdle (Just (ObserverCreating (Error msg))) -> Just msg
+        _ -> Nothing
 
   renderObserver idx n = case st.editObserver of
     Just { index, observer }
-      | idx == index -> renderEditObserver observer
+      | idx == index -> renderEditObserver idx observer
     _ -> renderShowObserver idx n
 
   renderShowObserver idx (SS.OrderObserver o) =
@@ -201,29 +244,56 @@ renderDetails st =
           , HH.div [ HP.class_ Css.tw.grow ] []
           , HH.button
               [ HP.classes
-                  [ Css.btnSky100
-                  , Css.tw.py0
-                  , Css.tw.hidden
-                  , Css.tw.groupHoverBlock
-                  ]
+                  $ [ Css.btnSky100
+                    , Css.tw.py0
+                    ]
+                  <> hideable false
+              , HP.enabled actionsAllowed
               , HE.onClick $ \_ -> StartEditObserver idx
               ]
               [ HH.text "Edit" ]
           , HH.button
               [ HP.classes
-                  [ Css.btnRed100
-                  , Css.tw.py0
-                  , Css.tw.ml2
-                  , Css.tw.hidden
-                  , Css.tw.groupHoverBlock
-                  ]
+                  $ [ Css.btnRed100
+                    , Css.tw.py0
+                    , Css.tw.ml2
+                    ]
+                  <> hideable isDeleting
+              , HP.enabled actionsAllowed
               , HE.onClick $ \_ -> RemoveObserver idx
               ]
-              [ HH.text "Remove" ]
+              [ HH.text "Remove"
+              , spinner isDeleting
+              ]
           ]
+      , maybe (HH.text "")
+          (\msg -> HH.div [ HP.class_ Css.tw.textRed700 ] [ HH.text msg ])
+          $ deleteError
       ]
+    where
+    hideable p =
+      if not p then
+        [ Css.tw.hidden, Css.tw.groupHoverBlock ]
+      else
+        []
 
-  renderEditObserver observer =
+    spinner p =
+      if p then
+        Widgets.spinner [ Css.tw.w4, Css.tw.h4, Css.tw.ml2, Css.tw.alignMiddle ]
+      else
+        HH.text ""
+
+    isDeleting = case st.observerAction of
+      ObserverDeleting didx Loading
+        | idx == didx -> true
+      _ -> false
+
+    deleteError = case st.observerAction of
+      ObserverIdle (Just (ObserverDeleting didx (Error msg)))
+        | idx == didx -> Just msg
+      _ -> Nothing
+
+  renderEditObserver idx observer =
     HH.div_
       [ HH.input
           [ HP.type_ HP.InputEmail
@@ -232,21 +302,42 @@ renderDetails st =
           , HP.value observer
           , HE.onValueChange SetEditEmail
           ]
+      , HH.div [ HP.classes [ Css.tw.textRed700, Css.tw.wFull ] ]
+          $ maybe [] (\msg -> [ HH.text msg ])
+          $ updateError
       , HH.button
           [ HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.ml2, Css.tw.floatRight ]
+          , HP.enabled actionsAllowed
           , HE.onClick \_ -> CancelEditObserver
           ]
           [ HH.text "Cancel" ]
       , HH.button
           [ HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.floatRight ]
-          , HE.onClick \_ -> StopEditObserver
+          , HP.enabled actionsAllowed
+          , HE.onClick \_ -> StopEditObserver idx
           ]
-          [ HH.text "Save" ]
+          [ HH.text "Save"
+          , if isUpdating then
+              Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+            else
+              HH.text ""
+          ]
       ]
+    where
+    isUpdating = case st.observerAction of
+      ObserverUpdating didx Loading
+        | idx == didx -> true
+      _ -> false
+
+    updateError = case st.observerAction of
+      ObserverIdle (Just (ObserverUpdating didx (Error msg)))
+        | idx == didx -> Just msg
+      _ -> Nothing
 
 handleAction ::
   forall slots m.
   MonadAff m =>
+  CredentialStore m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   OpenDetails -> H.modify_ $ \st -> st { open = true }
@@ -257,23 +348,41 @@ handleAction = case _ of
   StartNewObserver -> H.modify_ \st -> st { newObserver = Just "" }
   CancelNewObserver -> H.modify_ \st -> st { newObserver = Nothing }
   StopNewObserver -> do
-    st' <-
+    state <- H.modify \st -> st { observerAction = ObserverCreating Loading }
+    case Tuple state.orderId state.newObserver of
+      Tuple (Just oid) (Just email) -> do
+        observerResult <- H.lift $ postOrderObserver oid (mkObserver email)
+        state' <-
+          H.modify \st ->
+            st
+              { observers =
+                fromMaybe st.observers
+                  $ (\observer -> st.observers <> [ observer ])
+                  <$> Loadable.toMaybe observerResult
+              , newObserver = Nothing
+              , observerAction = ObserverIdle (Just st.observerAction)
+              }
+        H.raise state'.observers
+      _ -> pure unit
+  RemoveObserver idx -> do
+    state <- H.modify \st -> st { observerAction = ObserverDeleting idx Loading }
+    let
+      mObserver = A.index state.observers idx
+    observerResult <- case Tuple state.orderId mObserver of
+      Tuple
+        (Just oid)
+        (Just (SS.OrderObserver { observerId: Just nid })) -> H.lift $ deleteOrderObserver oid nid
+      _ -> pure Idle
+    state' <-
       H.modify \st ->
         st
           { observers =
-            fromMaybe st.observers
-              $ (\email -> st.observers <> [ mkObserver email ])
-              <$> st.newObserver
-          , newObserver = Nothing
+            fromMaybe st.observers do
+              _ <- Loadable.toMaybe observerResult
+              A.deleteAt idx st.observers
+          , observerAction = ObserverIdle (Just $ ObserverDeleting idx observerResult)
           }
-    H.raise st'.observers
-  RemoveObserver idx -> do
-    st' <-
-      H.modify \st ->
-        st
-          { observers = fromMaybe st.observers $ A.deleteAt idx st.observers
-          }
-    H.raise st'.observers
+    H.raise state'.observers
   SetEditEmail email ->
     H.modify_ \st ->
       st { editObserver = (\n -> n { observer = email }) <$> st.editObserver }
@@ -287,7 +396,16 @@ handleAction = case _ of
             mkEditObserver <$> A.index st.observers idx
         }
   CancelEditObserver -> H.modify_ \st -> st { editObserver = Nothing }
-  StopEditObserver -> do
+  StopEditObserver idx -> do
+    state <- H.modify \st -> st { observerAction = ObserverUpdating idx Loading }
+    let
+      mObserver = A.index state.observers idx
+    observerResult <- case { oid: state.orderId, observer: mObserver, eobserver: state.editObserver } of
+      { oid: Just oid
+      , observer: Just observer@(SS.OrderObserver { observerId: Just ooid })
+      , eobserver: Just { observer: email }
+      } -> H.lift $ patchOrderObserver oid ooid (setObserverEmail observer email)
+      _ -> pure Idle
     st' <-
       H.modify \st ->
         st
@@ -297,5 +415,9 @@ handleAction = case _ of
               $ case st.editObserver of
                   Just { index, observer } -> A.modifyAt index (\n -> setObserverEmail n observer) st.observers
                   _ -> Nothing
+          , observerAction =
+            ObserverIdle
+              $ Just
+              $ ObserverUpdating idx (const unit <$> observerResult)
           }
     H.raise st'.observers

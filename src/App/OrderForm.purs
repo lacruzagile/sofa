@@ -842,11 +842,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
           )
       <> [ entry
             [ title [ HH.text "Notes" ]
-            , renderOrderNotes orderForm.notes
+            , renderOrderNotes orderId orderForm.notes
             ]
         , entry
             [ title [ HH.text "Observers" ]
-            , renderOrderObservers orderForm.observers
+            , renderOrderObservers orderId orderForm.observers
             ]
         ]
     where
@@ -855,6 +855,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
     title = HH.div [ HP.classes [ Css.tw.uppercase, Css.tw.mb2, Css.tw.textSm, Css.tw.textGray600 ] ]
 
     value = HH.div [ HP.classes [ Css.tw.textLg ] ]
+
+    orderId = orderForm.original >>= \(SS.OrderForm order) -> order.id
 
     withOriginal renderEntry = case orderForm.original of
       Nothing -> []
@@ -906,16 +908,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HP.selected $ s == selected ]
         [ HH.text $ SS.prettyOrderStatus s ]
 
-  renderOrderNotes :: Array SS.OrderNote -> H.ComponentHTML Action Slots m
-  renderOrderNotes notes = HH.slot Notes.proxy unit Notes.component notes SetNotes
+  renderOrderNotes :: Maybe SS.OrderId -> Array SS.OrderNote -> H.ComponentHTML Action Slots m
+  renderOrderNotes orderId notes =
+    HH.slot
+      Notes.proxy
+      unit
+      Notes.component
+      { orderId, notes }
+      SetNotes
 
-  renderOrderObservers :: Array SS.OrderObserver -> H.ComponentHTML Action Slots m
-  renderOrderObservers observers =
+  renderOrderObservers :: Maybe SS.OrderId -> Array SS.OrderObserver -> H.ComponentHTML Action Slots m
+  renderOrderObservers orderId observers =
     HH.slot
       Observers.proxy
       unit
       Observers.component
-      observers
+      { orderId, observers }
       SetObservers
 
   isInDraft = case state of

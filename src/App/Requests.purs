@@ -13,14 +13,22 @@ module App.Requests
   , patchOrder
   , postOrder
   , postOrderFulfillment
+  -- * Order Notes
+  , deleteOrderNote
+  , patchOrderNote
+  , postOrderNote
+  -- * Order Observers
+  , deleteOrderObserver
+  , patchOrderObserver
+  , postOrderObserver
   ) where
 
 import Prelude
 import Data.Array as A
 import Data.Auth (class CredentialStore)
-import Data.Loadable (Loadable, getJson, getRJson, patchRJson, postRJson, postRJson_)
+import Data.Loadable (Loadable, deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
 import Data.Maybe (fromMaybe)
-import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm(..), OrderId, ProductCatalog)
+import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, Contact, CrmAccountId(..), LegalEntity, OrderForm(..), OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog)
 import Effect.Aff.Class (class MonadAff)
 import JSURI (encodeURIComponent)
 
@@ -147,6 +155,80 @@ postOrderFulfillment :: forall m. MonadAff m => CredentialStore m => OrderId -> 
 postOrderFulfillment orderId = postRJson_ url
   where
   url = ordersUrl </> show orderId <> ":fulfillment"
+
+-- | Creates a new order note.
+postOrderNote ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderNote ->
+  m (Loadable OrderNote)
+postOrderNote orderId = postRJson url
+  where
+  url = ordersUrl </> show orderId </> "order-notes"
+
+-- | Deletes an existing order note.
+deleteOrderNote ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderNoteId ->
+  m (Loadable Unit)
+deleteOrderNote orderId noteId = deleteR_ url
+  where
+  url = ordersUrl </> show orderId </> "order-notes" </> show noteId
+
+-- | Updates an existing order.
+patchOrderNote ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderNoteId ->
+  OrderNote ->
+  m (Loadable OrderNote)
+patchOrderNote orderId noteId = patchRJson url
+  where
+  url = ordersUrl </> show orderId </> "order-notes" </> show noteId
+
+-- | Creates a new order observer.
+postOrderObserver ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderObserver ->
+  m (Loadable OrderObserver)
+postOrderObserver orderId = postRJson url
+  where
+  url = ordersUrl </> show orderId </> "order-observers"
+
+-- | Deletes an existing order observer.
+deleteOrderObserver ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderObserverId ->
+  m (Loadable Unit)
+deleteOrderObserver orderId observerId = deleteR_ url
+  where
+  url = ordersUrl </> show orderId </> "order-observers" </> show observerId
+
+-- | Updates an existing order.
+patchOrderObserver ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderObserverId ->
+  OrderObserver ->
+  m (Loadable OrderObserver)
+patchOrderObserver orderId observerId = patchRJson url
+  where
+  url = ordersUrl </> show orderId </> "order-observers" </> show observerId
 
 -- | Fetches the product catalog. Note, we expect a _normalized_ product
 -- | catalog.

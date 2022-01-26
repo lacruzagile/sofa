@@ -45,7 +45,9 @@ module Data.SmartSpec
   , OrderLineId
   , OrderLineStatus(..)
   , OrderNote(..)
+  , OrderNoteId
   , OrderObserver(..)
+  , OrderObserverId
   , OrderSection(..)
   , OrderSectionId
   , OrderStatus(..)
@@ -2492,9 +2494,21 @@ derive newtype instance decodeJsonOrderSection :: DecodeJson OrderSection
 
 derive newtype instance encodeJsonOrderSection :: EncodeJson OrderSection
 
+newtype OrderObserverId
+  = OrderObserverId String
+
+derive instance eqOrderObserverId :: Eq OrderObserverId
+
+instance showJsonOrderObserverId :: Show OrderObserverId where
+  show (OrderObserverId id) = id
+
+derive newtype instance decodeJsonOrderObserverId :: DecodeJson OrderObserverId
+
+derive newtype instance encodeJsonOrderObserverId :: EncodeJson OrderObserverId
+
 newtype OrderObserver
   = OrderObserver
-  { observerId :: Maybe String
+  { observerId :: Maybe OrderObserverId
   , observerEmail :: String
   , createTime :: Maybe DateTime
   }
@@ -2514,9 +2528,21 @@ instance encodeJsonOrderObserver :: EncodeJson OrderObserver where
       ~>? ("createTime" :=? map dateTimeToIsoDateString x.createTime)
       ~>? jsonEmptyObject
 
+newtype OrderNoteId
+  = OrderNoteId String
+
+derive instance eqOrderNoteId :: Eq OrderNoteId
+
+instance showJsonOrderNoteId :: Show OrderNoteId where
+  show (OrderNoteId id) = id
+
+derive newtype instance decodeJsonOrderNoteId :: DecodeJson OrderNoteId
+
+derive newtype instance encodeJsonOrderNoteId :: EncodeJson OrderNoteId
+
 newtype OrderNote
   = OrderNote
-  { orderNoteId :: Maybe String
+  { orderNoteId :: Maybe OrderNoteId
   , createTime :: Maybe DateTime
   , note :: String
   }

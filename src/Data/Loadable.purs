@@ -1,6 +1,7 @@
 module Data.Loadable
   ( Loadable(..)
   , toMaybe
+  , deleteR_
   , getJson
   , getRJson
   , patchRJson
@@ -177,5 +178,28 @@ postRJson_ url = do
                 # on _affjaxError printError
                 # on _notFound (const "Not found")
                 # on _parseError printJsonDecodeError
+                $ error
+            Right content -> Loaded content
+
+-- | Submit a DELETE request and parse the response.
+deleteR_ ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  String ->
+  m (Loadable Unit)
+deleteR_ url = do
+  creds <- getAuthorizationHeader
+  case creds of
+    Left err -> pure $ Error err
+    Right authHdr -> do
+      res <- liftAff $ AJX.deleteR_ { headers: [ authHdr ] } url
+      pure
+        $ case res of
+            Left error ->
+              Error
+                $ default "Generic error"
+                # on _affjaxError printError
+                # on _notFound (const "Not found")
                 $ error
             Right content -> Loaded content

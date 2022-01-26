@@ -2,10 +2,15 @@
 module App.OrderForm.Notes (Slot, Input(..), Output(..), proxy, component) where
 
 import Prelude
+import App.Requests (deleteOrderNote, patchOrderNote, postOrderNote)
 import Css as Css
 import Data.Array as A
+import Data.Auth (class CredentialStore)
+import Data.Loadable (Loadable(..))
+import Data.Loadable as Loadable
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.SmartSpec as SS
+import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -21,17 +26,29 @@ proxy :: Proxy "notes"
 proxy = Proxy
 
 type Input
-  = Array SS.OrderNote
+  = { orderId :: Maybe SS.OrderId
+    , notes :: Array SS.OrderNote
+    }
 
 type Output
   = Array SS.OrderNote
 
 type State
-  = { notes :: Array SS.OrderNote
+  = { orderId :: Maybe SS.OrderId
+    , notes :: Array SS.OrderNote
     , editNote :: Maybe EditNote -- ^ Note currently being edited.
     , newNote :: Maybe String -- ^ Note currently being built.
     , open :: Boolean -- ^ Whether the notes modal is open.
+    , noteAction :: NoteAction
+    -- ^ Action currently being performed, `NoteIdle` when no action is in progress.
     }
+
+-- | A note action currently being performed.
+data NoteAction
+  = NoteIdle (Maybe NoteAction) -- ^ No action currently in progress, previous action may be provided.
+  | NoteCreating (Loadable Unit)
+  | NoteDeleting Int (Loadable Unit)
+  | NoteUpdating Int (Loadable Unit)
 
 -- | A note with the given index being edited.
 type EditNote
@@ -48,11 +65,12 @@ data Action
   | SetEditText String -- ^ Set text of current node edit.
   | StartEditNote Int -- ^ Starts editing the note with the given index.
   | CancelEditNote -- ^ Cancel current note edit.
-  | StopEditNote -- ^ Stop and save current note edit.
+  | StopEditNote Int -- ^ Stop and save current note edit with the given index.
 
 component ::
   forall query m.
   MonadAff m =>
+  CredentialStore m =>
   H.Component query Input Output m
 component =
   H.mkComponent
@@ -63,10 +81,12 @@ component =
 
 initialState :: Input -> State
 initialState input =
-  { notes: input
+  { orderId: input.orderId
+  , notes: input.notes
   , editNote: Nothing
   , newNote: Nothing
   , open: false
+  , noteAction: NoteIdle Nothing
   }
 
 mkNote :: String -> SS.OrderNote
@@ -107,8 +127,7 @@ renderSummary st = btn
 
 renderDetails ::
   forall slots m.
-  MonadAff m =>
-  State -> H.ComponentHTML Action slots m
+  MonadAff m => State -> H.ComponentHTML Action slots m
 renderDetails st =
   HH.div_
     [ renderSummary st
@@ -146,17 +165,23 @@ renderDetails st =
       , renderFooter
       ]
 
+  actionsAllowed = case st.noteAction of
+    NoteIdle _ -> true
+    _ -> false
+
   renderFooter = case st.newNote of
     Nothing ->
       HH.div [ HP.class_ Css.tw.flex ]
         [ HH.button
             [ HP.classes [ Css.btnSky100 ]
+            , HP.enabled actionsAllowed
             , HE.onClick \_ -> StartNewNote
             ]
             [ HH.text "+ Add Note" ]
         , HH.div [ HP.class_ Css.tw.grow ] []
         , HH.button
             [ HP.classes [ Css.btnSky100 ]
+            , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
             [ HH.text "Close" ]
@@ -170,21 +195,39 @@ renderDetails st =
             , HP.value text
             , HE.onValueChange SetNewText
             ]
+        , HH.div [ HP.class_ Css.tw.textRed700 ]
+            $ maybe [] (\msg -> [ HH.text msg ])
+            $ createError
         , HH.button
             [ HP.type_ HP.ButtonSubmit
-            , HP.classes [ Css.btnSky100, Css.tw.mt2 ]
+            , HP.classes $ [ Css.btnSky100, Css.tw.mt2 ]
+            , HP.enabled actionsAllowed
             ]
-            [ HH.text "Save" ]
+            [ HH.text "Save"
+            , if isCreating then
+                Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+              else
+                HH.text ""
+            ]
         , HH.button
-            [ HP.classes [ Css.btnSky100, Css.tw.mt2, Css.tw.ml2 ]
+            [ HP.classes $ [ Css.btnSky100, Css.tw.mt2, Css.tw.ml2 ]
+            , HP.enabled actionsAllowed
             , HE.onClick \_ -> CancelNewNote
             ]
             [ HH.text "Cancel" ]
         ]
+      where
+      isCreating = case st.noteAction of
+        NoteCreating Loading -> true
+        _ -> false
+
+      createError = case st.noteAction of
+        NoteIdle (Just (NoteCreating (Error msg))) -> Just msg
+        _ -> Nothing
 
   renderNote idx n = case st.editNote of
     Just { index, note }
-      | idx == index -> renderEditNote note
+      | idx == index -> renderEditNote idx note
     _ -> renderShowNote idx n
 
   renderShowNote idx (SS.OrderNote n) =
@@ -196,29 +239,56 @@ renderDetails st =
           , HH.div [ HP.class_ Css.tw.grow ] []
           , HH.button
               [ HP.classes
-                  [ Css.btnSky100
-                  , Css.tw.py0
-                  , Css.tw.hidden
-                  , Css.tw.groupHoverBlock
-                  ]
+                  $ [ Css.btnSky100
+                    , Css.tw.py0
+                    ]
+                  <> hideable false
+              , HP.enabled actionsAllowed
               , HE.onClick $ \_ -> StartEditNote idx
               ]
               [ HH.text "Edit" ]
           , HH.button
               [ HP.classes
-                  [ Css.btnRed100
-                  , Css.tw.py0
-                  , Css.tw.ml2
-                  , Css.tw.hidden
-                  , Css.tw.groupHoverBlock
-                  ]
+                  $ [ Css.btnRed100
+                    , Css.tw.py0
+                    , Css.tw.ml2
+                    ]
+                  <> hideable isDeleting
+              , HP.enabled actionsAllowed
               , HE.onClick $ \_ -> RemoveNote idx
               ]
-              [ HH.text "Remove" ]
+              [ HH.text "Remove"
+              , spinner isDeleting
+              ]
           ]
+      , maybe (HH.text "")
+          (\msg -> HH.div [ HP.class_ Css.tw.textRed700 ] [ HH.text msg ])
+          $ deleteError
       ]
+    where
+    hideable p =
+      if not p then
+        [ Css.tw.hidden, Css.tw.groupHoverBlock ]
+      else
+        []
 
-  renderEditNote note =
+    spinner p =
+      if p then
+        Widgets.spinner [ Css.tw.w4, Css.tw.h4, Css.tw.ml2, Css.tw.alignMiddle ]
+      else
+        HH.text ""
+
+    isDeleting = case st.noteAction of
+      NoteDeleting didx Loading
+        | idx == didx -> true
+      _ -> false
+
+    deleteError = case st.noteAction of
+      NoteIdle (Just (NoteDeleting didx (Error msg)))
+        | idx == didx -> Just msg
+      _ -> Nothing
+
+  renderEditNote idx note =
     HH.div_
       [ HH.textarea
           [ HP.classes [ Css.tw.p1, Css.tw.border, Css.tw.wFull ]
@@ -227,21 +297,42 @@ renderDetails st =
           , HP.value note
           , HE.onValueChange SetEditText
           ]
+      , HH.div [ HP.classes [ Css.tw.textRed700, Css.tw.wFull ] ]
+          $ maybe [] (\msg -> [ HH.text msg ])
+          $ updateError
       , HH.button
           [ HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.ml2, Css.tw.floatRight ]
+          , HP.enabled actionsAllowed
           , HE.onClick \_ -> CancelEditNote
           ]
           [ HH.text "Cancel" ]
       , HH.button
           [ HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.floatRight ]
-          , HE.onClick \_ -> StopEditNote
+          , HP.enabled actionsAllowed
+          , HE.onClick \_ -> StopEditNote idx
           ]
-          [ HH.text "Save" ]
+          [ HH.text "Save"
+          , if isUpdating then
+              Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+            else
+              HH.text ""
+          ]
       ]
+    where
+    isUpdating = case st.noteAction of
+      NoteUpdating didx Loading
+        | idx == didx -> true
+      _ -> false
+
+    updateError = case st.noteAction of
+      NoteIdle (Just (NoteUpdating didx (Error msg)))
+        | idx == didx -> Just msg
+      _ -> Nothing
 
 handleAction ::
   forall slots m.
   MonadAff m =>
+  CredentialStore m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   OpenDetails -> H.modify_ $ \st -> st { open = true }
@@ -252,23 +343,41 @@ handleAction = case _ of
   StartNewNote -> H.modify_ \st -> st { newNote = Just "" }
   CancelNewNote -> H.modify_ \st -> st { newNote = Nothing }
   StopNewNote -> do
-    st' <-
+    state <- H.modify \st -> st { noteAction = NoteCreating Loading }
+    case Tuple state.orderId state.newNote of
+      Tuple (Just oid) (Just text) -> do
+        noteResult <- H.lift $ postOrderNote oid (mkNote text)
+        state' <-
+          H.modify \st ->
+            st
+              { notes =
+                fromMaybe st.notes
+                  $ (\note -> st.notes <> [ note ])
+                  <$> Loadable.toMaybe noteResult
+              , newNote = Nothing
+              , noteAction = NoteIdle (Just st.noteAction)
+              }
+        H.raise state'.notes
+      _ -> pure unit
+  RemoveNote idx -> do
+    state <- H.modify \st -> st { noteAction = NoteDeleting idx Loading }
+    let
+      mNote = A.index state.notes idx
+    noteResult <- case Tuple state.orderId mNote of
+      Tuple
+        (Just oid)
+        (Just (SS.OrderNote { orderNoteId: Just nid })) -> H.lift $ deleteOrderNote oid nid
+      _ -> pure Idle
+    state' <-
       H.modify \st ->
         st
           { notes =
-            fromMaybe st.notes
-              $ (\text -> st.notes <> [ mkNote text ])
-              <$> st.newNote
-          , newNote = Nothing
+            fromMaybe st.notes do
+              _ <- Loadable.toMaybe noteResult
+              A.deleteAt idx st.notes
+          , noteAction = NoteIdle (Just $ NoteDeleting idx noteResult)
           }
-    H.raise st'.notes
-  RemoveNote idx -> do
-    st' <-
-      H.modify \st ->
-        st
-          { notes = fromMaybe st.notes $ A.deleteAt idx st.notes
-          }
-    H.raise st'.notes
+    H.raise state'.notes
   SetEditText text ->
     H.modify_ \st ->
       st { editNote = (\n -> n { note = text }) <$> st.editNote }
@@ -282,15 +391,27 @@ handleAction = case _ of
             mkEditNote <$> A.index st.notes idx
         }
   CancelEditNote -> H.modify_ \st -> st { editNote = Nothing }
-  StopEditNote -> do
-    st' <-
+  StopEditNote idx -> do
+    state <- H.modify \st -> st { noteAction = NoteUpdating idx Loading }
+    let
+      mNote = A.index state.notes idx
+    noteResult <- case { oid: state.orderId, note: mNote, enote: state.editNote } of
+      { oid: Just oid
+      , note: Just note@(SS.OrderNote { orderNoteId: Just nid })
+      , enote: Just { note: text }
+      } -> H.lift $ patchOrderNote oid nid (setNoteText note text)
+      _ -> pure Idle
+    state' <-
       H.modify \st ->
         st
           { editNote = Nothing
           , notes =
-            fromMaybe st.notes
-              $ case st.editNote of
-                  Just { index, note } -> A.modifyAt index (\n -> setNoteText n note) st.notes
-                  _ -> Nothing
+            fromMaybe st.notes do
+              newNote <- Loadable.toMaybe noteResult
+              A.modifyAt idx (const newNote) st.notes
+          , noteAction =
+            NoteIdle
+              $ Just
+              $ NoteUpdating idx (const unit <$> noteResult)
           }
-    H.raise st'.notes
+    H.raise state'.notes
