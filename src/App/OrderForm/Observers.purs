@@ -17,6 +17,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
+import Web.Event.Event (Event)
+import Web.Event.Event as Event
 import Widgets as Widgets
 
 type Slot id
@@ -59,7 +61,7 @@ data Action
   | SetNewEmail String -- ^ Set observer email of new observer.
   | StartNewObserver -- ^ Start adding a new observer.
   | CancelNewObserver -- ^ Cancel the new observer.
-  | StopNewObserver -- ^ Stop and save the new observer.
+  | StopNewObserver Event -- ^ Stop and save the new observer.
   | RemoveObserver Int -- ^ Remove the observer with the given index.
   | SetEditEmail String -- ^ Set email of current node edit.
   | StartEditObserver Int -- ^ Starts editing the observer with the given index.
@@ -192,7 +194,7 @@ renderDetails st =
             [ HH.text "Close" ]
         ]
     Just email ->
-      HH.form [ HE.onSubmit $ \_ -> StopNewObserver ]
+      HH.form [ HE.onSubmit StopNewObserver ]
         [ HH.input
             [ HP.type_ HP.InputEmail
             , HP.classes [ Css.tw.p1, Css.tw.border, Css.tw.wFull ]
@@ -347,7 +349,8 @@ handleAction = case _ of
   SetNewEmail email -> H.modify_ \st -> st { newObserver = Just email }
   StartNewObserver -> H.modify_ \st -> st { newObserver = Just "" }
   CancelNewObserver -> H.modify_ \st -> st { newObserver = Nothing }
-  StopNewObserver -> do
+  StopNewObserver event -> do
+    H.liftEffect $ Event.preventDefault event
     state <- H.modify \st -> st { observerAction = ObserverCreating Loading }
     case Tuple state.orderId state.newObserver of
       Tuple (Just oid) (Just email) -> do

@@ -17,6 +17,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
+import Web.Event.Event (Event)
+import Web.Event.Event as Event
 import Widgets as Widgets
 
 type Slot id
@@ -60,7 +62,7 @@ data Action
   | SetNewText String -- ^ Set note text of new note.
   | StartNewNote -- ^ Start adding a new note.
   | CancelNewNote -- ^ Cancel the new note.
-  | StopNewNote -- ^ Stop and save the new note.
+  | StopNewNote Event -- ^ Stop and save the new note.
   | RemoveNote Int -- ^ Remove the note with the given index.
   | SetEditText String -- ^ Set text of current node edit.
   | StartEditNote Int -- ^ Starts editing the note with the given index.
@@ -187,7 +189,7 @@ renderDetails st =
             [ HH.text "Close" ]
         ]
     Just text ->
-      HH.form [ HE.onSubmit $ \_ -> StopNewNote ]
+      HH.form [ HE.onSubmit StopNewNote ]
         [ HH.textarea
             [ HP.classes [ Css.tw.p1, Css.tw.border, Css.tw.wFull ]
             , HP.placeholder "Note text."
@@ -342,7 +344,8 @@ handleAction = case _ of
   SetNewText text -> H.modify_ \st -> st { newNote = Just text }
   StartNewNote -> H.modify_ \st -> st { newNote = Just "" }
   CancelNewNote -> H.modify_ \st -> st { newNote = Nothing }
-  StopNewNote -> do
+  StopNewNote event -> do
+    H.liftEffect $ Event.preventDefault event
     state <- H.modify \st -> st { noteAction = NoteCreating Loading }
     case Tuple state.orderId state.newNote of
       Tuple (Just oid) (Just text) -> do
