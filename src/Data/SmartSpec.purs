@@ -1816,7 +1816,7 @@ instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
     where
     defaultCommercial billingAccountId =
       Commercial
-        { billingAccountId
+        { billingAccountId: Just billingAccountId
         , billingOption: Prepay
         , contractTerm: Ongoing
         , paymentCurrency: PaymentCurrency (unsafeMkCurrency "EUR")
@@ -1827,7 +1827,7 @@ derive newtype instance encodeJsonBillingAccount :: EncodeJson BillingAccount
 
 newtype Commercial
   = Commercial
-  { billingAccountId :: BillingAccountId
+  { billingAccountId :: Maybe BillingAccountId
   , billingOption :: BillingOption
   , contractTerm :: ContractTerm
   , paymentCurrency :: PaymentCurrency
