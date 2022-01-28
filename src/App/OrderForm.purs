@@ -437,6 +437,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , HP.checked checked
                 , HE.onChecked (act <<< const <<< SS.CvBoolean)
                 ]
+      SS.CseInteger c
+        | not (A.null c.enum) -> renderEnumEntry act fallbackTitle value schemaEntry c SS.CvInteger show
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
@@ -449,21 +451,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> opt (HP.min <<< Int.toNumber) c.minimum
           <> opt (HP.max <<< Int.toNumber) c.maximum
       SS.CseString c
-        | not (A.null c.enum) ->
-          renderEntry' fallbackTitle schemaEntry
-            $ let
-                props e =
-                  [ HP.selected
-                      ( value == Just (SS.CvString e)
-                          || (value == Nothing && Just e == c.default)
-                      )
-                  ]
-
-                onIndexChange i = mact (act <<< const <<< SS.CvString) $ A.index c.enum (i - 1)
-              in
-                HH.select [ HP.class_ Css.tw.border, HE.onSelectedIndexChange onIndexChange ]
-                  $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
-                  <> map (\e -> HH.option (props e) [ HH.text e ]) c.enum
+        | not (A.null c.enum) -> renderEnumEntry act fallbackTitle value schemaEntry c SS.CvString identity
       SS.CseString c ->
         renderEntry' fallbackTitle schemaEntry
           $ let
@@ -570,6 +558,33 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ withDescription [] fallbackTitle schemaEntry
           , inner
           ]
+
+    renderEnumEntry ::
+      forall a r.
+      Eq a =>
+      ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
+      String ->
+      Maybe SS.ConfigValue ->
+      SS.ConfigSchemaEntry ->
+      { default :: Maybe a, enum :: Array a | r } ->
+      (a -> SS.ConfigValue) ->
+      (a -> String) ->
+      H.ComponentHTML Action Slots m
+    renderEnumEntry act fallbackTitle value schemaEntry c mkValue showValue =
+      renderEntry' fallbackTitle schemaEntry
+        $ let
+            props e =
+              [ HP.selected
+                  ( value == Just (mkValue e)
+                      || (value == Nothing && Just e == c.default)
+                  )
+              ]
+
+            onIndexChange i = mact (act <<< const <<< mkValue) $ A.index c.enum (i - 1)
+          in
+            HH.select [ HP.class_ Css.tw.border, HE.onSelectedIndexChange onIndexChange ]
+              $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
+              <> map (\e -> HH.option (props e) [ HH.text (showValue e) ]) c.enum
 
     withDescription classes fallbackTitle schemaEntry =
       Widgets.withMaybeTooltip

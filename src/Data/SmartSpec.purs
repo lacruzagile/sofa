@@ -1229,6 +1229,7 @@ data ConfigSchemaEntry
   | CseInteger
     { minimum :: Maybe Int
     , maximum :: Maybe Int
+    , enum :: Array Int
     , default :: Maybe Int
     | ConfigSchemaEntryMeta
     }
@@ -1273,8 +1274,9 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
         "integer" -> do
           minimum <- o .:? "minimum"
           maximum <- o .:? "maximum"
+          enum <- o .:? "enum" .!= []
           default <- o .:? "default"
-          Right $ CseInteger { title, description, minimum, maximum, default }
+          Right $ CseInteger { title, description, minimum, maximum, enum, default }
         "string" -> do
           minLength <- o .:? "minLength"
           maxLength <- o .:? "maxLength"
