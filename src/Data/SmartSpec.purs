@@ -1805,18 +1805,22 @@ instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
     billingAccountId <- o .: "billingAccountId"
     displayName <- o .: "displayName"
     shortId <- o .: "shortId"
-    commercial <- o .:? "commercial" .!= defaultCommercial billingAccountId
+    Commercial commercial <- o .:? "commercial" .!= defaultCommercial
     pure
       $ BillingAccount
           { billingAccountId
           , displayName
           , shortId
-          , commercial
+          , commercial:
+              Commercial
+                $ commercial
+                    { billingAccountId = commercial.billingAccountId <|> Just billingAccountId
+                    }
           }
     where
-    defaultCommercial billingAccountId =
+    defaultCommercial =
       Commercial
-        { billingAccountId: Just billingAccountId
+        { billingAccountId: Nothing
         , billingOption: Prepay
         , contractTerm: Ongoing
         , paymentCurrency: PaymentCurrency (unsafeMkCurrency "EUR")
