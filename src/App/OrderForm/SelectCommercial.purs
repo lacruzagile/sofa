@@ -14,6 +14,7 @@ import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
 import Data.Traversable (for_)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -158,6 +159,9 @@ component =
           H.lift
             $ getBillingAccount st'.crmAccountId ba.billingAccountId
         _ -> pure Idle
+      case selectedFull of
+        Error err -> H.liftEffect $ Console.error $ "When fetching commercial data: " <> err
+        _ -> pure unit
       H.modify_ \st -> st { selectedFull = selectedFull }
       -- Let the parent component know about the new selection.
       H.raise
