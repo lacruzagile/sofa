@@ -8,8 +8,8 @@
     applyHtmlTag="false"
     >
 
-  <apex:stylesheet value="{!URLFOR($Resource.MyAppResource, '@css@')}"/>
-  <script type="module" src="{!URLFOR($Resource.MyAppZip, '@js@')}"></script>
+  <apex:stylesheet value="{!URLFOR($Resource.sofaBundle, '@css@')}"/>
+  <script type="module" src="{!URLFOR($Resource.sofaBundle, '@js@')}"></script>
 
   <script>
     const __ACCESSTOKEN__ = '{!$Api.Session_ID}';

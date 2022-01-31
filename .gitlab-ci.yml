@@ -122,14 +122,16 @@ stop-k8s-staging:
     action: stop
 
 deploy-salesforce-staging:
-  image: salesforce/salesforcedx:7.130.1-slim
+  image: salesforce/salesforcedx:7.136.1-slim
   stage: deploy
   only: [ master ]
   when: manual
+  environment:
+    name: sf-staging
   script:
     - >-
       ./salesforce/build-deployment
       --ordering-base-url https://ordering.eu1tst.bpa.staging.sinch.com
-      --smart-spec-base-url https://ea.pages.sinch.com/smart-spec
+      --smart-spec-base-url https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com
   artifacts:
     paths: [ dist-sf ]

@@ -65,8 +65,14 @@ cp salesforce/sofaBundle.resource-meta.xml "$resourcePath"
 zip -r "$resourcePath/sofaBundle.resource" dist/
 
 pushd "$projectPath"
-sfdx force:source:convert -d "$tmpPath/dist/sofa"
-#sfdx force:mdapi:deploy -d "$tmpPath/dist/sofa" -w 10000
+sfdx force:source:convert --outputdir "$tmpPath/dist/sofa"
+sfdx force:auth:jwt:grant \
+     --clientid "$SF_CLIENT_ID" \
+     --jwtkeyfile "$SF_CLIENT_SECRET" \
+     --username "$SF_USERNAME" \
+     --instanceurl "$SF_INSTANCEURL" \
+     --setdefaultusername
+sfdx force:mdapi:deploy -d "$tmpPath/dist/sofa" -w 2
 popd
 
 cp -r "$tmpPath/dist/sofa" dist-sf
