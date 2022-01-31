@@ -7,7 +7,7 @@ tmpPath="$(mktemp -d)"
 trap 'rm -rf "$tmpPath"' EXIT
 
 css=(dist/sofa.*.css)
-if (( ${#css[@]} != 2 )); then
+if (( ${#css[@]} != 1 )); then
     echo "Expected two CSS files, got ${#css[@]}"
     exit 1
 fi
@@ -52,8 +52,7 @@ pagePath="$forceappPath/main/default/pages"
 
 mkdir -p "$resourcePath" "$pagePath"
 
-sed -e "s!@css0@!${css[0]}!" \
-    -e "s!@css1@!${css[1]}!" \
+sed -e "s!@css@!${css[0]}!" \
     -e "s!@js@!${js[0]}!" \
     -e "s!@orderingBaseUrl@!$orderingBaseUrl!" \
     -e "s!@smartSpecBaseUrl@!$smartSpecBaseUrl!" \

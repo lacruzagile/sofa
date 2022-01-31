@@ -8,8 +8,7 @@
     applyHtmlTag="false"
     >
 
-  <apex:stylesheet value="{!URLFOR($Resource.MyAppResource, '@css0@')}"/>
-  <apex:stylesheet value="{!URLFOR($Resource.MyAppResource, '@css1@')}"/>
+  <apex:stylesheet value="{!URLFOR($Resource.MyAppResource, '@css@')}"/>
   <script type="module" src="{!URLFOR($Resource.MyAppZip, '@js@')}"></script>
 
   <script>
