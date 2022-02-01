@@ -168,7 +168,7 @@ instance decodeJsonSolution :: DecodeJson Solution where
     description <- o .:? "description"
     products <- o .: "products"
     rules <- o .:? "rules" .!= []
-    priceBooks <- o .: "priceBooks"
+    priceBooks <- o .:? "priceBooks" .!= []
     pure $ Solution { id, uri, title, description, rules, products, priceBooks }
 
 derive newtype instance encodeJsonSolution :: EncodeJson Solution
