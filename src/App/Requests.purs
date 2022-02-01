@@ -38,6 +38,9 @@ foreign import orderingBaseUrl :: String
 -- | Base URL to use for the Smart Spec repository.
 foreign import smartSpecBaseUrl :: String
 
+-- | Name of the Smart Spec product catalog file that should be loaded.
+foreign import smartSpecProdCatalogFilename :: String
+
 ordersUrl :: String
 ordersUrl = orderingBaseUrl </> "v1alpha1" </> "orders"
 
@@ -238,4 +241,4 @@ getProductCatalog = getJson url
   -- This URL is "virtual" in the sense that we fetch this URL but the reverse
   -- proxy will redirect the request to the product catalog suitable for the
   -- current deployment.
-  url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> "product-catalog.json"
+  url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> smartSpecProdCatalogFilename

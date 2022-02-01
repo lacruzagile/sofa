@@ -33,6 +33,10 @@ while (( $# > 0 )); do
             smartSpecBaseUrl="$1"
             shift
             ;;
+        --deployment-env)
+            deploymentEnv="$1"
+            shift
+            ;;
         *)
             echo "Unknown option: $opt"
             exit 1
@@ -56,6 +60,7 @@ sed -e "s!@css@!${css[0]}!" \
     -e "s!@js@!${js[0]}!" \
     -e "s!@orderingBaseUrl@!$orderingBaseUrl!" \
     -e "s!@smartSpecBaseUrl@!$smartSpecBaseUrl!" \
+    -e "s!@deploymentEnv@!$deploymentEnv!" \
     salesforce/sofaPage.page \
     > "$pagePath/sofaPage.page"
 
