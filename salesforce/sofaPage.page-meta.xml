@@ -3,5 +3,5 @@
     <apiVersion>52.0</apiVersion>
     <availableInTouch>false</availableInTouch>
     <confirmationTokenRequired>false</confirmationTokenRequired>
-    <label>sofaPage</label>
+    <label>SOFA</label>
 </ApexPage>
