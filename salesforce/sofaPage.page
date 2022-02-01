@@ -13,7 +13,7 @@
 
   <script>
     const __ACCESSTOKEN__ = '{!$Api.Session_ID}';
-    const __ORGANIZATION_ID = '{!$Organization.Id}';
+    const __ORGANIZATION_ID__ = '{!$Organization.Id}';
     const __USER_ID__ = '{!$User.Id}';
     const __USER_EMAIL__ = '{!$User.Email}';
     const __ORDERING_BASE_URL__ = '@orderingBaseUrl@';
