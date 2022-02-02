@@ -13,4 +13,4 @@ exports.smartSpecBaseUrl =
 exports.smartSpecProdCatalogFilename =
   typeof __DEPLOYMENT_ENV__ == 'undefined'
     ? 'product-catalog.json'
-    : `product-catalog.phase1.${__DEPLOYMENT_ENV__}.n.json`;
+    : `product-catalog.${__DEPLOYMENT_ENV__}.n.json`;
