@@ -42,7 +42,7 @@ type State
 
 data Action
   = Initialize
-  | Select SS.ConfigValue
+  | Check SS.ConfigValue Boolean
 
 component ::
   forall query m.
@@ -91,7 +91,7 @@ render st = case st.available of
       [ HH.input
           [ HP.type_ InputCheckbox
           , HP.checked $ Set.member v st.selected
-          , HE.onChange \_ -> Select v
+          , HE.onChecked $ Check v
           ]
       , HH.span [ HP.class_ Css.tw.ml2 ] [ HH.text key ]
       ]
@@ -114,7 +114,15 @@ handleAction = case _ of
         H.modify_ \st -> st { available = Loading }
         result <- H.lift $ getDataSourceEnum url
         H.modify_ \st -> st { available = result }
-  Select value -> do
-    st' <- H.modify \st -> st { selected = Set.insert value st.selected }
+  Check value checked -> do
+    st' <-
+      H.modify \st ->
+        st
+          { selected =
+            if checked then
+              Set.insert value st.selected
+            else
+              Set.delete value st.selected
+          }
     -- Let the parent component know about the new selection.
     H.raise $ A.fromFoldable st'.selected
