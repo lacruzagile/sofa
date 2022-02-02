@@ -101,8 +101,11 @@ instance decodeJsonTokenResponse :: DecodeJson TokenResponse where
     tokenType <- o .: "token_type"
     pure $ TokenResponse { accessToken, expiresIn, scope, tokenType }
 
-authConfig :: AuthConfig
-authConfig = { tokenUrl: "/oauth2/token" }
+-- | Base URL to use for the token service.
+foreign import tokenBaseUrl :: String
+
+tokenUrl :: String
+tokenUrl = tokenBaseUrl <> "/oauth2/token"
 
 basicAuth :: String -> String -> RequestHeader
 basicAuth user pass =
@@ -117,7 +120,7 @@ login user pass =
     result <-
       liftAff $ AX.request
         $ AX.defaultRequest
-            { url = authConfig.tokenUrl
+            { url = tokenUrl
             , method = Left POST
             , headers = [ basicAuth user pass ]
             , content = Just $ formURLEncoded $ FormURLEncoded [ Tuple "grant_type" (Just "client_credentials") ]

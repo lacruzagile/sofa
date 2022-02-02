@@ -17,6 +17,7 @@
     const __USER_ID__ = '{!$User.Id}';
     const __USER_EMAIL__ = '{!$User.Email}';
     const __DEPLOYMENT_ENV__ = '@deploymentEnv@';
+    const __TOKEN_BASE_URL__ = '@tokenBaseUrl@';
     const __ORDERING_BASE_URL__ = '@orderingBaseUrl@';
     const __SMART_SPEC_BASE_URL__ = '@smartSpecBaseUrl@';
   </script>

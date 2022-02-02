@@ -24,4 +24,8 @@ foreign import sfData ::
 
 -- | Figures out which type of deployment we're running.
 detectDeployment :: Effect Deployment
-detectDeployment = maybe Standard Salesforce <$> sfData Just Nothing
+detectDeployment = do
+  -- Commented out to force use of standard login even in Salesforce
+  -- deployments:
+  -- maybe Standard Salesforce <$> sfData Just Nothing
+  pure Standard

@@ -131,7 +131,8 @@ deploy-salesforce-staging:
   script:
     - >-
       ./salesforce/build-deployment
-      --ordering-base-url https://ordering.eu1tst.bpa.staging.sinch.com
+      --token-base-url https://sofa.eu1tst.bpa.unauth.int.staging.sinch.com
+      --ordering-base-url https://sofa.eu1tst.bpa.unauth.int.staging.sinch.com
       --smart-spec-base-url https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com
       --deployment-env staging
   artifacts:
