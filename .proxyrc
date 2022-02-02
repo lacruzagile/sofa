@@ -11,7 +11,7 @@
     "target": "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true,
     "pathRewrite": {
-      "^/v1alpha1/examples/product-catalog.json$": "/v1alpha1/examples/product-catalog.phase1.staging.n.json"
+      "^/v1alpha1/examples/product-catalog.json$": "/v1alpha1/examples/product-catalog.staging.n.json"
     }
   },
   "/v1alpha1/orders": {
