@@ -118,7 +118,7 @@ renderNavbar state =
       ]
     | otherwise =
       [ Css.tw.px3
-      , Css.tw.hover_underline
+      , Css.tw.hoverUnderline
       , Css.tw.underlineOffset8
       , Css.tw.decoration2
       , Css.tw.decorationSky500_30
