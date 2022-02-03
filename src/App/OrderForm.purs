@@ -1502,7 +1502,11 @@ loadExisting original@(SS.OrderForm orderForm) = do
     let
       SS.Solution sol = solution
 
-      priceBook = A.find (\pb -> pb.id == pbRef.priceBookId) =<< Map.lookup sol.id pbs
+      priceBook =
+        if A.null sol.priceBooks then
+          mkNilPriceBook solution
+        else
+          A.find (\pb -> pb.id == pbRef.priceBookId) =<< Map.lookup sol.id pbs
     pure
       $ calcSubTotal
           { orderSectionId: s.orderSectionId
@@ -1568,6 +1572,25 @@ mkPriceBooks (SS.ProductCatalog pc) = maybe Map.empty (Map.fromFoldableWith (<>)
       ]
     else
       []
+
+mkNilPriceBook :: SS.Solution -> Maybe PriceBook
+mkNilPriceBook solution = do
+  let
+    SS.Solution sol = solution
+  -- If the solution has no price book then
+  -- we'll assume this is intentional and
+  -- simply invent an empty price book.
+  guard (A.null sol.priceBooks)
+  year <- toEnum 1970
+  day <- toEnum 1
+  currency <- mkCurrency "EUR"
+  pure
+    { id: ""
+    , title: ""
+    , version: canonicalDate year January day
+    , currency: SS.ChargeCurrency currency
+    , rateCards: Nothing
+    }
 
 handleAction ::
   forall output m.
@@ -1668,24 +1691,7 @@ handleAction = case _ of
                               Just
                                 { orderSectionId: _.orderSectionId =<< sec
                                 , solution: solution
-                                , priceBook:
-                                    do
-                                      let
-                                        SS.Solution sol = solution
-                                      -- If the solution has no price book then
-                                      -- we'll assume this is intentional and
-                                      -- simply invent an empty price book.
-                                      guard (A.null sol.priceBooks)
-                                      year <- toEnum 1970
-                                      day <- toEnum 1
-                                      currency <- mkCurrency "EUR"
-                                      pure
-                                        { id: ""
-                                        , title: ""
-                                        , version: canonicalDate year January day
-                                        , currency: SS.ChargeCurrency currency
-                                        , rateCards: Nothing
-                                        }
+                                , priceBook: mkNilPriceBook solution
                                 , orderLines: [ Nothing ]
                                 , summary: mempty
                                 }
