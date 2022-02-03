@@ -14,7 +14,7 @@ import App.OrderForm.Widget.Radio as WRadio
 import App.OrderForm.Widget.Textarea as WTextarea
 import App.OrderForm.Widget.Typeahead as WTypeahead
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
-import Control.Alternative ((<|>))
+import Control.Alternative (guard, (<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (foldl, head, modifyAt, snoc)
@@ -22,10 +22,10 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
-import Data.Currency (unsafeMkCurrency)
-import Data.Date (Date)
+import Data.Currency (mkCurrency, unsafeMkCurrency)
+import Data.Date (Date, Month(..), canonicalDate)
 import Data.Either (Either(..), either, note)
-import Data.Enum (enumFromTo)
+import Data.Enum (enumFromTo, toEnum)
 import Data.Enum.Generic (genericFromEnum, genericToEnum)
 import Data.Foldable (sum)
 import Data.Int as Int
@@ -787,25 +787,28 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     [ renderSmallTitle "Solution"
                     , HH.text $ solutionLabel sec.solution
                     ]
-                , HH.label [ HP.class_ Css.tw.w1_2 ]
-                    [ renderSmallTitle "Price Book"
-                    , HH.select
-                        [ HP.classes
-                            [ Css.tw.appearanceNone
-                            , Css.tw.bgTransparent
-                            , Css.tw.textEllipsis
-                            , Css.tw.underline
-                            , Css.tw.underlineOffset4
-                            , Css.tw.decorationSky300
-                            ]
-                        , HE.onSelectedIndexChange $ actionSetPriceBook priceBooks
-                        ]
-                        $ [ HH.option
-                              [ HP.disabled true, HP.selected (isNothing sec.priceBook) ]
-                              [ HH.text priceBookSel ]
+                , if A.null priceBookOpts then
+                    HH.text ""
+                  else
+                    HH.label [ HP.class_ Css.tw.w1_2 ]
+                      [ renderSmallTitle "Price Book"
+                      , HH.select
+                          [ HP.classes
+                              [ Css.tw.appearanceNone
+                              , Css.tw.bgTransparent
+                              , Css.tw.textEllipsis
+                              , Css.tw.underline
+                              , Css.tw.underlineOffset4
+                              , Css.tw.decorationSky300
+                              ]
+                          , HE.onSelectedIndexChange $ actionSetPriceBook priceBooks
                           ]
-                        <> priceBookOpts
-                    ]
+                          $ [ HH.option
+                                [ HP.disabled true, HP.selected (isNothing sec.priceBook) ]
+                                [ HH.text priceBookSel ]
+                            ]
+                          <> priceBookOpts
+                      ]
                 ]
             , renderOrderLines sec.solution sec.orderLines
             , HH.div
@@ -1665,7 +1668,24 @@ handleAction = case _ of
                               Just
                                 { orderSectionId: _.orderSectionId =<< sec
                                 , solution: solution
-                                , priceBook: Nothing
+                                , priceBook:
+                                    do
+                                      let
+                                        SS.Solution sol = solution
+                                      -- If the solution has no price book then
+                                      -- we'll assume this is intentional and
+                                      -- simply invent an empty price book.
+                                      guard (A.null sol.priceBooks)
+                                      year <- toEnum 1970
+                                      day <- toEnum 1
+                                      currency <- mkCurrency "EUR"
+                                      pure
+                                        { id: ""
+                                        , title: ""
+                                        , version: canonicalDate year January day
+                                        , currency: SS.ChargeCurrency currency
+                                        , rateCards: Nothing
+                                        }
                                 , orderLines: [ Nothing ]
                                 , summary: mempty
                                 }
