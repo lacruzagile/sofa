@@ -1208,7 +1208,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
     , renderOrderFooter sof
     , HH.hr [ HP.class_ Css.tw.my5 ]
     , HH.details_
-        [ HH.summary_ [ HH.text "Order Form JSON" ]
+        [ HH.summary
+            [ HP.class_ Css.tw.cursorPointer ]
+            [ HH.text "Order Form JSON" ]
         , HH.pre_
             [ HH.code_
                 [ HH.text
