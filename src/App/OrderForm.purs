@@ -608,47 +608,88 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       _ -> Nothing
                 }
                 (mact (act <<< const <<< SS.CvString))
-            SS.SwCheckbox { dataSource: Just ds } ->
-              HH.slot
-                WCheckbox.proxy
-                entryIdx
-                WCheckbox.component
-                { value:
-                    case value of
-                      Just (SS.CvArray vs) -> vs
-                      _ -> []
-                , dataSource: ds
-                }
-                (mact (act <<< const <<< SS.CvArray) <<< Just)
-            SS.SwCheckbox _ -> HH.text "TODO: checkbox without data source"
-            SS.SwDropdown { dataSource: Just ds } ->
-              HH.slot
-                WDropdown.proxy
-                entryIdx
-                WDropdown.component
-                { value, dataSource: ds }
-                (mact (act <<< const))
-            SS.SwDropdown _ -> HH.text "TODO: dropdown without data source"
-            SS.SwRadio { dataSource: Just ds } ->
-              HH.slot
-                WRadio.proxy
-                entryIdx
-                WRadio.component
-                { value, dataSource: ds }
-                (mact (act <<< const))
-            SS.SwRadio _ -> HH.text "TODO: radio without data source"
-            SS.SwTypeahead { minInputLength, debounceMs, dataSource: Just ds } ->
-              HH.slot
-                WTypeahead.proxy
-                entryIdx
-                WTypeahead.component
-                { value
-                , minInputLength
-                , debounceMs
-                , dataSource: ds
-                }
-                (mact (act <<< const))
-            SS.SwTypeahead _ -> HH.text "TODO: typeahead without data source"
+            SS.SwCheckbox { dataSource } ->
+              maybe
+                (HH.text "Checkbox without data source or enum")
+                ( \ds ->
+                    HH.slot
+                      WCheckbox.proxy
+                      entryIdx
+                      WCheckbox.component
+                      { value:
+                          case value of
+                            Just (SS.CvArray vs) -> vs
+                            _ -> []
+                      , dataSource: ds
+                      }
+                      (mact (act <<< const <<< SS.CvArray) <<< Just)
+                )
+                (dataSourceWithFallback dataSource)
+            SS.SwDropdown { dataSource } ->
+              maybe
+                (HH.text "Dropdown without data source or enum")
+                ( \ds ->
+                    HH.slot
+                      WDropdown.proxy
+                      entryIdx
+                      WDropdown.component
+                      { value, dataSource: ds }
+                      (mact (act <<< const))
+                )
+                (dataSourceWithFallback dataSource)
+            SS.SwRadio { dataSource } ->
+              maybe
+                (HH.text "Radio buttons without data source or enum")
+                ( \ds ->
+                    HH.slot
+                      WRadio.proxy
+                      entryIdx
+                      WRadio.component
+                      { value, dataSource: ds }
+                      (mact (act <<< const))
+                )
+                (dataSourceWithFallback dataSource)
+            SS.SwTypeahead { minInputLength, debounceMs, dataSource } ->
+              maybe
+                (HH.text "Typeahead without data source or enum")
+                ( \ds ->
+                    HH.slot
+                      WTypeahead.proxy
+                      entryIdx
+                      WTypeahead.component
+                      { value
+                      , minInputLength
+                      , debounceMs
+                      , dataSource: ds
+                      }
+                      (mact (act <<< const))
+                )
+                (dataSourceWithFallback dataSource)
+      where
+      -- Endow a data source with fallback to schema entry enum values. Takes as
+      -- input a maybe data source, which is preferred, otherwise uses the enum
+      -- values of the current schema entry, and if no enum is available then
+      -- nothing is returned.
+      dataSourceWithFallback = case _ of
+        Just ds -> Just ds
+        Nothing -> case schemaEntry of
+          SS.CseInteger { enum }
+            | not (A.null enum) ->
+              Just
+                $ SS.SdsEnumMap
+                    { entries:
+                        Map.fromFoldable
+                          $ map (\i -> Tuple (show i) (SS.CvInteger i)) enum
+                    }
+          SS.CseString { enum }
+            | not (A.null enum) ->
+              Just
+                $ SS.SdsEnumMap
+                    { entries:
+                        Map.fromFoldable
+                          $ map (\s -> Tuple s (SS.CvString s)) enum
+                    }
+          _ -> Nothing
 
     renderEntry' fallbackTitle schemaEntry inner =
       if S.null fallbackTitle then
