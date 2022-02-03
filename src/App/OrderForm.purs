@@ -1686,6 +1686,19 @@ handleAction = case _ of
             currency = toPricingCurrency commercial
 
             priceBooks = mkPriceBooks st.productCatalog currency
+
+            resetSection sec =
+              sec
+                { priceBook =
+                  let
+                    SS.Solution sol = sec.solution
+                  in
+                    if A.null sol.priceBooks then
+                      mkNilPriceBook sec.solution
+                    else
+                      Nothing
+                , summary = mempty :: SubTotal
+                }
           in
             st
               { currency = currency
@@ -1700,7 +1713,7 @@ handleAction = case _ of
                     if st.currency == currency then
                       st.orderForm.sections
                     else
-                      map (map (_ { priceBook = Nothing, summary = mempty :: SubTotal })) st.orderForm.sections
+                      map (map resetSection) st.orderForm.sections
                   }
               }
   SetObservers observers ->
