@@ -52,6 +52,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
+import Foreign.Object as FO
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -572,7 +573,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ( \i (Tuple k schema) ->
                   renderEntry (pushEntryIndex entryIdx i) (act' k) k (findVal k) schema
               )
-              $ Map.toUnfoldable c.properties
+              $ FO.toUnfoldable c.properties
         in
           if S.null fallbackTitle then
             HH.div
@@ -1364,7 +1365,7 @@ mkDefaultConfig = case _ of
       defaults =
         Map.fromFoldable
           $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefaultConfig v)
-          $ Map.toUnfoldable x.properties
+          $ FO.toUnfoldable x.properties
     in
       Just $ SS.CvObject defaults
   SS.CseOneOf _ -> Nothing

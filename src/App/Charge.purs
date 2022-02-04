@@ -29,6 +29,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
+import Foreign.Object as FO
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -243,7 +244,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
       -- Fatalistically assume that all units use the same dimensions.
       dims = case unit of
-        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ Map.keys o.properties
+        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ FO.keys o.properties
         Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
         _ -> []
 
@@ -340,7 +341,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       -- Fatalistically assume that there is at least one unit defined, then
       -- fatalistically assume that all units use the same dimensions.
       dims = case A.head units of
-        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ Map.keys o.properties
+        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ FO.keys o.properties
         Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
         _ -> []
 

@@ -18,6 +18,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
+import Foreign.Object as FO
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -148,8 +149,8 @@ render state = HH.section_ [ HH.article_ content ]
 
     renderInner v = dataItemRaw (showCseTypeName v) (configSchemaEntry v)
 
-  configSchema :: Map String SS.ConfigSchemaEntry -> H.ComponentHTML Action Slots m
-  configSchema = HH.dl_ <<< concatMap entry <<< Map.toUnfoldable
+  configSchema :: FO.Object SS.ConfigSchemaEntry -> H.ComponentHTML Action Slots m
+  configSchema = HH.dl_ <<< concatMap entry <<< FO.toUnfoldable
     where
     entry (Tuple k e) =
       [ HH.dt_ [ HH.text k, HH.text " (", HH.text $ showCseTypeName e, HH.text ")" ]

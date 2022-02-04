@@ -1347,7 +1347,7 @@ data ConfigSchemaEntry
     | ConfigSchemaEntryMeta
     }
   | CseObject
-    { properties :: Map String ConfigSchemaEntry
+    { properties :: FO.Object ConfigSchemaEntry
     | ConfigSchemaEntryMeta
     }
   | CseOneOf { oneOf :: Array ConfigSchemaEntry }
@@ -1397,9 +1397,7 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
           widget <- o .:? "widget"
           Right $ CseArray { title, description, items, widget }
         "object" -> do
-          propertiesObj :: FO.Object ConfigSchemaEntry <- o .: "properties"
-          let
-            properties = Map.fromFoldable (FO.toUnfoldable propertiesObj :: Array _)
+          properties :: FO.Object ConfigSchemaEntry <- o .: "properties"
           Right $ CseObject { title, description, properties }
         _ -> Left (TypeMismatch "ConfigSchemaEntry")
 
@@ -1415,10 +1413,7 @@ instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
     CseRegex x -> encodeJson x
     CseConst x -> encodeJson x
     CseArray x -> encodeJson x
-    CseObject x ->
-      ("type" := "object")
-        ~> ("properties" := encodeJson (FO.fromFoldable (Map.toUnfoldable x.properties :: LL.List _)))
-        ~> jsonEmptyObject
+    CseObject x -> encodeJson x
     CseOneOf x -> encodeJson x
 
 configSchemaEntryTitle :: ConfigSchemaEntry -> Maybe String
