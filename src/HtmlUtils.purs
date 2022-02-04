@@ -1,5 +1,6 @@
 module HtmlUtils
   ( focusElementByQuery
+  , selectInputText
   , setInputText
   ) where
 
@@ -18,6 +19,16 @@ focusElementByQuery :: forall m. Bind m => MonadAff m => String -> m Unit
 focusElementByQuery query = do
   element <- H.liftAff $ HA.selectElement (QuerySelector query)
   H.liftEffect $ maybe (pure unit) HtmlElement.focus element
+
+selectInputText ∷
+  forall state action slots output m.
+  MonadEffect m =>
+  String -> H.HalogenM state action slots output m Unit
+selectInputText refLabel = do
+  inputElement <- H.getHTMLElementRef $ H.RefLabel refLabel
+  for_ inputElement
+    $ maybe (pure unit) (H.liftEffect <<< HTMLInputElement.select)
+    <<< HTMLInputElement.fromHTMLElement
 
 setInputText ∷
   forall state action slots output m.

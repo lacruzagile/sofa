@@ -18,8 +18,9 @@ import Data.Tuple (Tuple(..), snd)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import HtmlUtils (setInputText)
+import HtmlUtils (selectInputText, setInputText)
 import Select as Sel
 import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
@@ -50,6 +51,7 @@ type State
 
 data Action
   = Initialize
+  | InputFocused
 
 type Action'
   = Sel.Action Action
@@ -126,6 +128,7 @@ component =
       case state'.selected of
         Nothing -> pure unit
         Just (Tuple key _) -> setInputText "select-input" key
+    InputFocused -> selectInputText "select-input"
 
   handleEvent = case _ of
     Sel.Searched str -> do
@@ -161,6 +164,7 @@ component =
         $ SelSet.setInputProps
             [ HP.classes [ Css.tw.border ]
             , HP.placeholder "Type to search value…"
+            , HE.onFocus \_ -> Sel.Action InputFocused
             ]
 
     containerClasses =
