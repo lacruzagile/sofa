@@ -46,13 +46,13 @@ import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console as Console
+import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
-import Foreign.Object as FO
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -539,6 +539,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
           act' idx = \f -> act (SS.CvArray <<< fromMaybe [] <<< A.modifyAt idx (f <<< Just) <<< toVal)
 
+          removeAct idx = \_ -> act (SS.CvArray <<< fromMaybe [] <<< A.deleteAt idx <<< toVal)
+
           mkElement content =
             if S.null fallbackTitle then
               HH.div
@@ -556,7 +558,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         in
           mkElement
             $ A.mapWithIndex
-                (\i -> renderListEntry (pushEntryIndex entryIdx i) (act' i) c.items)
+                (\i -> renderListEntry (pushEntryIndex entryIdx i) (act' i) (removeAct i) c.items)
                 entries
       SS.CseObject c ->
         let
@@ -741,29 +743,32 @@ render state = HH.section_ [ HH.article_ renderContent ]
     renderListEntry ::
       ConfigEntryIndex ->
       ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
+      (Unit -> Action) ->
       SS.ConfigSchemaEntry ->
       SS.ConfigValue ->
       H.ComponentHTML Action Slots m
-    renderListEntry entryIdx act entry value =
-      HH.div [ HP.classes classes ]
-        [ renderRemoveListEntry
+    renderListEntry entryIdx act removeAct entry value =
+      HH.div [ HP.classes [ Css.tw.p3, Css.tw.borderB, Css.tw.group ] ]
+        [ renderRemoveListEntry removeAct
         , renderEntry entryIdx act "" (Just value) entry
         ]
-      where
-      classes = [ Css.tw.p3, Css.tw.borderB ]
 
-    -- | not isInDraft = HH.text ""
-    -- | otherwise = --   HH.button
-    --     [ HP.classes
-    --         [ Css.tw.relative
-    --         , Css.tw.floatRight
-    --         , Css.btnRed100
-    --         , Css.tw.py0
-    --         , Css.tw.cursorPointer
-    --         ]
-    --     ]
-    --     [ HH.text "- Remove" ]
-    renderRemoveListEntry = HH.text ""
+    renderRemoveListEntry :: (Unit -> Action) -> H.ComponentHTML Action Slots m
+    renderRemoveListEntry removeAct
+      | not isInDraft = HH.text ""
+      | otherwise =
+        HH.button
+          [ HP.classes
+              [ Css.btnRed100
+              , Css.tw.relative
+              , Css.tw.floatRight
+              , Css.tw.py0
+              , Css.tw.hidden
+              , Css.tw.groupHoverBlock
+              ]
+          , HE.onClick \_ -> removeAct unit
+          ]
+          [ HH.text "- Remove" ]
 
     renderAddListEntry schemaEntry act
       | not isInDraft = HH.text ""
