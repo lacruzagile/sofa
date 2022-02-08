@@ -244,7 +244,7 @@ render state = HH.section_ [ HH.article_ content ]
             , Css.tw.bgRed100
             , Css.tw.border
             , Css.tw.borderRed400
-            , Css.tw.textRed700
+            , Css.tw.textRaspberry500
             ]
         ]
         [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]

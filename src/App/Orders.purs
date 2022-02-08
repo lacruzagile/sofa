@@ -72,7 +72,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , Css.tw.bgRed100
           , Css.tw.border
           , Css.tw.borderRed400
-          , Css.tw.textRed700
+          , Css.tw.textRaspberry500
           ]
       ]
       [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
@@ -175,7 +175,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       , HP.classes
           [ Css.tw.relative
           , Css.tw.floatRight
-          , Css.btnSky100
+          , Css.btnTropical
           ]
       ]
       [ HH.text "+ New Order" ]

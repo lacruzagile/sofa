@@ -280,7 +280,7 @@ subTotalTable title (SubTotal summary) =
     where
     listPriceClasses = [ Css.tw.px3, Css.tw.textLg, Css.tw.textRight ]
 
-    discountPriceClasses = [ Css.tw.px3, Css.tw.textLg, Css.tw.textRight, Css.tw.textRed700 ]
+    discountPriceClasses = [ Css.tw.px3, Css.tw.textLg, Css.tw.textRight, Css.tw.textRaspberry500 ]
 
     renderPrice classes (Additive n) =
       HH.span

@@ -120,14 +120,14 @@ renderNavbar currentRoute =
       , Css.tw.underline
       , Css.tw.underlineOffset8
       , Css.tw.decoration2
-      , Css.tw.decorationSky500
+      , Css.tw.decorationHoney500
       ]
     | otherwise =
       [ Css.tw.px3
       , Css.tw.hoverUnderline
       , Css.tw.underlineOffset8
       , Css.tw.decoration2
-      , Css.tw.decorationSky500_30
+      , Css.tw.decorationHoney500_30
       ]
 
   primaryItem route text =

@@ -120,7 +120,7 @@ render = case _ of
       , Css.tw.bgRed100
       , Css.tw.border
       , Css.tw.borderRed400
-      , Css.tw.textRed700
+      , Css.tw.textRaspberry500
       ]
 
   renderLoggedIn { readOnly, user } =

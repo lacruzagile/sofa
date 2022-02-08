@@ -204,13 +204,13 @@ renderDetails st =
           | st.readOnly =
             [ HH.div [ HP.class_ Css.tw.grow ] []
             , HH.button
-                [ HP.class_ Css.btnSky100, HE.onClick \_ -> CancelAndCloseDetails ]
+                [ HP.class_ Css.btnTropical, HE.onClick \_ -> CancelAndCloseDetails ]
                 [ HH.text "Close" ]
             ]
           | otherwise =
             [ HH.div [ HP.class_ Css.tw.grow ] []
             , HH.button
-                [ HP.class_ Css.btnSky100
+                [ HP.class_ Css.btnTropical
                 , HP.enabled
                     ( isJust st.buyer
                         && (buyer.contacts.primary /= SS.emptyContact)

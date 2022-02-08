@@ -6,8 +6,8 @@ import Halogen (ClassName(..))
 btnRed100 :: ClassName
 btnRed100 = ClassName "sofa-btn-red-100"
 
-btnSky100 :: ClassName
-btnSky100 = ClassName "sofa-btn-sky-100"
+btnTropical :: ClassName
+btnTropical = ClassName "sofa-btn-tropical"
 
 smallTitle :: ClassName
 smallTitle = ClassName "sofa-small-title"
@@ -40,9 +40,9 @@ tw =
   , borderT: ClassName "border-t"
   , cursorPointer: ClassName "cursor-pointer"
   , decoration2: ClassName "decoration-2"
+  , decorationHoney500: ClassName "decoration-honey-500"
+  , decorationHoney500_30: ClassName "decoration-honey-500/30"
   , decorationSky300: ClassName "decoration-sky-300"
-  , decorationSky500: ClassName "decoration-sky-500"
-  , decorationSky500_30: ClassName "decoration-sky-500/30"
   , fixed: ClassName "fixed"
   , flex: ClassName "flex"
   , flexCol: ClassName "flex-col"
@@ -125,7 +125,7 @@ tw =
   , textGray700: ClassName "text-gray-700"
   , textLeft: ClassName "text-left"
   , textLg: ClassName "text-lg"
-  , textRed700: ClassName "text-red-700"
+  , textRaspberry500: ClassName "text-raspberry-500"
   , textRight: ClassName "text-right"
   , textSm: ClassName "text-sm"
   , truncate: ClassName "truncate"

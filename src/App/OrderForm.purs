@@ -426,7 +426,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | not isInDraft = []
       | otherwise =
         [ HH.button
-            [ HP.class_ Css.btnSky100
+            [ HP.class_ Css.btnTropical
             , HE.onClick \_ -> OrderLineAddConfig olIdx
             ]
             [ HH.text "+ Add Configuration" ]
@@ -782,7 +782,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | otherwise =
         HH.div_
           [ HH.button
-              [ HP.classes [ Css.btnSky100, Css.tw.m5, Css.tw.py0 ]
+              [ HP.classes [ Css.btnTropical, Css.tw.m5, Css.tw.py0 ]
               , HE.onClick \_ ->
                   let
                     toVal = case _ of
@@ -879,7 +879,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.btnSky100 ]
+                      [ HP.classes [ Css.btnTropical ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
                       [ HH.text "+ Add Order Line" ]
@@ -961,7 +961,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ HH.div
               [ HP.classes [ Css.tw.p3, Css.tw.my5, Css.tw.bgWhite, Css.tw.roundedSm, Css.tw.shadowSm ] ]
               [ HH.button
-                  [ HP.class_ Css.btnSky100
+                  [ HP.class_ Css.btnTropical
                   , HE.onClick \_ -> AddSection
                   ]
                   [ HH.text "+ Add Section" ]
@@ -1152,7 +1152,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     footerDiv
       [ btnsDiv
           [ HH.button
-              [ HP.class_ Css.btnSky100
+              [ HP.class_ Css.btnTropical
               , HP.disabled preventCreate
               , HE.onClick $ \_ -> CreateUpdateOrder
               ]
@@ -1163,7 +1163,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   HH.text ""
               ]
           , HH.button
-              [ HP.class_ Css.btnSky100
+              [ HP.class_ Css.btnTropical
               , HP.disabled preventFulfill
               , HE.onClick $ \_ -> FulfillOrder
               ]
@@ -1242,7 +1242,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , Css.tw.bgRed100
             , Css.tw.border
             , Css.tw.borderRed400
-            , Css.tw.textRed700
+            , Css.tw.textRaspberry500
             ]
         ]
         [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]

@@ -96,7 +96,7 @@ render state = case state.editState of
     where
     price = case p.discount of
       Nothing -> showPrice p.listPrice
-      Just _ -> [ HH.span [ HP.class_ Css.tw.textRed700 ] (showPrice p.price) ]
+      Just _ -> [ HH.span [ HP.class_ Css.tw.textRaspberry500 ] (showPrice p.price) ]
 
     showPrice = Widgets.monetaryAmount currency
 

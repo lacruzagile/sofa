@@ -175,14 +175,14 @@ renderDetails st =
     Nothing ->
       HH.div [ HP.class_ Css.tw.flex ]
         [ HH.button
-            [ HP.classes [ Css.btnSky100 ]
+            [ HP.classes [ Css.btnTropical ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> StartNewNote
             ]
             [ HH.text "+ Add Note" ]
         , HH.div [ HP.class_ Css.tw.grow ] []
         , HH.button
-            [ HP.classes [ Css.btnSky100 ]
+            [ HP.classes [ Css.btnTropical ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
@@ -197,12 +197,12 @@ renderDetails st =
             , HP.value text
             , HE.onValueChange SetNewText
             ]
-        , HH.div [ HP.class_ Css.tw.textRed700 ]
+        , HH.div [ HP.class_ Css.tw.textRaspberry500 ]
             $ maybe [] (\msg -> [ HH.text msg ])
             $ createError
         , HH.button
             [ HP.type_ HP.ButtonSubmit
-            , HP.classes $ [ Css.btnSky100, Css.tw.mt2 ]
+            , HP.classes $ [ Css.btnTropical, Css.tw.mt2 ]
             , HP.enabled actionsAllowed
             ]
             [ HH.text "Save"
@@ -212,7 +212,7 @@ renderDetails st =
                 HH.text ""
             ]
         , HH.button
-            [ HP.classes $ [ Css.btnSky100, Css.tw.mt2, Css.tw.ml2 ]
+            [ HP.classes $ [ Css.btnTropical, Css.tw.mt2, Css.tw.ml2 ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CancelNewNote
             ]
@@ -241,7 +241,7 @@ renderDetails st =
           , HH.div [ HP.class_ Css.tw.grow ] []
           , HH.button
               [ HP.classes
-                  $ [ Css.btnSky100
+                  $ [ Css.btnTropical
                     , Css.tw.py0
                     ]
                   <> hideable false
@@ -264,7 +264,7 @@ renderDetails st =
               ]
           ]
       , maybe (HH.text "")
-          (\msg -> HH.div [ HP.class_ Css.tw.textRed700 ] [ HH.text msg ])
+          (\msg -> HH.div [ HP.class_ Css.tw.textRaspberry500 ] [ HH.text msg ])
           $ deleteError
       ]
     where
@@ -299,17 +299,17 @@ renderDetails st =
           , HP.value note
           , HE.onValueChange SetEditText
           ]
-      , HH.div [ HP.classes [ Css.tw.textRed700, Css.tw.wFull ] ]
+      , HH.div [ HP.classes [ Css.tw.textRaspberry500, Css.tw.wFull ] ]
           $ maybe [] (\msg -> [ HH.text msg ])
           $ updateError
       , HH.button
-          [ HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.ml2, Css.tw.floatRight ]
+          [ HP.classes [ Css.btnTropical, Css.tw.mt1, Css.tw.ml2, Css.tw.floatRight ]
           , HP.enabled actionsAllowed
           , HE.onClick \_ -> CancelEditNote
           ]
           [ HH.text "Cancel" ]
       , HH.button
-          [ HP.classes [ Css.btnSky100, Css.tw.mt1, Css.tw.floatRight ]
+          [ HP.classes [ Css.btnTropical, Css.tw.mt1, Css.tw.floatRight ]
           , HP.enabled actionsAllowed
           , HE.onClick \_ -> StopEditNote idx
           ]
