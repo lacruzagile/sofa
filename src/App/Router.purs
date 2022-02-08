@@ -74,7 +74,7 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render state =
   HH.div [ HP.classes [ Css.tw.mxAuto ], HP.style "max-width: 80rem" ]
-    [ renderNavbar state
+    [ renderNavbar state.route
     , renderBody state
     ]
 
@@ -82,9 +82,9 @@ renderNavbar ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
-  State ->
+  Route ->
   H.ComponentHTML Action Slots m
-renderNavbar state =
+renderNavbar currentRoute =
   HH.nav [ HP.classes navbarClasses ]
     [ primaryItem Route.Home "SOFA"
     , navbarItem Route.Home "Home"
@@ -108,8 +108,14 @@ renderNavbar state =
 
   logoClasses = [ Css.tw.text2Xl, Css.tw.smallCaps, Css.tw.mr5 ]
 
+  -- Whether the given route is conceptually the same route as the current
+  -- route.
+  isCurrentRoute route = case currentRoute of
+    Route.Order _ -> route == Route.OrderForm
+    _ -> route == currentRoute
+
   navbarItemClasses route
-    | state.route == route =
+    | isCurrentRoute route =
       [ Css.tw.px3
       , Css.tw.underline
       , Css.tw.underlineOffset8
