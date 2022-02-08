@@ -81,7 +81,8 @@ render state = case state.editState of
   Editing value ->
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
-          [ HP.classes [ Css.tw.bgTransparent, Css.tw.border ]
+          [ HP.type_ HP.InputText
+          , HP.classes [ Css.tw.bgTransparent, Css.tw.border ]
           , HP.placeholder $ "1000 | 1k | 1M"
           , HP.pattern """\d+[kM]?"""
           , HP.value value

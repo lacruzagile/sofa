@@ -106,7 +106,8 @@ selectComponent =
     renderInput =
       HH.input
         $ SelSet.setInputProps
-            [ HP.classes
+            [ HP.type_ HP.InputText
+            , HP.classes
                 [ Css.tw.w96
                 , Css.tw.mr5
                 , Css.tw.textLg

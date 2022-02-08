@@ -79,7 +79,8 @@ render state = case state.editState of
   Editing value ->
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
-          [ HP.classes [ Css.tw.bgTransparent, Css.tw.border ]
+          [ HP.type_ HP.InputText
+          , HP.classes [ Css.tw.bgTransparent, Css.tw.border ]
           , HP.pattern """\d+(\.\d+)?%?"""
           , HP.placeholder $ "E.g. 80 or 10%"
           , HP.autofocus state.initial

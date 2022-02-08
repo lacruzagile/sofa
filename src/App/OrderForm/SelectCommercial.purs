@@ -176,7 +176,8 @@ component =
     renderInput =
       HH.input
         $ SelSet.setInputProps
-            [ HP.id "commercial-search"
+            [ HP.type_ HP.InputText
+            , HP.id "commercial-search"
             , HP.classes
                 [ Css.tw.w72
                 , Css.tw.mr5

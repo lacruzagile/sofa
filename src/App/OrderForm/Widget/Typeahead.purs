@@ -162,7 +162,8 @@ component =
     renderInput =
       HH.input
         $ SelSet.setInputProps
-            [ HP.classes [ Css.tw.border ]
+            [ HP.type_ HP.InputText
+            , HP.classes [ Css.tw.border ]
             , HP.placeholder "Type to search value…"
             , HE.onFocus \_ -> Sel.Action InputFocused
             ]

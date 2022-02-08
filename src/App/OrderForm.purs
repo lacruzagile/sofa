@@ -507,7 +507,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
             in
               HH.input
-                $ [ HP.class_ Css.tw.border
+                $ [ HP.type_ HP.InputText
+                  , HP.class_ Css.tw.border
                   , HP.placeholder placeholder
                   , HE.onValueChange (act <<< const <<< SS.CvString)
                   ]
@@ -517,7 +518,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SS.CseRegex c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
-          $ [ HP.class_ Css.tw.border
+          $ [ HP.type_ HP.InputText
+            , HP.class_ Css.tw.border
             , HP.placeholder $ "String matching " <> c.pattern
             , HP.pattern c.pattern
             , HE.onValueChange (act <<< const <<< SS.CvString)
@@ -525,7 +527,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> opt HP.value (maybe c.default (Just <<< show) value)
       SS.CseConst _c ->
         renderEntry' fallbackTitle schemaEntry
-          $ HH.input [ HP.value "const", HP.disabled true ]
+          $ HH.input [ HP.type_ HP.InputText, HP.value "const", HP.disabled true ]
       SS.CseArray { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseArray c ->
         let
@@ -586,7 +588,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ( [ HH.legend_ [ withDescription [] fallbackTitle schemaEntry ] ]
                   <> renderFields
               )
-      SS.CseOneOf _c -> HH.input [ HP.value "Unsupported configuration type: oneOf", HP.disabled true ]
+      SS.CseOneOf _c ->
+        HH.input
+          [ HP.type_ HP.InputText
+          , HP.value "Unsupported configuration type: oneOf"
+          , HP.disabled true
+          ]
 
     pushEntryIndex :: ConfigEntryIndex -> Int -> ConfigEntryIndex
     pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
@@ -1031,7 +1038,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderDisplayName :: Maybe String -> H.ComponentHTML Action Slots m
   renderOrderDisplayName name =
     HH.input
-      [ HP.classes
+      [ HP.type_ HP.InputText
+      , HP.classes
           [ Css.tw.wFull
           , Css.tw.text2Xl
           , Css.tw.truncate
