@@ -128,7 +128,7 @@ renderSummary st = btn
     , Css.tw.textLg
     , Css.tw.underline
     , Css.tw.underlineOffset4
-    , Css.tw.decorationSky300
+    , Css.tw.decorationHoney500
     ]
 
 renderDetails ::

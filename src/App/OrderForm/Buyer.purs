@@ -127,7 +127,7 @@ renderSummary st
       , Css.tw.text2Xl
       , Css.tw.underline
       , Css.tw.underlineOffset4
-      , Css.tw.decorationSky300
+      , Css.tw.decorationHoney500
       ]
 
     badClasses =
@@ -136,7 +136,7 @@ renderSummary st
       , Css.tw.text2Xl
       , Css.tw.underline
       , Css.tw.underlineOffset4
-      , Css.tw.decorationSky300
+      , Css.tw.decorationHoney500
       ]
 
 renderDetails ::
@@ -279,7 +279,7 @@ renderDetails st =
                   , Css.tw.textEllipsis
                   , Css.tw.underline
                   , Css.tw.underlineOffset4
-                  , Css.tw.decorationSky300
+                  , Css.tw.decorationHoney500
                   ]
               , HE.onValueChange actionSetContact
               ]

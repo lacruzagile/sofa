@@ -184,6 +184,6 @@ selectComponent =
       where
       itemClasses = [ Css.tw.p2 ]
 
-      selectedClasses = [ Css.tw.p2, Css.tw.bgSky100 ]
+      selectedClasses = [ Css.tw.p2, Css.tw.bgSnow500 ]
 
     renderSummary (SS.LegalEntity le) = [ HH.text le.registeredName ]

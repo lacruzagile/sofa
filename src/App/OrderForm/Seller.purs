@@ -116,7 +116,7 @@ renderSummary st = case st.acceptedSeller of
     , Css.tw.text2Xl
     , Css.tw.underline
     , Css.tw.underlineOffset4
-    , Css.tw.decorationSky300
+    , Css.tw.decorationHoney500
     ]
 
   badClasses =
@@ -125,7 +125,7 @@ renderSummary st = case st.acceptedSeller of
     , Css.tw.text2Xl
     , Css.tw.underline
     , Css.tw.underlineOffset4
-    , Css.tw.decorationSky300
+    , Css.tw.decorationHoney500
     ]
 
 renderDetails ::

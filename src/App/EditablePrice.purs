@@ -71,7 +71,7 @@ render state = case state.editState of
       , HP.classes
           [ Css.tw.underline
           , Css.tw.underlineOffset4
-          , Css.tw.decorationSky300
+          , Css.tw.decorationHoney500
           ]
       , HE.onClick \_ -> SetEditing
       ]

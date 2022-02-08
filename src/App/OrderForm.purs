@@ -853,7 +853,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                               , Css.tw.textEllipsis
                               , Css.tw.underline
                               , Css.tw.underlineOffset4
-                              , Css.tw.decorationSky300
+                              , Css.tw.decorationHoney500
                               ]
                           , HE.onSelectedIndexChange $ actionSetPriceBook priceBooks
                           ]
@@ -1046,7 +1046,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , Css.tw.outlineNone
           , Css.tw.underline
           , Css.tw.underlineOffset4
-          , Css.tw.decorationSky300
+          , Css.tw.decorationHoney500
           , Css.tw.placeholderItalic
           , Css.tw.placeholderTextGray400
           ]
@@ -1063,7 +1063,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , Css.tw.bgTransparent
           , Css.tw.underline
           , Css.tw.underlineOffset4
-          , Css.tw.decorationSky300
+          , Css.tw.decorationHoney500
           ]
       , HE.onSelectedIndexChange actSetOrderStatus
       ]

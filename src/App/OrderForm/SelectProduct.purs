@@ -157,6 +157,6 @@ selectComponent =
       where
       itemClasses = [ Css.tw.p2 ]
 
-      selectedClasses = [ Css.tw.p2, Css.tw.bgSky100 ]
+      selectedClasses = [ Css.tw.p2, Css.tw.bgSnow500 ]
 
     renderSummary (SS.Product { sku }) = [ HH.text (show sku) ]
