@@ -102,16 +102,16 @@ render = case _ of
               , case st.error of
                   Nothing -> HH.span_ []
                   Just msg -> HH.div [ HP.classes errorClasses ] [ HH.text msg ]
-              , HH.button [ HP.type_ HP.ButtonSubmit, HP.classes submitBtnClasses ] [ HH.text "Login" ]
+              , HH.button
+                  [ HP.type_ HP.ButtonSubmit
+                  , HP.classes [ Css.btnTropical, Css.tw.wFull, Css.tw.my2 ]
+                  ]
+                  [ HH.text "Login" ]
               ]
           ]
     where
     textInputClasses =
       [ Css.tw.wFull, Css.tw.block, Css.tw.p2, Css.tw.my2, Css.tw.bgGray100, Css.tw.roundedSm, Css.tw.shadowSm
-      ]
-
-    submitBtnClasses =
-      [ Css.tw.wFull, Css.tw.p2, Css.tw.my2, Css.tw.bgSky200, Css.tw.shadowSm, Css.tw.roundedMd
       ]
 
     errorClasses =
