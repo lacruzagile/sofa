@@ -1475,32 +1475,25 @@ calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
 orderLineQuantity :: OrderLine -> Quantity
 orderLineQuantity ol = foldl (\a (SS.OrderLineConfig b) -> a + b.quantity) 0 ol.configs
 
--- | Helper function to modify an indexed order line.
-modifyOrderLine :: Int -> Int -> StateOrderForm -> (OrderLine -> OrderLine) -> StateOrderForm
-modifyOrderLine secIdx olIdx state updateOrderLine =
-  state
-    { orderForm = updateOrderForm state.orderForm
+-- | Helper function to modify an indexed order section. The sub-total of the
+-- | modified section is updated.
+modifyOrderSection :: Int -> (OrderSection -> OrderSection) -> OrderForm -> OrderForm
+modifyOrderSection secIdx updateOrderSection order =
+  order
+    { sections =
+      fromMaybe order.sections
+        $ modifyAt secIdx (map (calcSubTotal <<< updateOrderSection)) order.sections
     }
-  where
-  updateOrderForm :: OrderForm -> OrderForm
-  updateOrderForm orderForm =
-    calcTotal
-      $ orderForm { sections = updateSections orderForm.sections }
 
-  updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
-  updateSections sections =
-    fromMaybe sections
-      $ modifyAt secIdx (map updateOrderLines)
-      $ sections
-
-  updateOrderLines :: OrderSection -> OrderSection
-  updateOrderLines section =
-    calcSubTotal
-      $ section
-          { orderLines =
-            fromMaybe section.orderLines
-              $ modifyAt olIdx (map updateOrderLine) section.orderLines
-          }
+-- | Helper function to modify an indexed order line.
+modifyOrderLine :: Int -> Int -> (OrderLine -> OrderLine) -> OrderForm -> OrderForm
+modifyOrderLine secIdx olIdx updateOrderLine =
+  modifyOrderSection secIdx \section ->
+    section
+      { orderLines =
+        fromMaybe section.orderLines
+          $ modifyAt olIdx (map updateOrderLine) section.orderLines
+      }
 
 loadExisting ::
   forall slots output m.
@@ -1588,6 +1581,15 @@ modifyInitialized f =
         Initialized st -> Initialized (f <$> st)
         initializing -> initializing
 
+-- | Applies the given modification to the order form. After applying the
+-- | modification, the totals are recalculated.
+modifyOrderForm ::
+  forall r.
+  (OrderForm -> OrderForm) ->
+  { orderForm :: OrderForm | r } ->
+  { orderForm :: OrderForm | r }
+modifyOrderForm f r = r { orderForm = calcTotal (f r.orderForm) }
+
 toPricingCurrency :: SS.Commercial -> Maybe SS.PricingCurrency
 toPricingCurrency (SS.Commercial { billingCurrency }) = Just billingCurrency
 
@@ -1626,8 +1628,7 @@ mkNilPriceBook :: SS.Solution -> Maybe PriceBook
 mkNilPriceBook solution = do
   let
     SS.Solution sol = solution
-  -- If the solution has no price book then
-  -- we'll assume this is intentional and
+  -- If the solution has no price book then we'll assume this is intentional and
   -- simply invent an empty price book.
   guard (A.null sol.priceBooks)
   year <- toEnum 1970
@@ -1726,16 +1727,16 @@ handleAction = case _ of
               }
   SetObservers observers ->
     modifyInitialized
-      $ \st -> st { orderForm = st.orderForm { observers = observers } }
+      $ modifyOrderForm _ { observers = observers }
   SetNotes notes ->
     modifyInitialized
-      $ \st -> st { orderForm = st.orderForm { notes = notes } }
+      $ modifyOrderForm _ { notes = notes }
   SetOrderStatus status ->
     modifyInitialized
-      $ \st -> st { orderForm = st.orderForm { status = status } }
+      $ modifyOrderForm _ { status = status }
   AddSection ->
     modifyInitialized
-      $ \st -> st { orderForm { sections = snoc st.orderForm.sections Nothing } }
+      $ modifyOrderForm \order -> order { sections = snoc order.sections Nothing }
   SectionSetSolution { sectionIndex, solutionId } ->
     modifyInitialized
       $ \st ->
@@ -1763,65 +1764,29 @@ handleAction = case _ of
               }
   SectionSetPriceBook { sectionIndex, priceBook } ->
     modifyInitialized
-      $ \st ->
-          let
-            setPriceBook :: Maybe OrderSection -> Maybe OrderSection
-            setPriceBook = map (\section -> calcSubTotal section { priceBook = priceBook })
-          in
-            st
-              { orderForm =
-                calcTotal
-                  st.orderForm
-                    { sections =
-                      fromMaybe st.orderForm.sections
-                        $ modifyAt sectionIndex setPriceBook st.orderForm.sections
-                    }
-              }
+      $ modifyOrderForm
+      $ modifyOrderSection sectionIndex _ { priceBook = priceBook }
   RemoveSection { sectionIndex } ->
     modifyInitialized
-      $ \st ->
-          st
-            { orderForm
-              { sections =
-                fromMaybe st.orderForm.sections
-                  $ A.deleteAt sectionIndex st.orderForm.sections
-              }
+      $ modifyOrderForm \order ->
+          order
+            { sections =
+              fromMaybe order.sections $ A.deleteAt sectionIndex order.sections
             }
   AddOrderLine { sectionIndex } ->
-    let
-      addOrderLine :: Maybe OrderSection -> Maybe OrderSection
-      addOrderLine = map (\section -> section { orderLines = snoc section.orderLines Nothing })
-    in
-      modifyInitialized
-        $ \st ->
-            st
-              { orderForm
-                { sections =
-                  fromMaybe st.orderForm.sections (modifyAt sectionIndex addOrderLine st.orderForm.sections)
-                }
-              }
+    modifyInitialized
+      $ modifyOrderForm
+      $ modifyOrderSection sectionIndex \section ->
+          section { orderLines = snoc section.orderLines Nothing }
   RemoveOrderLine { sectionIndex, orderLineIndex } ->
-    let
-      removeOrderLine :: Maybe OrderSection -> Maybe OrderSection
-      removeOrderLine =
-        map
-          ( \section ->
-              calcSubTotal
-                section
-                  { orderLines = fromMaybe section.orderLines $ A.deleteAt orderLineIndex section.orderLines
-                  }
-          )
-    in
-      modifyInitialized
-        $ \st ->
-            st
-              { orderForm =
-                calcTotal
-                  st.orderForm
-                    { sections =
-                      fromMaybe st.orderForm.sections (modifyAt sectionIndex removeOrderLine st.orderForm.sections)
-                    }
-              }
+    modifyInitialized
+      $ modifyOrderForm
+      $ modifyOrderSection sectionIndex \section ->
+          section
+            { orderLines =
+              fromMaybe section.orderLines
+                $ A.deleteAt orderLineIndex section.orderLines
+            }
   OrderLineSetProduct { sectionIndex, orderLineIndex, product } ->
     let
       mkOrderLine :: SS.Product -> OrderLine
@@ -1868,15 +1833,9 @@ handleAction = case _ of
                       pure ls
                   )
               }
-
-      updateSections :: Array (Maybe OrderSection) -> Array (Maybe OrderSection)
-      updateSections sections =
-        fromMaybe sections
-          $ modifyAt sectionIndex (map updateOrderSection)
-          $ sections
     in
-      modifyInitialized
-        $ \st -> st { orderForm = calcTotal st.orderForm { sections = updateSections st.orderForm.sections } }
+      modifyInitialized $ modifyOrderForm
+        $ modifyOrderSection sectionIndex updateOrderSection
   OrderLineSetQuantity { sectionIndex, orderLineIndex, configIndex, quantity } ->
     let
       updateOrderConfig :: SS.OrderLineConfig -> SS.OrderLineConfig
@@ -1894,13 +1853,12 @@ handleAction = case _ of
               fromMaybe ol.configs $ A.modifyAt configIndex updateOrderConfig ol.configs
           }
     in
-      modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
+      modifyInitialized $ modifyOrderForm
+        $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
   OrderLineAddConfig { sectionIndex, orderLineIndex } ->
-    let
-      updateOrderLine :: OrderLine -> OrderLine
-      updateOrderLine ol = ol { configs = ol.configs <> mkDefaultConfigs ol.product }
-    in
-      modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
+    modifyInitialized $ modifyOrderForm
+      $ modifyOrderLine sectionIndex orderLineIndex \ol ->
+          ol { configs = ol.configs <> mkDefaultConfigs ol.product }
   OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } ->
     let
       -- | Remove the configuration entry. If this is the last entry then we
@@ -1915,7 +1873,8 @@ handleAction = case _ of
               fromMaybe ol.configs $ A.deleteAt configIndex ol.configs
           }
     in
-      modifyInitialized $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
+      modifyInitialized $ modifyOrderForm
+        $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
   OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, alter } ->
     let
       alterConfig (SS.OrderLineConfig olc) = SS.OrderLineConfig $ olc { config = Just $ alter olc.config }
@@ -1928,16 +1887,15 @@ handleAction = case _ of
               $ A.modifyAt configIndex alterConfig ol.configs
           }
     in
-      modifyInitialized
-        $ \st -> modifyOrderLine sectionIndex orderLineIndex st updateOrderLine
+      modifyInitialized $ modifyOrderForm
+        $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
   OrderLineSetCharges { sectionIndex, orderLineIndex, charges, estimatedUsage } ->
-    modifyInitialized
-      $ \st ->
-          modifyOrderLine sectionIndex orderLineIndex st
-            _
-              { charges = Just charges
-              , estimatedUsage = estimatedUsage
-              }
+    modifyInitialized $ modifyOrderForm
+      $ modifyOrderLine sectionIndex orderLineIndex
+          _
+            { charges = Just charges
+            , estimatedUsage = estimatedUsage
+            }
   CreateUpdateOrder -> do
     st <- H.get
     let
