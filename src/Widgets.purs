@@ -292,5 +292,5 @@ subTotalTable title (SubTotal summary) =
 spinner :: forall w i. Array HH.ClassName -> HH.HTML w i
 spinner classes =
   HH.div
-    [ HP.classes $ [ Css.spinner ] <> classes ]
+    [ HP.classes $ [ Css.c "sofa-spinner" ] <> classes ]
     []

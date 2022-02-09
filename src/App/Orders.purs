@@ -175,7 +175,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       , HP.classes
           [ Css.c "relative"
           , Css.c "float-right"
-          , Css.btnTropical
+          , Css.c "sofa-btn-tropical"
           ]
       ]
       [ HH.text "+ New Order" ]

@@ -175,14 +175,14 @@ renderDetails st =
     Nothing ->
       HH.div [ HP.class_ (Css.c "flex") ]
         [ HH.button
-            [ HP.classes [ Css.btnTropical ]
+            [ HP.classes [ Css.c "sofa-btn-tropical" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> StartNewNote
             ]
             [ HH.text "+ Add Note" ]
         , HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
-            [ HP.classes [ Css.btnTropical ]
+            [ HP.classes [ Css.c "sofa-btn-tropical" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
@@ -202,7 +202,7 @@ renderDetails st =
             $ createError
         , HH.button
             [ HP.type_ HP.ButtonSubmit
-            , HP.classes $ [ Css.btnTropical, Css.c "mt-2" ]
+            , HP.classes $ [ Css.c "sofa-btn-tropical", Css.c "mt-2" ]
             , HP.enabled actionsAllowed
             ]
             [ HH.text "Save"
@@ -212,7 +212,7 @@ renderDetails st =
                 HH.text ""
             ]
         , HH.button
-            [ HP.classes $ [ Css.btnTropical, Css.c "mt-2", Css.c "ml-2" ]
+            [ HP.classes $ [ Css.c "sofa-btn-tropical", Css.c "mt-2", Css.c "ml-2" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CancelNewNote
             ]
@@ -241,7 +241,7 @@ renderDetails st =
           , HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
               [ HP.classes
-                  $ [ Css.btnTropical
+                  $ [ Css.c "sofa-btn-tropical"
                     , Css.c "py-0"
                     ]
                   <> hideable false
@@ -251,7 +251,7 @@ renderDetails st =
               [ HH.text "Edit" ]
           , HH.button
               [ HP.classes
-                  $ [ Css.btnRed100
+                  $ [ Css.c "sofa-btn-red-100"
                     , Css.c "py-0"
                     , Css.c "ml-2"
                     ]
@@ -303,13 +303,13 @@ renderDetails st =
           $ maybe [] (\msg -> [ HH.text msg ])
           $ updateError
       , HH.button
-          [ HP.classes [ Css.btnTropical, Css.c "mt-1", Css.c "ml-2", Css.c "float-right" ]
+          [ HP.classes [ Css.c "sofa-btn-tropical", Css.c "mt-1", Css.c "ml-2", Css.c "float-right" ]
           , HP.enabled actionsAllowed
           , HE.onClick \_ -> CancelEditNote
           ]
           [ HH.text "Cancel" ]
       , HH.button
-          [ HP.classes [ Css.btnTropical, Css.c "mt-1", Css.c "float-right" ]
+          [ HP.classes [ Css.c "sofa-btn-tropical", Css.c "mt-1", Css.c "float-right" ]
           , HP.enabled actionsAllowed
           , HE.onClick \_ -> StopEditNote idx
           ]

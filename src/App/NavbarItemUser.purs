@@ -104,7 +104,7 @@ render = case _ of
                   Just msg -> HH.div [ HP.classes errorClasses ] [ HH.text msg ]
               , HH.button
                   [ HP.type_ HP.ButtonSubmit
-                  , HP.classes [ Css.btnTropical, Css.c "w-full", Css.c "my-2" ]
+                  , HP.classes [ Css.c "sofa-btn-tropical", Css.c "w-full", Css.c "my-2" ]
                   ]
                   [ HH.text "Login" ]
               ]

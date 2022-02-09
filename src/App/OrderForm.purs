@@ -221,7 +221,7 @@ initialize = Just Initialize
 render :: forall m. MonadAff m => CredentialStore m => State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
-  renderSmallTitle t = HH.div [ HP.class_ Css.smallTitle ] [ HH.text t ]
+  renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
 
   renderCharges ::
     OrderLineIndex ->
@@ -376,7 +376,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { config }) =
       [ HH.div [ HP.classes [ Css.c "my-5", Css.c "p-5", Css.c "border-l-8", Css.c "border-gray-100" ] ]
           [ HH.label_
-              [ HH.span [ HP.classes [ Css.smallTitle, Css.c "mr-5" ] ] [ HH.text "Quantity" ]
+              [ HH.span [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ] [ HH.text "Quantity" ]
               , renderQuantityInput cfgIdx olc
               ]
           , if allowRemove then
@@ -384,7 +384,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ HP.classes
                     [ Css.c "relative"
                     , Css.c "float-right"
-                    , Css.btnRed100
+                    , Css.c "sofa-btn-red-100"
                     , Css.c "ml-2"
                     , Css.c "py-0"
                     ]
@@ -426,7 +426,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | not isInDraft = []
       | otherwise =
         [ HH.button
-            [ HP.class_ Css.btnTropical
+            [ HP.class_ (Css.c "sofa-btn-tropical")
             , HE.onClick \_ -> OrderLineAddConfig olIdx
             ]
             [ HH.text "+ Add Configuration" ]
@@ -743,7 +743,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         Widgets.Top
         (SS.configSchemaEntryDescription schemaEntry)
         ( HH.span
-            [ HP.classes [ Css.smallTitle, Css.c "mr-5" ] ]
+            [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ]
             [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry ]
         )
 
@@ -766,7 +766,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | otherwise =
         HH.button
           [ HP.classes
-              [ Css.btnRed100
+              [ Css.c "sofa-btn-red-100"
               , Css.c "relative"
               , Css.c "float-right"
               , Css.c "py-0"
@@ -782,7 +782,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | otherwise =
         HH.div_
           [ HH.button
-              [ HP.classes [ Css.btnTropical, Css.c "m-5", Css.c "py-0" ]
+              [ HP.classes [ Css.c "sofa-btn-tropical", Css.c "m-5", Css.c "py-0" ]
               , HE.onClick \_ ->
                   let
                     toVal = case _ of
@@ -879,7 +879,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.btnTropical ]
+                      [ HP.classes [ Css.c "sofa-btn-tropical" ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
                       [ HH.text "+ Add Order Line" ]
@@ -968,7 +968,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ]
               ]
               [ HH.button
-                  [ HP.class_ Css.btnTropical
+                  [ HP.class_ (Css.c "sofa-btn-tropical")
                   , HE.onClick \_ -> AddSection
                   ]
                   [ HH.text "+ Add Section" ]
@@ -1168,7 +1168,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     footerDiv
       [ btnsDiv
           [ HH.button
-              [ HP.class_ Css.btnTropical
+              [ HP.class_ (Css.c "sofa-btn-tropical")
               , HP.disabled preventCreate
               , HE.onClick $ \_ -> CreateUpdateOrder
               ]
@@ -1179,7 +1179,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   HH.text ""
               ]
           , HH.button
-              [ HP.class_ Css.btnTropical
+              [ HP.class_ (Css.c "sofa-btn-tropical")
               , HP.disabled preventFulfill
               , HE.onClick $ \_ -> FulfillOrder
               ]
