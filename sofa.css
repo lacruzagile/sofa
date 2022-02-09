@@ -46,7 +46,7 @@
   }
 
   .sofa-spinner {
-      @apply inline-block border-4 border-sky-200 rounded-full animate-spin w-5 h-5;
+    @apply inline-block border-4 border-sky-200 rounded-full animate-spin w-5 h-5;
       border-top-color: transparent;
   }
 }
