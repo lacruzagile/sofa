@@ -129,7 +129,7 @@ renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
 renderSummary st
   | not st.enabled =
     HH.div
-      [ HP.classes [ Css.tw.text2Xl, Css.tw.textGray400 ] ]
+      [ HP.classes [ Css.c "text-2xl", Css.c "text-gray-400" ] ]
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedCommercial of
     Just c ->
@@ -144,24 +144,24 @@ renderSummary st
     where
     btn classes = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
 
-    subtleSlash = HH.span [ HP.class_ Css.tw.textGray400 ] [ HH.text " / " ]
+    subtleSlash = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text " / " ]
 
     okClasses =
-      [ Css.tw.block
-      , Css.tw.textLeft
-      , Css.tw.text2Xl
-      , Css.tw.underline
-      , Css.tw.underlineOffset4
-      , Css.tw.decorationHoney500
+      [ Css.c "block"
+      , Css.c "text-left"
+      , Css.c "text-2xl"
+      , Css.c "underline"
+      , Css.c "underline-offset-4"
+      , Css.c "decoration-honey-500"
       ]
 
     badClasses =
-      [ Css.tw.block
-      , Css.tw.textLeft
-      , Css.tw.text2Xl
-      , Css.tw.underline
-      , Css.tw.underlineOffset4
-      , Css.tw.decorationHoney500
+      [ Css.c "block"
+      , Css.c "text-left"
+      , Css.c "text-2xl"
+      , Css.c "underline"
+      , Css.c "underline-offset-4"
+      , Css.c "decoration-honey-500"
       ]
 
 renderDetails ::
@@ -186,49 +186,50 @@ renderDetails st =
       ]
 
   renderBody mCommercial =
-    HH.div [ HP.classes [ Css.tw.mt5, Css.tw.wFull, Css.tw.minW96, Css.tw.flex, Css.tw.flexCol, Css.tw.spaceY4 ] ]
-      $ [ HH.div [ HP.classes [ Css.tw.flex ] ]
-            [ HH.div [ HP.class_ Css.tw.w1_2 ]
+    HH.div [ HP.classes [ Css.c "mt-5", Css.c "w-full", Css.c "min-w-96", Css.c "flex", Css.c "flex-col"
+                        , Css.c "space-y-4" ] ]
+      $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
+            [ HH.div [ HP.class_ (Css.c "w-1/2") ]
                 [ renderSmallTitle "Billing Option"
-                , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
+                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
                     [ maybe empty renderBillingOption mCommercial
                     ]
                 ]
-            , HH.div [ HP.class_ Css.tw.w1_2 ]
+            , HH.div [ HP.class_ (Css.c "w-1/2") ]
                 [ renderSmallTitle "Contract Term"
-                , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
+                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
                     [ maybe empty renderContractTerm mCommercial
                     ]
                 ]
             ]
-        , HH.div [ HP.classes [ Css.tw.flex ] ]
-            [ HH.div [ HP.class_ Css.tw.w1_2 ]
+        , HH.div [ HP.classes [ Css.c "flex" ] ]
+            [ HH.div [ HP.class_ (Css.c "w-1/2") ]
                 [ renderSmallTitle "Payment Currency"
-                , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
+                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
                     [ maybe empty renderPaymentCurrency mCommercial
                     ]
                 ]
-            , HH.div [ HP.class_ Css.tw.w1_2 ]
+            , HH.div [ HP.class_ (Css.c "w-1/2") ]
                 [ renderSmallTitle "Billing Currency"
-                , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
+                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
                     [ maybe empty renderBillingCurrency mCommercial ]
                 ]
             ]
         , HH.hr_
-        , HH.div [ HP.classes [ Css.tw.flex, Css.tw.spaceX5 ] ] bottomButtons
+        , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
         ]
     where
     empty = HH.text ""
 
     bottomButtons
       | st.readOnly =
-        [ HH.div [ HP.class_ Css.tw.grow ] []
+        [ HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
             [ HP.class_ Css.btnTropical, HE.onClick \_ -> CancelAndCloseDetails ]
             [ HH.text "Close" ]
         ]
       | otherwise =
-        [ HH.div [ HP.class_ Css.tw.grow ] []
+        [ HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
             [ HP.id "commercial-ok"
             , HP.class_ Css.btnTropical

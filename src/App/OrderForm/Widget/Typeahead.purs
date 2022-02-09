@@ -156,34 +156,34 @@ component =
     _ -> pure unit
 
   render :: Sel.State State -> H.ComponentHTML Action' () m
-  render st = HH.div [ HP.class_ Css.tw.inlineBlock ] [ renderInput, renderResults ]
+  render st = HH.div [ HP.class_ (Css.c "inline-block") ] [ renderInput, renderResults ]
     where
     renderInput :: H.ComponentHTML Action' () m
     renderInput =
       HH.input
         $ SelSet.setInputProps
             [ HP.type_ HP.InputText
-            , HP.classes [ Css.tw.border ]
+            , HP.classes [ Css.c "border" ]
             , HP.placeholder "Type to search value…"
             , HE.onFocus \_ -> Sel.Action InputFocused
             ]
 
     containerClasses =
-      [ Css.tw.absolute
-      , Css.tw.mt1
-      , Css.tw.flex
-      , Css.tw.flexCol
-      , Css.tw.bgWhite
-      , Css.tw.w72
-      , Css.tw.maxH72
-      , Css.tw.overflowAuto
-      , Css.tw.border
-      , Css.tw.roundedMd
+      [ Css.c "absolute"
+      , Css.c "mt-1"
+      , Css.c "flex"
+      , Css.c "flex-col"
+      , Css.c "bg-white"
+      , Css.c "w-72"
+      , Css.c "max-h-72"
+      , Css.c "overflow-auto"
+      , Css.c "border"
+      , Css.c "rounded-md"
       ]
 
-    infoClasses = containerClasses <> [ Css.tw.p2 ]
+    infoClasses = containerClasses <> [ Css.c "p-2" ]
 
-    loadingClasses = infoClasses <> [ Css.tw.animatePulse ]
+    loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
     renderResults :: H.ComponentHTML Action' () m
     renderResults
@@ -209,9 +209,9 @@ component =
         )
         [ HH.text key ]
       where
-      itemClasses = [ Css.tw.p2 ]
+      itemClasses = [ Css.c "p-2" ]
 
-      selectedClasses = [ Css.tw.p2, Css.tw.bgSnow500 ]
+      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
 
 filterAvailable ::
   forall f.

@@ -103,10 +103,10 @@ modalCloseBtn :: forall slot action. (Unit -> action) -> HH.HTML slot action
 modalCloseBtn closeAction =
   HH.button
     [ HP.classes
-        [ Css.tw.textLg
-        , Css.tw.cursorPointer
-        , Css.tw.px3
-        , Css.tw.py2
+        [ Css.c "text-lg"
+        , Css.c "cursor-pointer"
+        , Css.c "px-3"
+        , Css.c "py-2"
         ]
     , HE.onClick $ \_ -> closeAction unit
     ]
@@ -130,35 +130,35 @@ modal toolbarContent body =
   faded =
     HH.div
       [ HP.classes
-          [ Css.tw.fixed
-          , Css.tw.inset0
-          , Css.tw.wFull
-          , Css.tw.hFull
-          , Css.tw.overflowYAuto
-          , Css.tw.z10
-          , Css.tw.bgBlack_60
-          , Css.tw.flex
+          [ Css.c "fixed"
+          , Css.c "inset-0"
+          , Css.c "w-full"
+          , Css.c "h-full"
+          , Css.c "overflow-y-auto"
+          , Css.c "z-10"
+          , Css.c "bg-black/60"
+          , Css.c "flex"
           ]
       ]
 
   wrapper =
     HH.div
       [ HP.classes
-          [ Css.tw.mxAuto
-          , Css.tw.myAuto
-          , Css.tw.p8
-          , Css.tw.bgWhite
-          , Css.tw.shadowMd
-          , Css.tw.roundedMd
+          [ Css.c "mx-auto"
+          , Css.c "my-auto"
+          , Css.c "p-8"
+          , Css.c "bg-white"
+          , Css.c "shadow-md"
+          , Css.c "rounded-md"
           ]
       ]
 
   toolbar =
     HH.div
       [ HP.classes
-          [ Css.tw.relative
-          , Css.tw.floatRight
-          , Css.tw.minusM8
+          [ Css.c "relative"
+          , Css.c "float-right"
+          , Css.c "-m-8"
           ]
       ]
 
@@ -168,8 +168,8 @@ address (SS.Address addr) =
     entryRaw title value = case value of
       Nothing -> []
       Just v ->
-        [ HH.div [ HP.classes [ Css.tw.textSm, Css.tw.textGray700 ] ] [ HH.text title ]
-        , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ] v
+        [ HH.div [ HP.classes [ Css.c "text-sm", Css.c "text-gray-700" ] ] [ HH.text title ]
+        , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ] v
         ]
 
     entry title value = entryRaw title ((\v -> [ HH.text v ]) <$> value)
@@ -178,7 +178,7 @@ address (SS.Address addr) =
       [] -> Nothing
       xs -> Just xs
   in
-    HH.div [ HP.classes [ Css.tw.ml2, Css.tw.flex, Css.tw.flexCol ] ]
+    HH.div [ HP.classes [ Css.c "ml-2", Css.c "flex", Css.c "flex-col" ] ]
       $ entryRaw "Street"
           ( maybeArray
               $ A.intersperse HH.br_
@@ -213,15 +213,15 @@ monetaryAmount currency amount = format <$> Currency.formatToParts currency amou
   format = case _ of
     { "type": "currency", value } ->
       HH.span
-        [ HP.classes [ Css.tw.textSm, Css.tw.textGray600 ] ]
+        [ HP.classes [ Css.c "text-sm", Css.c "text-gray-600" ] ]
         [ HH.text value ]
     { value } -> HH.text value
 
 -- | Render a sub-total using a simple table.
 subTotalTable :: forall w i. String -> SubTotal -> HH.HTML w i
 subTotalTable title (SubTotal summary) =
-  HH.table [ HP.classes [ Css.tw.p5, Css.tw.tableAuto ] ]
-    $ [ HH.tr [ HP.classes [ Css.tw.uppercase, Css.tw.textSm, Css.tw.textGray600 ] ]
+  HH.table [ HP.classes [ Css.c "p-5", Css.c "table-auto" ] ]
+    $ [ HH.tr [ HP.classes [ Css.c "uppercase", Css.c "text-sm", Css.c "text-gray-600" ] ]
           $ th summary.usage (title <> "Usage")
           <> th summary.monthly (title <> "Monthly")
           <> th summary.quarterly (title <> "Quarterly")
@@ -242,7 +242,7 @@ subTotalTable title (SubTotal summary) =
     if SubTotal.isEmpty sumry then
       []
     else
-      [ HH.th [ HP.classes [ Css.tw.px5, Css.tw.fontNormal ] ] [ HH.text name ] ]
+      [ HH.th [ HP.classes [ Css.c "px-5", Css.c "font-normal" ] ] [ HH.text name ] ]
 
   td sumry =
     if SubTotal.isEmpty sumry then
@@ -251,7 +251,7 @@ subTotalTable title (SubTotal summary) =
       let
         td' currency s =
           [ HH.td
-              [ HP.classes [ Css.tw.px5, Css.tw.textRight ] ]
+              [ HP.classes [ Css.c "px-5", Css.c "text-right" ] ]
               [ renderSubTotalEntry currency s ]
           ]
       in
@@ -278,9 +278,9 @@ subTotalTable title (SubTotal summary) =
         [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
         [ renderPrice discountPriceClasses amount.price ]
     where
-    listPriceClasses = [ Css.tw.px3, Css.tw.textLg, Css.tw.textRight ]
+    listPriceClasses = [ Css.c "px-3", Css.c "text-lg", Css.c "text-right" ]
 
-    discountPriceClasses = [ Css.tw.px3, Css.tw.textLg, Css.tw.textRight, Css.tw.textRaspberry500 ]
+    discountPriceClasses = [ Css.c "px-3", Css.c "text-lg", Css.c "text-right", Css.c "text-raspberry-500" ]
 
     renderPrice classes (Additive n) =
       HH.span

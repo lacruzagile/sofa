@@ -399,7 +399,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
   renderCharge :: Int -> SS.Charge -> H.ComponentHTML Action Slots m
   renderCharge chargeIdx charge =
-    HH.section [ HP.class_ Css.tw.overflowAuto ]
+    HH.section [ HP.class_ (Css.c "overflow-auto") ]
       $ renderChargeInner chargeIdx charge
       <> [ HH.dl_
             $ opt (renderDataItemString "Description") (Charge.description charge)
@@ -410,9 +410,9 @@ table :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
 table =
   HH.table
     [ HP.classes
-        [ Css.tw.shadowSm
-        , Css.tw.roundedMd
-        , Css.tw.overflowHidden
+        [ Css.c "shadow-sm"
+        , Css.c "rounded-md"
+        , Css.c "overflow-hidden"
         ]
     ]
 
@@ -420,7 +420,7 @@ thead :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
 thead =
   HH.thead
     [ HP.classes
-        [ Css.tw.bgGray200
+        [ Css.c "bg-gray-200"
         ]
     ]
 
@@ -428,12 +428,12 @@ th :: forall w i. HH.Node HTML.HTMLth w i
 th props =
   HH.th
     $ [ HP.classes
-          [ Css.tw.p3
-          , Css.tw.fontNormal
-          , Css.tw.textCenter
-          , Css.tw.textSm
-          , Css.tw.textGray600
-          , Css.tw.uppercase
+          [ Css.c "p-3"
+          , Css.c "font-normal"
+          , Css.c "text-center"
+          , Css.c "text-sm"
+          , Css.c "text-gray-600"
+          , Css.c "uppercase"
           ]
       ]
     <> props
@@ -442,12 +442,12 @@ thRight :: forall w i. HH.Node HTML.HTMLth w i
 thRight props =
   HH.th
     $ [ HP.classes
-          [ Css.tw.p3
-          , Css.tw.fontNormal
-          , Css.tw.textRight
-          , Css.tw.textSm
-          , Css.tw.textGray600
-          , Css.tw.uppercase
+          [ Css.c "p-3"
+          , Css.c "font-normal"
+          , Css.c "text-right"
+          , Css.c "text-sm"
+          , Css.c "text-gray-600"
+          , Css.c "uppercase"
           ]
       ]
     <> props
@@ -456,7 +456,7 @@ th_ :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
 th_ = th []
 
 td_ :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-td_ = HH.td [ HP.classes [ Css.tw.p3 ] ]
+td_ = HH.td [ HP.classes [ Css.c "p-3" ] ]
 
 thColSpan :: forall m. Int -> Array (H.ComponentHTML Action Slots m) -> Array (H.ComponentHTML Action Slots m)
 thColSpan colSpan els

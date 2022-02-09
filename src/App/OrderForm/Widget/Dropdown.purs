@@ -82,9 +82,9 @@ render st = case st.available of
   where
   containerClasses = []
 
-  infoClasses = containerClasses <> [ Css.tw.p2 ]
+  infoClasses = containerClasses <> [ Css.c "p-2" ]
 
-  loadingClasses = infoClasses <> [ Css.tw.animatePulse ]
+  loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
   renderItem (Tuple key v) =
     HH.option

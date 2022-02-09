@@ -71,9 +71,9 @@ render state = case state.editState of
     HH.a
       [ HP.href "javascript:void(0);"
       , HP.classes
-          [ Css.tw.underline
-          , Css.tw.underlineOffset4
-          , Css.tw.decorationHoney500
+          [ Css.c "underline"
+          , Css.c "underline-offset-4"
+          , Css.c "decoration-honey-500"
           ]
       , HE.onClick \_ -> SetEditing
       ]
@@ -82,7 +82,7 @@ render state = case state.editState of
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
           [ HP.type_ HP.InputText
-          , HP.classes [ Css.tw.bgTransparent, Css.tw.border ]
+          , HP.classes [ Css.c "bg-transparent", Css.c "border" ]
           , HP.placeholder $ "1000 | 1k | 1M"
           , HP.pattern """\d+[kM]?"""
           , HP.value value

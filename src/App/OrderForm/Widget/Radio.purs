@@ -76,14 +76,14 @@ render st = case st.available of
   Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
   Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No data available …" ]
   Loaded available ->
-    HH.fieldset [ HP.classes [ Css.tw.flex, Css.tw.flexCol ] ]
+    HH.fieldset [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
       $ map renderItem available
   where
   containerClasses = []
 
-  infoClasses = containerClasses <> [ Css.tw.p2 ]
+  infoClasses = containerClasses <> [ Css.c "p-2" ]
 
-  loadingClasses = infoClasses <> [ Css.tw.animatePulse ]
+  loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
   renderItem (Tuple key v) =
     HH.label_
@@ -92,7 +92,7 @@ render st = case st.available of
           , HP.checked $ st.selected == Just v
           , HE.onChange \_ -> Select v
           ]
-      , HH.span [ HP.class_ Css.tw.ml2 ] [ HH.text key ]
+      , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text key ]
       ]
 
 handleAction ::

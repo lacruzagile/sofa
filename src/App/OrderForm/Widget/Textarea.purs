@@ -51,7 +51,7 @@ render ::
 render st =
   HH.textarea
     [ HP.value $ fromMaybe "" st.value
-    , HP.class_ Css.tw.border
+    , HP.class_ (Css.c "border")
     , HE.onValueChange SetValue
     ]
 

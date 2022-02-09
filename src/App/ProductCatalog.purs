@@ -240,14 +240,14 @@ render state = HH.section_ [ HH.article_ content ]
   error err =
     [ HH.div
         [ HP.classes
-            [ Css.tw.p5
-            , Css.tw.bgRed100
-            , Css.tw.border
-            , Css.tw.borderRed400
-            , Css.tw.textRaspberry500
+            [ Css.c "p-5"
+            , Css.c "bg-red-100"
+            , Css.c "border"
+            , Css.c "border-red-400"
+            , Css.c "text-raspberry-500"
             ]
         ]
-        [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
+        [ HH.h3 [ HP.classes [ Css.c "text-lg" ] ] [ HH.text "Error" ]
         , HH.p_ [ HH.text err ]
         ]
     ]
@@ -256,7 +256,7 @@ render state = HH.section_ [ HH.article_ content ]
 
   loading =
     [ HH.p
-        [ HP.classes [ Css.tw.animatePulse, Css.tw.text2Xl, Css.tw.textCenter ] ]
+        [ HP.classes [ Css.c "animate-pulse", Css.c "text-2xl", Css.c "text-center" ] ]
         [ HH.text "Loading …" ]
     ]
 

@@ -68,14 +68,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
   error err =
     HH.div
       [ HP.classes
-          [ Css.tw.p5
-          , Css.tw.bgRed100
-          , Css.tw.border
-          , Css.tw.borderRed400
-          , Css.tw.textRaspberry500
+          [ Css.c "p-5"
+          , Css.c "bg-red-100"
+          , Css.c "border"
+          , Css.c "border-red-400"
+          , Css.c "text-raspberry-500"
           ]
       ]
-      [ HH.h3 [ HP.classes [ Css.tw.textLg ] ] [ HH.text "Error" ]
+      [ HH.h3 [ HP.classes [ Css.c "text-lg" ] ] [ HH.text "Error" ]
       , HH.p_ [ HH.text err ]
       ]
 
@@ -83,7 +83,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   loading =
     HH.p
-      [ HP.classes [ Css.tw.animatePulse, Css.tw.text2Xl, Css.tw.textCenter ] ]
+      [ HP.classes [ Css.c "animate-pulse", Css.c "text-2xl", Css.c "text-center" ] ]
       [ HH.text "Loading …" ]
 
   defRender ::
@@ -107,13 +107,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
       , tcell [ HH.text $ fromMaybe "" $ o.displayName ]
       ]
     where
-    rowClasses = [ Css.tw.tableRow, Css.tw.hoverBgGray100 ]
+    rowClasses = [ Css.c "table-row", Css.c "hover:bg-gray-100" ]
 
     trow = case o.id of
       Nothing -> HH.div [ HP.classes rowClasses ]
       Just id -> HH.a [ Route.href (Route.Order id), HP.classes rowClasses ]
 
-    tcell = HH.div [ HP.classes [ Css.tw.tableCell, Css.tw.p5 ] ]
+    tcell = HH.div [ HP.classes [ Css.c "table-cell", Css.c "p-5" ] ]
 
     Tuple buyer seller =
       let
@@ -141,40 +141,40 @@ render state = HH.section_ [ HH.article_ renderContent ]
     table =
       HH.div
         [ HP.classes
-            [ Css.tw.table
-            , Css.tw.wFull
-            , Css.tw.bgWhite
-            , Css.tw.shadowSm
-            , Css.tw.roundedMd
-            , Css.tw.overflowHidden
+            [ Css.c "table"
+            , Css.c "w-full"
+            , Css.c "bg-white"
+            , Css.c "shadow-sm"
+            , Css.c "rounded-md"
+            , Css.c "overflow-hidden"
             ]
         ]
 
     thead =
       HH.div
         [ HP.classes
-            [ Css.tw.tableHeaderGroup
-            , Css.tw.bgGray200
-            , Css.tw.uppercase
-            , Css.tw.textLeft
-            , Css.tw.textSm
-            , Css.tw.textGray600
-            , Css.tw.borderB
+            [ Css.c "table-header-group"
+            , Css.c "bg-gray-200"
+            , Css.c "uppercase"
+            , Css.c "text-left"
+            , Css.c "text-sm"
+            , Css.c "text-gray-600"
+            , Css.c "border-b"
             ]
         ]
 
-    tbody = HH.div [ HP.classes [ Css.tw.tableRowGroup ] ]
+    tbody = HH.div [ HP.classes [ Css.c "table-row-group" ] ]
 
-    trow = HH.div [ HP.classes [ Css.tw.tableRow ] ]
+    trow = HH.div [ HP.classes [ Css.c "table-row" ] ]
 
-    tcell = HH.div [ HP.classes [ Css.tw.tableCell, Css.tw.px5, Css.tw.py3 ] ]
+    tcell = HH.div [ HP.classes [ Css.c "table-cell", Css.c "px-5", Css.c "py-3" ] ]
 
   renderNewOrderLink =
     HH.a
       [ Route.href Route.OrderForm
       , HP.classes
-          [ Css.tw.relative
-          , Css.tw.floatRight
+          [ Css.c "relative"
+          , Css.c "float-right"
           , Css.btnTropical
           ]
       ]

@@ -131,33 +131,33 @@ selectComponent =
             [ HP.type_ HP.InputText
             , HP.id "buyer-search"
             , HP.classes
-                [ Css.tw.w72
-                , Css.tw.mr5
-                , Css.tw.focusOutline
-                , Css.tw.outline1
-                , Css.tw.outlineGray300
-                , Css.tw.placeholderItalic
-                , Css.tw.roundedSm
+                [ Css.c "w-72"
+                , Css.c "mr-5"
+                , Css.c "focus-outline"
+                , Css.c "outline-1"
+                , Css.c "outline-gray-300"
+                , Css.c "placeholder:italic"
+                , Css.c "rounded-sm"
                 ]
             , HP.placeholder "Type to search buyer…"
             ]
 
     containerClasses =
-      [ Css.tw.absolute
-      , Css.tw.mt1
-      , Css.tw.flex
-      , Css.tw.flexCol
-      , Css.tw.bgWhite
-      , Css.tw.w72
-      , Css.tw.maxH72
-      , Css.tw.overflowAuto
-      , Css.tw.border
-      , Css.tw.roundedMd
+      [ Css.c "absolute"
+      , Css.c "mt-1"
+      , Css.c "flex"
+      , Css.c "flex-col"
+      , Css.c "bg-white"
+      , Css.c "w-72"
+      , Css.c "max-h-72"
+      , Css.c "overflow-auto"
+      , Css.c "border"
+      , Css.c "rounded-md"
       ]
 
-    infoClasses = containerClasses <> [ Css.tw.p2 ]
+    infoClasses = containerClasses <> [ Css.c "p-2" ]
 
-    loadingClasses = infoClasses <> [ Css.tw.animatePulse ]
+    loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
     renderResults :: Array (H.ComponentHTML Action' () m)
     renderResults
@@ -186,14 +186,14 @@ selectComponent =
         )
         (renderBuyerSummary buyer)
       where
-      itemClasses = [ Css.tw.p2 ]
+      itemClasses = [ Css.c "p-2" ]
 
-      selectedClasses = [ Css.tw.p2, Css.tw.bgSnow500 ]
+      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
 
     renderBuyerSummary (SS.Buyer buyer) =
       [ HH.text buyer.corporateName
       , HH.text " "
       , HH.span
-          [ HP.class_ Css.tw.textGray400 ]
+          [ HP.class_ (Css.c "text-gray-400") ]
           [ HH.text $ maybe "(No CRM account ID)" unwrap buyer.crmAccountId ]
       ]

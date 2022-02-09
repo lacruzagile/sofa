@@ -123,12 +123,12 @@ renderSummary st = btn
     n -> [ HH.text (show n), HH.text " observers" ]
 
   btnClasses =
-    [ Css.tw.block
-    , Css.tw.textLeft
-    , Css.tw.textLg
-    , Css.tw.underline
-    , Css.tw.underlineOffset4
-    , Css.tw.decorationHoney500
+    [ Css.c "block"
+    , Css.c "text-left"
+    , Css.c "text-lg"
+    , Css.c "underline"
+    , Css.c "underline-offset-4"
+    , Css.c "decoration-honey-500"
     ]
 
 renderDetails ::
@@ -146,21 +146,21 @@ renderDetails st =
   renderBody =
     HH.div
       [ HP.classes
-          [ Css.tw.wFull
-          , Css.tw.minW96
-          , Css.tw.maxW128
-          , Css.tw.flex
-          , Css.tw.flexCol
-          , Css.tw.spaceY4
+          [ Css.c "w-full"
+          , Css.c "min-w-96"
+          , Css.c "max-w-128"
+          , Css.c "flex"
+          , Css.c "flex-col"
+          , Css.c "space-y-4"
           ]
       ]
       [ HH.div
           [ HP.classes
-              [ Css.tw.flex
-              , Css.tw.flexCol
-              , Css.tw.spaceY4
-              , Css.tw.maxH128
-              , Css.tw.overflowAuto
+              [ Css.c "flex"
+              , Css.c "flex-col"
+              , Css.c "space-y-4"
+              , Css.c "max-h-128"
+              , Css.c "overflow-auto"
               ]
           ]
           ( if A.null st.observers then
@@ -178,14 +178,14 @@ renderDetails st =
 
   renderFooter = case st.newObserver of
     Nothing ->
-      HH.div [ HP.class_ Css.tw.flex ]
+      HH.div [ HP.class_ (Css.c "flex") ]
         [ HH.button
             [ HP.classes [ Css.btnTropical ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> StartNewObserver
             ]
             [ HH.text "+ Add Observer" ]
-        , HH.div [ HP.class_ Css.tw.grow ] []
+        , HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
             [ HP.classes [ Css.btnTropical ]
             , HP.enabled actionsAllowed
@@ -197,27 +197,27 @@ renderDetails st =
       HH.form [ HE.onSubmit StopNewObserver ]
         [ HH.input
             [ HP.type_ HP.InputEmail
-            , HP.classes [ Css.tw.p1, Css.tw.border, Css.tw.wFull ]
+            , HP.classes [ Css.c "p-1", Css.c "border", Css.c "w-full" ]
             , HP.placeholder "Observer email address"
             , HP.value email
             , HE.onValueChange SetNewEmail
             ]
-        , HH.div [ HP.class_ Css.tw.textRaspberry500 ]
+        , HH.div [ HP.class_ (Css.c "text-raspberry-500") ]
             $ maybe [] (\msg -> [ HH.text msg ])
             $ createError
         , HH.button
             [ HP.type_ HP.ButtonSubmit
-            , HP.classes [ Css.btnTropical, Css.tw.mt2 ]
+            , HP.classes [ Css.btnTropical, Css.c "mt-2" ]
             , HP.enabled actionsAllowed
             ]
             [ HH.text "Save"
             , if isCreating then
-                Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+                Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
               else
                 HH.text ""
             ]
         , HH.button
-            [ HP.classes [ Css.btnTropical, Css.tw.mt2, Css.tw.ml2 ]
+            [ HP.classes [ Css.btnTropical, Css.c "mt-2", Css.c "ml-2" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CancelNewObserver
             ]
@@ -238,16 +238,16 @@ renderDetails st =
     _ -> renderShowObserver idx n
 
   renderShowObserver idx (SS.OrderObserver o) =
-    HH.div [ HP.classes [ Css.tw.group, Css.tw.py3 ] ]
+    HH.div [ HP.classes [ Css.c "group", Css.c "py-3" ] ]
       [ HH.text o.observerEmail
       , HH.div
-          [ HP.classes [ Css.tw.textSm, Css.tw.textGray600, Css.tw.flex ] ]
+          [ HP.classes [ Css.c "text-sm", Css.c "text-gray-600", Css.c "flex" ] ]
           [ HH.div_ [ maybe (HH.text "New") Widgets.dateWithTimeTooltip o.createTime ]
-          , HH.div [ HP.class_ Css.tw.grow ] []
+          , HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
               [ HP.classes
                   $ [ Css.btnTropical
-                    , Css.tw.py0
+                    , Css.c "py-0"
                     ]
                   <> hideable false
               , HP.enabled actionsAllowed
@@ -257,8 +257,8 @@ renderDetails st =
           , HH.button
               [ HP.classes
                   $ [ Css.btnRed100
-                    , Css.tw.py0
-                    , Css.tw.ml2
+                    , Css.c "py-0"
+                    , Css.c "ml-2"
                     ]
                   <> hideable isDeleting
               , HP.enabled actionsAllowed
@@ -269,19 +269,19 @@ renderDetails st =
               ]
           ]
       , maybe (HH.text "")
-          (\msg -> HH.div [ HP.class_ Css.tw.textRaspberry500 ] [ HH.text msg ])
+          (\msg -> HH.div [ HP.class_ (Css.c "text-raspberry-500") ] [ HH.text msg ])
           $ deleteError
       ]
     where
     hideable p =
       if not p then
-        [ Css.tw.hidden, Css.tw.groupHoverBlock ]
+        [ Css.c "hidden", Css.c "group-hover-block" ]
       else
         []
 
     spinner p =
       if p then
-        Widgets.spinner [ Css.tw.w4, Css.tw.h4, Css.tw.ml2, Css.tw.alignMiddle ]
+        Widgets.spinner [ Css.c "w-4", Css.c "h-4", Css.c "ml-2", Css.c "align-middle" ]
       else
         HH.text ""
 
@@ -299,28 +299,28 @@ renderDetails st =
     HH.div_
       [ HH.input
           [ HP.type_ HP.InputEmail
-          , HP.classes [ Css.tw.p1, Css.tw.border, Css.tw.wFull ]
+          , HP.classes [ Css.c "p-1", Css.c "border", Css.c "w-full" ]
           , HP.placeholder "Observer email address"
           , HP.value observer
           , HE.onValueChange SetEditEmail
           ]
-      , HH.div [ HP.classes [ Css.tw.textRaspberry500, Css.tw.wFull ] ]
+      , HH.div [ HP.classes [ Css.c "text-raspberry-500", Css.c "w-full" ] ]
           $ maybe [] (\msg -> [ HH.text msg ])
           $ updateError
       , HH.button
-          [ HP.classes [ Css.btnTropical, Css.tw.mt1, Css.tw.ml2, Css.tw.floatRight ]
+          [ HP.classes [ Css.btnTropical, Css.c "mt-1", Css.c "ml-2", Css.c "float-right" ]
           , HP.enabled actionsAllowed
           , HE.onClick \_ -> CancelEditObserver
           ]
           [ HH.text "Cancel" ]
       , HH.button
-          [ HP.classes [ Css.btnTropical, Css.tw.mt1, Css.tw.floatRight ]
+          [ HP.classes [ Css.btnTropical, Css.c "mt-1", Css.c "float-right" ]
           , HP.enabled actionsAllowed
           , HE.onClick \_ -> StopEditObserver idx
           ]
           [ HH.text "Save"
           , if isUpdating then
-              Widgets.spinner [ Css.tw.ml2, Css.tw.alignTextBottom ]
+              Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
             else
               HH.text ""
           ]

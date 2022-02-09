@@ -110,7 +110,7 @@ renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
 renderSummary st
   | not st.enabled =
     HH.div
-      [ HP.classes [ Css.tw.text2Xl, Css.tw.textGray400 ] ]
+      [ HP.classes [ Css.c "text-2xl", Css.c "text-gray-400" ] ]
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedBuyer of
     Just (SS.Buyer { corporateName }) -> btn okClasses corporateName
@@ -122,21 +122,21 @@ renderSummary st
         [ HH.text txt ]
 
     okClasses =
-      [ Css.tw.block
-      , Css.tw.textLeft
-      , Css.tw.text2Xl
-      , Css.tw.underline
-      , Css.tw.underlineOffset4
-      , Css.tw.decorationHoney500
+      [ Css.c "block"
+      , Css.c "text-left"
+      , Css.c "text-2xl"
+      , Css.c "underline"
+      , Css.c "underline-offset-4"
+      , Css.c "decoration-honey-500"
       ]
 
     badClasses =
-      [ Css.tw.block
-      , Css.tw.textLeft
-      , Css.tw.text2Xl
-      , Css.tw.underline
-      , Css.tw.underlineOffset4
-      , Css.tw.decorationHoney500
+      [ Css.c "block"
+      , Css.c "text-left"
+      , Css.c "text-2xl"
+      , Css.c "underline"
+      , Css.c "underline-offset-4"
+      , Css.c "decoration-honey-500"
       ]
 
 renderDetails ::
@@ -165,26 +165,27 @@ renderDetails st =
   renderBody buyerOpt =
     let
       renderBuyerData (SS.Buyer buyer) =
-        HH.div [ HP.classes [ Css.tw.wFull, Css.tw.minW128, Css.tw.flex, Css.tw.flexCol, Css.tw.spaceY4 ] ]
+        HH.div [ HP.classes [ Css.c "w-full", Css.c "min-w-128", Css.c "flex", Css.c "flex-col"
+                            , Css.c "space-y-4" ] ]
           $ [ HH.div_
                 [ renderSmallTitle "Corporate Name"
-                , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.text2Xl ] ] [ HH.text buyer.corporateName ]
+                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-2xl" ] ] [ HH.text buyer.corporateName ]
                 ]
             , HH.div_
                 [ renderSmallTitle "CRM Account ID"
-                , HH.div [ HP.class_ Css.tw.ml2 ] [ HH.text (maybe "N/A" unwrap buyer.crmAccountId) ]
+                , HH.div [ HP.class_ (Css.c "ml-2") ] [ HH.text (maybe "N/A" unwrap buyer.crmAccountId) ]
                 ]
             , HH.div_
                 [ renderSmallTitle "Registration No"
-                , HH.div [ HP.class_ Css.tw.ml2 ] [ HH.text buyer.registrationNr ]
+                , HH.div [ HP.class_ (Css.c "ml-2") ] [ HH.text buyer.registrationNr ]
                 ]
             , HH.div_
                 [ renderSmallTitle "Tax ID"
-                , HH.div [ HP.class_ Css.tw.ml2 ] [ HH.text buyer.taxId ]
+                , HH.div [ HP.class_ (Css.c "ml-2") ] [ HH.text buyer.taxId ]
                 ]
             , HH.div_
                 [ renderSmallTitle "Website"
-                , HH.div [ HP.class_ Css.tw.ml2 ]
+                , HH.div [ HP.class_ (Css.c "ml-2") ]
                     $ if S.null buyer.website then
                         []
                       else
@@ -197,18 +198,18 @@ renderDetails st =
                 , Widgets.address buyer.address
                 ]
             , HH.hr_
-            , HH.div [ HP.classes [ Css.tw.flex, Css.tw.spaceX5 ] ] bottomButtons
+            , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
             ]
         where
         bottomButtons
           | st.readOnly =
-            [ HH.div [ HP.class_ Css.tw.grow ] []
+            [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
                 [ HP.class_ Css.btnTropical, HE.onClick \_ -> CancelAndCloseDetails ]
                 [ HH.text "Close" ]
             ]
           | otherwise =
-            [ HH.div [ HP.class_ Css.tw.grow ] []
+            [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
                 [ HP.class_ Css.btnTropical
                 , HP.enabled
@@ -237,14 +238,14 @@ renderDetails st =
           Just val -> [ HH.text val ]
 
         handleNoContact = case _ of
-          [] -> [ HH.span [ HP.class_ Css.tw.textGray400 ] [ HH.text "None" ] ]
+          [] -> [ HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text "None" ] ]
           vals -> vals
 
-        subtleSlash = HH.span [ HP.class_ Css.tw.textGray400 ] [ HH.text " / " ]
+        subtleSlash = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text " / " ]
       in
         HH.div_
           [ renderSmallTitle label
-          , HH.div [ HP.classes [ Css.tw.ml2, Css.tw.textLg ] ]
+          , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
               $ handleNoContact
               $ A.intersperse subtleSlash
               $ opt contact.displayName
@@ -273,13 +274,13 @@ renderDetails st =
           [ renderSmallTitle label
           , HH.select
               [ HP.classes
-                  [ Css.tw.appearanceNone
-                  , Css.tw.bgTransparent
-                  , Css.tw.w96
-                  , Css.tw.textEllipsis
-                  , Css.tw.underline
-                  , Css.tw.underlineOffset4
-                  , Css.tw.decorationHoney500
+                  [ Css.c "appearance-none"
+                  , Css.c "bg-transparent"
+                  , Css.c "w-96"
+                  , Css.c "text-ellipsis"
+                  , Css.c "underline"
+                  , Css.c "underline-offset-4"
+                  , Css.c "decoration-honey-500"
                   ]
               , HE.onValueChange actionSetContact
               ]

@@ -79,8 +79,8 @@ render = case _ of
     Widgets.modal
       [ Widgets.modalCloseBtn (\_ -> SetState LoggedOut) ]
       $ HH.div_
-          [ HH.h2 [ HP.class_ Css.tw.mb3 ] [ HH.text "Login" ]
-          , HH.form [ HP.class_ Css.tw.w96, HE.onSubmit Login ]
+          [ HH.h2 [ HP.class_ (Css.c "mb-3") ] [ HH.text "Login" ]
+          , HH.form [ HP.class_ (Css.c "w-96"), HE.onSubmit Login ]
               [ HH.input
                   [ HP.type_ HP.InputText
                   , HP.id "auth-user"
@@ -104,23 +104,29 @@ render = case _ of
                   Just msg -> HH.div [ HP.classes errorClasses ] [ HH.text msg ]
               , HH.button
                   [ HP.type_ HP.ButtonSubmit
-                  , HP.classes [ Css.btnTropical, Css.tw.wFull, Css.tw.my2 ]
+                  , HP.classes [ Css.btnTropical, Css.c "w-full", Css.c "my-2" ]
                   ]
                   [ HH.text "Login" ]
               ]
           ]
     where
     textInputClasses =
-      [ Css.tw.wFull, Css.tw.block, Css.tw.p2, Css.tw.my2, Css.tw.bgGray100, Css.tw.roundedSm, Css.tw.shadowSm
+      [ Css.c "w-full"
+      , Css.c "block"
+      , Css.c "p-2"
+      , Css.c "my-2"
+      , Css.c "bg-gray-100"
+      , Css.c "rounded-sm"
+      , Css.c "shadow-sm"
       ]
 
     errorClasses =
-      [ Css.tw.p2
-      , Css.tw.my2
-      , Css.tw.bgRed100
-      , Css.tw.border
-      , Css.tw.borderRed400
-      , Css.tw.textRaspberry500
+      [ Css.c "p-2"
+      , Css.c "my-2"
+      , Css.c "bg-red-100"
+      , Css.c "border"
+      , Css.c "border-red-400"
+      , Css.c "text-raspberry-500"
       ]
 
   renderLoggedIn { readOnly, user } =

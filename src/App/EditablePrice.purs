@@ -69,9 +69,9 @@ render state = case state.editState of
     HH.a
       [ HP.href "javascript:void(0);"
       , HP.classes
-          [ Css.tw.underline
-          , Css.tw.underlineOffset4
-          , Css.tw.decorationHoney500
+          [ Css.c "underline"
+          , Css.c "underline-offset-4"
+          , Css.c "decoration-honey-500"
           ]
       , HE.onClick \_ -> SetEditing
       ]
@@ -80,7 +80,7 @@ render state = case state.editState of
     HH.form [ HE.onSubmit SetViewing ]
       [ HH.input
           [ HP.type_ HP.InputText
-          , HP.classes [ Css.tw.bgTransparent, Css.tw.border ]
+          , HP.classes [ Css.c "bg-transparent", Css.c "border" ]
           , HP.pattern """\d+(\.\d+)?%?"""
           , HP.placeholder $ "E.g. 80 or 10%"
           , HP.autofocus state.initial
@@ -96,7 +96,7 @@ render state = case state.editState of
     where
     price = case p.discount of
       Nothing -> showPrice p.listPrice
-      Just _ -> [ HH.span [ HP.class_ Css.tw.textRaspberry500 ] (showPrice p.price) ]
+      Just _ -> [ HH.span [ HP.class_ (Css.c "text-raspberry-500") ] (showPrice p.price) ]
 
     showPrice = Widgets.monetaryAmount currency
 

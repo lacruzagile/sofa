@@ -108,14 +108,14 @@ selectComponent =
         $ SelSet.setInputProps
             [ HP.type_ HP.InputText
             , HP.classes
-                [ Css.tw.w96
-                , Css.tw.mr5
-                , Css.tw.textLg
-                , Css.tw.focusOutline
-                , Css.tw.outline1
-                , Css.tw.outlineGray300
-                , Css.tw.placeholderItalic
-                , Css.tw.roundedSm
+                [ Css.c "w-96"
+                , Css.c "mr-5"
+                , Css.c "text-lg"
+                , Css.c "focus-outline"
+                , Css.c "outline-1"
+                , Css.c "outline-gray-300"
+                , Css.c "placeholder:italic"
+                , Css.c "rounded-sm"
                 ]
             , HP.placeholder "Type to search product…"
             ]
@@ -131,16 +131,16 @@ selectComponent =
           ]
         where
         containerClasses =
-          [ Css.tw.absolute
-          , Css.tw.mt1
-          , Css.tw.flex
-          , Css.tw.flexCol
-          , Css.tw.bgWhite
-          , Css.tw.w96
-          , Css.tw.maxH96
-          , Css.tw.overflowAuto
-          , Css.tw.border
-          , Css.tw.roundedMd
+          [ Css.c "absolute"
+          , Css.c "mt-1"
+          , Css.c "flex"
+          , Css.c "flex-col"
+          , Css.c "bg-white"
+          , Css.c "w-96"
+          , Css.c "max-h-96"
+          , Css.c "overflow-auto"
+          , Css.c "border"
+          , Css.c "rounded-md"
           ]
 
     renderItem idx legalEntity =
@@ -155,8 +155,8 @@ selectComponent =
         )
         (renderSummary legalEntity)
       where
-      itemClasses = [ Css.tw.p2 ]
+      itemClasses = [ Css.c "p-2" ]
 
-      selectedClasses = [ Css.tw.p2, Css.tw.bgSnow500 ]
+      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
 
     renderSummary (SS.Product { sku }) = [ HH.text (show sku) ]

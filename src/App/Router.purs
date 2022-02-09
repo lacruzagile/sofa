@@ -73,7 +73,7 @@ render ::
   CredentialStore m =>
   State -> H.ComponentHTML Action Slots m
 render state =
-  HH.div [ HP.classes [ Css.tw.mxAuto ], HP.style "max-width: 80rem" ]
+  HH.div [ HP.classes [ Css.c "mx-auto" ], HP.style "max-width: 80rem" ]
     [ renderNavbar state.route
     , renderBody state
     ]
@@ -96,17 +96,17 @@ renderNavbar currentRoute =
     ]
   where
   navbarClasses =
-    [ Css.tw.mx5
-    , Css.tw.px3
-    , Css.tw.py3
-    , Css.tw.flex
-    , Css.tw.justifyBetween
-    , Css.tw.shadowSm
-    , Css.tw.bgWhite
-    , Css.tw.itemsCenter
+    [ Css.c "mx-5"
+    , Css.c "px-3"
+    , Css.c "py-3"
+    , Css.c "flex"
+    , Css.c "justify-between"
+    , Css.c "shadow-sm"
+    , Css.c "bg-white"
+    , Css.c "items-center"
     ]
 
-  logoClasses = [ Css.tw.text2Xl, Css.tw.smallCaps, Css.tw.mr5 ]
+  logoClasses = [ Css.c "text-2xl", Css.c "small-caps", Css.c "mr-5" ]
 
   -- Whether the given route is conceptually the same route as the current
   -- route.
@@ -116,18 +116,18 @@ renderNavbar currentRoute =
 
   navbarItemClasses route
     | isCurrentRoute route =
-      [ Css.tw.px3
-      , Css.tw.underline
-      , Css.tw.underlineOffset8
-      , Css.tw.decoration2
-      , Css.tw.decorationHoney500
+      [ Css.c "px-3"
+      , Css.c "underline"
+      , Css.c "underline-offset-8"
+      , Css.c "decoration-2"
+      , Css.c "decoration-honey-500"
       ]
     | otherwise =
-      [ Css.tw.px3
-      , Css.tw.hoverUnderline
-      , Css.tw.underlineOffset8
-      , Css.tw.decoration2
-      , Css.tw.decorationHoney500_30
+      [ Css.c "px-3"
+      , Css.c "hover:underline"
+      , Css.c "underline-offset-8"
+      , Css.c "decoration-2"
+      , Css.c "decoration-honey-500/30"
       ]
 
   primaryItem route text =
@@ -142,7 +142,7 @@ renderNavbar currentRoute =
 
   navbarItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
 
-  expander = HH.div [ HP.class_ Css.tw.grow ] []
+  expander = HH.div [ HP.class_ (Css.c "grow") ] []
 
 renderBody ::
   forall m.
@@ -151,7 +151,7 @@ renderBody ::
   State ->
   H.ComponentHTML Action Slots m
 renderBody state =
-  HH.main [ HP.class_ Css.tw.m5 ]
+  HH.main [ HP.class_ (Css.c "m-5") ]
     [ case state.route of
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm
