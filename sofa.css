@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  body {
+    @apply bg-slate-50 text-stormy-500;
+  }
+
   h1 {
     @apply text-2xl my-5;
   }
