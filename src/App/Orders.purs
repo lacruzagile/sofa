@@ -146,7 +146,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , Css.c "bg-white"
             , Css.c "shadow-sm"
             , Css.c "rounded-md"
-            , Css.c "overflow-hidden"
             ]
         ]
 
