@@ -186,8 +186,16 @@ renderDetails st =
       ]
 
   renderBody mCommercial =
-    HH.div [ HP.classes [ Css.c "mt-5", Css.c "w-full", Css.c "min-w-96", Css.c "flex", Css.c "flex-col"
-                        , Css.c "space-y-4" ] ]
+    HH.div
+      [ HP.classes
+          [ Css.c "mt-5"
+          , Css.c "w-full"
+          , Css.c "min-w-96"
+          , Css.c "flex"
+          , Css.c "flex-col"
+          , Css.c "space-y-4"
+          ]
+      ]
       $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
             [ HH.div [ HP.class_ (Css.c "w-1/2") ]
                 [ renderSmallTitle "Billing Option"

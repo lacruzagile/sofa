@@ -165,8 +165,15 @@ renderDetails st =
   renderBody buyerOpt =
     let
       renderBuyerData (SS.Buyer buyer) =
-        HH.div [ HP.classes [ Css.c "w-full", Css.c "min-w-128", Css.c "flex", Css.c "flex-col"
-                            , Css.c "space-y-4" ] ]
+        HH.div
+          [ HP.classes
+              [ Css.c "w-full"
+              , Css.c "min-w-128"
+              , Css.c "flex"
+              , Css.c "flex-col"
+              , Css.c "space-y-4"
+              ]
+          ]
           $ [ HH.div_
                 [ renderSmallTitle "Corporate Name"
                 , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-2xl" ] ] [ HH.text buyer.corporateName ]
