@@ -128,11 +128,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
     table
       [ thead
           [ trow
-              [ tcell [ HH.text "Created" ]
-              , tcell [ HH.text "Status" ]
-              , tcell [ HH.text "Buyer" ]
-              , tcell [ HH.text "Seller" ]
-              , tcell [ HH.text "Name" ]
+              [ thcell [ HH.text "Created" ]
+              , thcell [ HH.text "Status" ]
+              , thcell [ HH.text "Buyer" ]
+              , thcell [ HH.text "Seller" ]
+              , thcell [ HH.text "Name" ]
               ]
           ]
       , tbody $ map renderOrder os
@@ -154,12 +154,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
       HH.div
         [ HP.classes
             [ Css.c "table-header-group"
-            , Css.c "bg-gray-200"
-            , Css.c "uppercase"
+            , Css.c "font-semibold"
             , Css.c "text-left"
             , Css.c "text-sm"
-            , Css.c "text-gray-600"
-            , Css.c "border-b"
+            , Css.c "text-stormy-200"
             ]
         ]
 
@@ -167,7 +165,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     trow = HH.div [ HP.classes [ Css.c "table-row" ] ]
 
-    tcell = HH.div [ HP.classes [ Css.c "table-cell", Css.c "px-5", Css.c "py-3" ] ]
+    thcell =
+      HH.div
+        [ HP.classes
+            [ Css.c "table-cell"
+            , Css.c "px-5"
+            , Css.c "py-3"
+            , Css.c "border-b"
+            ]
+        ]
 
   renderNewOrderLink =
     HH.a

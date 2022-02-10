@@ -231,7 +231,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       renderTotalEstimatedVolumeRow =
         maybe []
           ( \q ->
-              [ thead
+              [ tfoot
                   [ HH.tr_
                       $ thColSpanAlignRight (A.length dims)
                           [ Tooltip.render
@@ -350,7 +350,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       totalEstimatedRow
         | A.all A.null totalEstimatedCells = []
         | otherwise =
-          [ thead
+          [ tfoot
               [ HH.tr_
                   $ thColSpanAlignRight (A.length dims)
                       [ Tooltip.render
@@ -411,33 +411,23 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
         ]
 
 table :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-table =
-  HH.table
-    [ HP.classes
-        [ Css.c "shadow-sm"
-        , Css.c "rounded-md"
-        , Css.c "overflow-hidden"
-        ]
-    ]
+table = HH.table_
 
 thead :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-thead =
-  HH.thead
-    [ HP.classes
-        [ Css.c "bg-gray-200"
-        ]
-    ]
+thead = HH.thead [ HP.classes [ Css.c "border-b" ] ]
+
+tfoot :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
+tfoot = HH.thead [ HP.classes [ Css.c "border-t" ] ]
 
 th :: forall w i. HH.Node HTML.HTMLth w i
 th props =
   HH.th
     $ [ HP.classes
           [ Css.c "p-3"
-          , Css.c "font-normal"
           , Css.c "text-center"
+          , Css.c "font-semibold"
           , Css.c "text-sm"
-          , Css.c "text-gray-600"
-          , Css.c "uppercase"
+          , Css.c "text-stormy-200"
           ]
       ]
     <> props
@@ -447,11 +437,10 @@ thRight props =
   HH.th
     $ [ HP.classes
           [ Css.c "p-3"
-          , Css.c "font-normal"
           , Css.c "text-right"
+          , Css.c "font-semibold"
           , Css.c "text-sm"
-          , Css.c "text-gray-600"
-          , Css.c "uppercase"
+          , Css.c "text-stormy-200"
           ]
       ]
     <> props
