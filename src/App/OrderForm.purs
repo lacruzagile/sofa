@@ -46,6 +46,7 @@ import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console as Console
+import Component.Tooltip as Tooltip
 import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
@@ -552,7 +553,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               HH.fieldset [ HP.classes [ Css.c "my-2", Css.c "flex", Css.c "flex-col", Css.c "border" ] ]
                 ( [ HH.legend
                       [ HP.classes [ Css.c "ml-2", Css.c "px-3" ] ]
-                      [ withDescription [] fallbackTitle schemaEntry ]
+                      [ withDescription fallbackTitle schemaEntry ]
                   ]
                     <> content
                     <> [ renderAddListEntry c.items act ]
@@ -585,7 +586,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               renderFields
           else
             HH.fieldset [ HP.classes [ Css.c "my-2", Css.c "p-3", Css.c "flex", Css.c "flex-col", Css.c "border" ] ]
-              ( [ HH.legend_ [ withDescription [] fallbackTitle schemaEntry ] ]
+              ( [ HH.legend_ [ withDescription fallbackTitle schemaEntry ] ]
                   <> renderFields
               )
       SS.CseOneOf _c ->
@@ -601,7 +602,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     renderCheckbox fallbackTitle schemaEntry inner =
       HH.label [ HP.classes [ Css.c "my-2" ] ]
         [ inner
-        , withDescription [] fallbackTitle schemaEntry
+        , withDescription fallbackTitle schemaEntry
         ]
 
     renderWidget entryIdx fallbackTitle value schemaEntry act widget =
@@ -706,7 +707,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         inner
       else
         HH.label [ HP.classes [ Css.c "my-2" ] ]
-          [ withDescription [] fallbackTitle schemaEntry
+          [ withDescription fallbackTitle schemaEntry
           , inner
           ]
 
@@ -737,15 +738,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
               $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
               <> map (\e -> HH.option (props e) [ HH.text (showValue e) ]) c.enum
 
-    withDescription classes fallbackTitle schemaEntry =
-      Widgets.withMaybeTooltip
-        classes
-        Widgets.Top
-        (SS.configSchemaEntryDescription schemaEntry)
-        ( HH.span
-            [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ]
-            [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry ]
-        )
+    withDescription fallbackTitle schemaEntry = case SS.configSchemaEntryDescription schemaEntry of
+      Nothing -> body
+      Just description ->
+        Tooltip.render
+          (Tooltip.defaultInput { text = description, width = Just "20rem" })
+          body
+      where
+      body =
+        HH.span
+          [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ]
+          [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry ]
 
     renderListEntry ::
       ConfigEntryIndex ->

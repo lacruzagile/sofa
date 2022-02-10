@@ -154,20 +154,21 @@ renderDetails st =
           , Css.c "space-y-4"
           ]
       ]
-      [ HH.div
-          [ HP.classes
-              [ Css.c "flex"
-              , Css.c "flex-col"
-              , Css.c "space-y-4"
-              , Css.c "max-h-128"
-              , Css.c "overflow-auto"
-              ]
-          ]
-          ( if A.null st.observers then
-              [ HH.text "No observers" ]
-            else
-              A.mapWithIndex renderObserver st.observers
-          )
+      [ if A.null st.observers then
+          HH.div
+            [ HP.classes [ Css.c "text-lg", Css.c "text-gray-600" ] ]
+            [ HH.text "No observers available" ]
+        else
+          HH.div
+            [ HP.classes
+                [ Css.c "flex"
+                , Css.c "flex-col"
+                , Css.c "space-y-4"
+                , Css.c "max-h-128"
+                , Css.c "overflow-auto"
+                ]
+            ]
+            (A.mapWithIndex renderObserver st.observers)
       , HH.hr_
       , renderFooter
       ]
@@ -242,7 +243,12 @@ renderDetails st =
       [ HH.text o.observerEmail
       , HH.div
           [ HP.classes [ Css.c "text-sm", Css.c "text-gray-600", Css.c "flex" ] ]
-          [ HH.div_ [ maybe (HH.text "New") Widgets.dateWithTimeTooltip o.createTime ]
+          [ HH.div_
+              [ maybe
+                  (HH.text "New")
+                  Widgets.dateWithTimeTooltipRight
+                  o.createTime
+              ]
           , HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
               [ HP.classes
@@ -275,7 +281,7 @@ renderDetails st =
     where
     hideable p =
       if not p then
-        [ Css.c "hidden", Css.c "group-hover-block" ]
+        [ Css.c "invisible", Css.c "group-hover:visible" ]
       else
         []
 

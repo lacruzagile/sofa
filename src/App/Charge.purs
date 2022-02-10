@@ -4,6 +4,7 @@ module App.Charge (Slot, Output, proxy, component) where
 import Prelude
 import App.EditablePrice as EditablePrice
 import App.EditableQuantity as EditableQuantity
+import Component.Tooltip as Tooltip
 import Css as Css
 import DOM.HTML.Indexed as HTML
 import Data.Array (mapWithIndex)
@@ -24,12 +25,11 @@ import Data.Set as Set
 import Data.SmartSpec as SS
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
+import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
-import Widgets as Widgets
-import Foreign.Object as FO
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -234,7 +234,9 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
               [ thead
                   [ HH.tr_
                       $ thColSpanAlignRight (A.length dims)
-                          [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
+                          [ Tooltip.render
+                              (Tooltip.defaultInput { text = "Total Estimated Usage" })
+                              (HH.text "Total #")
                           ]
                       <> [ td_ [ q ] ]
                   ]
@@ -334,9 +336,9 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       renderUnitLabels = mkLabel <$> units
         where
         mkLabel u =
-          Widgets.withTooltip_ Widgets.Top (show $ _.kind $ unwrap u)
-            $ HH.text
-            $ Charge.chargeUnitLabel u
+          Tooltip.render
+            (Tooltip.defaultInput { text = show $ _.kind $ unwrap u })
+            (HH.text $ Charge.chargeUnitLabel u)
 
       -- Fatalistically assume that there is at least one unit defined, then
       -- fatalistically assume that all units use the same dimensions.
@@ -351,7 +353,9 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
           [ thead
               [ HH.tr_
                   $ thColSpanAlignRight (A.length dims)
-                      [ Widgets.withTooltip_ Widgets.Top "Total Estimated Usage" (HH.text "Total #")
+                      [ Tooltip.render
+                          (Tooltip.defaultInput { text = "Total Estimated Usage" })
+                          (HH.text "Total #")
                       ]
                   <> (td_ <$> totalEstimatedCells)
                   <> [ td_ [] ]

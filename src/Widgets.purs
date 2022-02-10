@@ -1,20 +1,17 @@
 module Widgets
   ( Tab(..)
-  , TooltipDirection(..)
   , address
   , dateWithTimeTooltip
+  , dateWithTimeTooltipRight
   , modal
   , modalCloseBtn
   , monetaryAmount
   , spinner
   , subTotalTable
-  , withMaybeTooltip
-  , withMaybeTooltip_
-  , withTooltip
-  , withTooltip_
   ) where
 
 import Prelude
+import Component.Tooltip as TT
 import Css as Css
 import Data.Array as A
 import Data.BigNumber as BN
@@ -23,7 +20,7 @@ import Data.Currency as Currency
 import Data.DateTime (DateTime)
 import Data.DateTime as DateTime
 import Data.Iso3166 (countryForCode, subdivisionForCode)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Set as Set
 import Data.SmartSpec as SS
@@ -33,59 +30,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-data TooltipDirection
-  = Top
-  | Bottom
-  | Left
-  | Right
-
-withTooltip_ ::
-  forall slot action.
-  TooltipDirection ->
-  String ->
-  HH.HTML slot action ->
-  HH.HTML slot action
-withTooltip_ = withTooltip []
-
--- | Creates a span with a tooltip text.
---
--- TODO: Create full tooltip, not just using a title attribute.
-withTooltip ::
-  forall slot action.
-  Array HH.ClassName ->
-  TooltipDirection ->
-  String ->
-  HH.HTML slot action ->
-  HH.HTML slot action
-withTooltip _classes _direction tooltipText body = HH.span [ HP.title tooltipText ] [ body ]
-
--- | Creates a span with an optional tooltip text.
-withMaybeTooltip_ ::
-  forall slot action.
-  TooltipDirection ->
-  Maybe String ->
-  HH.HTML slot action ->
-  HH.HTML slot action
-withMaybeTooltip_ direction mTooltipText body =
-  maybe
-    body
-    (\tooltipText -> withTooltip_ direction tooltipText body)
-    mTooltipText
-
--- | Creates a span with an optional tooltip text.
-withMaybeTooltip ::
-  forall slot action.
-  Array HH.ClassName ->
-  TooltipDirection ->
-  Maybe String ->
-  HH.HTML slot action ->
-  HH.HTML slot action
-withMaybeTooltip classes direction mTooltipText body =
-  maybe
-    (if A.null classes then body else HH.span [ HP.classes classes ] [ body ])
-    (\tooltipText -> withTooltip classes direction tooltipText body)
-    mTooltipText
-
 -- Other stuff.
 type Tab slot action
   = { label :: HH.HTML slot action
@@ -94,9 +38,18 @@ type Tab slot action
 
 dateWithTimeTooltip :: forall slot action. DateTime -> HH.HTML slot action
 dateWithTimeTooltip t =
-  withTooltip_
-    Top
-    (SS.prettyDateTime t)
+  TT.render
+    (TT.defaultInput { text = SS.prettyDateTime t })
+    (HH.text $ SS.prettyDate (DateTime.date t))
+
+dateWithTimeTooltipRight :: forall slot action. DateTime -> HH.HTML slot action
+dateWithTimeTooltipRight t =
+  TT.render
+    ( TT.defaultInput
+        { text = SS.prettyDateTime t
+        , orientation = TT.Right
+        }
+    )
     (HH.text $ SS.prettyDate (DateTime.date t))
 
 modalCloseBtn :: forall slot action. (Unit -> action) -> HH.HTML slot action

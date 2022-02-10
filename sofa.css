@@ -49,4 +49,29 @@
     @apply inline-block border-4 border-sky-200 rounded-full animate-spin w-5 h-5;
       border-top-color: transparent;
   }
+
+  /* Tooltip component classes. */
+  .sofa-tooltip-text {
+    @apply
+      absolute
+      text-xs
+      px-2
+      py-1
+      w-max
+      rounded-sm
+      bg-snow-600;
+  }
+
+  .sofa-tooltip-arrow {
+    @apply
+      absolute
+      border-[5px]
+      border-solid
+      border-transparent;
+    content: " ";
+  }
+
+  .sofa-tooltip-group:hover .sofa-tooltip-group-hover\:opacity-100 {
+    opacity: 1;
+  }
 }
