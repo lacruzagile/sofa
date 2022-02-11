@@ -54,6 +54,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
+import Component.Icon as Icon
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -739,16 +740,18 @@ render state = HH.section_ [ HH.article_ renderContent ]
               <> map (\e -> HH.option (props e) [ HH.text (showValue e) ]) c.enum
 
     withDescription fallbackTitle schemaEntry = case SS.configSchemaEntryDescription schemaEntry of
-      Nothing -> body
+      Nothing -> body false
       Just description ->
         Tooltip.render
           (Tooltip.defaultInput { text = description, width = Just "20rem" })
-          body
+          (body true)
       where
-      body =
+      body tt =
         HH.span
           [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ]
-          [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry ]
+          [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+          , if tt then Icon.tooltip else HH.text ""
+          ]
 
     renderListEntry ::
       ConfigEntryIndex ->

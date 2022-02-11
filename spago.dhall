@@ -44,6 +44,7 @@ to generate this file without the comments in this block.
   , "prelude"
   , "quickcheck"
   , "routing"
+  , "safe-coerce"
   , "simple-ajax"
   , "spec"
   , "spec-quickcheck"
