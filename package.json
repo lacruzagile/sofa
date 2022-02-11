@@ -6,10 +6,11 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
+    "//": "Note, the sed calls in 'build' and 'start' are to work around https://github.com/purescript-contrib/purescript-affjax/issues/161",
     "build": "spago bundle-app --to sofa.js && sed -i 's/&& module.require /\\&\\& false /' sofa.js && parcel build sofa.html",
     "clean": "rm -rf dist output sofa.js",
     "docker-build": "yarn build && docker build -f docker/Dockerfile -t sofa:latest .",
-    "start": "parcel serve sofa-dev.html",
+    "start": "sed -i 's/&& module.require /\\&\\& false /' ./output/Affjax/foreign.js && parcel serve sofa-dev.html",
     "test": "spago test",
     "watch": "spago build --watch --clear-screen"
   },
@@ -18,11 +19,12 @@
     "parcel": "^2.0.0",
     "postcss": "^8.4.5",
     "purescript": "^0.14.5",
-    "spago": "^0.20.3",
+    "spago": "^0.20.5",
     "tailwindcss": "^3.0.7"
   },
   "dependencies": {
     "bignumber.js": "^9.0.1",
+    "buffer": "^6.0.3",
     "iso-3166": "^4.0.1",
     "xhr2": "^0.2.1"
   }

@@ -42,7 +42,6 @@ to generate this file without the comments in this block.
   , "numbers"
   , "ordered-collections"
   , "prelude"
-  , "psci-support"
   , "quickcheck"
   , "routing"
   , "simple-ajax"
