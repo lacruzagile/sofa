@@ -784,8 +784,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
               , Css.c "relative"
               , Css.c "float-right"
               , Css.c "py-0"
-              , Css.c "hidden"
-              , Css.c "group-hover-block"
+              , Css.c "invisible"
+              , Css.c "group-hover:visible"
               ]
           , HE.onClick \_ -> removeAct unit
           ]
