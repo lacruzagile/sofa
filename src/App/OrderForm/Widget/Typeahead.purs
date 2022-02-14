@@ -1,7 +1,7 @@
 module App.OrderForm.Widget.Typeahead (Slot, Output(..), proxy, component) where
 
 import Prelude
-import App.Requests (getDataSourceEnum)
+import App.SchemaDataSource (DataSourceEnumResult)
 import Css as Css
 import Data.Array ((!!))
 import Data.Array as A
@@ -9,7 +9,6 @@ import Data.Auth (class CredentialStore)
 import Data.Int as Int
 import Data.Loadable (Loadable(..))
 import Data.Loadable as Loadable
-import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
 import Data.String as S
@@ -31,22 +30,22 @@ type Slot id
 proxy :: Proxy "widgetTypeahead"
 proxy = Proxy
 
-type Input
+type Input m
   = { value :: Maybe SS.ConfigValue
     , minInputLength :: Int
     , debounceMs :: Int
-    , dataSource :: SS.SchemaDataSourceEnum
+    , getEnumData :: Maybe String -> m DataSourceEnumResult
     }
 
 type Output
   = Maybe SS.ConfigValue
 
-type State
+type State m
   = ( selected :: Maybe (Tuple String SS.ConfigValue)
     , filtered :: Loadable (Array (Tuple String SS.ConfigValue))
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , minInputLength :: Int
-    , dataSource :: SS.SchemaDataSourceEnum
+    , getEnumData :: Maybe String -> m DataSourceEnumResult
     )
 
 data Action
@@ -58,7 +57,7 @@ type Action'
 
 component ::
   forall query m.
-  MonadAff m => CredentialStore m => H.Component query Input Output m
+  MonadAff m => CredentialStore m => H.Component query (Input m) Output m
 component =
   H.mkComponent
     { initialState: identity
@@ -68,7 +67,7 @@ component =
   where
   selectLabel = Proxy :: Proxy "select"
 
-  selectComponent :: H.Component (Sel.Query query ()) Input Output m
+  selectComponent :: H.Component (Sel.Query query ()) (Input m) Output m
   selectComponent =
     Sel.component mapInput
       $ Sel.defaultSpec
@@ -78,7 +77,7 @@ component =
           , render = render
           }
 
-  mapInput :: Input -> Sel.Input State
+  mapInput :: (Input m) -> Sel.Input (State m)
   mapInput input =
     { inputType: Sel.Text
     , debounceTime: Just (Milliseconds $ Int.toNumber input.debounceMs)
@@ -88,7 +87,7 @@ component =
     , filtered: Idle
     , available: Idle
     , minInputLength: input.minInputLength
-    , dataSource: input.dataSource
+    , getEnumData: input.getEnumData
     }
 
   getDataItemCount st = maybe 0 A.length $ Loadable.toMaybe $ st.filtered
@@ -98,32 +97,18 @@ component =
       state <-
         H.modify \st ->
           st { filtered = Loading, available = Loading }
-      state' <- case state.dataSource of
-        SS.SdsEnumMap { entries } ->
-          let
-            available = Map.toUnfoldable entries :: Array (Tuple String SS.ConfigValue)
-          in
-            H.modify \st ->
-              st
-                { selected =
-                  do
-                    Tuple _ inputValue <- st.selected
-                    A.find (\(Tuple _ v) -> v == inputValue) available
-                , filtered = Loaded available
-                , available = Loaded available
-                }
-        SS.SdsEnumHttpGet { url } -> do
-          result <- H.lift $ getDataSourceEnum url
-          H.modify \st ->
-            st
-              { selected =
-                do
-                  Tuple _ inputValue <- st.selected
-                  available <- Loadable.toMaybe result
-                  A.find (\(Tuple _ v) -> v == inputValue) available
-              , filtered = result
-              , available = result
-              }
+      lAvailable <- H.lift $ state.getEnumData Nothing
+      state' <-
+        H.modify \st ->
+          st
+            { selected =
+              do
+                Tuple _ inputValue <- st.selected
+                available <- Loadable.toMaybe lAvailable
+                A.find (\(Tuple _ v) -> v == inputValue) available
+            , filtered = lAvailable
+            , available = lAvailable
+            }
       -- Set the input element to the full selection key.
       case state'.selected of
         Nothing -> pure unit
@@ -155,7 +140,7 @@ component =
       H.raise $ map snd $ st'.selected
     _ -> pure unit
 
-  render :: Sel.State State -> H.ComponentHTML Action' () m
+  render :: Sel.State (State m) -> H.ComponentHTML Action' () m
   render st = HH.div [ HP.class_ (Css.c "inline-block") ] [ renderInput, renderResults ]
     where
     renderInput :: H.ComponentHTML Action' () m

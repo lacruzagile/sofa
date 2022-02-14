@@ -99,6 +99,7 @@ module Data.SmartSpec
   , Solution(..)
   , Subdivision(..)
   , Uri(..)
+  , UriTemplate
   , Validity(..)
   , abbreviatedOrderId
   , configSchemaEntryDescription
@@ -146,6 +147,9 @@ import Test.QuickCheck (class Arbitrary)
 import Test.QuickCheck.Gen as QC
 
 type Uri
+  = String
+
+type UriTemplate
   = String
 
 newtype Solution
@@ -1223,7 +1227,7 @@ data SchemaDataSourceEnum
     { entries :: Map String ConfigValue
     }
   | SdsEnumHttpGet
-    { url :: Uri
+    { url :: UriTemplate
     }
 
 instance decodeJsonSchemaDataSourceEnum :: DecodeJson SchemaDataSourceEnum where

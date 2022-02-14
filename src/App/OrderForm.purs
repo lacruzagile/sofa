@@ -14,6 +14,9 @@ import App.OrderForm.Widget.Radio as WRadio
 import App.OrderForm.Widget.Textarea as WTextarea
 import App.OrderForm.Widget.Typeahead as WTypeahead
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
+import App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
+import Component.Icon as Icon
+import Component.Tooltip as Tooltip
 import Control.Alternative (guard, (<|>))
 import Css as Css
 import Data.Argonaut (encodeJson, stringifyWithIndent)
@@ -46,7 +49,6 @@ import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console as Console
-import Component.Tooltip as Tooltip
 import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
@@ -54,7 +56,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
-import Component.Icon as Icon
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -623,7 +624,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             SS.SwCheckbox { dataSource } ->
               maybe
                 (HH.text "Checkbox without data source or enum")
-                ( \ds ->
+                ( \getEnumData ->
                     HH.slot
                       WCheckbox.proxy
                       entryIdx
@@ -632,39 +633,39 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           case value of
                             Just (SS.CvArray vs) -> vs
                             _ -> []
-                      , dataSource: ds
+                      , getEnumData: getEnumData
                       }
                       (mact (act <<< const <<< SS.CvArray) <<< Just)
                 )
-                (dataSourceWithFallback dataSource)
+                (mkGetEnumData =<< dataSourceWithFallback dataSource)
             SS.SwDropdown { dataSource } ->
               maybe
                 (HH.text "Dropdown without data source or enum")
-                ( \ds ->
+                ( \getEnumData ->
                     HH.slot
                       WDropdown.proxy
                       entryIdx
                       WDropdown.component
-                      { value, dataSource: ds }
+                      { value, getEnumData: getEnumData }
                       (mact (act <<< const))
                 )
-                (dataSourceWithFallback dataSource)
+                (mkGetEnumData =<< dataSourceWithFallback dataSource)
             SS.SwRadio { dataSource } ->
               maybe
                 (HH.text "Radio buttons without data source or enum")
-                ( \ds ->
+                ( \getEnumData ->
                     HH.slot
                       WRadio.proxy
                       entryIdx
                       WRadio.component
-                      { value, dataSource: ds }
+                      { value, getEnumData: getEnumData }
                       (mact (act <<< const))
                 )
-                (dataSourceWithFallback dataSource)
+                (mkGetEnumData =<< dataSourceWithFallback dataSource)
             SS.SwTypeahead { minInputLength, debounceMs, dataSource } ->
               maybe
                 (HH.text "Typeahead without data source or enum")
-                ( \ds ->
+                ( \getEnumData ->
                     HH.slot
                       WTypeahead.proxy
                       entryIdx
@@ -672,12 +673,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       { value
                       , minInputLength
                       , debounceMs
-                      , dataSource: ds
+                      , getEnumData: getEnumData
                       }
                       (mact (act <<< const))
                 )
-                (dataSourceWithFallback dataSource)
+                (mkGetEnumData =<< dataSourceWithFallback dataSource)
       where
+      mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe (Maybe String -> m DataSourceEnumResult)
+      mkGetEnumData dataSource = do
+        commercial <- case state of
+          Initialized (Loaded { orderForm: { commercial } }) -> commercial
+          _ -> Nothing
+        pure $ getDataSourceEnum { commercial } dataSource
+
       -- Endow a data source with fallback to schema entry enum values. Takes as
       -- input a maybe data source, which is preferred, otherwise uses the enum
       -- values of the current schema entry, and if no enum is available then
