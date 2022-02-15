@@ -209,6 +209,7 @@ renderDetails st =
                             [ HP.type_ HP.InputRadio
                             , HP.name "buyer-existing-customer"
                             , HP.checked $ not buyer.existingCustomer
+                            , HP.enabled $ not st.readOnly
                             , HE.onChange \_ -> SetCustomerStatus false
                             ]
                         , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "New Customer" ]
@@ -218,6 +219,7 @@ renderDetails st =
                             [ HP.type_ HP.InputRadio
                             , HP.name "buyer-existing-customer"
                             , HP.checked buyer.existingCustomer
+                            , HP.enabled $ not st.readOnly
                             , HE.onChange \_ -> SetCustomerStatus true
                             ]
                         , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "Existing Customer" ]
