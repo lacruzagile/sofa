@@ -155,7 +155,6 @@ component =
 
     containerClasses =
       [ Css.c "absolute"
-      , Css.c "mt-1"
       , Css.c "flex"
       , Css.c "flex-col"
       , Css.c "bg-white"
