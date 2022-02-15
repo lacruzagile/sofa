@@ -29,7 +29,7 @@ render _ = do
     [ HH.h1_
         [ HH.text "SOFA" ]
     , HH.p_
-        [ HH.text "This is a basic tool to experiment with Smart § Spec." ]
+        [ HH.text "This is a basic tool to experiment with Smart Spec." ]
     , HH.p_
         [ HH.text "Currently a product catalog visualizer and order form is available."
         , HH.text " Note, both are work in progress."
