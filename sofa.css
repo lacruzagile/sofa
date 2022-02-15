@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-stormy-500;
+    @apply font-sans bg-slate-50 text-stormy-500;
   }
 
   h1 {
@@ -13,6 +13,26 @@
 
   h2 {
     @apply text-xl my-5;
+  }
+
+  @font-face {
+    font-family: "Gilroy";
+    src: url("fonts/Gilroy-Regular.woff2") format('woff2'),
+         url("fonts/Gilroy-Regular.woff") format('woff');
+  }
+
+  @font-face {
+    font-family: "Gilroy";
+    src: url("fonts/Gilroy-Bold.woff2") format('woff2'),
+         url("fonts/Gilroy-Bold.woff") format('woff');
+    font-weight: bold;
+  }
+
+  @font-face {
+    font-family: "Gilroy";
+    src: url("fonts/Gilroy-SemiBold.woff2") format('woff2'),
+         url("fonts/Gilroy-SemiBold.woff") format('woff');
+    font-weight: 600;
   }
 
   .sofa-small-title {

@@ -1,3 +1,5 @@
+const defaultTheme = require('tailwindcss/defaultTheme')
+
 module.exports = {
   mode: "jit",
   content: ["./*.html", "./src/**/*.purs"],
@@ -47,6 +49,12 @@ module.exports = {
           700: '#d4dadd',
           800: '#c6cdd2',
         },
+      },
+      fontFamily: {
+        sans: [
+          'Gilroy',
+          ...defaultTheme.fontFamily.sans,
+        ]
       },
       maxHeight: {
         '128': '32rem',
