@@ -54,6 +54,7 @@ data Action
   | ChooseBuyer (Maybe SS.Buyer)
   | SetContactPrimary SS.Contact
   | SetContactFinance SS.Contact
+  | SetCustomerStatus Boolean
   | OpenDetails
   | AcceptAndCloseDetails
   | CancelAndCloseDetails
@@ -200,6 +201,29 @@ renderDetails st =
                 ]
             , renderContact "Primary Contact" buyer.contacts.primary SetContactPrimary
             , renderContact "Finance Contact" buyer.contacts.finance SetContactFinance
+            , HH.div_
+                [ renderSmallTitle "Customer Status"
+                , HH.fieldset_
+                    [ HH.label [ HP.class_ (Css.c "ml-2") ]
+                        [ HH.input
+                            [ HP.type_ HP.InputRadio
+                            , HP.name "buyer-existing-customer"
+                            , HP.checked $ not buyer.existingCustomer
+                            , HE.onChange \_ -> SetCustomerStatus false
+                            ]
+                        , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "New Customer" ]
+                        ]
+                    , HH.label [ HP.class_ (Css.c "ml-2") ]
+                        [ HH.input
+                            [ HP.type_ HP.InputRadio
+                            , HP.name "buyer-existing-customer"
+                            , HP.checked buyer.existingCustomer
+                            , HE.onChange \_ -> SetCustomerStatus true
+                            ]
+                        , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "Existing Customer" ]
+                        ]
+                    ]
+                ]
             , HH.div_
                 [ renderSmallTitle "Address"
                 , Widgets.address buyer.address
@@ -353,6 +377,11 @@ handleAction = case _ of
       setContact (SS.Buyer s) = SS.Buyer $ s { contacts { finance = contact } }
     in
       H.modify_ $ \st -> st { buyer = setContact <$> st.buyer }
+  SetCustomerStatus existingCustomer ->
+    let
+      setExistingCustomer (SS.Buyer s) = SS.Buyer $ s { existingCustomer = existingCustomer }
+    in
+      H.modify_ $ \st -> st { buyer = setExistingCustomer <$> st.buyer }
   OpenDetails -> H.modify_ $ \st -> st { open = true }
   AcceptAndCloseDetails -> do
     st' <- H.modify $ \st -> st { acceptedBuyer = st.buyer, open = false }
@@ -385,6 +414,7 @@ emptyBuyer =
     , contacts: { primary: SS.emptyContact, finance: SS.emptyContact }
     , corporateName: ""
     , registrationNr: ""
+    , existingCustomer: true
     , taxId: ""
     , website: ""
     }

@@ -2105,6 +2105,7 @@ newtype Buyer
   , contacts :: { primary :: Contact, finance :: Contact }
   , corporateName :: String
   , registrationNr :: String
+  , existingCustomer :: Boolean
   , taxId :: String
   , website :: Uri
   }
@@ -2118,6 +2119,7 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
     contacts <- o .:? "contacts" .!= { primary: emptyContact, finance: emptyContact }
     corporateName <- o .: "corporateName"
     registrationNr <- o .: "registrationNr"
+    existingCustomer <- o .:? "existingCustomer" .!= true
     taxId <- o .: "taxId"
     website <- o .: "website"
     pure
@@ -2128,6 +2130,7 @@ instance decodeJsonBuyer :: DecodeJson Buyer where
           , contacts
           , corporateName
           , registrationNr
+          , existingCustomer
           , taxId
           , website
           }
@@ -2140,7 +2143,8 @@ instance encodeJsonBuyer :: EncodeJson Buyer where
       ~> ("contacts" := x.contacts)
       ~> ("corporateName" := x.corporateName)
       ~> ("registrationNr" := x.registrationNr)
-      ~> ("taxId" := x.taxId)
+      ~> ("existingCustomer" :=? ifNonEq true x.existingCustomer)
+      ~>? ("taxId" := x.taxId)
       ~> ("website" := x.website)
       ~> jsonEmptyObject
 
