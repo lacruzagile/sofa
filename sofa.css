@@ -8,11 +8,19 @@
   }
 
   h1 {
-    @apply text-2xl my-5;
+    @apply text-5xl font-semibold my-5;
   }
 
   h2 {
-    @apply text-xl my-5;
+    @apply text-4xl font-semibold my-5;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold my-5;
+  }
+
+  h4 {
+    @apply font-semibold my-5;
   }
 
   @font-face {
