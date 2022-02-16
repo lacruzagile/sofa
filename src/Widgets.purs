@@ -11,6 +11,7 @@ module Widgets
   ) where
 
 import Prelude
+import Component.Icon as Icon
 import Component.Tooltip as TT
 import Css as Css
 import Data.Array as A
@@ -56,14 +57,16 @@ modalCloseBtn :: forall slot action. (Unit -> action) -> HH.HTML slot action
 modalCloseBtn closeAction =
   HH.button
     [ HP.classes
-        [ Css.c "text-lg"
-        , Css.c "cursor-pointer"
+        [ Css.c "cursor-pointer"
         , Css.c "px-3"
-        , Css.c "py-2"
+        , Css.c "py-3"
         ]
+    -- Apparently needed to make the SVG appear completely centered in the
+    -- button.
+    , HP.style "font-size:0"
     , HE.onClick $ \_ -> closeAction unit
     ]
-    [ HH.text "×" ]
+    [ Icon.close ]
 
 modal ::
   forall slot action.
@@ -111,6 +114,7 @@ modal toolbarContent body =
       [ HP.classes
           [ Css.c "relative"
           , Css.c "float-right"
+          , Css.c "flex"
           , Css.c "-m-8"
           ]
       ]

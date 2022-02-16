@@ -180,6 +180,7 @@ component =
             , HP.id "commercial-search"
             , HP.classes
                 [ Css.c "w-72"
+                , Css.c "mt-2"
                 , Css.c "mr-5"
                 , Css.c "focus-outline"
                 , Css.c "outline-1"
@@ -192,6 +193,7 @@ component =
 
     containerClasses =
       [ Css.c "absolute"
+      , Css.c "mt-1"
       , Css.c "flex"
       , Css.c "flex-col"
       , Css.c "bg-white"

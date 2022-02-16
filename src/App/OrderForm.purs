@@ -350,12 +350,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HP.classes
                 [ Css.c "relative"
                 , Css.c "float-right"
-                , Css.c "text-lg"
                 , Css.c "cursor-pointer"
                 ]
             , HE.onClick \_ -> RemoveOrderLine olIdx
             ]
-            [ HH.text "×" ]
+            [ Icon.close ]
         ]
 
     body subBody =
@@ -924,12 +923,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ HP.classes
                     [ Css.c "relative"
                     , Css.c "float-right"
-                    , Css.c "text-lg"
+                    , Css.c "-top-2"
                     , Css.c "cursor-pointer"
                     ]
                 , HE.onClick \_ -> RemoveSection { sectionIndex: secIdx }
                 ]
-                [ HH.text "×" ]
+                [ Icon.close ]
             ]
       in
         HH.div
