@@ -2563,6 +2563,7 @@ newtype OrderLine
   = OrderLine
   { orderLineId :: Maybe OrderLineId
   , status :: OrderLineStatus
+  , statusReason :: String
   , sku :: SkuCode
   , charges :: Array Charge
   , configs :: Array OrderLineConfig
@@ -2576,17 +2577,28 @@ instance decodeJsonOrderLine :: DecodeJson OrderLine where
     o <- decodeJson json
     orderLineId <- o .:? "orderLineId"
     status <- o .:? "status" .!= OlsNew
+    statusReason <- o .:? "statusReason" .!= ""
     sku <- o .: "sku"
     charges <- o .: "charges"
     configs <- o .:? "configs" .!= []
     estimatedUsage <- o .:? "estimatedUsage" .!= []
-    pure $ OrderLine { orderLineId, status, sku, charges, configs, estimatedUsage }
+    pure
+      $ OrderLine
+          { orderLineId
+          , status
+          , statusReason
+          , sku
+          , charges
+          , configs
+          , estimatedUsage
+          }
 
 instance encodeJsonOrderLine :: EncodeJson OrderLine where
   encodeJson (OrderLine x) =
     ("orderLineId" :=? x.orderLineId)
       ~>? ("status" := x.status)
-      ~> ("sku" := x.sku)
+      ~> ("statusReason" :=? ifNonEq "" x.statusReason)
+      ~>? ("sku" := x.sku)
       ~> ("charges" := x.charges)
       ~> ("configs" :=? ifNonEmpty x.configs)
       ~>? ("estimatedUsage" :=? ifNonEmpty x.estimatedUsage)

@@ -16,6 +16,7 @@ import App.OrderForm.Widget.Typeahead as WTypeahead
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
 import Component.Icon as Icon
+import Component.Tooltip as TT
 import Component.Tooltip as Tooltip
 import Control.Alternative (guard, (<|>))
 import Css as Css
@@ -123,6 +124,7 @@ type OrderSection
 type OrderLine
   = { orderLineId :: Maybe SS.OrderLineId
     , status :: SS.OrderLineStatus
+    , statusReason :: String
     , product :: SS.Product
     , charges :: Maybe (Array SS.Charge)
     , unitMap :: Charge.ChargeUnitMap
@@ -301,7 +303,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       ]
                   , HH.div [ HP.class_ (Css.c "w-1/5") ]
                       [ renderSmallTitle "Status"
-                      , HH.text $ SS.prettyOrderLineStatus ol.status
+                      , let
+                         wrap | ol.statusReason == "" = identity
+                              | otherwise = TT.render (TT.defaultInput { text = ol.statusReason })
+                        in wrap (HH.text $ SS.prettyOrderLineStatus ol.status)
                       ]
                   ]
                 <> ( if isJust product.orderConfigSchema then
@@ -1334,6 +1339,7 @@ toJson orderForm = do
     SS.OrderLine
       { orderLineId: ol.orderLineId
       , status: ol.status
+      , statusReason: ol.statusReason
       , sku: _.sku $ unwrap $ ol.product
       , charges: fromMaybe [] ol.charges
       , configs: ol.configs
@@ -1601,6 +1607,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
     pure
       { orderLineId: l.orderLineId
       , status: l.status
+      , statusReason: l.statusReason
       , product
       , charges: Just l.charges
       , unitMap: Charge.productChargeUnitMap product
@@ -1831,6 +1838,7 @@ handleAction = case _ of
       mkOrderLine prod =
         { orderLineId: Nothing
         , status: SS.OlsNew
+        , statusReason: ""
         , product: prod
         , charges: Nothing
         , unitMap: Charge.productChargeUnitMap product
