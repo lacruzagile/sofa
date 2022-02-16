@@ -1,11 +1,19 @@
 module Component.Icon
-  ( tooltip
+  ( textWithTooltip
+  , tooltip
   ) where
 
 import Css as Css
 import Data.String (joinWith)
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Safe.Coerce (coerce)
+
+textWithTooltip :: forall w i. String -> HH.HTML w i
+textWithTooltip text =
+  HH.span
+    [ HP.classes [ Css.c "flex", Css.c "items-center" ] ]
+    [ HH.text text, tooltip ]
 
 tooltip :: forall w i. HH.HTML w i
 tooltip =

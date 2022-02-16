@@ -16,7 +16,6 @@ import App.OrderForm.Widget.Typeahead as WTypeahead
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
 import Component.Icon as Icon
-import Component.Tooltip as TT
 import Component.Tooltip as Tooltip
 import Control.Alternative (guard, (<|>))
 import Css as Css
@@ -304,9 +303,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   , HH.div [ HP.class_ (Css.c "w-1/5") ]
                       [ renderSmallTitle "Status"
                       , let
-                         wrap | ol.statusReason == "" = identity
-                              | otherwise = TT.render (TT.defaultInput { text = ol.statusReason })
-                        in wrap (HH.text $ SS.prettyOrderLineStatus ol.status)
+                          wrap content
+                            | ol.statusReason == "" = HH.text content
+                            | otherwise =
+                              Tooltip.render
+                                (Tooltip.defaultInput { text = ol.statusReason })
+                                (Icon.textWithTooltip content)
+                        in
+                          wrap (SS.prettyOrderLineStatus ol.status)
                       ]
                   ]
                 <> ( if isJust product.orderConfigSchema then
