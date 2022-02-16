@@ -1096,13 +1096,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderStatus :: SS.OrderStatus -> H.ComponentHTML Action Slots m
   renderOrderStatus selected =
     HH.select
-      [ HP.classes
-          [ Css.c "appearance-none"
-          , Css.c "bg-transparent"
-          , Css.c "underline"
-          , Css.c "underline-offset-4"
-          , Css.c "decoration-honey-500"
-          ]
+      [ HP.classes [ Css.c "sofa-order-status-select" ]
       , HE.onSelectedIndexChange actSetOrderStatus
       ]
       $ map renderOption orderStatuses
