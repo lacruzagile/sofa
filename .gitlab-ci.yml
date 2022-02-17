@@ -55,6 +55,7 @@ build-and-push-image:
     - echo "{\"auths\":{\"$NEXUS_REGISTRY\":{\"username\":\"$NEXUS_USER\",\"password\":\"$NEXUS_PASSWORD\"}}}" > /kaniko/.docker/config.json
     - >-
       /kaniko/executor
+      --registry-mirror nexus.int.clxnetworks.net:8009
       --context .
       --dockerfile ./docker/Dockerfile
       --destination $NEXUS_REGISTRY/$CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
