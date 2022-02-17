@@ -595,7 +595,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
               [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
               renderFields
           else
-            HH.fieldset [ HP.classes [ Css.c "my-2", Css.c "p-3", Css.c "flex", Css.c "flex-col", Css.c "border" ] ]
+            HH.fieldset
+              [ HP.classes
+                  [ Css.c "my-2"
+                  , Css.c "p-3"
+                  , Css.c "flex"
+                  , Css.c "flex-col"
+                  , Css.c "border"
+                  ]
+              ]
               ( [ HH.legend_ [ withDescription fallbackTitle schemaEntry ] ]
                   <> renderFields
               )
@@ -912,7 +920,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
     where
     SS.ProductCatalog pc = sof.productCatalog
 
-    defaultCurrency = maybe (SS.ChargeCurrency (unsafeMkCurrency "FIX")) (SS.ChargeCurrency <<< unwrap) sof.currency
+    defaultCurrency =
+      maybe
+        (SS.ChargeCurrency (unsafeMkCurrency "FIX"))
+        (SS.ChargeCurrency <<< unwrap)
+        sof.currency
 
     body subBody =
       let
@@ -932,7 +944,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
       in
         HH.div
-          [ HP.classes [ Css.c "p-3", Css.c "my-5", Css.c "bg-white", Css.c "rounded-sm", Css.c "shadow-sm" ] ]
+          [ HP.classes
+              [ Css.c "p-3"
+              , Css.c "my-5"
+              , Css.c "bg-white"
+              , Css.c "rounded-sm"
+              , Css.c "shadow-sm"
+              ]
+          ]
           (removeBtn <> subBody)
 
     solutionLabel (SS.Solution s) = fromMaybe s.id s.title
@@ -1759,7 +1778,11 @@ handleAction = case _ of
                   { commercial = Just commercial
                   --  If the currency changed then we can't use the same price
                   --  book, so the summary and all sections need to be updated.
-                  , summary = if st.currency == currency then st.orderForm.summary else mempty
+                  , summary =
+                    if st.currency == currency then
+                      st.orderForm.summary
+                    else
+                      mempty
                   , sections =
                     if st.currency == currency then
                       st.orderForm.sections
