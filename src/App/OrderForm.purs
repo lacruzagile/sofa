@@ -1139,10 +1139,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
     HH.div [ HP.classes [ Css.c "p-3", Css.c "bg-white", Css.c "rounded-sm", Css.c "shadow-sm" ] ]
-      [ title "Seller"
+      [ title "Legal Entity"
       , renderSeller
       , HH.br_
-      , title "Buyer"
+      , title "Customer"
       , renderBuyer
       , HH.br_
       , title "Commercial"
