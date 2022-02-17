@@ -2,20 +2,23 @@ module Test.Main where
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, printJsonDecodeError)
-import Data.Currency (unsafeMkCurrency)
 import Data.BigNumber as BN
+import Data.Currency (unsafeMkCurrency)
 import Data.Either (Either(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Monoid.Additive (Additive(..))
+import Data.Schema (isValidValue)
 import Data.SmartSpec as SS
 import Data.SubTotal (SubTotal(..), IndexedSubTotalEntry(..), calcSubTotal)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (launchAff_)
+import Foreign.Object as FO
 import Test.QuickCheck ((<?>))
 import Test.QuickCheck as QC
 import Test.Spec (Spec, describe, it)
-import Test.Spec.Assertions (shouldEqual)
+import Test.Spec.Assertions (shouldEqual, shouldNotSatisfy, shouldSatisfy)
 import Test.Spec.QuickCheck (quickCheck)
 import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner (runSpec)
@@ -33,6 +36,23 @@ main =
           describe "ChargeSeg" do
             calcSubTotalChargeSegVolume
             calcSubTotalChargeSegTiered
+        describe "Schema Validation" do
+          describe "boolean" do
+            validatesBoolean
+          describe "integer" do
+            validatesInteger
+          describe "string" do
+            validatesString
+          describe "regex" do
+            validatesRegex
+          describe "const" do
+            validatesConst
+          describe "array" do
+            validatesArray
+          describe "object" do
+            validatesObject
+          describe "oneOf" do
+            validatesOneOf
 
 -- | A EUR charge currency.
 eurChargeCurrency :: SS.ChargeCurrency
@@ -230,3 +250,189 @@ exampleChargeSeg model =
                 }
             ]
         }
+
+validatesBoolean :: Spec Unit
+validatesBoolean = do
+  it "validates boolean true"
+    $ SS.CvBoolean true `shouldSatisfy` isValidValue schema
+  it "validates boolean false"
+    $ SS.CvBoolean false `shouldSatisfy` isValidValue schema
+  where
+  schema =
+    SS.CseBoolean
+      { title: Nothing
+      , description: Nothing
+      , "default": Nothing
+      }
+
+validatesInteger :: Spec Unit
+validatesInteger = do
+  it "validates integer"
+    $ quickCheck \i -> isValidValue schema (SS.CvInteger i)
+  where
+  schema =
+    SS.CseInteger
+      { title: Nothing
+      , description: Nothing
+      , "default": Nothing
+      , minimum: Nothing
+      , maximum: Nothing
+      , enum: []
+      , widget: Nothing
+      }
+
+validatesString :: Spec Unit
+validatesString = do
+  it "validates string"
+    $ quickCheck \i -> isValidValue schema (SS.CvString i)
+  where
+  -- The most basic string schema that allows all strings.
+  schema =
+    SS.CseString
+      { title: Nothing
+      , description: Nothing
+      , minLength: Nothing
+      , maxLength: Nothing
+      , enum: []
+      , "default": Nothing
+      , widget: Nothing
+      }
+
+validatesRegex :: Spec Unit
+validatesRegex = do
+  it "validates regex matching"
+    $ SS.CvString "abcde" `shouldSatisfy` isValidValue schema
+  it "validates regex not matching"
+    $ SS.CvString "aaaa" `shouldNotSatisfy` isValidValue schema
+  where
+  schema =
+    SS.CseRegex
+      { title: Nothing
+      , description: Nothing
+      , pattern: "^a.c"
+      , "default": Nothing
+      , widget: Nothing
+      }
+
+validatesConst :: Spec Unit
+validatesConst = do
+  it "validates const equal"
+    $ SS.CvInteger 10 `shouldSatisfy` isValidValue schema
+  it "validates const not equal"
+    $ SS.CvInteger 5 `shouldNotSatisfy` isValidValue schema
+  where
+  schema =
+    SS.CseConst
+      { title: Nothing
+      , description: Nothing
+      , const: SS.CvInteger 10
+      }
+
+validatesArray :: Spec Unit
+validatesArray = do
+  it "validates array matching items"
+    $ quickCheck \is -> isValidValue schema (SS.CvArray (SS.CvInteger <$> is))
+  it "validates array not matching item"
+    $ badValue `shouldNotSatisfy` isValidValue schema
+  where
+  badValue = SS.CvArray [ SS.CvInteger 4, SS.CvBoolean true ]
+
+  schema =
+    SS.CseArray
+      { title: Nothing
+      , description: Nothing
+      , items:
+          SS.CseInteger
+            { title: Nothing
+            , description: Nothing
+            , "default": Nothing
+            , minimum: Nothing
+            , maximum: Nothing
+            , enum: []
+            , widget: Nothing
+            }
+      , widget: Nothing
+      }
+
+validatesObject :: Spec Unit
+validatesObject = do
+  it "validates object matching"
+    $ okValue `shouldSatisfy` isValidValue schema
+  it "validates object bad field"
+    $ badFieldValue `shouldNotSatisfy` isValidValue schema
+  it "validates object missing field"
+    $ missingFieldValue `shouldNotSatisfy` isValidValue schema
+  where
+  okValue =
+    SS.CvObject
+      $ Map.fromFoldable
+          [ Tuple "bool" (SS.CvBoolean true)
+          , Tuple "int" (SS.CvInteger 5)
+          ]
+
+  badFieldValue =
+    SS.CvObject
+      $ Map.fromFoldable
+          [ Tuple "bool" (SS.CvInteger 2)
+          , Tuple "int" (SS.CvInteger 5)
+          ]
+
+  missingFieldValue =
+    SS.CvObject
+      $ Map.fromFoldable
+          [ Tuple "bool" (SS.CvBoolean true)
+          ]
+
+  schema =
+    SS.CseObject
+      { title: Nothing
+      , description: Nothing
+      , properties:
+          FO.fromHomogeneous
+            { bool:
+                SS.CseBoolean
+                  { title: Nothing
+                  , description: Nothing
+                  , "default": Nothing
+                  }
+            , int:
+                SS.CseInteger
+                  { title: Nothing
+                  , description: Nothing
+                  , "default": Nothing
+                  , minimum: Nothing
+                  , maximum: Nothing
+                  , enum: []
+                  , widget: Nothing
+                  }
+            }
+      }
+
+validatesOneOf :: Spec Unit
+validatesOneOf = do
+  it "validates oneOf matching #1"
+    $ SS.CvBoolean true `shouldSatisfy` isValidValue schema
+  it "validates oneOf matching #2"
+    $ SS.CvInteger 2 `shouldSatisfy` isValidValue schema
+  it "validates oneOf not matching"
+    $ SS.CvString "foo" `shouldNotSatisfy` isValidValue schema
+  where
+  schema =
+    SS.CseOneOf
+      { oneOf:
+          [ SS.CseBoolean
+              { title: Nothing
+              , description: Nothing
+              , "default": Nothing
+              }
+          , SS.CseInteger
+              { title: Nothing
+              , description: Nothing
+              , "default": Nothing
+              , minimum: Nothing
+              , maximum: Nothing
+              , enum: []
+              , widget: Nothing
+              }
+          ]
+      }
