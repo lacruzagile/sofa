@@ -56,6 +56,9 @@ module.exports = {
           ...defaultTheme.fontFamily.sans,
         ]
       },
+      fontSize: {
+        '4xl': '2.5rem',
+      },
       maxHeight: {
         '128': '32rem',
       },
