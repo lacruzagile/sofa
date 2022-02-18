@@ -39,7 +39,7 @@ type State
     )
 
 data Action
-  = Load
+  = Initialize
 
 component ::
   forall query input m.
@@ -64,7 +64,7 @@ selectComponent =
         { handleAction = handleAction
         , handleEvent = handleEvent
         , render = render
-        , initialize = Just Load
+        , initialize = Just Initialize
         }
   where
   input :: Sel.Input State
@@ -80,26 +80,37 @@ selectComponent =
 
   handleAction :: Action -> H.HalogenM (Sel.State State) (Sel.Action Action) () Output m Unit
   handleAction = case _ of
-    Load -> do
+    Initialize -> do
       -- Focus the search box to allow immediate typing.
       focusElementByQuery "input#le-search"
-      H.modify_ _ { selected = Nothing, available = Loading, filtered = Loading }
-      result <- H.lift $ getLegalEntities
-      H.modify_ _ { available = result, filtered = result }
 
   handleEvent :: Sel.Event -> H.HalogenM (Sel.State State) (Sel.Action Action) () Output m Unit
   handleEvent = case _ of
-    Sel.Searched str -> do
-      H.modify_ \st ->
-        st
-          { filtered =
-            let
-              pat = S.Pattern $ S.toLower str
+    Sel.Searched _ -> do
+      state <- H.get
+      mAvailable <- case state.available of
+        Loaded _ -> pure $ Just state.available
+        Loading -> pure $ Nothing
+        _ -> do
+          H.modify_ $ \st -> st { available = Loading, filtered = Loading }
+          H.lift $ Just <$> getLegalEntities
+      case mAvailable of
+        Nothing -> pure unit
+        Just available ->
+          H.modify_ \st ->
+            st
+              { available = available
+              -- Update the array of filtered matches. Note, we don't filter
+              -- using the string passed in `Sel.Searched` since it may be out
+              -- of date at the time `getLegalEntities` finishes.
+              , filtered =
+                let
+                  pat = S.Pattern $ S.toLower st.search
 
-              match (SS.LegalEntity le) = S.contains pat (S.toLower le.registeredName)
-            in
-              A.filter match <$> st.available
-          }
+                  match (SS.LegalEntity le) = S.contains pat (S.toLower le.registeredName)
+                in
+                  A.filter match <$> available
+              }
     Sel.Selected idx -> do
       st' <-
         H.modify \st ->
