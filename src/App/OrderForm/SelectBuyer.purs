@@ -158,16 +158,27 @@ selectComponent =
 
     infoClasses = containerClasses <> [ Css.c "p-2" ]
 
-    loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
-
     renderResults :: Array (H.ComponentHTML Action' () m)
     renderResults
       | st.visibility == Sel.Off = case st.selectedFull of
-        Loading -> [ HH.div [ HP.classes loadingClasses ] [ HH.text "Loading buyer …" ] ]
+        Loading ->
+          [ HH.div [ HP.classes infoClasses ]
+              [ HH.span
+                  [ HP.class_ $ Css.c "animate-pulse" ]
+                  [ HH.text "Loading buyer …" ]
+              ]
+          ]
         _ -> []
       | otherwise = case st.available of
         Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
-        Loading -> [ HH.div [ HP.classes loadingClasses ] [ HH.text "Loading search results …" ] ]
+        Loading ->
+          [ HH.div
+              [ HP.classes infoClasses ]
+              [ HH.span
+                  [ HP.class_ $ Css.c "animate-pulse" ]
+                  [ HH.text "Loading search results …" ]
+              ]
+          ]
         Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
         Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching buyers …" ] ]
         Loaded available ->
