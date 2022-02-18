@@ -335,7 +335,10 @@ renderDetails st =
                   Loading ->
                     [ HH.option
                         [ HP.value "", HP.disabled true, HP.selected true ]
-                        [ HH.text "Loading contacts…" ]
+                        [ HH.span
+                            [ HP.class_ $ Css.c "animate-pulse" ]
+                            [ HH.text "Loading contacts…" ]
+                        ]
                     ]
                   Error _ ->
                     [ HH.option
