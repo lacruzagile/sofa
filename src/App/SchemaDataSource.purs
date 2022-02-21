@@ -5,6 +5,7 @@ module App.SchemaDataSource
 
 import Prelude
 import App.Requests as Requests
+import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
@@ -27,6 +28,7 @@ encUri = encodeURIComponent
 getDataSourceEnum ::
   forall m.
   MonadAff m =>
+  CredentialStore m =>
   { commercial :: Commercial } ->
   SchemaDataSourceEnum ->
   Maybe String ->
@@ -37,7 +39,7 @@ getDataSourceEnum vars dataSource input = case dataSource of
       available = Map.toUnfoldable entries :: Array (Tuple String ConfigValue)
     in
       pure $ Loaded available
-  SdsEnumHttpGet { url: urlTemplate } -> do
+  SdsEnumHttpGet { url: urlTemplate, authenticate } -> do
     let
       { commercial: Commercial commercial } = vars
 
@@ -49,4 +51,4 @@ getDataSourceEnum vars dataSource input = case dataSource of
               (S.Pattern "${commercial.billingAccountId}")
               (S.Replacement (fromMaybe "" (encUri =<< map unwrap commercial.billingAccountId)))
           $ urlTemplate
-    Requests.getDataSourceEnum url
+    Requests.getDataSourceEnum url authenticate

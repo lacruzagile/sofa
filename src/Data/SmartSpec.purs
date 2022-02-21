@@ -1228,6 +1228,8 @@ data SchemaDataSourceEnum
     }
   | SdsEnumHttpGet
     { url :: UriTemplate
+    , authenticate :: Boolean
+    -- ^ Whether to include the bearer token in the request.
     }
 
 instance decodeJsonSchemaDataSourceEnum :: DecodeJson SchemaDataSourceEnum where
@@ -1242,7 +1244,8 @@ instance decodeJsonSchemaDataSourceEnum :: DecodeJson SchemaDataSourceEnum where
         pure $ SdsEnumMap { entries }
       "http-get" -> do
         url <- o .: "url"
-        pure $ SdsEnumHttpGet { url }
+        authenticate <- o .:? "authenticate" .!= false
+        pure $ SdsEnumHttpGet { url, authenticate }
       _ -> Left (TypeMismatch "SchemaDataSourceEnum")
 
 instance encodeJsonSchemaDataSourceEnum :: EncodeJson SchemaDataSourceEnum where
@@ -1254,7 +1257,8 @@ instance encodeJsonSchemaDataSourceEnum :: EncodeJson SchemaDataSourceEnum where
     SdsEnumHttpGet x ->
       ("type" := "http-get")
         ~> ("url" := x.url)
-        ~> jsonEmptyObject
+        ~> ("authenticate" :=? ifNonEq false x.authenticate)
+        ~>? jsonEmptyObject
 
 data SchemaWidget
   = SwTextarea

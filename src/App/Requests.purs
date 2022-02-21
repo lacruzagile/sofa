@@ -250,6 +250,12 @@ getProductCatalog = getJson url
 getDataSourceEnum ::
   forall m.
   MonadAff m =>
+  CredentialStore m =>
   Uri ->
+  Boolean ->
   m (Loadable (Array (Tuple String ConfigValue)))
-getDataSourceEnum url = map FO.toUnfoldable <$> getJson url
+getDataSourceEnum url authenticate = map FO.toUnfoldable <$> result
+  where
+  result
+    | authenticate = getRJson url
+    | otherwise = getJson url
