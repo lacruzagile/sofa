@@ -1358,7 +1358,10 @@ data ConfigSchemaEntry
     { properties :: FO.Object ConfigSchemaEntry
     | ConfigSchemaEntryMeta
     }
-  | CseOneOf { oneOf :: Array ConfigSchemaEntry }
+  | CseOneOf
+    { oneOf :: Array ConfigSchemaEntry
+    | ConfigSchemaEntryMeta
+    }
 
 instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
   decodeJson json = typed <|> constValue <|> oneOf <|> Left (TypeMismatch "Schema")

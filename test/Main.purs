@@ -419,7 +419,9 @@ validatesOneOf = do
   where
   schema =
     SS.CseOneOf
-      { oneOf:
+      { title: Nothing
+      , description: Nothing
+      , oneOf:
           [ SS.CseBoolean
               { title: Nothing
               , description: Nothing

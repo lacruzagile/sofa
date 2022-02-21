@@ -16,6 +16,7 @@ import App.OrderForm.Widget.Typeahead as WTypeahead
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
 import Component.Icon as Icon
+import Component.Tabs as Tabs
 import Component.Tooltip as Tooltip
 import Control.Alternative (guard, (<|>))
 import Css as Css
@@ -41,6 +42,8 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
+import Data.Schema (isValidValue)
+import Data.Schema as Schema
 import Data.SmartSpec as SS
 import Data.String as S
 import Data.SubTotal (SubTotal)
@@ -76,6 +79,7 @@ type Slots
     , widgetRadio :: WRadio.Slot ConfigEntryIndex
     , widgetTextarea :: WTextarea.Slot ConfigEntryIndex
     , widgetTypeahead :: WTypeahead.Slot ConfigEntryIndex
+    , nectaryTabs :: Tabs.Slot ConfigEntryIndex
     )
 
 data Input
@@ -93,6 +97,8 @@ type StateOrderForm
     , priceBooks :: Map String (Array PriceBook)
     -- ^ Map from solution title to price books in the current currency.
     , orderForm :: OrderForm
+    , configTabs :: Map ConfigEntryIndex Int
+    -- ^ The currently selected tab of a `oneOf` configuration entry.
     , orderUpdateInFlight :: Boolean -- ^ Whether a current order update request is in flight.
     , orderFulfillInFlight :: Boolean -- ^ Whether a current order fulfillment request is in flight.
     }
@@ -189,6 +195,7 @@ data Action
     , orderLineIndex :: Int
     , configIndex :: Int
     }
+  | OrderLineSetConfigTab ConfigEntryIndex Int
   | OrderLineSetCharges
     { sectionIndex :: Int
     , orderLineIndex :: Int
@@ -607,12 +614,56 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ( [ HH.legend_ [ withDescription fallbackTitle schemaEntry ] ]
                   <> renderFields
               )
-      SS.CseOneOf _c ->
-        HH.input
-          [ HP.type_ HP.InputText
-          , HP.value "Unsupported configuration type: oneOf"
-          , HP.disabled true
-          ]
+      SS.CseOneOf c ->
+        let
+          withTabs content =
+            HH.div_
+              [ HH.slot Tabs.proxy entryIdx Tabs.component
+                  { selected:
+                      fromMaybe 0 do
+                        v <- value
+                        A.findIndex (\schema -> isValidValue schema v) c.oneOf
+                  , tabs:
+                      A.mapWithIndex
+                        ( \i schema ->
+                            { disabled: false
+                            , content: HH.text $ fromMaybe (show i) (Schema.getTitle schema)
+                            }
+                        )
+                        c.oneOf
+                  }
+                  (OrderLineSetConfigTab entryIdx)
+              , content
+              ]
+
+          -- The user has explicitly selected a tab so we try hard to show that
+          -- tab, even ignoring the current configuration value if necessary.
+          selectedTab = case state of
+            Initialized (Loaded { configTabs }) -> do
+              idx <- Map.lookup entryIdx configTabs
+              schema <- A.index c.oneOf idx
+              let
+                value' = do
+                  v <- value
+                  if isValidValue schema v then value else Nothing
+              pure $ renderEntry entryIdx act "" value' schema
+            _ -> Nothing
+
+          -- The user has not selected a tab but we have a value so show the
+          -- first matching tab.
+          matchingValue = do
+            v <- value
+            schema <- A.find (\schema -> isValidValue schema v) c.oneOf
+            pure $ renderEntry entryIdx act "" value schema
+
+          -- Just show the first tab.
+          firstValue = renderEntry entryIdx act "" value <$> A.head c.oneOf
+        in
+          renderEntry' fallbackTitle schemaEntry
+            $ maybe (HH.text $ "No oneOf schema matches the value: " <> show value) withTabs
+            $ selectedTab
+            <|> matchingValue
+            <|> firstValue
 
     pushEntryIndex :: ConfigEntryIndex -> Int -> ConfigEntryIndex
     pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
@@ -1409,6 +1460,7 @@ loadCatalog = do
               , summary: mempty
               , sections: []
               }
+          , configTabs: Map.empty
           , orderUpdateInFlight: false
           , orderFulfillInFlight: false
           }
@@ -1433,7 +1485,9 @@ mkDefaultConfig = case _ of
           $ FO.toUnfoldable x.properties
     in
       Just $ SS.CvObject defaults
-  SS.CseOneOf _ -> Nothing
+  SS.CseOneOf { oneOf } -> case A.head oneOf of
+    Just x -> mkDefaultConfig x
+    Nothing -> Nothing
 
 mkDefaultConfigs :: SS.Product -> Array SS.OrderLineConfig
 mkDefaultConfigs (SS.Product p) =
@@ -1590,6 +1644,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
             , summary: mempty
             , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
             }
+      , configTabs: Map.empty
       , orderUpdateInFlight: false
       , orderFulfillInFlight: false
       }
@@ -1955,6 +2010,9 @@ handleAction = case _ of
     in
       modifyInitialized $ modifyOrderForm
         $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
+  OrderLineSetConfigTab entryIdx tabIdx ->
+    modifyInitialized \orderForm ->
+      orderForm { configTabs = Map.insert entryIdx tabIdx orderForm.configTabs }
   OrderLineSetCharges { sectionIndex, orderLineIndex, charges, estimatedUsage } ->
     modifyInitialized $ modifyOrderForm
       $ modifyOrderLine sectionIndex orderLineIndex

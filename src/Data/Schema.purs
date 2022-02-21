@@ -1,6 +1,7 @@
 -- | A collection of utility function related to Smart Spec data schemas.
 module Data.Schema
-  ( isValidValue
+  ( getTitle
+  , isValidValue
   ) where
 
 import Prelude
@@ -9,10 +10,21 @@ import Data.Either (Either(..))
 import Data.Foldable (all)
 import Data.FoldableWithIndex (allWithIndex)
 import Data.Map as Map
-import Data.Maybe (maybe)
+import Data.Maybe (Maybe, maybe)
 import Data.SmartSpec (ConfigSchemaEntry(..), ConfigValue(..))
 import Data.String as S
 import Data.String.Regex as Re
+
+getTitle :: ConfigSchemaEntry -> Maybe String
+getTitle = case _ of
+  CseBoolean { title } -> title
+  CseInteger { title } -> title
+  CseString { title } -> title
+  CseRegex { title } -> title
+  CseConst { title } -> title
+  CseArray { title } -> title
+  CseObject { title } -> title
+  CseOneOf { title } -> title
 
 -- | Determines whether the given value is valid for the given schema.
 isValidValue :: ConfigSchemaEntry -> ConfigValue -> Boolean
