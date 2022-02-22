@@ -238,13 +238,13 @@ renderDetails st =
           | st.readOnly =
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-tropical"), HE.onClick \_ -> CancelAndCloseDetails ]
+                [ HP.class_ (Css.c "sofa-btn-primary"), HE.onClick \_ -> CancelAndCloseDetails ]
                 [ HH.text "Close" ]
             ]
           | otherwise =
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-tropical")
+                [ HP.class_ (Css.c "sofa-btn-primary")
                 , HP.enabled
                     ( isJust st.buyer
                         && (buyer.contacts.primary /= SS.emptyContact)
@@ -254,7 +254,7 @@ renderDetails st =
                 ]
                 [ HH.text "OK" ]
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-red-100"), HE.onClick \_ -> CancelAndCloseDetails ]
+                [ HP.class_ (Css.c "sofa-btn-secondary"), HE.onClick \_ -> CancelAndCloseDetails ]
                 [ HH.text "Cancel" ]
             ]
     in

@@ -402,7 +402,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ HP.classes
                     [ Css.c "relative"
                     , Css.c "float-right"
-                    , Css.c "sofa-btn-red-100"
+                    , Css.c "sofa-btn-destructive"
                     , Css.c "ml-2"
                     , Css.c "py-0"
                     ]
@@ -444,7 +444,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | not isInDraft = []
       | otherwise =
         [ HH.button
-            [ HP.class_ (Css.c "sofa-btn-tropical")
+            [ HP.class_ (Css.c "sofa-btn-primary")
             , HE.onClick \_ -> OrderLineAddConfig olIdx
             ]
             [ HH.text "+ Add Configuration" ]
@@ -847,7 +847,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | otherwise =
         HH.button
           [ HP.classes
-              [ Css.c "sofa-btn-red-100"
+              [ Css.c "sofa-btn-destructive"
               , Css.c "relative"
               , Css.c "float-right"
               , Css.c "py-0"
@@ -863,7 +863,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | otherwise =
         HH.div_
           [ HH.button
-              [ HP.classes [ Css.c "sofa-btn-tropical", Css.c "m-5", Css.c "py-0" ]
+              [ HP.classes [ Css.c "sofa-btn-primary", Css.c "m-5", Css.c "py-0" ]
               , HE.onClick \_ ->
                   let
                     toVal = case _ of
@@ -960,7 +960,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.c "sofa-btn-tropical" ]
+                      [ HP.classes [ Css.c "sofa-btn-primary" ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
                       [ HH.text "+ Add Order Line" ]
@@ -1060,7 +1060,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ]
               ]
               [ HH.button
-                  [ HP.class_ (Css.c "sofa-btn-tropical")
+                  [ HP.class_ (Css.c "sofa-btn-primary")
                   , HE.onClick \_ -> AddSection
                   ]
                   [ HH.text "+ Add Section" ]
@@ -1254,7 +1254,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     footerDiv
       [ btnsDiv
           [ HH.button
-              [ HP.class_ (Css.c "sofa-btn-tropical")
+              [ HP.class_ (Css.c "sofa-btn-primary")
               , HP.disabled preventCreate
               , HE.onClick $ \_ -> CreateUpdateOrder
               ]
@@ -1265,7 +1265,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   HH.text ""
               ]
           , HH.button
-              [ HP.class_ (Css.c "sofa-btn-tropical")
+              [ HP.class_ (Css.c "sofa-btn-primary")
               , HP.disabled preventFulfill
               , HE.onClick $ \_ -> FulfillOrder
               ]
