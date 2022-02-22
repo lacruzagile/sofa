@@ -2,6 +2,7 @@ module App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
 import App.Charge (Slot, component, proxy) as Charge
+import App.NavbarItemUser as NavbarItemUser
 import App.OrderForm.Buyer as Buyer
 import App.OrderForm.Commercial as Commercial
 import App.OrderForm.Notes as Notes
@@ -80,12 +81,15 @@ type Slots
     , widgetTextarea :: WTextarea.Slot ConfigEntryIndex
     , widgetTypeahead :: WTypeahead.Slot ConfigEntryIndex
     , nectaryTabs :: Tabs.Slot ConfigEntryIndex
+    , navbarItemUser :: NavbarItemUser.Slot Unit
+    -- ^ Temporary until we have working Salesforce login.
     )
 
 data Input
   = NewOrder
   | ExistingOrder SS.OrderForm
   | ExistingOrderId SS.OrderId
+  | ExistingCrmQuoteId SS.CrmQuoteId
 
 data State
   = Initializing Input
@@ -106,6 +110,7 @@ type StateOrderForm
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
   = { original :: Maybe SS.OrderForm -- ^ The original order form, if one exists.
+    , crmQuoteId :: Maybe SS.CrmQuoteId
     , commercial :: Maybe SS.Commercial
     , buyer :: Maybe SS.Buyer
     , seller :: Maybe SS.Seller
@@ -230,8 +235,22 @@ initialize :: Maybe Action
 initialize = Just Initialize
 
 render :: forall m. MonadAff m => CredentialStore m => State -> H.ComponentHTML Action Slots m
-render state = HH.section_ [ HH.article_ renderContent ]
+render state =
+  HH.section (if inQuoteContext then [ HP.class_ (Css.c "mx-5") ] else [])
+    [ if inQuoteContext then
+        -- Temporarily show login button if running in a quote context.
+        HH.header
+          [ HP.classes [ Css.c "float-right" ] ]
+          [ HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd ]
+      else
+        HH.text ""
+    , HH.article_ renderContent
+    ]
   where
+  inQuoteContext = case state of
+    Initialized (Loaded { orderForm: { crmQuoteId: Just _ } }) -> true
+    _ -> false
+
   renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
 
   renderCharges ::
@@ -1097,6 +1116,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , value [ HH.text $ maybe "Not Available" show o.id ]
                 ]
           )
+      <> case orderForm.crmQuoteId of
+          Nothing -> []
+          Just (SS.CrmQuoteId id) ->
+            [ entry
+                [ title [ HH.text "Quote ID" ]
+                , value [ HH.text id ]
+                ]
+            ]
       <> withOriginal
           ( \o ->
               entry
@@ -1392,6 +1419,7 @@ toJson orderForm = do
         , status: orderForm.status
         , approvalStatus: SS.OasUndecided
         , displayName: orderForm.displayName
+        , crmQuoteId: orderForm.crmQuoteId
         , commercial
         , buyer
         , seller
@@ -1438,8 +1466,9 @@ toJsonStr = map (stringifyWithIndent 2 <<< encodeJson) <<< toJson
 loadCatalog ::
   forall slots output m.
   MonadAff m =>
+  Maybe SS.CrmQuoteId ->
   H.HalogenM State Action slots output m Unit
-loadCatalog = do
+loadCatalog crmQuoteId = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff getProductCatalog
   let
@@ -1451,6 +1480,7 @@ loadCatalog = do
           , orderForm:
               { original: Nothing
               , displayName: Nothing
+              , crmQuoteId
               , commercial: Nothing
               , buyer: Nothing
               , seller: Nothing
@@ -1635,6 +1665,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
           calcTotal
             { original: Just original
             , displayName: orderForm.displayName
+            , crmQuoteId: orderForm.crmQuoteId
             , commercial: Just orderForm.commercial
             , buyer: Just orderForm.buyer
             , seller: Just orderForm.seller
@@ -1767,7 +1798,7 @@ handleAction = case _ of
   Initialize -> do
     st <- H.get
     case st of
-      Initializing NewOrder -> loadCatalog
+      Initializing NewOrder -> loadCatalog Nothing
       Initializing (ExistingOrder orderForm) -> loadExisting orderForm
       Initializing (ExistingOrderId id) -> do
         H.put $ Initialized Loading
@@ -1777,6 +1808,7 @@ handleAction = case _ of
           Idle -> H.put $ Initialized Idle
           Loaded order -> loadExisting order
           Loading -> H.put $ Initialized Loading
+      Initializing (ExistingCrmQuoteId crmQuoteId) -> loadCatalog (Just crmQuoteId)
       _ -> pure unit
   SetOrderDisplayName name ->
     modifyInitialized

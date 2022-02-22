@@ -73,7 +73,7 @@ render ::
   CredentialStore m =>
   State -> H.ComponentHTML Action Slots m
 render state =
-  HH.div [ HP.classes [ Css.c "mx-auto" ], HP.style "max-width: 80rem" ]
+  HH.div [ HP.classes [ Css.c "mx-5" ] ]
     [ renderNavbar state.route
     , renderBody state
     ]
@@ -96,8 +96,7 @@ renderNavbar currentRoute =
     ]
   where
   navbarClasses =
-    [ Css.c "mx-5"
-    , Css.c "px-3"
+    [ Css.c "px-3"
     , Css.c "py-3"
     , Css.c "flex"
     , Css.c "justify-between"
@@ -151,7 +150,7 @@ renderBody ::
   State ->
   H.ComponentHTML Action Slots m
 renderBody state =
-  HH.main [ HP.class_ (Css.c "m-5") ]
+  HH.main_
     [ case state.route of
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm

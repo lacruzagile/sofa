@@ -23,6 +23,7 @@ module Data.SmartSpec
   , ContractTerm(..)
   , Country(..)
   , CrmAccountId(..)
+  , CrmQuoteId(..)
   , DefaultPricePerUnit(..)
   , DimValue(..)
   , Discount(..)
@@ -2718,12 +2719,30 @@ abbreviatedOrderId (OrderId id) =
   in
     if len > 10 then S.take 4 id <> "…" <> S.drop (len - 4) id else id
 
+newtype CrmQuoteId
+  = CrmQuoteId String
+
+derive instance genericCrmQuoteId :: Generic CrmQuoteId _
+
+derive instance eqCrmQuoteId :: Eq CrmQuoteId
+
+derive instance ordCrmQuoteId :: Ord CrmQuoteId
+
+derive instance newtypeCrmQuoteId :: Newtype CrmQuoteId _
+
+derive newtype instance showCrmQuoteId :: Show CrmQuoteId
+
+derive newtype instance decodeJsonCrmQuoteId :: DecodeJson CrmQuoteId
+
+derive newtype instance encodeJsonCrmQuoteId :: EncodeJson CrmQuoteId
+
 newtype OrderForm
   = OrderForm
   { id :: Maybe OrderId
   , status :: OrderStatus
   , approvalStatus :: OrderApprovalStatus
   , displayName :: Maybe String
+  , crmQuoteId :: Maybe CrmQuoteId
   , commercial :: Commercial
   , buyer :: Buyer
   , seller :: Seller
@@ -2740,6 +2759,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
     status <- o .:? "status" .!= OsInDraft
     approvalStatus <- o .:? "approvalStatus" .!= OasUndecided
     displayName <- o .:? "displayName"
+    crmQuoteId <- o .: "crmQuoteId"
     commercial <- o .: "commercial"
     buyer <- o .: "buyer"
     seller <- o .: "seller"
@@ -2753,6 +2773,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
           , status
           , approvalStatus
           , displayName
+          , crmQuoteId
           , commercial
           , buyer
           , seller
@@ -2768,6 +2789,7 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
       ~>? ("status" := x.status)
       ~> ("approvalStatus" := x.approvalStatus)
       ~> ("displayName" :=? x.displayName)
+      ~>? ("crmQuoteId" :=? x.crmQuoteId)
       ~>? ("commercial" := x.commercial)
       ~> ("buyer" := x.buyer)
       ~> ("seller" := x.seller)

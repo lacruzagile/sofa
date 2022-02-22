@@ -15,3 +15,11 @@ exports.sfData = just => nothing => () => {
     userEmail:  __USER_EMAIL__,
   })
 }
+
+exports._getCrmQuoteId = just => nothing => () => {
+  if (typeof __QUOTE_SFID__ === "undefined") {
+    return nothing;
+  } else {
+    return just(__QUOTE_SFID__);
+  }
+}
