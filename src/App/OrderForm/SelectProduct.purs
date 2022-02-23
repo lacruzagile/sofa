@@ -111,7 +111,7 @@ selectComponent =
                 [ Css.c "w-96"
                 , Css.c "mr-5"
                 , Css.c "text-lg"
-                , Css.c "focus-outline"
+                , Css.c "focus:outline"
                 , Css.c "outline-1"
                 , Css.c "outline-gray-300"
                 , Css.c "placeholder:italic"
