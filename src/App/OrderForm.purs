@@ -909,7 +909,7 @@ render state =
         [ HH.label_
             [ renderSmallTitle "Solution"
             , HH.select
-                [ HP.classes [ Css.c "text-lg", Css.c "border", Css.c "bg-white" ]
+                [ HP.class_ (Css.c "text-lg")
                 , HE.onValueChange actionSetSolution
                 ]
                 $ [ HH.option
@@ -939,7 +939,9 @@ render state =
           $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
                 [ HH.div [ HP.class_ (Css.c "w-1/2") ]
                     [ renderSmallTitle "Solution"
-                    , HH.text $ solutionLabel sec.solution
+                    , HH.span
+                        [ HP.class_ (Css.c "text-lg") ]
+                        [ HH.text $ solutionLabel sec.solution ]
                     ]
                 , if A.null priceBookOpts then
                     HH.text ""
@@ -947,15 +949,7 @@ render state =
                     HH.label [ HP.class_ (Css.c "w-1/2") ]
                       [ renderSmallTitle "Price Book"
                       , HH.select
-                          [ HP.classes
-                              [ Css.c "appearance-none"
-                              , Css.c "bg-transparent"
-                              , Css.c "text-ellipsis"
-                              , Css.c "underline"
-                              , Css.c "underline-offset-4"
-                              , Css.c "decoration-honey-500"
-                              ]
-                          , HE.onSelectedIndexChange $ actionSetPriceBook priceBooks
+                          [ HE.onSelectedIndexChange $ actionSetPriceBook priceBooks
                           ]
                           $ [ HH.option
                                 [ HP.disabled true, HP.selected (isNothing sec.priceBook) ]

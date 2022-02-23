@@ -306,15 +306,7 @@ renderDetails st =
         HH.label_
           [ renderSmallTitle label
           , HH.select
-              [ HP.classes
-                  [ Css.c "appearance-none"
-                  , Css.c "bg-transparent"
-                  , Css.c "w-96"
-                  , Css.c "text-ellipsis"
-                  , Css.c "underline"
-                  , Css.c "underline-offset-4"
-                  , Css.c "decoration-honey-500"
-                  ]
+              [ HP.classes [ Css.c "p-1", Css.c "h-max", Css.c "w-96" ]
               , HE.onValueChange actionSetContact
               ]
               $ case st.buyerAvailableContacts of

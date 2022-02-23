@@ -23,6 +23,27 @@
     @apply font-semibold;
   }
 
+  select {
+    @apply
+      appearance-none
+      border
+      border-stormy-200
+      rounded-sm
+      box-border
+      h-12
+      my-0.5
+      pl-3
+      pr-8
+      py-2
+      text-ellipsis
+      bg-snow-100
+      fill-stormy-500;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' style='fill:%233B5264'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
+    background-position: calc(100% - 0.75rem) 50%;
+    background-size: 1rem 1rem;
+    background-repeat: no-repeat;
+  }
+
   @font-face {
     font-family: "Gilroy";
     src: url("fonts/Gilroy-Regular.woff2") format('woff2'),
@@ -155,6 +176,7 @@
       text-sm
       font-semibold
       rounded-full
+      h-max
       pl-2
       pr-8
       py-1.5;
