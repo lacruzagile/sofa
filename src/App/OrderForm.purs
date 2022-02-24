@@ -723,7 +723,7 @@ render state =
                       }
                       (mact (act <<< const <<< SS.CvArray) <<< Just)
                 )
-                (mkGetEnumData =<< dataSourceWithFallback dataSource)
+                (mkGetEnumData <$> dataSourceWithFallback dataSource)
             SS.SwDropdown { dataSource } ->
               maybe
                 (HH.text "Dropdown without data source or enum")
@@ -735,7 +735,7 @@ render state =
                       { value, getEnumData: getEnumData }
                       (mact (act <<< const))
                 )
-                (mkGetEnumData =<< dataSourceWithFallback dataSource)
+                (mkGetEnumData <$> dataSourceWithFallback dataSource)
             SS.SwRadio { dataSource } ->
               maybe
                 (HH.text "Radio buttons without data source or enum")
@@ -747,7 +747,7 @@ render state =
                       { value, getEnumData: getEnumData }
                       (mact (act <<< const))
                 )
-                (mkGetEnumData =<< dataSourceWithFallback dataSource)
+                (mkGetEnumData <$> dataSourceWithFallback dataSource)
             SS.SwTypeahead { minInputLength, debounceMs, dataSource } ->
               maybe
                 (HH.text "Typeahead without data source or enum")
@@ -763,19 +763,22 @@ render state =
                       }
                       (mact (act <<< const))
                 )
-                (mkGetEnumData =<< dataSourceWithFallback dataSource)
+                (mkGetEnumData <$> dataSourceWithFallback dataSource)
       where
-      mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe (Maybe String -> m DataSourceEnumResult)
-      mkGetEnumData dataSource = do
-        commercial <- case state of
-          Initialized (Loaded { orderForm: { commercial } }) -> commercial
-          _ -> Nothing
-        pure $ getDataSourceEnum { commercial } dataSource
+      mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe String -> m DataSourceEnumResult
+      mkGetEnumData dataSource =
+        let
+          getCommercial _unit = case state of
+            Initialized (Loaded { orderForm: { commercial } }) -> commercial
+            _ -> Nothing
+        in
+          getDataSourceEnum { getCommercial } dataSource
 
       -- Endow a data source with fallback to schema entry enum values. Takes as
       -- input a maybe data source, which is preferred, otherwise uses the enum
       -- values of the current schema entry, and if no enum is available then
       -- nothing is returned.
+      dataSourceWithFallback :: Maybe SS.SchemaDataSourceEnum -> Maybe SS.SchemaDataSourceEnum
       dataSourceWithFallback = case _ of
         Just ds -> Just ds
         Nothing -> case schemaEntry of

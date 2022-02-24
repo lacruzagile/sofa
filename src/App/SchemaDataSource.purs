@@ -9,12 +9,13 @@ import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Newtype (unwrap)
-import Data.SmartSpec (Commercial(..), ConfigValue, SchemaDataSourceEnum(..))
-import Data.String as S
+import Data.SmartSpec (BillingAccountId(..), Commercial(..), ConfigValue, SchemaDataSourceEnum(..))
 import Data.Tuple (Tuple)
 import Effect.Aff.Class (class MonadAff)
 import JSURI (encodeURIComponent)
+
+-- | The 'replaceAll' method taking a function as replacer.
+foreign import replaceAllFun :: String -> (Unit -> String) -> String -> String
 
 type DataSourceEnumResult
   = Loadable (Array (Tuple String ConfigValue))
@@ -29,7 +30,7 @@ getDataSourceEnum ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
-  { commercial :: Commercial } ->
+  { getCommercial :: Unit -> Maybe Commercial } ->
   SchemaDataSourceEnum ->
   Maybe String ->
   m (Loadable (Array (Tuple String ConfigValue)))
@@ -39,16 +40,19 @@ getDataSourceEnum vars dataSource input = case dataSource of
       available = Map.toUnfoldable entries :: Array (Tuple String ConfigValue)
     in
       pure $ Loaded available
-  SdsEnumHttpGet { url: urlTemplate, authenticate } -> do
+  SdsEnumHttpGet { url: urlTemplate, authenticate } ->
     let
-      { commercial: Commercial commercial } = vars
+      varCommercial _ =
+        fromMaybe "" do
+          Commercial commercial <- vars.getCommercial unit
+          BillingAccountId baid <- commercial.billingAccountId
+          encUri baid
+
+      varInput _ = fromMaybe "" $ encUri =<< input
 
       url =
-        S.replaceAll
-          (S.Pattern "${input}")
-          (S.Replacement (fromMaybe "" (encUri =<< input)))
-          $ S.replaceAll
-              (S.Pattern "${commercial.billingAccountId}")
-              (S.Replacement (fromMaybe "" (encUri =<< map unwrap commercial.billingAccountId)))
+        replaceAllFun "${input}" varInput
+          $ replaceAllFun "${commercial.billingAccountId}" varCommercial
           $ urlTemplate
-    Requests.getDataSourceEnum url authenticate
+    in
+      Requests.getDataSourceEnum url authenticate
