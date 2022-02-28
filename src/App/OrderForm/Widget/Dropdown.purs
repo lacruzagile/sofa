@@ -77,7 +77,13 @@ render st = case st.available of
   Loaded available ->
     HH.select
       [ HE.onSelectedIndexChange Select ]
-      $ map renderItem available
+      $ [ HH.option
+            [ HP.selected $ st.selected == Nothing
+            , HP.disabled true
+            ]
+            [ HH.text $ "Please choose an option" ]
+        ]
+      <> map renderItem available
   where
   containerClasses = []
 
@@ -116,7 +122,7 @@ handleAction = case _ of
             snd
               <$> do
                   available <- Loadable.toMaybe st.available
-                  available !! idx
+                  available !! (idx - 1)
           }
     -- Let the parent component know about the new selection.
     H.raise st'.selected
