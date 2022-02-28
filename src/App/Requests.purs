@@ -25,6 +25,8 @@ module App.Requests
   ) where
 
 import Prelude
+import Control.Alternative ((<|>))
+import Data.Argonaut (class DecodeJson, decodeJson, (.:))
 import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable, deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
@@ -246,6 +248,20 @@ getProductCatalog = getJson url
   -- current deployment.
   url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> smartSpecProdCatalogFilename
 
+newtype DataSourceResponse
+  = DataSourceResponse (FO.Object ConfigValue)
+
+instance decodeJsonDataSourceResponse :: DecodeJson DataSourceResponse where
+  -- Temporarily allows plain map or map wrapped in data field.
+  decodeJson json = d1 <|> d2
+    where
+    d1 = do
+      o <- decodeJson json
+      d <- o .: "data"
+      pure $ DataSourceResponse d
+
+    d2 = DataSourceResponse <$> decodeJson json
+
 -- | Fetches data source key/value pairs from the given URL.
 getDataSourceEnum ::
   forall m.
@@ -254,8 +270,10 @@ getDataSourceEnum ::
   Uri ->
   Boolean ->
   m (Loadable (Array (Tuple String ConfigValue)))
-getDataSourceEnum url authenticate = map FO.toUnfoldable <$> result
+getDataSourceEnum url authenticate = map parse <$> result
   where
+  parse (DataSourceResponse o) = FO.toUnfoldable o
+
   result
     | authenticate = getRJson url
     | otherwise = getJson url
