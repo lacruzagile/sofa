@@ -2759,7 +2759,14 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
     status <- o .:? "status" .!= OsInDraft
     approvalStatus <- o .:? "approvalStatus" .!= OasUndecided
     displayName <- o .:? "displayName"
-    crmQuoteId <- o .: "crmQuoteId"
+    -- Read quote ID, treating empty strings as non-existence.
+    crmQuoteId <-
+      map
+        ( maybe
+            Nothing
+            (\qid -> if qid == CrmQuoteId "" then Nothing else Just qid)
+        )
+        (o .: "crmQuoteId")
     commercial <- o .: "commercial"
     buyer <- o .: "buyer"
     seller <- o .: "seller"
