@@ -38,9 +38,14 @@ isValidValue (CseInteger si) (CvInteger i) =
 isValidValue (CseString si) (CvString i) =
   let
     len = S.length i
+
+    matchRegex pat str = case Re.regex pat mempty of
+      Left _ -> false -- Some regex syntax error.
+      Right re -> Re.test re str
   in
     maybe true (\c -> c <= len) si.minLength -- At least `minLength`.
       && maybe true (\c -> len <= c) si.maxLength -- At most `maxLength`.
+      && maybe true (\pat -> matchRegex pat i) si.pattern -- Matches `pattern`.
       && (A.null si.enum || A.elem i si.enum) -- Member of `enum`.
 
 isValidValue (CseRegex si) (CvString i) = case Re.regex si.pattern mempty of

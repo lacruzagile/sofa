@@ -535,18 +535,22 @@ render state =
 
               ma = maybe "" show c.maxLength
 
-              pat =
-                if mi == "0" && ma == "" then
-                  []
-                else
-                  [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
+              pat = case c.pattern of
+                Just pattern -> [ HP.pattern pattern ]
+                Nothing ->
+                  if mi == "0" && ma == "" then
+                    []
+                  else
+                    [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
 
-              placeholder = case Tuple mi ma of
-                Tuple "0" "" -> "String"
-                Tuple "0" ma' -> "String of max " <> ma' <> " characters"
-                Tuple mi' ma'
-                  | mi' == ma' -> "String of " <> mi' <> " characters"
-                  | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
+              placeholder = case c.pattern of
+                Just pattern -> "String matching " <> pattern
+                Nothing -> case Tuple mi ma of
+                  Tuple "0" "" -> "String"
+                  Tuple "0" ma' -> "String of max " <> ma' <> " characters"
+                  Tuple mi' ma'
+                    | mi' == ma' -> "String of " <> mi' <> " characters"
+                    | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
             in
               HH.input
                 $ [ HP.type_ HP.InputText

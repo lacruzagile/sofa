@@ -1336,6 +1336,7 @@ data ConfigSchemaEntry
     { minLength :: Maybe Int
     , maxLength :: Maybe Int
     , enum :: Array String
+    , pattern :: Maybe String
     , default :: Maybe String
     , widget :: Maybe SchemaWidget
     | ConfigSchemaEntryMeta
@@ -1387,6 +1388,7 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
           minLength <- o .:? "minLength"
           maxLength <- o .:? "maxLength"
           enum <- o .:? "enum" .!= []
+          pattern <- o .:? "pattern"
           default <- o .:? "default"
           widget <- o .:? "widget"
           Right
@@ -1396,6 +1398,7 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
                 , minLength
                 , maxLength
                 , enum
+                , pattern
                 , default
                 , widget
                 }

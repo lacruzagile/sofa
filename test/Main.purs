@@ -283,8 +283,12 @@ validatesInteger = do
 
 validatesString :: Spec Unit
 validatesString = do
-  it "validates string"
+  it "validates plain string"
     $ quickCheck \i -> isValidValue schema (SS.CvString i)
+  it "validates string pattern matching"
+    $ SS.CvString "abcde" `shouldSatisfy` isValidValue schemaWithPattern
+  it "validates string pattern not matching"
+    $ SS.CvString "aaaa" `shouldNotSatisfy` isValidValue schemaWithPattern
   where
   -- The most basic string schema that allows all strings.
   schema =
@@ -294,6 +298,19 @@ validatesString = do
       , minLength: Nothing
       , maxLength: Nothing
       , enum: []
+      , pattern: Nothing
+      , "default": Nothing
+      , widget: Nothing
+      }
+
+  schemaWithPattern =
+    SS.CseString
+      { title: Nothing
+      , description: Nothing
+      , minLength: Nothing
+      , maxLength: Nothing
+      , enum: []
+      , pattern: Just "^a.c"
       , "default": Nothing
       , widget: Nothing
       }
