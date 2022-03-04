@@ -110,6 +110,7 @@ type StateOrderForm
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
   = { original :: Maybe SS.OrderForm -- ^ The original order form, if one exists.
+    , changed :: Boolean -- ^ Whether this order has unsaved changes.
     , crmQuoteId :: Maybe SS.CrmQuoteId
     , commercial :: Maybe SS.Commercial
     , buyer :: Maybe SS.Buyer
@@ -208,6 +209,7 @@ data Action
     , estimatedUsage :: QuantityMap
     }
   | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
+  | DiscardOrder -- ^ Discard the currently loaded order.
   | CreateUpdateOrder -- ^ Create or update the current order.
   | FulfillOrder -- ^ Trigger order fulfillment.
 
@@ -247,6 +249,9 @@ render state =
     , HH.article_ renderContent
     ]
   where
+  -- An order is in a quote context when it has a CRM quote ID. In practice this
+  -- means that SOFA is running as an app inside a Salesforce quote.
+  inQuoteContext :: Boolean
   inQuoteContext = case state of
     Initialized (Loaded { orderForm: { crmQuoteId: Just _ } }) -> true
     _ -> false
@@ -1282,30 +1287,43 @@ render state =
               , HP.disabled preventCreate
               , HE.onClick $ \_ -> CreateUpdateOrder
               ]
-              [ HH.text $ maybe "Create Order" (const "Update Order") (getOrderId sof)
+              [ HH.text $ maybe "Send Order" (const "Update Order") (getOrderId sof)
               , if sof.orderUpdateInFlight then
                   Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
                 else
                   HH.text ""
               ]
-          , HH.button
-              [ HP.class_ (Css.c "sofa-btn-primary")
-              , HP.disabled preventFulfill
-              , HE.onClick $ \_ -> FulfillOrder
-              ]
-              [ HH.text "Fulfill Order"
-              , if sof.orderFulfillInFlight then
-                  Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-                else
-                  HH.text ""
-              ]
+          , if isFreshOrder then
+              HH.button
+                [ HP.class_ (Css.c "sofa-btn-destructive")
+                , HP.disabled $ not sof.orderForm.changed
+                , HE.onClick $ \_ -> DiscardOrder
+                ]
+                [ HH.text "Discard Order" ]
+            else
+              HH.button
+                [ HP.class_ (Css.c "sofa-btn-primary")
+                , HP.disabled preventFulfill
+                , HE.onClick $ \_ -> FulfillOrder
+                ]
+                [ HH.text "Fulfill Order"
+                , if sof.orderFulfillInFlight then
+                    Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                  else
+                    HH.text ""
+                ]
           ]
       , HH.div [ HP.class_ (Css.c "grow") ] []
       , renderOrderSummary sof.orderForm.summary
       ]
     where
+    -- An order is fresh (i.e., not yet created in the backend) if we have the
+    -- original order object.
+    isFreshOrder = isNothing sof.orderForm.original
+
     preventCreate =
       sof.orderUpdateInFlight
+        || not sof.orderForm.changed
         || fromMaybe true do
             _ <- sof.orderForm.seller
             _ <- sof.orderForm.buyer
@@ -1476,6 +1494,7 @@ loadCatalog crmQuoteId = do
           , priceBooks: Map.empty
           , orderForm:
               { original: Nothing
+              , changed: false
               , displayName: Nothing
               , crmQuoteId
               , commercial: Nothing
@@ -1661,6 +1680,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
       , orderForm:
           calcTotal
             { original: Just original
+            , changed: false
             , displayName: orderForm.displayName
             , crmQuoteId: orderForm.crmQuoteId
             , commercial: Just orderForm.commercial
@@ -1732,7 +1752,7 @@ modifyOrderForm ::
   (OrderForm -> OrderForm) ->
   { orderForm :: OrderForm | r } ->
   { orderForm :: OrderForm | r }
-modifyOrderForm f r = r { orderForm = calcTotal (f r.orderForm) }
+modifyOrderForm f r = r { orderForm = calcTotal (f r.orderForm) { changed = true } }
 
 toPricingCurrency :: SS.Commercial -> Maybe SS.PricingCurrency
 toPricingCurrency (SS.Commercial { billingCurrency }) = Just billingCurrency
@@ -1813,7 +1833,8 @@ handleAction = case _ of
           st
             { orderForm =
               st.orderForm
-                { displayName =
+                { changed = true
+                , displayName =
                   let
                     sname = S.trim name
                   in
@@ -1822,13 +1843,27 @@ handleAction = case _ of
             }
   SetSeller seller -> do
     modifyInitialized
-      $ \st -> st { orderForm = st.orderForm { seller = Just seller } }
+      $ \st ->
+          st
+            { orderForm =
+              st.orderForm
+                { changed = true
+                , seller = Just seller
+                }
+            }
     H.tell Buyer.proxy unit (Buyer.ResetBuyer Nothing true)
     H.tell Commercial.proxy unit
       (Commercial.ResetCommercial { commercial: Nothing, crmAccountId: Nothing, enabled: false })
   SetBuyer buyer -> do
     modifyInitialized
-      $ \st -> st { orderForm = st.orderForm { buyer = Just buyer } }
+      $ \st ->
+          st
+            { orderForm =
+              st.orderForm
+                { changed = true
+                , buyer = Just buyer
+                }
+            }
     let
       SS.Buyer { crmAccountId } = buyer
     H.tell Commercial.proxy unit
@@ -1859,7 +1894,8 @@ handleAction = case _ of
               , priceBooks = priceBooks
               , orderForm =
                 st.orderForm
-                  { commercial = Just commercial
+                  { changed = true
+                  , commercial = Just commercial
                   --  If the currency changed then we can't use the same price
                   --  book, so the summary and all sections need to be updated.
                   , summary =
@@ -1894,7 +1930,8 @@ handleAction = case _ of
           in
             st
               { orderForm
-                { sections =
+                { changed = true
+                , sections =
                   fromMaybe st.orderForm.sections
                     $ do
                         solution <- Map.lookup solutionId pc.solutions
@@ -1984,7 +2021,8 @@ handleAction = case _ of
                   )
               }
     in
-      modifyInitialized $ modifyOrderForm
+      modifyInitialized
+        $ modifyOrderForm
         $ modifyOrderSection sectionIndex updateOrderSection
   OrderLineSetQuantity { sectionIndex, orderLineIndex, configIndex, quantity } ->
     let
@@ -2003,10 +2041,12 @@ handleAction = case _ of
               fromMaybe ol.configs $ A.modifyAt configIndex updateOrderConfig ol.configs
           }
     in
-      modifyInitialized $ modifyOrderForm
+      modifyInitialized
+        $ modifyOrderForm
         $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
   OrderLineAddConfig { sectionIndex, orderLineIndex } ->
-    modifyInitialized $ modifyOrderForm
+    modifyInitialized
+      $ modifyOrderForm
       $ modifyOrderLine sectionIndex orderLineIndex \ol ->
           ol { configs = ol.configs <> mkDefaultConfigs ol.product }
   OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } ->
@@ -2037,18 +2077,23 @@ handleAction = case _ of
               $ A.modifyAt configIndex alterConfig ol.configs
           }
     in
-      modifyInitialized $ modifyOrderForm
+      modifyInitialized
+        $ modifyOrderForm
         $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
   OrderLineSetConfigTab entryIdx tabIdx ->
     modifyInitialized \orderForm ->
       orderForm { configTabs = Map.insert entryIdx tabIdx orderForm.configTabs }
   OrderLineSetCharges { sectionIndex, orderLineIndex, charges, estimatedUsage } ->
-    modifyInitialized $ modifyOrderForm
+    modifyInitialized
+      $ modifyOrderForm
       $ modifyOrderLine sectionIndex orderLineIndex
           _
             { charges = Just charges
             , estimatedUsage = estimatedUsage
             }
+  DiscardOrder -> do
+    -- Reloading the catalog will reset the state.
+    loadCatalog Nothing
   CreateUpdateOrder -> do
     st <- H.get
     let
