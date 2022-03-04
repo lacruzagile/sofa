@@ -468,7 +468,7 @@ render state =
       | not isInDraft = []
       | otherwise =
         [ HH.button
-            [ HP.class_ (Css.c "sofa-btn-primary")
+            [ HP.class_ (Css.c "sofa-btn-secondary")
             , HE.onClick \_ -> OrderLineAddConfig olIdx
             ]
             [ HH.text "+ Add Configuration" ]
@@ -890,7 +890,7 @@ render state =
       | otherwise =
         HH.div_
           [ HH.button
-              [ HP.classes [ Css.c "sofa-btn-primary", Css.c "m-5", Css.c "py-0" ]
+              [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "m-5", Css.c "py-0" ]
               , HE.onClick \_ ->
                   let
                     toVal = case _ of
