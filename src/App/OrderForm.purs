@@ -976,7 +976,7 @@ render state =
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.c "sofa-btn-primary" ]
+                      [ HP.classes [ Css.c "sofa-btn-secondary" ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
                       [ HH.text "+ Add Product" ]
@@ -1076,7 +1076,7 @@ render state =
                   ]
               ]
               [ HH.button
-                  [ HP.class_ (Css.c "sofa-btn-primary")
+                  [ HP.class_ (Css.c "sofa-btn-secondary")
                   , HE.onClick \_ -> AddSection
                   ]
                   [ HH.text "+ Add Section" ]
