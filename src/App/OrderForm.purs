@@ -979,7 +979,7 @@ render state =
                       [ HP.classes [ Css.c "sofa-btn-primary" ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
-                      [ HH.text "+ Add Order Line" ]
+                      [ HH.text "+ Add Product" ]
                 , HH.div [ HP.class_ (Css.c "grow") ] []
                 , renderOrderSectionSummary sec.summary
                 ]
