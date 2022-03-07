@@ -10,6 +10,7 @@ import App.OrderForm.Observers as Observers
 import App.OrderForm.SelectOrderStatus as SelectOrderStatus
 import App.OrderForm.SelectProduct as SelectProduct
 import App.OrderForm.Seller as Seller
+import App.OrderForm.Widget.AssetConfigLink as WAssetConfigLink
 import App.OrderForm.Widget.Checkbox as WCheckbox
 import App.OrderForm.Widget.Dropdown as WDropdown
 import App.OrderForm.Widget.Radio as WRadio
@@ -50,6 +51,8 @@ import Data.SubTotal (SubTotal)
 import Data.SubTotal as SubTotal
 import Data.Traversable (sequence, traverse)
 import Data.Tuple (Tuple(..))
+import Data.UUID (UUID)
+import Data.UUID as UUID
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console as Console
 import Foreign.Object as FO
@@ -75,6 +78,7 @@ type Slots
     , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , charge :: Charge.Slot OrderLineIndex
+    , widgetAssetConfigLink :: WAssetConfigLink.Slot ConfigEntryIndex
     , widgetCheckbox :: WCheckbox.Slot ConfigEntryIndex
     , widgetDropdown :: WDropdown.Slot ConfigEntryIndex
     , widgetRadio :: WRadio.Slot ConfigEntryIndex
@@ -363,7 +367,13 @@ render state =
                       [ HH.label [ HP.class_ (Css.c "w-1/5") ]
                           [ renderSmallTitle "Quantity"
                           , renderQuantityInput 0
-                              $ fromMaybe (SS.OrderLineConfig { quantity: 0, config: Nothing })
+                              $ fromMaybe
+                                  ( SS.OrderLineConfig
+                                      { id: Nothing
+                                      , quantity: 0
+                                      , config: Nothing
+                                      }
+                                  )
                               $ head ol.configs
                           ]
                       ]
@@ -424,7 +434,7 @@ render state =
       in
         A.concat (A.mapWithIndex (renderProductConfig allowRemove product) configs)
 
-    renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { config }) =
+    renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
       [ HH.div [ HP.classes [ Css.c "my-5", Css.c "p-5", Css.c "border-l-8", Css.c "border-gray-100" ] ]
           [ HH.label_
               [ HH.span [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ] [ HH.text "Quantity" ]
@@ -450,6 +460,28 @@ render state =
                 [ HH.text "Remove Configuration" ]
             else
               HH.text ""
+          , case configId of
+              Nothing -> HH.text ""
+              Just id ->
+                -- Show the order line configuration ID to help use of asset
+                -- configuration links.
+                HH.div
+                  [ HP.classes
+                      [ Css.c "relative"
+                      , Css.c "float-right"
+                      , Css.c "ml-2"
+                      , Css.c "text-stormy-300"
+                      ]
+                  ]
+                  [ Tooltip.render
+                      ( Tooltip.defaultInput
+                          { text = id
+                          , orientation = Tooltip.Left
+                          , width = Just "20rem"
+                          }
+                      )
+                      (HH.text "#")
+                  ]
           , HH.hr [ HP.class_ (Css.c "my-2") ]
           , case config of
               Nothing -> HH.text ""
@@ -618,6 +650,7 @@ render state =
             $ A.mapWithIndex
                 (\i -> renderListEntry (pushEntryIndex entryIdx i) (act' i) (removeAct i) c.items)
                 entries
+      SS.CseObject { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseObject c ->
         let
           findVal k = Map.lookup k $ toVal value
@@ -783,6 +816,31 @@ render state =
                       (mact (act <<< const))
                 )
                 (mkGetEnumData <$> dataSourceWithFallback dataSource)
+            SS.SwAssetConfigLink { sku } ->
+              HH.slot
+                WAssetConfigLink.proxy
+                entryIdx
+                WAssetConfigLink.component
+                { value: maybe' (\_ -> mkDefaultConfig schemaEntry) Just value
+                , skuPattern: sku
+                , configs:
+                    case state of
+                      Initialized (Loaded { orderForm: { sections } }) -> do
+                        mS <- sections
+                        case mS of
+                          Nothing -> []
+                          Just s -> do
+                            mO <- s.orderLines
+                            case mO of
+                              Nothing -> []
+                              Just o ->
+                                let
+                                  SS.Product { sku } = o.product
+                                in
+                                  [ Tuple sku o.configs ]
+                      _ -> []
+                }
+                (mact (act <<< const))
       where
       insufficientDataError =
         HH.span
@@ -1554,13 +1612,25 @@ mkDefaultConfig = case _ of
     Just x -> mkDefaultConfig x
     Nothing -> Nothing
 
-mkDefaultConfigs :: SS.Product -> Array SS.OrderLineConfig
-mkDefaultConfigs (SS.Product p) =
-  fromMaybe [ SS.OrderLineConfig { quantity: 1, config: Nothing } ]
+mkDefaultConfigs :: UUID -> SS.Product -> Array SS.OrderLineConfig
+mkDefaultConfigs id (SS.Product p) =
+  fromMaybe
+    [ SS.OrderLineConfig
+        { id: Just $ UUID.toString id
+        , quantity: 1
+        , config: Nothing
+        }
+    ]
     $ do
         schema <- p.orderConfigSchema
         default_ <- mkDefaultConfig schema
-        pure [ SS.OrderLineConfig { quantity: 1, config: Just default_ } ]
+        pure
+          [ SS.OrderLineConfig
+              { id: Just $ UUID.toString id
+              , quantity: 1
+              , config: Just default_
+              }
+          ]
 
 calcSubTotal :: OrderSection -> OrderSection
 calcSubTotal os =
@@ -1994,24 +2064,24 @@ handleAction = case _ of
             }
   OrderLineSetProduct { sectionIndex, orderLineIndex, product } ->
     let
-      mkOrderLine :: SS.Product -> OrderLine
-      mkOrderLine prod =
+      mkOrderLine :: UUID -> SS.Product -> OrderLine
+      mkOrderLine configId prod =
         { orderLineId: Nothing
         , status: SS.OlsNew
         , statusReason: ""
         , product: prod
         , charges: Nothing
         , unitMap: Charge.productChargeUnitMap product
-        , configs: mkDefaultConfigs product
+        , configs: mkDefaultConfigs configId product
         , estimatedUsage: Map.empty
         }
 
-      updateOrderLine :: Maybe OrderLine -> OrderLine
-      updateOrderLine _ = mkOrderLine product
+      updateOrderLine :: UUID -> Maybe OrderLine -> OrderLine
+      updateOrderLine configId _ = mkOrderLine configId product
 
       -- | Build order lines for all required product options.
-      requiredOptions :: Map SS.SkuCode SS.Product -> Array (Maybe OrderLine)
-      requiredOptions solProds =
+      requiredOptions :: UUID -> Map SS.SkuCode SS.Product -> Array (Maybe OrderLine)
+      requiredOptions uuidNamespace solProds =
         let
           SS.Product p = product
 
@@ -2020,11 +2090,16 @@ handleAction = case _ of
             SS.ProductOption po -> if po.required then Just po.sku else Nothing
 
           requiredProds = A.mapMaybe (requiredSkuCode >=> (\o -> Map.lookup o solProds)) <$> p.options
-        in
-          maybe [] (map (Just <<< mkOrderLine)) requiredProds
 
-      updateOrderSection :: OrderSection -> OrderSection
-      updateOrderSection section =
+          -- Since we don't have access to the Effect monad here we generate a
+          -- v5 UUID instead. It's namespace is the ID of the originating order
+          -- line.
+          mkId i = UUID.genv5UUID (show i) uuidNamespace
+        in
+          maybe [] (A.mapWithIndex (\i -> Just <<< mkOrderLine (mkId i))) requiredProds
+
+      updateOrderSection :: UUID -> OrderSection -> OrderSection
+      updateOrderSection configId section =
         let
           solProds = SS.solutionProducts section.solution
         in
@@ -2033,16 +2108,18 @@ handleAction = case _ of
               { orderLines =
                 maybe
                   section.orderLines
-                  (\ls -> ls <> requiredOptions solProds)
+                  (\ls -> ls <> requiredOptions configId solProds)
                   ( do
-                      ls <- modifyAt orderLineIndex (Just <<< updateOrderLine) section.orderLines
+                      ls <- modifyAt orderLineIndex (Just <<< updateOrderLine configId) section.orderLines
                       pure ls
                   )
               }
     in
-      modifyInitialized
-        $ modifyOrderForm
-        $ modifyOrderSection sectionIndex updateOrderSection
+      do
+        configId <- H.liftEffect $ UUID.genUUID
+        modifyInitialized
+          $ modifyOrderForm
+          $ modifyOrderSection sectionIndex (updateOrderSection configId)
   OrderLineSetQuantity { sectionIndex, orderLineIndex, configIndex, quantity } ->
     let
       updateOrderConfig :: SS.OrderLineConfig -> SS.OrderLineConfig
@@ -2050,24 +2127,32 @@ handleAction = case _ of
 
       -- | Remove the configuration entry. If this is the last entry then we
       -- | ignore the request.
-      updateOrderLine :: OrderLine -> OrderLine
-      updateOrderLine ol =
+      updateOrderLine :: UUID -> OrderLine -> OrderLine
+      updateOrderLine configId ol =
         ol
           { configs =
             if A.null ol.configs then
-              [ SS.OrderLineConfig { quantity, config: Nothing } ]
+              [ SS.OrderLineConfig
+                  { id: Just $ UUID.toString configId
+                  , quantity
+                  , config: Nothing
+                  }
+              ]
             else
               fromMaybe ol.configs $ A.modifyAt configIndex updateOrderConfig ol.configs
           }
     in
-      modifyInitialized
-        $ modifyOrderForm
-        $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
-  OrderLineAddConfig { sectionIndex, orderLineIndex } ->
+      do
+        configId <- H.liftEffect $ UUID.genUUID
+        modifyInitialized
+          $ modifyOrderForm
+          $ modifyOrderLine sectionIndex orderLineIndex (updateOrderLine configId)
+  OrderLineAddConfig { sectionIndex, orderLineIndex } -> do
+    configId <- H.liftEffect $ UUID.genUUID
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderLine sectionIndex orderLineIndex \ol ->
-          ol { configs = ol.configs <> mkDefaultConfigs ol.product }
+          ol { configs = ol.configs <> mkDefaultConfigs configId ol.product }
   OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } ->
     let
       -- | Remove the configuration entry. If this is the last entry then we
@@ -2088,17 +2173,25 @@ handleAction = case _ of
     let
       alterConfig (SS.OrderLineConfig olc) = SS.OrderLineConfig $ olc { config = Just $ alter olc.config }
 
-      updateOrderLine :: OrderLine -> OrderLine
-      updateOrderLine ol =
+      updateOrderLine :: UUID -> OrderLine -> OrderLine
+      updateOrderLine configId ol =
         ol
           { configs =
-            fromMaybe [ SS.OrderLineConfig { quantity: 1, config: Just $ alter Nothing } ]
+            fromMaybe
+              [ SS.OrderLineConfig
+                  { id: Just $ UUID.toString configId
+                  , quantity: 1
+                  , config: Just $ alter Nothing
+                  }
+              ]
               $ A.modifyAt configIndex alterConfig ol.configs
           }
     in
-      modifyInitialized
-        $ modifyOrderForm
-        $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
+      do
+        configId <- H.liftEffect $ UUID.genUUID
+        modifyInitialized
+          $ modifyOrderForm
+          $ modifyOrderLine sectionIndex orderLineIndex (updateOrderLine configId)
   OrderLineSetConfigTab entryIdx tabIdx ->
     modifyInitialized \orderForm ->
       orderForm { configTabs = Map.insert entryIdx tabIdx orderForm.configTabs }

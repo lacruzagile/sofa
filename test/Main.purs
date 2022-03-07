@@ -423,6 +423,7 @@ validatesObject = do
                   , widget: Nothing
                   }
             }
+      , widget: Nothing
       }
 
 validatesOneOf :: Spec Unit

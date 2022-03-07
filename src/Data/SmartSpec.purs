@@ -1275,6 +1275,9 @@ data SchemaWidget
     , dataSource :: Maybe SchemaDataSourceEnum
     }
   | SwCheckbox { dataSource :: Maybe SchemaDataSourceEnum }
+  | SwAssetConfigLink
+    { sku :: String -- ^ ECMAScript regex of eligible SKUs.
+    }
 
 instance decodeJsonSchemaWidget :: DecodeJson SchemaWidget where
   decodeJson json = do
@@ -1296,6 +1299,9 @@ instance decodeJsonSchemaWidget :: DecodeJson SchemaWidget where
       "checkbox" -> do
         dataSource <- o .:? "dataSource"
         pure $ SwCheckbox { dataSource }
+      "asset-config-link" -> do
+        sku <- o .: "sku"
+        pure $ SwAssetConfigLink { sku }
       _ -> Left (TypeMismatch "SchemaWidget")
 
 instance encodeJsonSchemaWidget :: EncodeJson SchemaWidget where
@@ -1317,6 +1323,10 @@ instance encodeJsonSchemaWidget :: EncodeJson SchemaWidget where
       ("type" := "checkbox")
         ~> ("dataSource" :=? x.dataSource)
         ~>? jsonEmptyObject
+    SwAssetConfigLink x ->
+      ("type" := "asset-config-link")
+        ~> ("sku" := x.sku)
+        ~> jsonEmptyObject
 
 type ConfigSchemaEntryMeta
   = ( title :: Maybe String
@@ -1362,6 +1372,7 @@ data ConfigSchemaEntry
     }
   | CseObject
     { properties :: FO.Object ConfigSchemaEntry
+    , widget :: Maybe SchemaWidget
     | ConfigSchemaEntryMeta
     }
   | CseOneOf
@@ -1417,7 +1428,8 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
           Right $ CseArray { title, description, items, widget }
         "object" -> do
           properties :: FO.Object ConfigSchemaEntry <- o .: "properties"
-          Right $ CseObject { title, description, properties }
+          widget <- o .:? "widget"
+          Right $ CseObject { title, description, properties, widget }
         _ -> Left (TypeMismatch "ConfigSchemaEntry")
 
     constValue = CseConst <$> decodeJson json
@@ -2561,15 +2573,23 @@ instance encodeJsonEstimatedUsage :: EncodeJson EstimatedUsage where
 
 newtype OrderLineConfig
   = OrderLineConfig
-  { quantity :: Int
+  { id :: Maybe String -- ^ UUID identifying this configuration.
+  , quantity :: Int
   , config :: Maybe ConfigValue
   }
 
-derive newtype instance decodeJsonOrderLineConfig :: DecodeJson OrderLineConfig
+instance decodeJsonOrderLineConfig :: DecodeJson OrderLineConfig where
+  decodeJson json = do
+    o <- decodeJson json
+    id <- o .:? "id"
+    quantity <- o .: "quantity"
+    config <- o .:? "config"
+    pure $ OrderLineConfig { id, quantity, config }
 
 instance encodeJsonOrderLineConfig :: EncodeJson OrderLineConfig where
   encodeJson (OrderLineConfig x) =
-    ("quantity" := x.quantity)
+    ("id" := x.id)
+      ~> ("quantity" := x.quantity)
       ~> ("config" :=? x.config)
       ~>? jsonEmptyObject
 

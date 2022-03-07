@@ -52,6 +52,7 @@ to generate this file without the comments in this block.
   , "stringutils"
   , "transformers"
   , "tuples"
+  , "uuid"
   , "variant"
   , "web-dom"
   , "web-events"
