@@ -1090,7 +1090,7 @@ render state =
                   ]
               ]
               [ HH.button
-                  [ HP.class_ (Css.c "sofa-btn-secondary")
+                  [ HP.class_ (Css.c "sofa-btn-primary")
                   , HE.onClick \_ -> AddSection
                   ]
                   [ HH.text "+ Add Section" ]
