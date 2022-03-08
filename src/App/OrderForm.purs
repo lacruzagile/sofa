@@ -986,6 +986,7 @@ render state =
                     , Css.c "flex-wrap-reverse"
                     , Css.c "items-center"
                     , Css.c "m-5"
+                    , Css.c "mb-2"
                     , Css.c "pt-5"
                     , Css.c "border-t"
                     ]
@@ -1032,9 +1033,9 @@ render state =
           [ HP.classes
               [ Css.c "p-3"
               , Css.c "my-5"
-              , Css.c "bg-white"
               , Css.c "rounded-sm"
-              , Css.c "shadow-sm"
+              , Css.c "border"
+              , Css.c "border-snow-600"
               ]
           ]
           (removeBtn <> subBody)
@@ -1088,9 +1089,9 @@ render state =
               [ HP.classes
                   [ Css.c "p-3"
                   , Css.c "my-5"
-                  , Css.c "bg-white"
                   , Css.c "rounded-sm"
-                  , Css.c "shadow-sm"
+                  , Css.c "border"
+                  , Css.c "border-snow-600"
                   ]
               ]
               [ HH.button
@@ -1114,9 +1115,9 @@ render state =
           [ Css.c "flex"
           , Css.c "flex-wrap"
           , Css.c "p-3"
-          , Css.c "bg-white"
           , Css.c "rounded-sm"
-          , Css.c "shadow-sm"
+          , Css.c "border"
+          , Css.c "border-snow-600"
           ]
       ]
       $ [ HH.div [ HP.class_ (Css.c "w-full") ]
@@ -1250,7 +1251,14 @@ render state =
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
-    HH.div [ HP.classes [ Css.c "p-3", Css.c "bg-white", Css.c "rounded-sm", Css.c "shadow-sm" ] ]
+    HH.div
+      [ HP.classes
+          [ Css.c "p-3"
+          , Css.c "rounded-sm"
+          , Css.c "border"
+          , Css.c "border-snow-600"
+          ]
+      ]
       [ title "Legal Entity"
       , renderSeller
       , HH.br_
@@ -1361,9 +1369,9 @@ render state =
             , Css.c "items-center"
             , Css.c "p-3"
             , Css.c "my-5"
-            , Css.c "bg-white"
             , Css.c "rounded-sm"
-            , Css.c "shadow-sm"
+            , Css.c "border"
+            , Css.c "border-snow-600"
             ]
         ]
 
