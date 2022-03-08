@@ -64,11 +64,6 @@
     font-weight: 600;
   }
 
-  #sofa-app {
-    @apply mx-auto;
-    max-width: 80rem;
-  }
-
   .sofa-small-title {
     @apply
       uppercase

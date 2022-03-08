@@ -73,7 +73,7 @@ render ::
   CredentialStore m =>
   State -> H.ComponentHTML Action Slots m
 render state =
-  HH.div [ HP.classes [ Css.c "mx-5" ] ]
+  HH.div_
     [ renderNavbar state.route
     , renderBody state
     ]
@@ -86,22 +86,31 @@ renderNavbar ::
   H.ComponentHTML Action Slots m
 renderNavbar currentRoute =
   HH.nav [ HP.classes navbarClasses ]
-    [ primaryItem Route.Home "SOFA"
-    , navbarItem Route.Home "Home"
-    , navbarItem Route.ProductCatalog "Product Catalog"
-    , navbarItem Route.Orders "Orders"
-    , navbarItem Route.OrderForm "Order Form"
-    , expander
-    , navbarItemUser
+    [ HH.div [ HP.classes navbarWrapperClasses ]
+        [ primaryItem Route.Home "SOFA"
+        , navbarItem Route.Home "Home"
+        , navbarItem Route.ProductCatalog "Product Catalog"
+        , navbarItem Route.Orders "Orders"
+        , navbarItem Route.OrderForm "Order Form"
+        , expander
+        , navbarItemUser
+        ]
     ]
   where
   navbarClasses =
-    [ Css.c "px-3"
+    [ Css.c "inset-x-0"
+    , Css.c "top-0"
     , Css.c "py-3"
+    , Css.c "shadow-md"
+    , Css.c "bg-white"
+    ]
+
+  navbarWrapperClasses =
+    [ Css.c "container"
+    , Css.c "mx-auto"
+    , Css.c "px-5"
     , Css.c "flex"
     , Css.c "justify-between"
-    , Css.c "shadow-sm"
-    , Css.c "bg-white"
     , Css.c "items-center"
     ]
 
@@ -119,14 +128,14 @@ renderNavbar currentRoute =
       , Css.c "underline"
       , Css.c "underline-offset-8"
       , Css.c "decoration-2"
-      , Css.c "decoration-honey-500"
+      , Css.c "decoration-stormy-500"
       ]
     | otherwise =
       [ Css.c "px-3"
       , Css.c "hover:underline"
       , Css.c "underline-offset-8"
       , Css.c "decoration-2"
-      , Css.c "decoration-honey-500/30"
+      , Css.c "decoration-stormy-100"
       ]
 
   primaryItem route text =
@@ -150,7 +159,7 @@ renderBody ::
   State ->
   H.ComponentHTML Action Slots m
 renderBody state =
-  HH.main_
+  HH.main [ HP.classes [ Css.c "container", Css.c "mx-auto", Css.c "px-5" ] ]
     [ case state.route of
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm
