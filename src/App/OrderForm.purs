@@ -951,6 +951,10 @@ render state =
               "No price books for " <> show priceCurrency
             else
               "Please choose a price book"
+
+        -- We're in the process of adding an order line if there is a order line
+        -- with value `Nothing`.
+        isAddingOrderLine = A.any isNothing sec.orderLines
       in
         body
           $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
@@ -986,7 +990,7 @@ render state =
                     , Css.c "border-t"
                     ]
                 ]
-                [ if not isInDraft then
+                [ if not isInDraft || isAddingOrderLine then
                     HH.text ""
                   else
                     HH.button
