@@ -718,7 +718,7 @@ render state =
                 (mact (act <<< const <<< SS.CvString))
             SS.SwCheckbox { dataSource } ->
               maybe
-                (HH.text "Checkbox without data source or enum")
+                insufficientDataError
                 ( \getEnumData ->
                     HH.slot
                       WCheckbox.proxy
@@ -735,7 +735,7 @@ render state =
                 (mkGetEnumData <$> dataSourceWithFallback dataSource)
             SS.SwDropdown { dataSource } ->
               maybe
-                (HH.text "Dropdown without data source or enum")
+                insufficientDataError
                 ( \getEnumData ->
                     HH.slot
                       WDropdown.proxy
@@ -747,7 +747,7 @@ render state =
                 (mkGetEnumData <$> dataSourceWithFallback dataSource)
             SS.SwRadio { dataSource } ->
               maybe
-                (HH.text "Radio buttons without data source or enum")
+                insufficientDataError
                 ( \getEnumData ->
                     HH.slot
                       WRadio.proxy
@@ -759,7 +759,7 @@ render state =
                 (mkGetEnumData <$> dataSourceWithFallback dataSource)
             SS.SwTypeahead { minInputLength, debounceMs, dataSource } ->
               maybe
-                (HH.text "Typeahead without data source or enum")
+                insufficientDataError
                 ( \getEnumData ->
                     HH.slot
                       WTypeahead.proxy
@@ -774,6 +774,11 @@ render state =
                 )
                 (mkGetEnumData <$> dataSourceWithFallback dataSource)
       where
+      insufficientDataError =
+        HH.span
+          [ HP.class_ (Css.c "text-raspberry-500") ]
+          [ HH.text "Insufficient data…" ]
+
       mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe String -> m DataSourceEnumResult
       mkGetEnumData dataSource =
         let
