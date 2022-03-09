@@ -17,6 +17,7 @@ import Halogen.HTML.Properties as HP
 -- | that the tooltip is shown above the content.
 data Orientation
   = Top
+  | Left
   | Right
 
 type Input
@@ -57,6 +58,7 @@ render input content =
             [ HP.classes
                 $ case input.orientation of
                     Top -> textTopClasses
+                    Left -> textLeftClasses
                     Right -> textRightClasses
             , HP.style $ maybe "" (\w -> "max-width:" <> w) input.width
             ]
@@ -65,6 +67,7 @@ render input content =
                 [ HP.classes
                     $ case input.orientation of
                         Top -> arrowTopClasses
+                        Left -> arrowLeftClasses
                         Right -> arrowRightClasses
                 ]
                 []
@@ -82,6 +85,14 @@ render input content =
         , Css.c "top-full"
         , Css.c "-translate-x-[5px]"
         , Css.c $ if input.inverted then "border-t-stormy-500" else "border-t-snow-600"
+        ]
+
+  arrowLeftClasses =
+    arrowBaseClasses
+      <> [ Css.c "-right-[10px]"
+        , Css.c "top-1/2"
+        , Css.c "-translate-y-[5px]"
+        , Css.c $ if input.inverted then "border-l-stormy-500" else "border-l-snow-600"
         ]
 
   arrowRightClasses =
@@ -105,6 +116,14 @@ render input content =
         , Css.c "-top-2"
         , Css.c "-translate-x-1/2"
         , Css.c "-translate-y-full"
+        ]
+
+  textLeftClasses =
+    textBaseClasses
+      <> [ Css.c "right-full"
+        , Css.c "top-1/2"
+        , Css.c "-translate-x-4"
+        , Css.c "-translate-y-1/2"
         ]
 
   textRightClasses =
