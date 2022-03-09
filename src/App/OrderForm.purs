@@ -328,7 +328,7 @@ render state =
                 $ [ HH.div [ HP.class_ (Css.c "w-3/5") ]
                       [ renderSmallTitle "Product"
                       , HH.span
-                          [ HP.classes [ Css.c "text-lg" ] ]
+                          [ HP.classes [ Css.c "text-lg", Css.c "font-semibold" ] ]
                           [ HH.text $ show product.sku ]
                       ]
                   , HH.div [ HP.class_ (Css.c "w-1/5") ]
@@ -341,13 +341,22 @@ render state =
                                 (Tooltip.defaultInput { text = ol.statusReason })
                                 (Icon.textWithTooltip content)
                         in
-                          wrap (SS.prettyOrderLineStatus ol.status)
+                          HH.span
+                            [ HP.class_ (Css.c "font-semibold") ]
+                            [ wrap (SS.prettyOrderLineStatus ol.status) ]
                       ]
                   ]
                 <> ( if isJust product.orderConfigSchema then
                       [ HH.div [ HP.class_ (Css.c "w-1/5") ]
                           [ renderSmallTitle "Total Quantity"
-                          , HH.text $ show $ sum $ map (\(SS.OrderLineConfig { quantity }) -> quantity) ol.configs
+                          , HH.span
+                              [ HP.class_ (Css.c "font-semibold") ]
+                              [ HH.text
+                                  $ show
+                                  $ sum
+                                  $ (\(SS.OrderLineConfig { quantity }) -> quantity)
+                                  <$> ol.configs
+                              ]
                           ]
                       ]
                     else
@@ -395,7 +404,7 @@ render state =
 
     renderQuantityInput cfgIdx (SS.OrderLineConfig olc) =
       HH.input
-        [ HP.classes [ Css.c "border", Css.c "text-right" ]
+        [ HP.classes [ Css.c "nectary-input", Css.c "nectary-input-number" ]
         , HP.type_ HP.InputNumber
         , HP.min 1.0
         , HP.value $ show olc.quantity
@@ -427,6 +436,7 @@ render state =
                     [ Css.c "relative"
                     , Css.c "float-right"
                     , Css.c "sofa-btn-destructive"
+                    , Css.c "h-auto"
                     , Css.c "ml-2"
                     , Css.c "py-0"
                     ]
@@ -517,7 +527,7 @@ render state =
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
-          $ [ HP.class_ (Css.c "border")
+          $ [ HP.classes [ Css.c "nectary-input", Css.c "nectary-input-number" ]
             , HP.type_ HP.InputNumber
             , HP.placeholder "Integer"
             , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
@@ -554,7 +564,7 @@ render state =
             in
               HH.input
                 $ [ HP.type_ HP.InputText
-                  , HP.class_ (Css.c "border")
+                  , HP.class_ (Css.c "nectary-input")
                   , HP.placeholder placeholder
                   , HE.onValueChange (act <<< const <<< SS.CvString)
                   ]
@@ -565,7 +575,7 @@ render state =
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
           $ [ HP.type_ HP.InputText
-            , HP.class_ (Css.c "border")
+            , HP.class_ (Css.c "nectary-input")
             , HP.placeholder $ "String matching " <> c.pattern
             , HP.pattern c.pattern
             , HE.onValueChange (act <<< const <<< SS.CvString)
@@ -961,7 +971,7 @@ render state =
                 [ HH.div [ HP.class_ (Css.c "w-1/2") ]
                     [ renderSmallTitle "Solution"
                     , HH.span
-                        [ HP.class_ (Css.c "text-lg") ]
+                        [ HP.classes [ Css.c "text-lg", Css.c "font-semibold" ] ]
                         [ HH.text $ solutionLabel sec.solution ]
                     ]
                 , if A.null priceBookOpts then
@@ -1191,15 +1201,10 @@ render state =
     HH.input
       [ HP.type_ HP.InputText
       , HP.classes
-          [ Css.c "w-full"
-          , Css.c "text-2xl"
+          [ Css.c "nectary-input"
+          , Css.c "text-lg"
+          , Css.c "w-72"
           , Css.c "truncate"
-          , Css.c "outline-none"
-          , Css.c "underline"
-          , Css.c "underline-offset-4"
-          , Css.c "decoration-honey-500"
-          , Css.c "placeholder:italic"
-          , Css.c "placeholder:text-gray-400"
           ]
       , HP.value $ fromMaybe "" name
       , HP.placeholder "Unnamed order"

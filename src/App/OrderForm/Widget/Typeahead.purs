@@ -148,7 +148,7 @@ component =
       HH.input
         $ SelSet.setInputProps
             [ HP.type_ HP.InputText
-            , HP.classes [ Css.c "border" ]
+            , HP.classes [ Css.c "nectary-input" ]
             , HP.placeholder "Type to search value…"
             , HE.onFocus \_ -> Sel.Action InputFocused
             ]

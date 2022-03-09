@@ -108,14 +108,11 @@ selectComponent =
         $ SelSet.setInputProps
             [ HP.type_ HP.InputText
             , HP.classes
-                [ Css.c "w-96"
+                [ Css.c "nectary-input"
+                , Css.c "nectary-dropdown-icon"
+                , Css.c "w-96"
                 , Css.c "mr-5"
                 , Css.c "text-lg"
-                , Css.c "focus:outline"
-                , Css.c "outline-1"
-                , Css.c "outline-gray-300"
-                , Css.c "placeholder:italic"
-                , Css.c "rounded-sm"
                 ]
             , HP.placeholder "Type to search product…"
             ]

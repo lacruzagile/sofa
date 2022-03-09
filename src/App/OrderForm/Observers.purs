@@ -188,7 +188,7 @@ renderDetails st =
             [ HH.text "+ Add Observer" ]
         , HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
-            [ HP.classes [ Css.c "sofa-btn-primary" ]
+            [ HP.classes [ Css.c "sofa-btn-secondary" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
@@ -253,6 +253,7 @@ renderDetails st =
           , HH.button
               [ HP.classes
                   $ [ Css.c "sofa-btn-primary"
+                    , Css.c "h-auto"
                     , Css.c "py-0"
                     ]
                   <> hideable false
@@ -263,6 +264,7 @@ renderDetails st =
           , HH.button
               [ HP.classes
                   $ [ Css.c "sofa-btn-destructive"
+                    , Css.c "h-auto"
                     , Css.c "py-0"
                     , Css.c "ml-2"
                     ]
@@ -314,7 +316,7 @@ renderDetails st =
           $ maybe [] (\msg -> [ HH.text msg ])
           $ updateError
       , HH.button
-          [ HP.classes [ Css.c "sofa-btn-primary", Css.c "mt-1", Css.c "ml-2", Css.c "float-right" ]
+          [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "mt-1", Css.c "ml-2", Css.c "float-right" ]
           , HP.enabled actionsAllowed
           , HE.onClick \_ -> CancelEditObserver
           ]

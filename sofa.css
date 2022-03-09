@@ -26,6 +26,7 @@
   select {
     @apply
       appearance-none
+      outline-none
       border
       border-stormy-200
       rounded-sm
@@ -37,11 +38,8 @@
       py-2
       text-ellipsis
       bg-snow-100
-      fill-stormy-500;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' style='fill:%233B5264'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
-    background-position: calc(100% - 0.75rem) 50%;
-    background-size: 1rem 1rem;
-    background-repeat: no-repeat;
+      fill-stormy-500
+      nectary-dropdown-icon;
   }
 
   @font-face {
@@ -64,6 +62,62 @@
     font-weight: 600;
   }
 
+  /* Useful for text inputs that should follow the Nectary style. */
+  .nectary-input {
+    @apply
+      h-12
+      box-border
+      my-0.5
+      px-3
+      outline-none
+      border
+      border-stormy-200
+      rounded-sm
+      text-stormy-500
+      placeholder:text-stormy-300
+      disabled:border-snow-500
+      disabled:text-stormy-100
+      disabled:placeholder:text-snow-500
+      focus:border-stormy-300
+      invalid:border-raspberry-500;
+  }
+
+  .nectary-input-number {
+    appearance: textfield;
+  }
+
+  .nectary-input-number:hover,.nectary-input-number:focus {
+    appearance: number-input;
+  }
+
+  .nectary-textarea {
+    @apply
+      min-h-[5rem]
+      my-0.5
+      px-3
+      py-2
+      box-border
+      outline-none
+      border
+      border-stormy-200
+      rounded-sm
+      text-stormy-500
+      resize-y
+      placeholder:text-stormy-300
+      disabled:border-snow-500
+      disabled:text-stormy-100
+      disabled:placeholder:text-snow-500
+      focus:border-stormy-300
+      invalid:border-raspberry-500;
+  }
+
+  .nectary-dropdown-icon {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' style='fill:%233B5264'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
+    background-position: calc(100% - 0.75rem) 50%;
+    background-size: 1rem 1rem;
+    background-repeat: no-repeat;
+  }
+
   .sofa-small-title {
     @apply
       uppercase
@@ -74,7 +128,10 @@
 
   .sofa-btn-primary {
     @apply
-      px-3
+      inline-flex
+      items-center
+      h-12
+      px-6
       py-2
       bg-tropical-500
       hover:bg-tropical-400
@@ -94,6 +151,9 @@
 
   .sofa-btn-secondary {
     @apply
+      inline-flex
+      items-center
+      h-12
       px-3
       py-2
       bg-snow-100
@@ -117,6 +177,9 @@
 
   .sofa-btn-cta {
     @apply
+      inline-flex
+      items-center
+      h-12
       px-3
       py-2
       bg-honey-500
@@ -138,6 +201,9 @@
 
   .sofa-btn-destructive {
     @apply
+      inline-flex
+      items-center
+      h-12
       px-3
       py-2
       bg-snow-100
