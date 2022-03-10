@@ -30,7 +30,7 @@ import Data.Argonaut (class DecodeJson, decodeJson, (.:))
 import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable, deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (Maybe, fromMaybe)
 import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm(..), OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
 import Data.Tuple (Tuple)
 import Effect.Aff.Class (class MonadAff)
@@ -138,13 +138,21 @@ getLegalEntities = map (map conv) $ getJson url
   conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
   conv { legalEntities } = legalEntities
 
-getOrders :: forall m. MonadAff m => CredentialStore m => m (Loadable (Array OrderForm))
-getOrders = map (map conv) $ getRJson ordersUrl
+getOrders ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  Maybe String ->
+  m (Loadable { orders :: Array OrderForm, nextPageToken :: Maybe String })
+getOrders nextPageToken = getRJson url
   where
-  conv :: { orders :: Array OrderForm } -> Array OrderForm
-  conv { orders } = A.sortBy (comparing createTime) orders
+  url = ordersUrl <> "?pageSize=10" <> pageToken
 
-  createTime (OrderForm { createTime: t }) = t
+  pageToken =
+    fromMaybe "" do
+      tok <- nextPageToken
+      tokParam <- encodeURIComponent tok
+      pure $ "&pageToken=" <> tokParam
 
 getOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
 getOrder orderId = getRJson url

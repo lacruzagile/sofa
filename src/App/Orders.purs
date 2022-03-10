@@ -13,6 +13,7 @@ import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 import Widgets as Widgets
@@ -28,12 +29,18 @@ type Slots
     )
 
 type State
-  = Loadable { orders :: Array SS.OrderForm }
+  = Loadable
+      StateInner
+
+type StateInner
+  = { orders :: Array SS.OrderForm
+    , nextPageToken :: Maybe String
+    }
 
 data Action
   = NoOp
   | ClearState
-  | LoadOrders
+  | LoadOrders (Maybe String)
 
 component ::
   forall query input output m.
@@ -56,7 +63,7 @@ initialState :: forall input. input -> State
 initialState = const Idle
 
 initialize :: Maybe Action
-initialize = Just LoadOrders
+initialize = Just (LoadOrders Nothing)
 
 render ::
   forall m.
@@ -123,19 +130,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         Tuple b s
 
-  renderOrders :: { orders :: Array SS.OrderForm } -> H.ComponentHTML Action Slots m
-  renderOrders { orders: os } =
-    table
-      [ thead
-          [ trow
-              [ thcell [ HH.text "Created" ]
-              , thcell [ HH.text "Status" ]
-              , thcell [ HH.text "Customer" ]
-              , thcell [ HH.text "Legal Entity" ]
-              , thcell [ HH.text "Name" ]
+  renderOrders :: StateInner -> H.ComponentHTML Action Slots m
+  renderOrders { orders: os, nextPageToken } =
+    HH.div_
+      [ table
+          [ thead
+              [ trow
+                  [ thcell [ HH.text "Created" ]
+                  , thcell [ HH.text "Status" ]
+                  , thcell [ HH.text "Customer" ]
+                  , thcell [ HH.text "Legal Entity" ]
+                  , thcell [ HH.text "Name" ]
+                  ]
               ]
+          , tbody $ map renderOrder os
           ]
-      , tbody $ map renderOrder os
+      , maybe (HH.text "") renderNextPage nextPageToken
       ]
     where
     table =
@@ -143,9 +153,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HP.classes
             [ Css.c "table"
             , Css.c "w-full"
-            , Css.c "bg-white"
-            , Css.c "shadow-sm"
-            , Css.c "rounded-md"
             ]
         ]
 
@@ -174,13 +181,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
 
+  renderNextPage :: String -> H.ComponentHTML Action Slots m
+  renderNextPage nextPageToken =
+    HH.button
+      [ HP.classes
+          [ Css.c "sofa-btn-primary"
+          , Css.c "float-right"
+          , Css.c "mt-3"
+          ]
+      , HE.onClick \_ -> LoadOrders (Just nextPageToken)
+      ]
+      [ HH.text "Next Page" ]
+
   renderNewOrderLink =
     HH.a
       [ Route.href Route.OrderForm
       , HP.classes
           [ Css.c "relative"
           , Css.c "float-right"
-          , Css.c "sofa-btn-primary"
+          , Css.c "sofa-btn-secondary"
           ]
       ]
       [ HH.text "+ New Order" ]
@@ -191,16 +210,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
     , defRender state renderOrders
     ]
 
-loadOrders ::
-  forall slots output m.
-  MonadAff m =>
-  CredentialStore m =>
-  H.HalogenM State Action slots output m Unit
-loadOrders = do
-  H.modify_ \_ -> Loading
-  orders <- H.lift getOrders
-  H.modify_ \_ -> (\os -> { orders: os }) <$> orders
-
 handleAction ::
   forall slots output m.
   MonadAff m =>
@@ -209,4 +218,7 @@ handleAction ::
 handleAction = case _ of
   NoOp -> pure unit
   ClearState -> H.put Idle
-  LoadOrders -> loadOrders
+  LoadOrders nextPageToken -> do
+    H.put Loading
+    result <- H.lift $ getOrders nextPageToken
+    H.put result
