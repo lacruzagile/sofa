@@ -29,8 +29,7 @@ type Slots
     )
 
 type State
-  = Loadable
-      StateInner
+  = Loadable StateInner
 
 type StateInner
   = { orders :: Array SS.OrderForm
