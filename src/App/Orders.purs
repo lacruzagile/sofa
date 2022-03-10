@@ -185,7 +185,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderNextPage nextPageToken =
     HH.button
       [ HP.classes
-          [ Css.c "sofa-btn-primary"
+          [ Css.c "sofa-btn-secondary"
           , Css.c "float-right"
           , Css.c "my-3"
           ]
@@ -199,7 +199,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       , HP.classes
           [ Css.c "relative"
           , Css.c "float-right"
-          , Css.c "sofa-btn-secondary"
+          , Css.c "sofa-btn-primary"
           ]
       ]
       [ HH.text "+ New Order" ]
