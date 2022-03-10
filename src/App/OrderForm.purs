@@ -894,6 +894,7 @@ render state =
         HH.button
           [ HP.classes
               [ Css.c "sofa-btn-destructive"
+              , Css.c "h-auto"
               , Css.c "relative"
               , Css.c "float-right"
               , Css.c "py-0"
@@ -909,7 +910,12 @@ render state =
       | otherwise =
         HH.div_
           [ HH.button
-              [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "m-5", Css.c "py-0" ]
+              [ HP.classes
+                  [ Css.c "sofa-btn-secondary"
+                  , Css.c "h-auto"
+                  , Css.c "m-5"
+                  , Css.c "py-0"
+                  ]
               , HE.onClick \_ ->
                   let
                     toVal = case _ of

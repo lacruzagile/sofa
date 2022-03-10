@@ -100,13 +100,14 @@ renderNavbar currentRoute =
   navbarClasses =
     [ Css.c "inset-x-0"
     , Css.c "top-0"
-    , Css.c "py-3"
+    , Css.c "h-12"
     , Css.c "shadow-md"
     , Css.c "bg-white"
     ]
 
   navbarWrapperClasses =
     [ Css.c "container"
+    , Css.c "h-full"
     , Css.c "mx-auto"
     , Css.c "px-5"
     , Css.c "flex"
@@ -124,18 +125,20 @@ renderNavbar currentRoute =
 
   navbarItemClasses route
     | isCurrentRoute route =
-      [ Css.c "px-3"
-      , Css.c "underline"
-      , Css.c "underline-offset-8"
-      , Css.c "decoration-2"
-      , Css.c "decoration-stormy-500"
+      [ Css.c "inline-flex"
+      , Css.c "items-center"
+      , Css.c "h-full"
+      , Css.c "px-3"
+      , Css.c "border-b-2"
+      , Css.c "border-stormy-500"
       ]
     | otherwise =
-      [ Css.c "px-3"
-      , Css.c "hover:underline"
-      , Css.c "underline-offset-8"
-      , Css.c "decoration-2"
-      , Css.c "decoration-stormy-100"
+      [ Css.c "inline-flex"
+      , Css.c "items-center"
+      , Css.c "h-full"
+      , Css.c "px-3"
+      , Css.c "border-b"
+      , Css.c "border-stormy-100"
       ]
 
   primaryItem route text =
