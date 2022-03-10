@@ -187,7 +187,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       [ HP.classes
           [ Css.c "sofa-btn-primary"
           , Css.c "float-right"
-          , Css.c "mt-3"
+          , Css.c "my-3"
           ]
       , HE.onClick \_ -> LoadOrders (Just nextPageToken)
       ]
