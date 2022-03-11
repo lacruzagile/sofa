@@ -481,7 +481,7 @@ render state =
             [ HP.class_ (Css.c "sofa-btn-secondary")
             , HE.onClick \_ -> OrderLineAddConfig olIdx
             ]
-            [ HH.text "+ Add Configuration" ]
+            [ HH.text "+ Add configuration" ]
         ]
 
   renderConfigSchema ::
@@ -1014,7 +1014,7 @@ render state =
                       [ HP.classes [ Css.c "sofa-btn-secondary" ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
-                      [ HH.text "+ Add Product" ]
+                      [ HH.text "+ Add product" ]
                 , HH.div [ HP.class_ (Css.c "grow") ] []
                 , renderOrderSectionSummary sec.summary
                 ]
@@ -1103,18 +1103,20 @@ render state =
         else
           [ HH.div
               [ HP.classes
-                  [ Css.c "p-3"
+                  [ Css.c "flex"
+                  , Css.c "p-3"
                   , Css.c "my-5"
                   , Css.c "rounded-sm"
                   , Css.c "border"
                   , Css.c "border-snow-600"
                   ]
               ]
-              [ HH.button
+              [ HH.div [ HP.class_ (Css.c "grow") ] []
+              , HH.button
                   [ HP.class_ (Css.c "sofa-btn-primary")
                   , HE.onClick \_ -> AddSection
                   ]
-                  [ HH.text "+ Add Section" ]
+                  [ HH.text "+ Add section" ]
               ]
           ]
 
@@ -1309,14 +1311,14 @@ render state =
             , HP.disabled $ not sof.orderForm.changed
             , HE.onClick $ \_ -> DiscardOrder
             ]
-            [ HH.text "Discard Order" ]
+            [ HH.text "Discard order" ]
         else
           HH.button
             [ HP.class_ (Css.c "sofa-btn-primary")
             , HP.disabled preventFulfill
             , HE.onClick $ \_ -> FulfillOrder
             ]
-            [ HH.text "Fulfill Order"
+            [ HH.text "Fulfill order"
             , if sof.orderFulfillInFlight then
                 Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
               else
@@ -1327,7 +1329,7 @@ render state =
           , HP.disabled preventCreate
           , HE.onClick $ \_ -> CreateUpdateOrder
           ]
-          [ HH.text $ maybe "Send Order" (const "Update Order") (getOrderId sof)
+          [ HH.text $ maybe "Send order" (const "Update order") (getOrderId sof)
           , if sof.orderUpdateInFlight then
               Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
             else
