@@ -1194,7 +1194,7 @@ render state =
 
     title = HH.div [ HP.classes [ Css.c "uppercase", Css.c "mb-2", Css.c "text-sm", Css.c "text-gray-600" ] ]
 
-    value = HH.div [ HP.classes [ Css.c "text-lg" ] ]
+    value = HH.div_
 
     orderId = orderForm.original >>= \(SS.OrderForm order) -> order.id
 

@@ -125,7 +125,6 @@ renderSummary st = btn
   btnClasses =
     [ Css.c "block"
     , Css.c "text-left"
-    , Css.c "text-lg"
     , Css.c "underline"
     , Css.c "underline-offset-4"
     , Css.c "decoration-honey-500"
