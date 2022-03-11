@@ -1301,40 +1301,38 @@ render state =
 
   renderOrderFooter sof =
     footerDiv
-      [ btnsDiv
-          [ HH.button
-              [ HP.class_ (Css.c "sofa-btn-primary")
-              , HP.disabled preventCreate
-              , HE.onClick $ \_ -> CreateUpdateOrder
-              ]
-              [ HH.text $ maybe "Send Order" (const "Update Order") (getOrderId sof)
-              , if sof.orderUpdateInFlight then
-                  Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-                else
-                  HH.text ""
-              ]
-          , if isFreshOrder then
-              HH.button
-                [ HP.class_ (Css.c "sofa-btn-destructive")
-                , HP.disabled $ not sof.orderForm.changed
-                , HE.onClick $ \_ -> DiscardOrder
-                ]
-                [ HH.text "Discard Order" ]
-            else
-              HH.button
-                [ HP.class_ (Css.c "sofa-btn-primary")
-                , HP.disabled preventFulfill
-                , HE.onClick $ \_ -> FulfillOrder
-                ]
-                [ HH.text "Fulfill Order"
-                , if sof.orderFulfillInFlight then
-                    Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-                  else
-                    HH.text ""
-                ]
-          ]
-      , HH.div [ HP.class_ (Css.c "grow") ] []
+      [ HH.div [ HP.class_ (Css.c "grow") ] []
       , renderOrderSummary sof.orderForm.summary
+      , if isFreshOrder then
+          HH.button
+            [ HP.class_ (Css.c "sofa-btn-destructive")
+            , HP.disabled $ not sof.orderForm.changed
+            , HE.onClick $ \_ -> DiscardOrder
+            ]
+            [ HH.text "Discard Order" ]
+        else
+          HH.button
+            [ HP.class_ (Css.c "sofa-btn-primary")
+            , HP.disabled preventFulfill
+            , HE.onClick $ \_ -> FulfillOrder
+            ]
+            [ HH.text "Fulfill Order"
+            , if sof.orderFulfillInFlight then
+                Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+              else
+                HH.text ""
+            ]
+      , HH.button
+          [ HP.class_ (Css.c "sofa-btn-primary")
+          , HP.disabled preventCreate
+          , HE.onClick $ \_ -> CreateUpdateOrder
+          ]
+          [ HH.text $ maybe "Send Order" (const "Update Order") (getOrderId sof)
+          , if sof.orderUpdateInFlight then
+              Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+            else
+              HH.text ""
+          ]
       ]
     where
     -- An order is fresh (i.e., not yet created in the backend) if we have the
@@ -1368,13 +1366,12 @@ render state =
             , Css.c "items-center"
             , Css.c "p-3"
             , Css.c "my-5"
+            , Css.c "space-x-4"
             , Css.c "rounded-sm"
             , Css.c "border"
             , Css.c "border-snow-600"
             ]
         ]
-
-    btnsDiv = HH.div [ HP.classes [ Css.c "space-x-5" ] ]
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
