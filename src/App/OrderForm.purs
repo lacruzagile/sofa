@@ -7,6 +7,7 @@ import App.OrderForm.Buyer as Buyer
 import App.OrderForm.Commercial as Commercial
 import App.OrderForm.Notes as Notes
 import App.OrderForm.Observers as Observers
+import App.OrderForm.SelectOrderStatus as SelectOrderStatus
 import App.OrderForm.SelectProduct as SelectProduct
 import App.OrderForm.Seller as Seller
 import App.OrderForm.Widget.Checkbox as WCheckbox
@@ -25,13 +26,11 @@ import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (foldl, head, modifyAt, snoc)
 import Data.Array as A
 import Data.Auth (class CredentialStore)
-import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
 import Data.Currency (mkCurrency, unsafeMkCurrency)
 import Data.Date (Date, Month(..), canonicalDate)
 import Data.Either (Either(..), either, note)
-import Data.Enum (enumFromTo, toEnum)
-import Data.Enum.Generic (genericFromEnum, genericToEnum)
+import Data.Enum (toEnum)
 import Data.Foldable (sum)
 import Data.Int as Int
 import Data.List as SList
@@ -73,6 +72,7 @@ type Slots
     , commercial :: Commercial.Slot Unit
     , notes :: Notes.Slot Unit
     , observers :: Observers.Slot Unit
+    , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , charge :: Charge.Slot OrderLineIndex
     , widgetCheckbox :: WCheckbox.Slot ConfigEntryIndex
@@ -1219,24 +1219,12 @@ render state =
 
   renderOrderStatus :: SS.OrderStatus -> H.ComponentHTML Action Slots m
   renderOrderStatus selected =
-    HH.select
-      [ HP.classes [ Css.c "sofa-order-status-select" ]
-      , HE.onSelectedIndexChange actSetOrderStatus
-      ]
-      $ map renderOption orderStatuses
-    where
-    orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
-
-    bottom = genericFromEnum (genericBottom :: SS.OrderStatus)
-
-    top = genericFromEnum (genericTop :: SS.OrderStatus)
-
-    actSetOrderStatus = maybe NoOp SetOrderStatus <<< A.index orderStatuses
-
-    renderOption s =
-      HH.option
-        [ HP.selected $ s == selected ]
-        [ HH.text $ SS.prettyOrderStatus s ]
+    HH.slot
+      SelectOrderStatus.proxy
+      unit
+      SelectOrderStatus.component
+      selected
+      SetOrderStatus
 
   renderOrderNotes :: Maybe SS.OrderId -> Array SS.OrderNote -> H.ComponentHTML Action Slots m
   renderOrderNotes orderId notes =

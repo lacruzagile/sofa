@@ -108,6 +108,7 @@ module Data.SmartSpec
   , countryRegex
   , emptyAddress
   , emptyContact
+  , orderStatuses
   , prettyDate
   , prettyDateTime
   , prettyOrderApprovalStatus
@@ -122,11 +123,14 @@ import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (:=?), (~>), (~>?))
 import Data.Array as A
 import Data.Array.NonEmpty (fromNonEmpty)
+import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Currency (Currency, unsafeMkCurrency)
 import Data.DateTime (Date, DateTime(..))
 import Data.DateTime as DateTime
 import Data.DateTimeUtils as DateTimeUtils
 import Data.Either (Either(..), either, note)
+import Data.Enum (enumFromTo)
+import Data.Enum.Generic (genericFromEnum, genericToEnum)
 import Data.Formatter.DateTime as F
 import Data.Generic.Rep (class Generic)
 import Data.List ((:))
@@ -2430,6 +2434,14 @@ prettyOrderStatus = case _ of
   OsInFulfillment -> "In Fulfillment"
   OsFulfilled -> "Fulfilled"
   OsCancelled -> "Cancelled"
+
+-- | A collection of all order statuses.
+orderStatuses :: Array OrderStatus
+orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
+  where
+  bottom = genericFromEnum (genericBottom :: OrderStatus)
+
+  top = genericFromEnum (genericTop :: OrderStatus)
 
 data OrderApprovalStatus
   = OasUndecided
