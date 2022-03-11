@@ -4,9 +4,11 @@ import Prelude
 import App.OrderForm as OrderForm
 import App.Requests (getOrders)
 import Css as Css
+import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Loadable as Loadable
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe)
 import Data.Route as Route
 import Data.SmartSpec as SS
 import Data.Tuple (Tuple(..))
@@ -29,7 +31,9 @@ type Slots
     )
 
 type State
-  = Loadable StateInner
+  = { pages :: Array StateInner -- ^ Stack of previously loaded pages.
+    , inner :: Loadable StateInner
+    }
 
 type StateInner
   = { orders :: Array SS.OrderForm
@@ -38,8 +42,8 @@ type StateInner
 
 data Action
   = NoOp
-  | ClearState
-  | LoadOrders (Maybe String)
+  | LoadPrev
+  | LoadNext (Maybe String)
 
 component ::
   forall query input output m.
@@ -59,10 +63,13 @@ component =
     }
 
 initialState :: forall input. input -> State
-initialState = const Idle
+initialState _ =
+  { pages: []
+  , inner: Idle
+  }
 
 initialize :: Maybe Action
-initialize = Just (LoadOrders Nothing)
+initialize = Just (LoadNext Nothing)
 
 render ::
   forall m.
@@ -144,7 +151,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ]
           , tbody $ map renderOrder os
           ]
-      , maybe (HH.text "") renderNextPage nextPageToken
+      , HH.div [ HP.classes [ Css.c "flex", Css.c "items-center", Css.c "my-5" ] ]
+          [ renderPageButton "Previous"
+              (if A.null state.pages then Nothing else Just LoadPrev)
+          , HH.div
+              [ HP.class_ (Css.c "mx-auto") ]
+              [ HH.text "Page ", HH.text (show (1 + A.length state.pages)) ]
+          , renderPageButton "Next" (const (LoadNext nextPageToken) <$> nextPageToken)
+          ]
       ]
     where
     table =
@@ -180,17 +194,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
 
-  renderNextPage :: String -> H.ComponentHTML Action Slots m
-  renderNextPage nextPageToken =
+  renderPageButton :: String -> Maybe Action -> H.ComponentHTML Action Slots m
+  renderPageButton btnLabel btnAction =
     HH.button
-      [ HP.classes
-          [ Css.c "sofa-btn-secondary"
-          , Css.c "float-right"
-          , Css.c "my-3"
-          ]
-      , HE.onClick \_ -> LoadOrders (Just nextPageToken)
-      ]
-      [ HH.text "Next Page" ]
+      ( [ HP.class_ (Css.c "sofa-btn-secondary")
+        , HP.disabled $ isNothing btnAction
+        ]
+          <> maybe [] (\act -> [ HE.onClick \_ -> act ]) btnAction
+      )
+      [ HH.text btnLabel ]
 
   renderNewOrderLink =
     HH.a
@@ -201,12 +213,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , Css.c "sofa-btn-primary"
           ]
       ]
-      [ HH.text "+ New Order" ]
+      [ HH.text "+ New order" ]
 
   renderContent =
     [ renderNewOrderLink
     , HH.h1_ [ HH.text "Orders" ]
-    , defRender state renderOrders
+    , defRender state.inner renderOrders
     ]
 
 handleAction ::
@@ -216,8 +228,17 @@ handleAction ::
   Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   NoOp -> pure unit
-  ClearState -> H.put Idle
-  LoadOrders nextPageToken -> do
-    H.put Loading
+  LoadPrev -> do
+    H.modify_ \st ->
+      st
+        { pages = A.drop 1 st.pages
+        , inner = maybe st.inner Loaded (A.head st.pages)
+        }
+  LoadNext nextPageToken -> do
+    H.modify_ \st ->
+      st
+        { pages = maybe [] (\p -> A.cons p st.pages) (Loadable.toMaybe st.inner)
+        , inner = Loading
+        }
     result <- H.lift $ getOrders nextPageToken
-    H.put result
+    H.modify_ \st -> st { inner = result }
