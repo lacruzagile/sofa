@@ -212,7 +212,7 @@ renderDetails st =
                 HH.text ""
             ]
         , HH.button
-            [ HP.classes $ [ Css.c "sofa-btn-primary", Css.c "mt-2", Css.c "ml-2" ]
+            [ HP.classes $ [ Css.c "sofa-btn-secondary", Css.c "mt-2", Css.c "ml-2" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CancelNewNote
             ]
