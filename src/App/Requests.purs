@@ -27,11 +27,10 @@ module App.Requests
 import Prelude
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, decodeJson, (.:))
-import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable, deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
 import Data.Maybe (Maybe, fromMaybe)
-import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm(..), OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
+import Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
 import Data.Tuple (Tuple)
 import Effect.Aff.Class (class MonadAff)
 import Foreign.Object as FO
