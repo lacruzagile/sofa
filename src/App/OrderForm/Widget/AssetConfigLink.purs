@@ -1,8 +1,8 @@
 module App.OrderForm.Widget.AssetConfigLink (Slot, Output(..), proxy, component) where
 
 import Prelude
+import Component.Select as Select
 import Control.Alternative (guard)
-import Data.Array ((!!))
 import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Either (either)
@@ -14,8 +14,6 @@ import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -23,6 +21,10 @@ type Slot id
 
 proxy :: Proxy "widgetAssetConfigLink"
 proxy = Proxy
+
+type Slots
+  = ( selectConfig :: Select.Slot Unit String -- Output is the selected configuration ID.
+    )
 
 type Input
   = { value :: Maybe SS.ConfigValue
@@ -43,7 +45,7 @@ type State
 
 data Action
   = Receive Input
-  | Select Int
+  | Select String -- ^ Selecting an configuration ID.
 
 component ::
   forall query m.
@@ -80,31 +82,28 @@ initialState input =
   }
 
 render ::
-  forall slots m.
+  forall m.
   MonadAff m =>
   CredentialStore m =>
-  State -> H.ComponentHTML Action slots m
+  State -> H.ComponentHTML Action Slots m
 render st =
-  HH.select
-    [ HE.onSelectedIndexChange Select ]
-    $ [ HH.option
-          [ HP.selected $ st.selectedId == Nothing
-          , HP.disabled true
-          ]
-          [ HH.text $ "Please choose a configuration" ]
-      ]
-    <> map renderItem st.configIds
-  where
-  renderItem configId =
-    HH.option
-      [ HP.selected $ st.selectedId == Just configId ]
-      [ HH.text configId ]
+  HH.slot
+    (Proxy :: Proxy "selectConfig")
+    unit
+    Select.component
+    ( Select.defaultInput
+        { selected = st.selectedId
+        , values = map (\cid -> Tuple (HH.text cid) cid) st.configIds
+        , noSelectionText = "Please choose a configuration"
+        }
+    )
+    Select
 
 handleAction ::
-  forall slots m.
+  forall m.
   MonadAff m =>
   CredentialStore m =>
-  Action -> H.HalogenM (State) Action slots Output m Unit
+  Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Receive input -> do
     let
@@ -114,8 +113,8 @@ handleAction = case _ of
       pure unit
     else
       H.put newState
-  Select idx -> do
-    st' <- H.modify \st -> st { selectedId = st.configIds !! (idx - 1) }
+  Select selectedId -> do
+    st' <- H.modify \st -> st { selectedId = Just selectedId }
     -- Let the parent component know about the new selection.
     H.raise do
       configId <- st'.selectedId

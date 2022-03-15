@@ -25,6 +25,7 @@ type Input a
   = { selected :: Maybe a
     , values :: Array (Tuple HH.PlainHTML a)
     , noSelectionText :: String
+    , wrapperClasses :: Array HH.ClassName
     }
 
 defaultInput :: forall a. Input a
@@ -32,15 +33,18 @@ defaultInput =
   { selected: Nothing
   , values: []
   , noSelectionText: "Please choose"
+  , wrapperClasses: []
   }
 
+type Output :: forall k. k -> k
 type Output a
-  = Maybe a
+  = a
 
 type State a
   = ( selected :: Maybe (Tuple HH.PlainHTML a)
     , values :: Array (Tuple HH.PlainHTML a)
     , noSelectionText :: String
+    , wrapperClasses :: Array HH.ClassName
     )
 
 component ::
@@ -75,6 +79,7 @@ component =
           A.find (\(Tuple _ v) -> v == selected) input.values
     , values: input.values
     , noSelectionText: input.noSelectionText
+    , wrapperClasses: input.wrapperClasses
     }
 
   handleEvent = case _ of
@@ -86,11 +91,15 @@ component =
             , selected = st.values !! idx
             }
       -- Let the parent component know about the new selection.
-      H.raise $ map snd $ st'.selected
+      maybe (pure unit) (H.raise <<< snd) st'.selected
     _ -> pure unit
 
   render :: Sel.State (State a) -> H.ComponentHTML _ () m
-  render st = HH.div [ HP.class_ (Css.c "inline-block") ] [ renderInput, renderResults ]
+  render st =
+    HH.div
+      [ HP.classes $ [ Css.c "w-max" ] <> st.wrapperClasses ]
+      [ HH.div [ HP.class_ (Css.c "relative") ] [ renderInput, renderResults ]
+      ]
     where
     renderInput :: H.ComponentHTML _ () m
     renderInput =
@@ -106,44 +115,56 @@ component =
       | st.visibility == Sel.Off =
         [ Css.c "nectary-input"
         , Css.c "nectary-dropdown-icon"
+        , Css.c "w-full"
+        , Css.c "text-left"
         , Css.c "truncate"
         ]
       | otherwise =
         [ Css.c "nectary-input"
         , Css.c "nectary-dropdown-icon"
+        , Css.c "w-full"
+        , Css.c "text-left"
         , Css.c "truncate"
         , Css.c "rounded-b-none"
         ]
 
     containerClasses =
       [ Css.c "absolute"
-      , Css.c "flex"
-      , Css.c "flex-col"
       , Css.c "bg-white"
+      , Css.c "-mt-0.5"
+      , Css.c "w-full"
       , Css.c "max-h-72"
       , Css.c "overflow-auto"
       , Css.c "border"
+      , Css.c "border-t-0"
+      , Css.c "border-stormy-500"
       , Css.c "rounded-b-sm"
-      , Css.c "divide-y"
+      , Css.c "shadow-md"
+      , Css.c "z-10"
       ]
 
     renderResults :: H.ComponentHTML _ () m
     renderResults
       | st.visibility == Sel.Off = HH.text ""
       | otherwise =
-        HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
+        HH.ul (SelSet.setContainerProps [ HP.classes containerClasses ])
           $ A.mapWithIndex renderItem st.values
 
     renderItem :: Int -> Tuple HH.PlainHTML a -> H.ComponentHTML _ () m
     renderItem idx (Tuple key value) =
-      HH.div
+      HH.li
         ( SelSet.setItemProps idx
             [ HP.classes $ itemClasses <> selectedClasses <> highlightClasses
             ]
         )
         [ HH.fromPlainHTML key ]
       where
-      itemClasses = [ Css.c "p-2", Css.c "pr-8" ]
+      itemClasses =
+        [ Css.c "relative"
+        , Css.c "p-2"
+        , Css.c "pr-8"
+        , Css.c "truncate"
+        ]
 
       highlightClasses
         | st.highlightedIndex == Just idx = [ Css.c "bg-snow-500" ]

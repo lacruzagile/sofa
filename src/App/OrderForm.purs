@@ -81,6 +81,7 @@ type Slots
     , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , charge :: Charge.Slot OrderLineIndex
+    , selectEnum :: Select.Slot ConfigEntryIndex Int -- Output is selected value index.
     , widgetAssetConfigLink :: WAssetConfigLink.Slot ConfigEntryIndex
     , widgetCheckbox :: WCheckbox.Slot ConfigEntryIndex
     , widgetDropdown :: WDropdown.Slot ConfigEntryIndex
@@ -558,7 +559,16 @@ render state =
                 ]
       SS.CseInteger { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseInteger c
-        | not (A.null c.enum) -> renderEnumEntry act fallbackTitle value schemaEntry c SS.CvInteger show
+        | not (A.null c.enum) ->
+          renderEnumEntry
+            entryIdx
+            act
+            fallbackTitle
+            value
+            schemaEntry
+            c
+            SS.CvInteger
+            show
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
@@ -572,7 +582,16 @@ render state =
           <> opt (HP.max <<< Int.toNumber) c.maximum
       SS.CseString { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
       SS.CseString c
-        | not (A.null c.enum) -> renderEnumEntry act fallbackTitle value schemaEntry c SS.CvString identity
+        | not (A.null c.enum) ->
+          renderEnumEntry
+            entryIdx
+            act
+            fallbackTitle
+            value
+            schemaEntry
+            c
+            SS.CvString
+            identity
       SS.CseString c ->
         renderEntry' fallbackTitle schemaEntry
           $ let
@@ -897,6 +916,7 @@ render state =
     renderEnumEntry ::
       forall a r.
       Eq a =>
+      ConfigEntryIndex ->
       ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
       String ->
       Maybe SS.ConfigValue ->
@@ -905,21 +925,24 @@ render state =
       (a -> SS.ConfigValue) ->
       (a -> String) ->
       H.ComponentHTML Action Slots m
-    renderEnumEntry act fallbackTitle value schemaEntry c mkValue showValue =
+    renderEnumEntry entryIdx act fallbackTitle value schemaEntry c mkValue showValue =
       renderEntry' fallbackTitle schemaEntry
         $ let
-            props e =
-              [ HP.selected
-                  ( value == Just (mkValue e)
-                      || (value == Nothing && Just e == c.default)
-                  )
-              ]
-
-            onIndexChange i = mact (act <<< const <<< mkValue) $ A.index c.enum (i - 1)
+            onIndexChange i = mact (act <<< const <<< mkValue) $ A.index c.enum i
           in
-            HH.select [ HP.class_ (Css.c "border"), HE.onSelectedIndexChange onIndexChange ]
-              $ [ HH.option [ HP.disabled true ] [ HH.text $ "Please choose an option" ] ]
-              <> map (\e -> HH.option (props e) [ HH.text (showValue e) ]) c.enum
+            HH.slot
+              (Proxy :: Proxy "selectEnum")
+              entryIdx
+              Select.component
+              ( Select.defaultInput
+                  { selected =
+                    do
+                      selVal <- value <|> (mkValue <$> c.default)
+                      A.findIndex (\v -> mkValue v == selVal) c.enum
+                  , values = A.mapWithIndex (\i e -> Tuple (HH.text $ showValue e) i) c.enum
+                  }
+              )
+              onIndexChange
 
     withDescription fallbackTitle schemaEntry = case SS.configSchemaEntryDescription schemaEntry of
       Nothing -> body false
@@ -1014,7 +1037,7 @@ render state =
                     , noSelectionText = "Please choose a solution"
                     }
                 )
-                (maybe NoOp actionSetSolution)
+                actionSetSolution
             ]
         ]
     Just sec ->
@@ -1064,7 +1087,7 @@ render state =
                               , noSelectionText = "Please choose a price book"
                               }
                           )
-                          (maybe NoOp (actionSetPriceBook priceBooks))
+                          (actionSetPriceBook priceBooks)
                       ]
                 ]
             , renderOrderLines sec.solution sec.orderLines

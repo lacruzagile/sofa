@@ -316,9 +316,10 @@ renderDetails st =
                       { selected = Just $ SS.Contact contact
                       , values = selectOption <$> contacts
                       , noSelectionText = "Please choose a contact"
+                      , wrapperClasses = [ Css.c "min-w-[20rem]", Css.c "max-w-128" ]
                       }
                 in
-                  HH.slot Select.proxy label Select.component input (maybe NoOp act)
+                  HH.slot Select.proxy label Select.component input act
               Loading ->
                 HH.span
                   [ HP.class_ $ Css.c "animate-pulse" ]
