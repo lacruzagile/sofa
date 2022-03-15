@@ -19,6 +19,7 @@ import App.OrderForm.Widget.Typeahead as WTypeahead
 import App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
 import Component.Icon as Icon
+import Component.Select as Select
 import Component.Tabs as Tabs
 import Component.Tooltip as Tooltip
 import Control.Alternative (guard, (<|>))
@@ -75,6 +76,8 @@ type Slots
     , commercial :: Commercial.Slot Unit
     , notes :: Notes.Slot Unit
     , observers :: Observers.Slot Unit
+    , selectSolution :: Select.Slot Unit String -- Output is solution ID.
+    , selectPriceBook :: Select.Slot Unit Int -- Output is price book index.
     , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , charge :: Charge.Slot OrderLineIndex
@@ -999,15 +1002,19 @@ render state =
       body
         [ HH.label_
             [ renderSmallTitle "Solution"
-            , HH.select
-                [ HP.class_ (Css.c "text-lg")
-                , HE.onValueChange actionSetSolution
-                ]
-                $ [ HH.option
-                      [ HP.value "", HP.disabled true, HP.selected true ]
-                      [ HH.text "Please choose a solution" ]
-                  ]
-                <> solutionOptions
+            , HH.slot
+                (Proxy :: Proxy "selectSolution")
+                unit
+                Select.component
+                ( Select.defaultInput
+                    { values =
+                      map
+                        (\(Tuple i s) -> Tuple (HH.text $ solutionLabel s) i)
+                        (Map.toUnfoldable pc.solutions)
+                    , noSelectionText = "Please choose a solution"
+                    }
+                )
+                (maybe NoOp actionSetSolution)
             ]
         ]
     Just sec ->
@@ -1016,15 +1023,14 @@ render state =
 
         priceBooks = fromMaybe [] $ Map.lookup sol.id sof.priceBooks
 
-        priceBookOpts = priceBookOptions sec.priceBook priceBooks
-
-        priceBookSel = case sof.currency of
-          Nothing -> "No price currency selected"
-          Just priceCurrency ->
-            if A.null priceBookOpts then
-              "No price books for " <> show priceCurrency
-            else
-              "Please choose a price book"
+        priceBookOpts =
+          let
+            mkPriceBookOption i pb =
+              Tuple
+                (HH.text $ pb.title <> " (" <> SS.prettyDate pb.version <> ")")
+                i
+          in
+            A.mapWithIndex mkPriceBookOption priceBooks
 
         -- We're in the process of adding an order line if there is a order line
         -- with value `Nothing`.
@@ -1043,14 +1049,22 @@ render state =
                   else
                     HH.label [ HP.class_ (Css.c "w-1/2") ]
                       [ renderSmallTitle "Price Book"
-                      , HH.select
-                          [ HE.onSelectedIndexChange $ actionSetPriceBook priceBooks
-                          ]
-                          $ [ HH.option
-                                [ HP.disabled true, HP.selected (isNothing sec.priceBook) ]
-                                [ HH.text priceBookSel ]
-                            ]
-                          <> priceBookOpts
+                      , HH.slot
+                          (Proxy :: Proxy "selectPriceBook")
+                          unit
+                          Select.component
+                          ( Select.defaultInput
+                              { selected =
+                                do
+                                  selPb <- sec.priceBook
+                                  A.findIndex
+                                    (\pb -> pb.id == selPb.id && pb.version == selPb.version)
+                                    priceBooks
+                              , values = priceBookOpts
+                              , noSelectionText = "Please choose a price book"
+                              }
+                          )
+                          (maybe NoOp (actionSetPriceBook priceBooks))
                       ]
                 ]
             , renderOrderLines sec.solution sec.orderLines
@@ -1129,21 +1143,7 @@ render state =
             , priceBook: pb
             }
       )
-        $ A.index priceBooks (i - 1)
-
-    solutionOptions =
-      map
-        (\(Tuple i s) -> HH.option [ HP.value i ] [ HH.text $ solutionLabel s ])
-        (Map.toUnfoldable pc.solutions)
-
-    priceBookOptions curPriceBook =
-      map
-        ( \pb ->
-            HH.option
-              [ HP.selected (Just pb.id == map _.id curPriceBook)
-              ]
-              [ HH.text $ pb.title <> " (" <> SS.prettyDate pb.version <> ")" ]
-        )
+        $ A.index priceBooks i
 
     renderOrderLines sol orderLines = HH.div_ $ A.mapWithIndex renderOrderLine' orderLines
       where

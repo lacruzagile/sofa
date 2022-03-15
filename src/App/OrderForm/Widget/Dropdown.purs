@@ -8,14 +8,16 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Loadable as Loadable
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
-import Data.Tuple (Tuple(..), snd)
+import Data.Tuple (Tuple(..), fst, snd)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import HtmlUtils (setInputText)
+import Select as Sel
+import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -33,96 +35,150 @@ type Output
   = Maybe SS.ConfigValue
 
 type State m
-  = { selected :: Maybe SS.ConfigValue
+  = ( selected :: Maybe (Tuple String SS.ConfigValue)
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , getEnumData :: Maybe String -> m DataSourceEnumResult
-    }
+    )
 
 data Action
   = Initialize
-  | Select Int
+
+type Action'
+  = Sel.Action Action
 
 component ::
   forall query m.
   MonadAff m => CredentialStore m => H.Component query (Input m) Output m
 component =
   H.mkComponent
-    { initialState
-    , render
-    , eval:
-        H.mkEval
-          H.defaultEval
-            { handleAction = handleAction
-            , initialize = Just Initialize
-            }
+    { initialState: identity
+    , render: \st -> HH.slot selectLabel unit selectComponent st identity
+    , eval: H.mkEval H.defaultEval { handleAction = H.raise }
+    }
+  where
+  selectLabel = Proxy :: Proxy "select"
+
+  selectComponent :: H.Component (Sel.Query query ()) (Input m) Output m
+  selectComponent =
+    Sel.component mapInput
+      $ Sel.defaultSpec
+          { initialize = Just Initialize
+          , handleAction = handleAction
+          , handleEvent = handleEvent
+          , render = render
+          }
+
+  mapInput :: (Input m) -> Sel.Input (State m)
+  mapInput input =
+    { inputType: Sel.Toggle
+    , debounceTime: Nothing
+    , search: Nothing
+    , getItemCount: getDataItemCount
+    , selected: (\v -> Tuple "" v) <$> input.value
+    , available: Idle
+    , getEnumData: input.getEnumData
     }
 
-initialState :: forall m. Input m -> State m
-initialState input =
-  { selected: input.value
-  , available: Idle
-  , getEnumData: input.getEnumData
-  }
+  getDataItemCount st = maybe 0 A.length $ Loadable.toMaybe $ st.available
 
-render ::
-  forall slots m.
-  MonadAff m =>
-  CredentialStore m =>
-  State m -> H.ComponentHTML Action slots m
-render st = case st.available of
-  Idle -> HH.div [ HP.classes infoClasses ] [ HH.text "Data not loaded …" ]
-  Loading -> HH.div [ HP.classes loadingClasses ] [ HH.text "Loading data …" ]
-  Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
-  Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No data available …" ]
-  Loaded available ->
-    HH.select
-      [ HE.onSelectedIndexChange Select ]
-      $ [ HH.option
-            [ HP.selected $ st.selected == Nothing
-            , HP.disabled true
-            ]
-            [ HH.text $ "Please choose an option" ]
+  handleAction = case _ of
+    Initialize -> do
+      state <-
+        H.modify \st ->
+          st { available = Loading }
+      lAvailable <- H.lift $ state.getEnumData Nothing
+      state' <-
+        H.modify \st ->
+          st
+            { selected =
+              do
+                Tuple _ inputValue <- st.selected
+                available <- Loadable.toMaybe lAvailable
+                A.find (\(Tuple _ v) -> v == inputValue) available
+            , available = lAvailable
+            }
+      -- Set the input element to the full selection key.
+      case state'.selected of
+        Nothing -> pure unit
+        Just (Tuple key _) -> setInputText "select-input" key
+
+  handleEvent = case _ of
+    Sel.Selected idx -> do
+      st' <-
+        H.modify \st ->
+          st
+            { visibility = Sel.Off
+            , selected =
+              do
+                available <- Loadable.toMaybe st.available
+                available !! idx
+            }
+      -- Set the input element to the full selection key.
+      case st'.selected of
+        Just (Tuple key _) -> setInputText "select-input" key
+        Nothing -> pure unit
+      -- Let the parent component know about the new selection.
+      H.raise $ map snd $ st'.selected
+    _ -> pure unit
+
+  render :: Sel.State (State m) -> H.ComponentHTML Action' () m
+  render st = HH.div [ HP.class_ (Css.c "inline-block") ] [ renderInput, renderResults ]
+    where
+    renderInput :: H.ComponentHTML Action' () m
+    renderInput =
+      HH.button
+        ( SelSet.setToggleProps
+            [ HP.classes [ Css.c "nectary-input", Css.c "nectary-dropdown-icon" ] ]
+        )
+        [ maybe
+            (HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text "Please choose" ])
+            (HH.text <<< fst)
+            st.selected
         ]
-      <> map renderItem available
-  where
-  containerClasses = []
 
-  infoClasses = containerClasses <> [ Css.c "p-2" ]
+    containerClasses =
+      [ Css.c "absolute"
+      , Css.c "flex"
+      , Css.c "flex-col"
+      , Css.c "bg-white"
+      , Css.c "w-72"
+      , Css.c "max-h-72"
+      , Css.c "overflow-auto"
+      , Css.c "border"
+      , Css.c "rounded-md"
+      ]
 
-  loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
+    infoClasses = containerClasses <> [ Css.c "p-2" ]
 
-  renderItem (Tuple key v) =
-    HH.option
-      [ HP.selected $ st.selected == Just v ]
-      [ HH.text key ]
+    loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
-handleAction ::
-  forall slots m.
-  MonadAff m =>
-  CredentialStore m =>
-  Action -> H.HalogenM (State m) Action slots Output m Unit
-handleAction = case _ of
-  Initialize -> do
-    state <- H.modify \st -> st { available = Loading }
-    lAvailable <- H.lift $ state.getEnumData Nothing
-    H.modify_ \st ->
-      st
-        { selected =
-          do
-            inputValue <- st.selected
-            available <- Loadable.toMaybe lAvailable
-            snd <$> A.find (\(Tuple _ v) -> v == inputValue) available
-        , available = lAvailable
-        }
-  Select idx -> do
-    st' <-
-      H.modify \st ->
-        st
-          { selected =
-            snd
-              <$> do
-                  available <- Loadable.toMaybe st.available
-                  available !! (idx - 1)
-          }
-    -- Let the parent component know about the new selection.
-    H.raise st'.selected
+    renderResults :: H.ComponentHTML Action' () m
+    renderResults
+      | st.visibility == Sel.Off = HH.text ""
+      | otherwise = case st.available of
+        Idle -> HH.div [ HP.classes infoClasses ] [ HH.text "Waiting for load …" ]
+        Loading -> HH.div [ HP.classes loadingClasses ] [ HH.text "Loading values …" ]
+        Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
+        Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No matching value …" ]
+        Loaded available ->
+          HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
+            $ A.mapWithIndex renderItem available
+
+    renderItem :: Int -> Tuple String SS.ConfigValue -> H.ComponentHTML Action' () m
+    renderItem idx (Tuple key _) =
+      HH.div
+        ( SelSet.setItemProps idx
+            [ HP.classes $ itemClasses <> selectedClasses <> highlightClasses
+            ]
+        )
+        [ HH.text key ]
+      where
+      itemClasses = [ Css.c "p-2", Css.c "pr-8" ]
+
+      highlightClasses
+        | st.highlightedIndex == Just idx = [ Css.c "bg-snow-500" ]
+        | otherwise = []
+
+      selectedClasses
+        | Just key == map fst st.selected = [ Css.c "nectary-icon-check" ]
+        | otherwise = []

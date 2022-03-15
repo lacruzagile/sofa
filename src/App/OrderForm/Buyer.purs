@@ -4,6 +4,7 @@ module App.OrderForm.Buyer (Slot, Input(..), Output(..), Query(..), proxy, compo
 import Prelude
 import App.OrderForm.SelectBuyer as SelectBuyer
 import App.Requests (getBuyerContacts)
+import Component.Select as Select
 import Css as Css
 import Data.Array as A
 import Data.Auth (class CredentialStore)
@@ -13,6 +14,7 @@ import Data.Newtype (unwrap)
 import Data.SmartSpec as SS
 import Data.String as S
 import Data.String.Utils (startsWith)
+import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console as Console
 import Halogen as H
@@ -29,7 +31,9 @@ proxy :: Proxy "buyer"
 proxy = Proxy
 
 type Slots
-  = ( selectBuyer :: SelectBuyer.Slot Unit )
+  = ( selectBuyer :: SelectBuyer.Slot Unit
+    , nectaryDropdown :: Select.Slot String SS.Contact
+    )
 
 type Input
   = Maybe
@@ -262,6 +266,11 @@ renderDetails st =
 
   renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
 
+  renderContact ::
+    String ->
+    SS.Contact ->
+    (SS.Contact -> Action) ->
+    H.ComponentHTML Action Slots m
   renderContact label (SS.Contact contact) act
     | st.readOnly =
       let
@@ -287,56 +296,34 @@ renderDetails st =
           ]
     | otherwise =
       let
-        renderContactOption (SS.Contact c) =
-          HH.option
-            [ HP.value $ maybe "" unwrap c.contactId, HP.selected $ contact == c ]
-            [ HH.text $ fromMaybe "" c.displayName
-            , HH.span_ $ maybe [] (\e -> [ HH.text " <", HH.text e, HH.text ">" ]) c.email
-            ]
-
-        actionSetContact id = case st.buyerAvailableContacts of
-          Loaded contacts ->
-            maybe NoOp act
-              $ let
-                  id' = Just (SS.ContactId id)
-                in
-                  A.find (\(SS.Contact le) -> id' == le.contactId) contacts
-          _ -> NoOp
+        selectOption c@(SS.Contact { displayName, email }) =
+          Tuple
+            ( HH.span_
+                [ HH.text $ fromMaybe "" displayName
+                , HH.span_ $ maybe [] (\e -> [ HH.text " <", HH.text e, HH.text ">" ]) email
+                ]
+            )
+            c
       in
         HH.label_
           [ renderSmallTitle label
-          , HH.select
-              [ HP.classes [ Css.c "p-1", Css.c "h-max", Css.c "w-96" ]
-              , HE.onValueChange actionSetContact
-              ]
-              $ case st.buyerAvailableContacts of
-                  Idle ->
-                    [ HH.option
-                        [ HP.value "", HP.disabled true, HP.selected true ]
-                        [ HH.text "No contacts loaded" ]
-                    ]
-                  Loaded contacts ->
-                    [ HH.option
-                        [ HP.value ""
-                        , HP.disabled true
-                        , HP.selected $ SS.Contact contact == SS.emptyContact
-                        ]
-                        [ HH.text "Please choose a contact" ]
-                    ]
-                      <> map renderContactOption contacts
-                  Loading ->
-                    [ HH.option
-                        [ HP.value "", HP.disabled true, HP.selected true ]
-                        [ HH.span
-                            [ HP.class_ $ Css.c "animate-pulse" ]
-                            [ HH.text "Loading contacts…" ]
-                        ]
-                    ]
-                  Error _ ->
-                    [ HH.option
-                        [ HP.value "", HP.disabled true, HP.selected true ]
-                        [ HH.text $ "Error loading contacts" ]
-                    ]
+          , case st.buyerAvailableContacts of
+              Idle -> HH.text "No contacts loaded"
+              Loaded contacts ->
+                let
+                  input =
+                    Select.defaultInput
+                      { selected = Just $ SS.Contact contact
+                      , values = selectOption <$> contacts
+                      , noSelectionText = "Please choose a contact"
+                      }
+                in
+                  HH.slot Select.proxy label Select.component input (maybe NoOp act)
+              Loading ->
+                HH.span
+                  [ HP.class_ $ Css.c "animate-pulse" ]
+                  [ HH.text "Loading contacts…" ]
+              Error _ -> HH.text $ "Error loading contacts"
           ]
 
 handleAction ::
