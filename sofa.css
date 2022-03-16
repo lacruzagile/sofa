@@ -267,8 +267,15 @@
   }
 
   .sofa-spinner {
-    @apply inline-block border-4 border-sky-200 rounded-full animate-spin w-5 h-5;
-      border-top-color: transparent;
+    @apply
+      inline-block
+      border-4
+      border-snow-700
+      border-b-stormy-500
+      rounded-full
+      animate-spin
+      w-5
+      h-5;
   }
 
   .sofa-order-status-select {
