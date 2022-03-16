@@ -940,6 +940,7 @@ render state =
                       selVal <- value <|> (mkValue <$> c.default)
                       A.findIndex (\v -> mkValue v == selVal) c.enum
                   , values = A.mapWithIndex (\i e -> Tuple (HH.text $ showValue e) i) c.enum
+                  , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
                   }
               )
               onIndexChange
@@ -1035,6 +1036,7 @@ render state =
                         (\(Tuple i s) -> Tuple (HH.text $ solutionLabel s) i)
                         (Map.toUnfoldable pc.solutions)
                     , noSelectionText = "Please choose a solution"
+                    , wrapperClasses = [ Css.c "w-96" ]
                     }
                 )
                 actionSetSolution

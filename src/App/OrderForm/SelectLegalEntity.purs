@@ -2,7 +2,7 @@ module App.OrderForm.SelectLegalEntity (Slot, Output(..), proxy, component) wher
 
 import Prelude
 import App.Requests (getLegalEntities)
-import Css as Css
+import Component.Typeahead as Typeahead
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Auth (class CredentialStore)
@@ -16,10 +16,8 @@ import Data.Traversable (for_)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
-import HtmlUtils (focusElementByQuery)
+import HtmlUtils (focusElementByRef)
 import Select as Sel
-import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
@@ -82,7 +80,7 @@ selectComponent =
   handleAction = case _ of
     Initialize -> do
       -- Focus the search box to allow immediate typing.
-      focusElementByQuery "input#le-search"
+      focusElementByRef (H.RefLabel "select-input")
 
   handleEvent :: Sel.Event -> H.HalogenM (Sel.State State) (Sel.Action Action) () Output m Unit
   handleEvent = case _ of
@@ -132,71 +130,24 @@ selectComponent =
       H.raise st'.selected
     _ -> pure unit
 
-  render :: Sel.State State -> H.ComponentHTML (Sel.Action Action) () m
-  render st = HH.span_ $ [ renderInput ] <> renderResults
-    where
-    renderInput :: H.ComponentHTML (Sel.Action Action) () m
-    renderInput =
-      HH.input
-        $ SelSet.setInputProps
-            [ HP.type_ HP.InputText
-            , HP.id "le-search"
-            , HP.classes
-                [ Css.c "w-72"
-                , Css.c "mt-2"
-                , Css.c "mr-5"
-                , Css.c "p-1"
-                , Css.c "focus:outline"
-                , Css.c "outline-1"
-                , Css.c "outline-gray-300"
-                , Css.c "placeholder:italic"
-                , Css.c "rounded-sm"
-                ]
-            , HP.placeholder "Type to search legal entity…"
-            ]
-
-    renderResults :: Array (H.ComponentHTML (Sel.Action Action) () m)
-    renderResults
-      | st.visibility == Sel.Off = []
-      | otherwise = case st.filtered of
-        Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
-        Loading -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Loading search results …" ] ]
-        Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
-        Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching legal entities …" ] ]
-        Loaded filtered ->
-          [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
-              $ A.mapWithIndex renderItem filtered
-          ]
-        where
-        containerClasses =
-          [ Css.c "absolute"
-          , Css.c "mt-1"
-          , Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "bg-white"
-          , Css.c "w-72"
-          , Css.c "max-h-72"
-          , Css.c "overflow-auto"
-          , Css.c "border"
-          , Css.c "rounded-md"
-          ]
-
-        infoClasses = containerClasses <> [ Css.c "p-2" ]
-
-    renderItem idx legalEntity =
-      HH.div
-        ( SelSet.setItemProps idx
-            [ HP.classes
-                $ if st.highlightedIndex == Just idx then
-                    selectedClasses
-                  else
-                    itemClasses
-            ]
-        )
-        (renderSummary legalEntity)
-      where
-      itemClasses = [ Css.c "p-2" ]
-
-      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
-
-    renderSummary (SS.LegalEntity le) = [ HH.text le.registeredName ]
+  render :: Sel.State State -> H.ComponentHTML _ () m
+  render st =
+    Typeahead.render
+      $ (Typeahead.initState st)
+          { selected = map (\(SS.LegalEntity { registeredName }) -> registeredName) st.selected
+          , selectedIndex =
+            do
+              SS.LegalEntity { registeredName: selName } <- st.selected
+              vals <- Loadable.toMaybe st.filtered
+              A.findIndex (\(SS.LegalEntity { registeredName: name }) -> name == selName) vals
+          , values =
+            case st.filtered of
+              Loaded filtered ->
+                let
+                  renderItem (SS.LegalEntity { registeredName }) = HH.text registeredName
+                in
+                  renderItem <$> filtered
+              _ -> []
+          , noSelectionText = "Type to search legal entity  …"
+          , loading = Loadable.isLoading st.filtered
+          }

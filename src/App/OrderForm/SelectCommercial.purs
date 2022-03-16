@@ -2,6 +2,7 @@ module App.OrderForm.SelectCommercial (Slot, Query(..), Output(..), proxy, compo
 
 import Prelude
 import App.Requests (getBillingAccount, getBillingAccounts)
+import Component.Typeahead as Typeahead
 import Css as Css
 import Data.Array ((!!))
 import Data.Array as A
@@ -18,11 +19,11 @@ import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import HtmlUtils (focusElementByQuery)
+import HtmlUtils (focusElementByRef)
 import Select as Sel
-import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
 import Web.HTML.HTMLInputElement as HTMLInputElement
+import Widgets as Widgets
 
 type Slot id
   = H.Slot Query Output id
@@ -34,7 +35,7 @@ type Input
   = SS.CrmAccountId
 
 type Output
-  = Maybe SS.Commercial
+  = Loadable SS.Commercial
 
 data Query a
   = SetCrmAccountId SS.CrmAccountId a
@@ -98,8 +99,9 @@ component =
     , available: Idle
     }
 
+  handleAction :: Action -> H.HalogenM _ _ _ _ _ Unit
   handleAction = case _ of
-    Initialize -> focusElementByQuery "input#commercial-search"
+    Initialize -> focusElementByRef (H.RefLabel "select-input")
 
   handleQuery :: forall a. Query a -> H.HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = case _ of
@@ -114,6 +116,7 @@ component =
           }
       pure (Just next)
 
+  handleEvent :: Sel.Event -> H.HalogenM _ _ _ _ _ Unit
   handleEvent = case _ of
     Sel.Searched _ -> do
       state <- H.get
@@ -125,7 +128,7 @@ component =
           H.lift $ Just <$> getBillingAccounts state.crmAccountId
       case mAvailable of
         Nothing -> pure unit
-        Just available ->
+        Just available -> do
           H.modify_ \st ->
             st
               { available = available
@@ -134,6 +137,11 @@ component =
               -- of date at the time `getBillingAccounts` finishes.
               , filtered = filterAvailable st.search available
               }
+          -- If the result is an error then we also propagate this to the
+          -- parent.
+          case available of
+            Error msg -> H.raise $ Error msg
+            _ -> pure unit
     Sel.Selected idx -> do
       st' <-
         H.modify \st ->
@@ -166,96 +174,49 @@ component =
       -- Let the parent component know about the new selection.
       H.raise
         $ (\(SS.BillingAccount { commercial }) -> commercial)
-        <$> Loadable.toMaybe selectedFull
+        <$> selectedFull
     _ -> pure unit
 
   render :: Sel.State State -> H.ComponentHTML Action' () m
-  render st = HH.span_ $ [ renderInput ] <> renderResults
-    where
-    renderInput :: H.ComponentHTML Action' () m
-    renderInput =
-      HH.input
-        $ SelSet.setInputProps
-            [ HP.type_ HP.InputText
-            , HP.id "commercial-search"
-            , HP.classes
-                [ Css.c "w-72"
-                , Css.c "mt-2"
-                , Css.c "mr-5"
-                , Css.c "p-1"
-                , Css.c "focus:outline"
-                , Css.c "outline-1"
-                , Css.c "outline-gray-300"
-                , Css.c "placeholder:italic"
-                , Css.c "rounded-sm"
-                ]
-            , HP.placeholder "Type to search billing account…"
-            ]
-
-    containerClasses =
-      [ Css.c "absolute"
-      , Css.c "mt-1"
-      , Css.c "flex"
-      , Css.c "flex-col"
-      , Css.c "bg-white"
-      , Css.c "w-72"
-      , Css.c "max-h-72"
-      , Css.c "overflow-auto"
-      , Css.c "border"
-      , Css.c "rounded-md"
-      ]
-
-    infoClasses = containerClasses <> [ Css.c "p-2" ]
-
-    renderResults :: Array (H.ComponentHTML Action' () m)
-    renderResults
-      | st.visibility == Sel.Off = case st.selectedFull of
-        Loading ->
-          [ HH.div [ HP.classes infoClasses ]
-              [ HH.span
-                  [ HP.class_ $ Css.c "animate-pulse" ]
-                  [ HH.text "Loading commercial …" ]
-              ]
-          ]
-        _ -> []
-      | otherwise = case st.filtered of
-        Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
-        Loading ->
-          [ HH.div
-              [ HP.classes infoClasses ]
-              [ HH.span
-                  [ HP.class_ $ Css.c "animate-pulse" ]
-                  [ HH.text "Loading search results …" ]
-              ]
-          ]
-        Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
-        Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching billing accounts …" ] ]
-        Loaded filtered ->
-          [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
-              $ A.mapWithIndex renderItem filtered
-          ]
-
-    renderItem idx billingAccount =
+  render st = case st.selectedFull of
+    Loading ->
       HH.div
-        ( SelSet.setItemProps idx
-            [ HP.classes
-                $ if st.highlightedIndex == Just idx then
-                    selectedClasses
-                  else
-                    itemClasses
+        [ HP.classes
+            [ Css.c "nectary-input"
+            , Css.c "w-full"
+            , Css.c "flex"
+            , Css.c "items-center"
+            , Css.c "space-x-3"
             ]
-        )
-        (renderSummary billingAccount)
-      where
-      itemClasses = [ Css.c "p-2" ]
-
-      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
-
-    renderSummary (SS.BillingAccount ba) =
-      [ HH.text ba.displayName
-      , HH.text " "
-      , HH.span [ HP.style "color:gray" ] [ HH.text ba.shortId ]
-      ]
+        ]
+        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading billing account" ]
+        , Widgets.spinner [ Css.c "my-4" ]
+        ]
+    _ ->
+      Typeahead.render
+        $ (Typeahead.initState st)
+            { selected = map (\(SS.BillingAccount { displayName }) -> displayName) st.selected
+            , selectedIndex =
+              do
+                SS.BillingAccount { displayName: selName } <- st.selected
+                vals <- Loadable.toMaybe st.available
+                A.findIndex (\(SS.BillingAccount { displayName: name }) -> name == selName) vals
+            , values =
+              case st.filtered of
+                Loaded filtered ->
+                  let
+                    renderItem (SS.BillingAccount ba) =
+                      HH.span_
+                        [ HH.text ba.displayName
+                        , HH.text " "
+                        , HH.span [ HP.style "color:gray" ] [ HH.text ba.shortId ]
+                        ]
+                  in
+                    renderItem <$> filtered
+                _ -> []
+            , noSelectionText = "Type to search billing account  …"
+            , loading = Loadable.isLoading st.available
+            }
 
 filterAvailable ::
   forall f.

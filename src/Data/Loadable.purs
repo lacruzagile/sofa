@@ -1,5 +1,7 @@
 module Data.Loadable
   ( Loadable(..)
+  , isLoading
+  , isLoaded
   , toMaybe
   , deleteR_
   , getJson
@@ -44,6 +46,18 @@ instance bindLoadable :: Bind Loadable where
   bind (Loaded x) f = f x
   bind Loading _ = Loading
   bind (Error err) _ = Error err
+
+-- | Whether the given loadable is in a loading state.
+isLoading :: forall a. Loadable a -> Boolean
+isLoading = case _ of
+  Loading -> true
+  _ -> false
+
+-- | Whether the given loadable is in a loading state.
+isLoaded :: forall a. Loadable a -> Boolean
+isLoaded = case _ of
+  Loaded _ -> true
+  _ -> false
 
 -- | Converts the given loadable into a maybe value. A `Loaded` value is
 -- | converted to a `Just`, all other loadable values are converted to

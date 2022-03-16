@@ -139,19 +139,13 @@ renderDetails st =
     , Widgets.modal modalToolbar $ renderBody st.seller
     ]
   where
-  modalToolbar =
-    if st.readOnly then
-      [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
-    else
-      [ HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd ChooseLegalEntity
-      , Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails)
-      ]
+  modalToolbar = [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
 
   renderBody sellerOpt =
     let
       defaultCurrency = HH.text $ maybe "" (show <<< _.defaultBankCurrency <<< unwrap) st.legalEntity
 
-      subtleComma = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text ", " ]
+      subtleComma = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text ", " ]
 
       currencies =
         A.intersperse subtleComma
@@ -169,7 +163,11 @@ renderDetails st =
               , Css.c "space-y-4"
               ]
           ]
-          $ [ HH.div_
+          $ [ if st.readOnly then
+                HH.text ""
+              else
+                HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd ChooseLegalEntity
+            , HH.div_
                 [ renderSmallTitle "Registered Name"
                 , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-2xl" ] ] [ HH.text seller.registeredName ]
                 ]
@@ -180,7 +178,7 @@ renderDetails st =
                     ]
                 , HH.div [ HP.class_ (Css.c "w-1/2") ]
                     [ renderSmallTitle "Available Currencies"
-                    , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ] currencies
+                    , HH.div [ HP.classes [ Css.c "ml-2" ] ] currencies
                     ]
                 ]
             , renderContact "Primary Contact" seller.contacts.primary

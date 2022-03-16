@@ -1,5 +1,6 @@
 module HtmlUtils
-  ( focusElementByQuery
+  ( focusElementByRef
+  , focusElementByQuery
   , scrollToBottom
   , selectInputText
   , setInputText
@@ -18,6 +19,16 @@ import Web.HTML.HTMLElement as HtmlElement
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
 foreign import scrollToBottom :: Effect Unit
+
+focusElementByRef ::
+  forall state action slots output m.
+  MonadEffect m =>
+  H.RefLabel ->
+  H.HalogenM state action slots output m Unit
+focusElementByRef ref = do
+  element <- H.getHTMLElementRef ref
+  for_ element \el ->
+    H.liftEffect $ HtmlElement.focus el
 
 focusElementByQuery :: forall m. Bind m => MonadAff m => String -> m Unit
 focusElementByQuery query = do

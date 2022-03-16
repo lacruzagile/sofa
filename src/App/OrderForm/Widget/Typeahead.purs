@@ -2,6 +2,7 @@ module App.OrderForm.Widget.Typeahead (Slot, Output(..), proxy, component) where
 
 import Prelude
 import App.SchemaDataSource (DataSourceEnumResult)
+import Component.Typeahead as Typeahead
 import Css as Css
 import Data.Array ((!!))
 import Data.Array as A
@@ -13,15 +14,12 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
-import Data.Tuple (Tuple(..), snd)
+import Data.Tuple (Tuple(..), fst, snd)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import HtmlUtils (selectInputText, setInputText)
 import Select as Sel
-import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -141,61 +139,27 @@ component =
     _ -> pure unit
 
   render :: Sel.State (State m) -> H.ComponentHTML Action' () m
-  render st = HH.div [ HP.class_ (Css.c "inline-block") ] [ renderInput, renderResults ]
-    where
-    renderInput :: H.ComponentHTML Action' () m
-    renderInput =
-      HH.input
-        $ SelSet.setInputProps
-            [ HP.type_ HP.InputText
-            , HP.classes [ Css.c "nectary-input" ]
-            , HP.placeholder "Type to search value…"
-            , HE.onFocus \_ -> Sel.Action InputFocused
-            ]
-
-    containerClasses =
-      [ Css.c "absolute"
-      , Css.c "flex"
-      , Css.c "flex-col"
-      , Css.c "bg-white"
-      , Css.c "w-72"
-      , Css.c "max-h-72"
-      , Css.c "overflow-auto"
-      , Css.c "border"
-      , Css.c "rounded-md"
-      ]
-
-    infoClasses = containerClasses <> [ Css.c "p-2" ]
-
-    loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
-
-    renderResults :: H.ComponentHTML Action' () m
-    renderResults
-      | st.visibility == Sel.Off = HH.text ""
-      | otherwise = case st.filtered of
-        Idle -> HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ]
-        Loading -> HH.div [ HP.classes loadingClasses ] [ HH.text "Loading search results …" ]
-        Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
-        Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No matching value …" ]
-        Loaded filtered ->
-          HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
-            $ A.mapWithIndex renderItem filtered
-
-    renderItem idx (Tuple key _) =
-      HH.div
-        ( SelSet.setItemProps idx
-            [ HP.classes
-                $ if st.highlightedIndex == Just idx then
-                    selectedClasses
-                  else
-                    itemClasses
-            ]
-        )
-        [ HH.text key ]
-      where
-      itemClasses = [ Css.c "p-2" ]
-
-      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
+  render st =
+    Typeahead.render
+      $ (Typeahead.initState st)
+          { selected = map fst st.selected
+          , selectedIndex =
+            do
+              Tuple _ selVal <- st.selected
+              vals <- Loadable.toMaybe st.filtered
+              A.findIndex (\(Tuple _ val) -> val == selVal) vals
+          , values =
+            case st.filtered of
+              Loaded filtered ->
+                let
+                  renderItem (Tuple key _) = HH.text key
+                in
+                  renderItem <$> filtered
+              _ -> []
+          , noSelectionText = "Type to search value …"
+          , loading = Loadable.isLoading st.filtered
+          , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+          }
 
 filterAvailable ::
   forall f.

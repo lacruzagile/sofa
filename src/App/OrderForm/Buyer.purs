@@ -9,7 +9,8 @@ import Css as Css
 import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Loadable as Loadable
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.SmartSpec as SS
 import Data.String as S
@@ -45,9 +46,9 @@ type Output
   = SS.Buyer
 
 type State
-  = { buyer :: Maybe SS.Buyer -- ^ The currently chosen buyer.
+  = { buyer :: Loadable SS.Buyer -- ^ The currently chosen buyer.
     , buyerAvailableContacts :: Loadable (Array (SS.Contact)) -- ^ Available contacts for the chosen buyer.
-    , acceptedBuyer :: Maybe SS.Buyer -- ^ The latest accepted buyer.
+    , acceptedBuyer :: Loadable SS.Buyer -- ^ The latest accepted buyer.
     , readOnly :: Boolean
     , enabled :: Boolean
     , open :: Boolean -- ^ Whether the details modal is open.
@@ -55,7 +56,7 @@ type State
 
 data Action
   = NoOp
-  | ChooseBuyer (Maybe SS.Buyer)
+  | ChooseBuyer (Loadable SS.Buyer)
   | SetContactPrimary SS.Contact
   | SetContactFinance SS.Contact
   | SetCustomerStatus Boolean
@@ -86,17 +87,17 @@ component =
 initialState :: Input -> State
 initialState input = case input of
   Nothing ->
-    { buyer: Nothing
+    { buyer: Idle
     , buyerAvailableContacts: Idle
-    , acceptedBuyer: Nothing
+    , acceptedBuyer: Idle
     , readOnly: false
     , enabled: false
     , open: false
     }
   Just { buyer, readOnly } ->
-    { buyer: Just buyer
+    { buyer: Loaded buyer
     , buyerAvailableContacts: Idle
-    , acceptedBuyer: Just buyer
+    , acceptedBuyer: Loaded buyer
     , readOnly
     , enabled: true
     , open: false
@@ -118,8 +119,8 @@ renderSummary st
       [ HP.classes [ Css.c "text-2xl", Css.c "text-gray-400" ] ]
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedBuyer of
-    Just (SS.Buyer { corporateName }) -> btn okClasses corporateName
-    Nothing -> btn badClasses "None selected"
+    Loaded (SS.Buyer { corporateName }) -> btn okClasses corporateName
+    _ -> btn badClasses "None selected"
     where
     btn classes txt =
       HH.button
@@ -155,19 +156,13 @@ renderDetails st =
     , Widgets.modal modalToolbar $ renderBody st.buyer
     ]
   where
-  modalToolbar =
-    if st.readOnly then
-      [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
-    else
-      [ HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd ChooseBuyer
-      , Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails)
-      ]
+  modalToolbar = [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
 
   mkWebsiteUrl s
     | startsWith "http://" s || startsWith "https://" s = s
     | otherwise = "https://" <> s
 
-  renderBody buyerOpt =
+  renderBody buyerLoadable =
     let
       renderBuyerData (SS.Buyer buyer) =
         HH.div
@@ -179,7 +174,25 @@ renderDetails st =
               , Css.c "space-y-4"
               ]
           ]
-          $ [ HH.div_
+          $ [ if st.readOnly then
+                HH.text ""
+              else
+                HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd ChooseBuyer
+            , case buyerLoadable of
+                Error err ->
+                  HH.p
+                    [ HP.classes
+                        [ Css.c "mt-5"
+                        , Css.c "p-3"
+                        , Css.c "bg-red-100"
+                        , Css.c "border"
+                        , Css.c "border-red-400"
+                        , Css.c "text-raspberry-500"
+                        ]
+                    ]
+                    [ HH.text err ]
+                _ -> HH.text ""
+            , HH.div_
                 [ renderSmallTitle "Corporate Name"
                 , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-2xl" ] ] [ HH.text buyer.corporateName ]
                 ]
@@ -250,7 +263,7 @@ renderDetails st =
             , HH.button
                 [ HP.class_ (Css.c "sofa-btn-primary")
                 , HP.enabled
-                    ( isJust st.buyer
+                    ( Loadable.isLoaded st.buyer
                         && (buyer.contacts.primary /= SS.emptyContact)
                         && (buyer.contacts.finance /= SS.emptyContact)
                     )
@@ -262,7 +275,7 @@ renderDetails st =
                 [ HH.text "Cancel" ]
             ]
     in
-      renderBuyerData $ fromMaybe emptyBuyer buyerOpt
+      renderBuyerData $ fromMaybe emptyBuyer $ Loadable.toMaybe buyerLoadable
 
   renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
 
@@ -334,15 +347,8 @@ handleAction ::
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   NoOp -> pure unit
-  ChooseBuyer Nothing ->
-    H.modify_
-      $ \st ->
-          st
-            { buyer = Nothing
-            , buyerAvailableContacts = Idle
-            }
-  ChooseBuyer (Just buyer) -> do
-    H.modify_ $ \st -> st { buyer = Just buyer, buyerAvailableContacts = Loading }
+  ChooseBuyer (Loaded buyer) -> do
+    H.modify_ $ \st -> st { buyer = Loaded buyer, buyerAvailableContacts = Loading }
     case buyer of
       SS.Buyer { crmAccountId: Just crmAccountId } -> do
         -- Fetch the buyer contacts.
@@ -352,6 +358,13 @@ handleAction = case _ of
           _ -> pure unit
         H.modify_ _ { buyerAvailableContacts = contacts }
       _ -> pure unit
+  ChooseBuyer buyer ->
+    H.modify_
+      $ \st ->
+          st
+            { buyer = buyer
+            , buyerAvailableContacts = Idle
+            }
   SetContactPrimary contact ->
     let
       setContact (SS.Buyer s) = SS.Buyer $ s { contacts { primary = contact } }
@@ -369,11 +382,11 @@ handleAction = case _ of
       H.modify_ $ \st -> st { buyer = setExistingCustomer <$> st.buyer }
   OpenDetails -> H.modify_ $ \st -> st { open = true }
   AcceptAndCloseDetails -> do
-    st' <- H.modify $ \st -> st { acceptedBuyer = st.buyer, open = false }
+    st' <- H.modify \st -> st { acceptedBuyer = st.buyer, open = false }
     case st'.acceptedBuyer of
-      Nothing -> pure unit
-      Just buyer -> H.raise buyer
-  CancelAndCloseDetails -> H.modify_ $ \st -> st { buyer = st.acceptedBuyer, open = false }
+      Loaded buyer -> H.raise buyer
+      _ -> pure unit
+  CancelAndCloseDetails -> H.modify_ \st -> st { buyer = st.acceptedBuyer, open = false }
 
 handleQuery ::
   forall action slots output a m.
@@ -383,9 +396,9 @@ handleQuery = case _ of
   ResetBuyer buyer enabled next -> do
     H.modify_ \st ->
       st
-        { buyer = buyer
+        { buyer = maybe Idle Loaded buyer
         , buyerAvailableContacts = Idle
-        , acceptedBuyer = Nothing
+        , acceptedBuyer = Idle
         , enabled = enabled
         }
     pure $ Just next

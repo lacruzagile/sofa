@@ -5,9 +5,10 @@ import Prelude
 import App.OrderForm.SelectCommercial as SelectCommercial
 import Css as Css
 import Data.Auth (class CredentialStore)
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Loadable (Loadable(..), isLoaded)
+import Data.Loadable as Loadable
+import Data.Maybe (Maybe(..), maybe)
 import Data.SmartSpec as SS
-import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -37,8 +38,8 @@ type Output
   = SS.Commercial
 
 type State
-  = { commercial :: Maybe SS.Commercial -- ^ The currently chosen commercial.
-    , acceptedCommercial :: Maybe SS.Commercial -- ^ The latest accepted commercial.
+  = { commercial :: Loadable SS.Commercial -- ^ The currently chosen commercial.
+    , acceptedCommercial :: Loadable SS.Commercial -- ^ The latest accepted commercial.
     , crmAccountId :: Maybe SS.CrmAccountId
     , readOnly :: Boolean
     , enabled :: Boolean
@@ -47,7 +48,7 @@ type State
 
 data Action
   = NoOp
-  | ChooseCommercial (Maybe SS.Commercial)
+  | ChooseCommercial (Loadable SS.Commercial)
   | OpenDetails
   | AcceptAndCloseDetails
   | CancelAndCloseDetails
@@ -80,16 +81,16 @@ component =
 initialState :: Input -> State
 initialState input = case input of
   Nothing ->
-    { commercial: Nothing
-    , acceptedCommercial: Nothing
+    { commercial: Idle
+    , acceptedCommercial: Idle
     , crmAccountId: Nothing
     , readOnly: false
     , enabled: false
     , open: false
     }
   Just { commercial, crmAccountId, readOnly } ->
-    { commercial: Just commercial
-    , acceptedCommercial: Just commercial
+    { commercial: Loaded commercial
+    , acceptedCommercial: Loaded commercial
     , crmAccountId: Just crmAccountId
     , readOnly
     , enabled: true
@@ -132,7 +133,7 @@ renderSummary st
       [ HP.classes [ Css.c "text-2xl", Css.c "text-gray-400" ] ]
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedCommercial of
-    Just c ->
+    Loaded c ->
       btn okClasses
         [ renderBillingOption c
         , subtleSlash
@@ -140,7 +141,7 @@ renderSummary st
         , subtleSlash
         , renderBillingCurrency c
         ]
-    Nothing -> btn badClasses [ HH.text "None selected" ]
+    _ -> btn badClasses [ HH.text "None selected" ]
     where
     btn classes = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
 
@@ -175,28 +176,42 @@ renderDetails st =
     , Widgets.modal modalToolbar $ renderBody st.commercial
     ]
   where
-  closeBtn = Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails)
+  modalToolbar = [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
 
-  modalToolbar = case Tuple st.crmAccountId st.readOnly of
-    Tuple _ true -> [ closeBtn ]
-    Tuple Nothing _ -> [ closeBtn ]
-    Tuple (Just crmAccountId) _ ->
-      [ HH.slot SelectCommercial.proxy unit SelectCommercial.component crmAccountId ChooseCommercial
-      , closeBtn
-      ]
-
-  renderBody mCommercial =
+  renderBody commercialLoadable =
     HH.div
       [ HP.classes
-          [ Css.c "mt-5"
-          , Css.c "w-full"
+          [ Css.c "w-full"
           , Css.c "min-w-96"
           , Css.c "flex"
           , Css.c "flex-col"
           , Css.c "space-y-4"
           ]
       ]
-      $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
+      $ [ case st.crmAccountId of
+            Just crmAccountId
+              | not st.readOnly ->
+                HH.slot
+                  SelectCommercial.proxy
+                  unit
+                  SelectCommercial.component
+                  crmAccountId
+                  ChooseCommercial
+            _ -> HH.text ""
+        , case commercialLoadable of
+            Error err ->
+              HH.p
+                [ HP.classes
+                    [ Css.c "p-3"
+                    , Css.c "bg-red-100"
+                    , Css.c "border"
+                    , Css.c "border-red-400"
+                    , Css.c "text-raspberry-500"
+                    ]
+                ]
+                [ HH.text err ]
+            _ -> HH.text ""
+        , HH.div [ HP.classes [ Css.c "flex" ] ]
             [ HH.div [ HP.class_ (Css.c "w-1/2") ]
                 [ renderSmallTitle "Billing Option"
                 , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
@@ -227,6 +242,8 @@ renderDetails st =
         , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
         ]
     where
+    mCommercial = Loadable.toMaybe commercialLoadable
+
     empty = HH.text ""
 
     bottomButtons
@@ -241,7 +258,7 @@ renderDetails st =
         , HH.button
             [ HP.id "commercial-ok"
             , HP.class_ (Css.c "sofa-btn-primary")
-            , HP.enabled (isJust st.commercial)
+            , HP.enabled (isLoaded st.commercial)
             , HE.onClick \_ -> AcceptAndCloseDetails
             ]
             [ HH.text "OK" ]
@@ -267,8 +284,8 @@ handleAction = case _ of
   AcceptAndCloseDetails -> do
     st' <- H.modify $ \st -> st { acceptedCommercial = st.commercial, open = false }
     case st'.acceptedCommercial of
-      Nothing -> pure unit
-      Just commercial -> H.raise commercial
+      Loaded commercial -> H.raise commercial
+      _ -> pure unit
   CancelAndCloseDetails -> H.modify_ $ \st -> st { commercial = st.acceptedCommercial, open = false }
 
 handleQuery ::
@@ -279,8 +296,8 @@ handleQuery = case _ of
   ResetCommercial { commercial, crmAccountId, enabled } next -> do
     H.modify_ \st ->
       st
-        { commercial = commercial
-        , acceptedCommercial = Nothing
+        { commercial = maybe Idle Loaded commercial
+        , acceptedCommercial = Idle
         , crmAccountId = crmAccountId
         , enabled = enabled
         }

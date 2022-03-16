@@ -2,6 +2,7 @@ module App.OrderForm.SelectBuyer (Slot, Output(..), proxy, component) where
 
 import Prelude
 import App.Requests (getBuyer, getBuyers)
+import Component.Typeahead as Typeahead
 import Css as Css
 import Data.Array ((!!))
 import Data.Array as A
@@ -18,11 +19,11 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import HtmlUtils (focusElementByQuery)
+import HtmlUtils (focusElementByRef)
 import Select as Sel
-import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
 import Web.HTML.HTMLInputElement as HTMLInputElement
+import Widgets as Widgets
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -31,7 +32,7 @@ proxy :: Proxy "selectBuyer"
 proxy = Proxy
 
 type Output
-  = Maybe SS.Buyer
+  = Loadable SS.Buyer
 
 type State
   = ( selected :: Maybe SS.Buyer -- ^ The chosen buyer, if any.
@@ -83,7 +84,7 @@ selectComponent =
     }
 
   handleAction = case _ of
-    Initialize -> focusElementByQuery "input#buyer-search"
+    Initialize -> focusElementByRef (H.RefLabel "select-input")
 
   handleEvent = case _ of
     Sel.Searched str ->
@@ -92,6 +93,11 @@ selectComponent =
             H.modify_ _ { available = Loading }
             result <- H.lift $ getBuyers str
             H.modify_ _ { available = result }
+            -- If the result is an error then we also propagate this to the
+            -- parent.
+            case result of
+              Error msg -> H.raise $ Error msg
+              _ -> pure unit
     Sel.Selected idx -> do
       st' <-
         H.modify \st ->
@@ -118,95 +124,48 @@ selectComponent =
           H.modify_ \st -> st { selectedFull = full }
           pure full
       -- Let the parent component know about the new selection.
-      H.raise $ Loadable.toMaybe selectedFull
+      H.raise selectedFull
     _ -> pure unit
 
-  render :: Sel.State State -> H.ComponentHTML Action' () m
-  render st = HH.span_ $ [ renderInput ] <> renderResults
-    where
-    renderInput :: H.ComponentHTML Action' () m
-    renderInput =
-      HH.input
-        $ SelSet.setInputProps
-            [ HP.type_ HP.InputText
-            , HP.id "buyer-search"
-            , HP.classes
-                [ Css.c "w-72"
-                , Css.c "mt-2"
-                , Css.c "mr-5"
-                , Css.c "p-1"
-                , Css.c "focus:outline"
-                , Css.c "outline-1"
-                , Css.c "outline-gray-300"
-                , Css.c "placeholder:italic"
-                , Css.c "rounded-sm"
-                ]
-            , HP.placeholder "Type to search buyer…"
-            ]
-
-    containerClasses =
-      [ Css.c "absolute"
-      , Css.c "mt-1"
-      , Css.c "flex"
-      , Css.c "flex-col"
-      , Css.c "bg-white"
-      , Css.c "w-72"
-      , Css.c "max-h-72"
-      , Css.c "overflow-auto"
-      , Css.c "border"
-      , Css.c "rounded-md"
-      ]
-
-    infoClasses = containerClasses <> [ Css.c "p-2" ]
-
-    renderResults :: Array (H.ComponentHTML Action' () m)
-    renderResults
-      | st.visibility == Sel.Off = case st.selectedFull of
-        Loading ->
-          [ HH.div [ HP.classes infoClasses ]
-              [ HH.span
-                  [ HP.class_ $ Css.c "animate-pulse" ]
-                  [ HH.text "Loading buyer …" ]
-              ]
-          ]
-        _ -> []
-      | otherwise = case st.available of
-        Idle -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No active search …" ] ]
-        Loading ->
-          [ HH.div
-              [ HP.classes infoClasses ]
-              [ HH.span
-                  [ HP.class_ $ Css.c "animate-pulse" ]
-                  [ HH.text "Loading search results …" ]
-              ]
-          ]
-        Error msg -> [ HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ] ]
-        Loaded [] -> [ HH.div [ HP.classes infoClasses ] [ HH.text "No matching buyers …" ] ]
-        Loaded available ->
-          [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
-              $ A.mapWithIndex renderItem available
-          ]
-
-    renderItem idx buyer =
+  render :: Sel.State State -> H.ComponentHTML _ () m
+  render st = case st.selectedFull of
+    Loading ->
       HH.div
-        ( SelSet.setItemProps idx
-            [ HP.classes
-                $ if st.highlightedIndex == Just idx then
-                    selectedClasses
-                  else
-                    itemClasses
+        [ HP.classes
+            [ Css.c "nectary-input"
+            , Css.c "w-full"
+            , Css.c "flex"
+            , Css.c "items-center"
+            , Css.c "space-x-3"
             ]
-        )
-        (renderBuyerSummary buyer)
-      where
-      itemClasses = [ Css.c "p-2" ]
-
-      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
-
-    renderBuyerSummary (SS.Buyer buyer) =
-      [ HH.text buyer.corporateName
-      , HH.text " "
-      , HH.span
-          [ HP.class_ (Css.c "text-gray-400") ]
-          [ HH.text $ maybe "(No CRM account ID)" unwrap buyer.crmAccountId ]
-      ]
+        ]
+        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading buyer" ]
+        , Widgets.spinner [ Css.c "my-4" ]
+        ]
+    _ ->
+      Typeahead.render
+        $ (Typeahead.initState st)
+            { selected = map (\(SS.Buyer { corporateName }) -> corporateName) st.selected
+            , selectedIndex =
+              do
+                SS.Buyer { corporateName: selName } <- st.selected
+                vals <- Loadable.toMaybe st.available
+                A.findIndex (\(SS.Buyer { corporateName: name }) -> name == selName) vals
+            , values =
+              case st.available of
+                Loaded available ->
+                  let
+                    renderItem (SS.Buyer buyer) =
+                      HH.span_
+                        [ HH.text buyer.corporateName
+                        , HH.text " "
+                        , HH.span
+                            [ HP.class_ (Css.c "text-gray-400") ]
+                            [ HH.text $ maybe "(No CRM account ID)" unwrap buyer.crmAccountId ]
+                        ]
+                  in
+                    renderItem <$> available
+                _ -> []
+            , noSelectionText = "Type to search buyer  …"
+            , loading = Loadable.isLoading st.available
+            }

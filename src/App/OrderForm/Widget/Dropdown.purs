@@ -2,22 +2,21 @@ module App.OrderForm.Widget.Dropdown (Slot, Output(..), proxy, component) where
 
 import Prelude
 import App.SchemaDataSource (DataSourceEnumResult)
+import Component.Select as Select
 import Css as Css
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Loadable as Loadable
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, maybe')
 import Data.SmartSpec as SS
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), fst)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import HtmlUtils (setInputText)
 import Select as Sel
-import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -35,7 +34,8 @@ type Output
   = Maybe SS.ConfigValue
 
 type State m
-  = ( selected :: Maybe (Tuple String SS.ConfigValue)
+  = ( selectedIndex :: Maybe Int
+    , selectedValue :: Maybe SS.ConfigValue
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , getEnumData :: Maybe String -> m DataSourceEnumResult
     )
@@ -74,7 +74,8 @@ component =
     , debounceTime: Nothing
     , search: Nothing
     , getItemCount: getDataItemCount
-    , selected: (\v -> Tuple "" v) <$> input.value
+    , selectedIndex: Nothing
+    , selectedValue: input.value
     , available: Idle
     , getEnumData: input.getEnumData
     }
@@ -90,17 +91,19 @@ component =
       state' <-
         H.modify \st ->
           st
-            { selected =
+            { selectedIndex =
               do
-                Tuple _ inputValue <- st.selected
+                inputValue <- st.selectedValue
                 available <- Loadable.toMaybe lAvailable
-                A.find (\(Tuple _ v) -> v == inputValue) available
+                A.findIndex (\(Tuple _ v) -> v == inputValue) available
             , available = lAvailable
             }
       -- Set the input element to the full selection key.
-      case state'.selected of
-        Nothing -> pure unit
-        Just (Tuple key _) -> setInputText "select-input" key
+      maybe' pure (setInputText "select-input") do
+        idx <- state'.selectedIndex
+        available <- Loadable.toMaybe state'.available
+        Tuple key _ <- available !! idx
+        pure key
 
   handleEvent = case _ of
     Sel.Selected idx -> do
@@ -108,77 +111,31 @@ component =
         H.modify \st ->
           st
             { visibility = Sel.Off
-            , selected =
+            , selectedIndex = Just idx
+            , selectedValue =
               do
                 available <- Loadable.toMaybe st.available
-                available !! idx
+                Tuple _ value <- available !! idx
+                pure value
             }
       -- Set the input element to the full selection key.
-      case st'.selected of
-        Just (Tuple key _) -> setInputText "select-input" key
-        Nothing -> pure unit
+      maybe' pure (setInputText "select-input") do
+        available <- Loadable.toMaybe st'.available
+        Tuple key _ <- available !! idx
+        pure key
       -- Let the parent component know about the new selection.
-      H.raise $ map snd $ st'.selected
+      H.raise st'.selectedValue
     _ -> pure unit
 
   render :: Sel.State (State m) -> H.ComponentHTML Action' () m
-  render st = HH.div [ HP.class_ (Css.c "inline-block") ] [ renderInput, renderResults ]
-    where
-    renderInput :: H.ComponentHTML Action' () m
-    renderInput =
-      HH.button
-        ( SelSet.setToggleProps
-            [ HP.classes [ Css.c "nectary-input", Css.c "nectary-dropdown-icon" ] ]
-        )
-        [ maybe
-            (HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text "Please choose" ])
-            (HH.text <<< fst)
-            st.selected
-        ]
-
-    containerClasses =
-      [ Css.c "absolute"
-      , Css.c "flex"
-      , Css.c "flex-col"
-      , Css.c "bg-white"
-      , Css.c "w-72"
-      , Css.c "max-h-72"
-      , Css.c "overflow-auto"
-      , Css.c "border"
-      , Css.c "rounded-md"
-      ]
-
-    infoClasses = containerClasses <> [ Css.c "p-2" ]
-
-    loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
-
-    renderResults :: H.ComponentHTML Action' () m
-    renderResults
-      | st.visibility == Sel.Off = HH.text ""
-      | otherwise = case st.available of
-        Idle -> HH.div [ HP.classes infoClasses ] [ HH.text "Waiting for load …" ]
-        Loading -> HH.div [ HP.classes loadingClasses ] [ HH.text "Loading values …" ]
-        Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
-        Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No matching value …" ]
-        Loaded available ->
-          HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
-            $ A.mapWithIndex renderItem available
-
-    renderItem :: Int -> Tuple String SS.ConfigValue -> H.ComponentHTML Action' () m
-    renderItem idx (Tuple key _) =
-      HH.div
-        ( SelSet.setItemProps idx
-            [ HP.classes $ itemClasses <> selectedClasses <> highlightClasses
-            ]
-        )
-        [ HH.text key ]
-      where
-      itemClasses = [ Css.c "p-2", Css.c "pr-8" ]
-
-      highlightClasses
-        | st.highlightedIndex == Just idx = [ Css.c "bg-snow-500" ]
-        | otherwise = []
-
-      selectedClasses
-        | Just key == map fst st.selected = [ Css.c "nectary-icon-check" ]
-        | otherwise = []
+  render st =
+    Select.render
+      $ (Select.initRenderState st)
+          { selectedIndex = st.selectedIndex
+          , values =
+            case Loadable.toMaybe st.available of
+              Nothing -> []
+              Just available -> map (HH.text <<< fst) available
+          , loading = Loadable.isLoading st.available
+          , wrapperClasses = [ Css.c "w-96" ]
+          }

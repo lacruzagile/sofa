@@ -1,6 +1,7 @@
 module App.OrderForm.SelectProduct (Slot, Output(..), proxy, component) where
 
 import Prelude
+import Component.Typeahead as Typeahead
 import Css as Css
 import Data.Array ((!!))
 import Data.Array as A
@@ -13,9 +14,7 @@ import Data.Traversable (for_)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Select as Sel
-import Select.Setters as SelSet
 import Type.Proxy (Proxy(..))
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
@@ -100,60 +99,18 @@ selectComponent =
     _ -> pure unit
 
   render :: Sel.State State -> H.ComponentHTML _ () m
-  render st = HH.span_ $ [ renderInput ] <> renderResults
-    where
-    renderInput :: H.ComponentHTML _ () m
-    renderInput =
-      HH.input
-        $ SelSet.setInputProps
-            [ HP.type_ HP.InputText
-            , HP.classes
-                [ Css.c "nectary-input"
-                , Css.c "nectary-dropdown-icon"
-                , Css.c "w-96"
-                , Css.c "mr-5"
-                , Css.c "text-lg"
-                ]
-            , HP.placeholder "Type to search product…"
-            ]
+  render st =
+    Typeahead.render
+      $ (Typeahead.initState st)
+          { selected = map (\(SS.Product { sku }) -> show sku) st.selected
+          , selectedIndex =
+            do
+              SS.Product { sku: selSku } <- st.selected
+              A.findIndex (\(SS.Product { sku }) -> sku == selSku) st.filtered
+          , values = renderItem <$> st.filtered
+          , noSelectionText = "Type to search product …"
+          , wrapperClasses = [ Css.c "w-96" ]
+          }
 
-    renderResults :: Array (H.ComponentHTML _ () m)
-    renderResults
-      | st.visibility == Sel.Off = []
-      | otherwise = case st.filtered of
-        [] -> [ HH.div_ [ HH.text "No matching legal entities …" ] ]
-        filtered ->
-          [ HH.div (SelSet.setContainerProps [ HP.classes containerClasses ])
-              $ A.mapWithIndex renderItem filtered
-          ]
-        where
-        containerClasses =
-          [ Css.c "absolute"
-          , Css.c "mt-1"
-          , Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "bg-white"
-          , Css.c "w-96"
-          , Css.c "max-h-96"
-          , Css.c "overflow-auto"
-          , Css.c "border"
-          , Css.c "rounded-md"
-          ]
-
-    renderItem idx legalEntity =
-      HH.div
-        ( SelSet.setItemProps idx
-            [ HP.classes
-                $ if st.highlightedIndex == Just idx then
-                    selectedClasses
-                  else
-                    itemClasses
-            ]
-        )
-        (renderSummary legalEntity)
-      where
-      itemClasses = [ Css.c "p-2" ]
-
-      selectedClasses = [ Css.c "p-2", Css.c "bg-snow-500" ]
-
-    renderSummary (SS.Product { sku }) = [ HH.text (show sku) ]
+  renderItem :: SS.Product -> HH.PlainHTML
+  renderItem (SS.Product { sku }) = HH.text (show sku)
