@@ -141,7 +141,7 @@ renderSummary st
         , subtleSlash
         , renderBillingCurrency c
         ]
-    _ -> btn badClasses [ HH.text "None selected" ]
+    _ -> btn badClasses [ HH.text "Select …" ]
     where
     btn classes = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
 

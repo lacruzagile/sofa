@@ -106,7 +106,7 @@ render state
 renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
 renderSummary st = case st.acceptedSeller of
   Just (SS.Seller { registeredName }) -> btn okClasses registeredName
-  Nothing -> btn badClasses "None selected"
+  Nothing -> btn badClasses "Select …"
   where
   btn classes txt = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ] [ HH.text txt ]
 

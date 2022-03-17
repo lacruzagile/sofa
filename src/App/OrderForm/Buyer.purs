@@ -120,7 +120,7 @@ renderSummary st
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedBuyer of
     Loaded (SS.Buyer { corporateName }) -> btn okClasses corporateName
-    _ -> btn badClasses "None selected"
+    _ -> btn badClasses "Select …"
     where
     btn classes txt =
       HH.button
