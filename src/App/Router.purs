@@ -6,6 +6,7 @@ import App.NavbarItemUser as NavbarItemUser
 import App.OrderForm as OrderForm
 import App.Orders as Orders
 import App.ProductCatalog as ProductCatalog
+import Component.Icon as Icon
 import Css as Css
 import Data.Auth (class CredentialStore)
 import Data.Maybe (Maybe(..))
@@ -87,7 +88,7 @@ renderNavbar ::
 renderNavbar currentRoute =
   HH.nav [ HP.classes navbarClasses ]
     [ HH.div [ HP.classes navbarWrapperClasses ]
-        [ primaryItem Route.Home "SOFA"
+        [ primaryItem Route.Home
         , navbarItem Route.Home "Home"
         , navbarItem Route.ProductCatalog "Product Catalog"
         , navbarItem Route.Orders "Orders"
@@ -115,8 +116,6 @@ renderNavbar currentRoute =
     , Css.c "items-center"
     ]
 
-  logoClasses = [ Css.c "text-2xl", Css.c "small-caps", Css.c "mr-5" ]
-
   -- Whether the given route is conceptually the same route as the current
   -- route.
   isCurrentRoute route = case currentRoute of
@@ -141,10 +140,10 @@ renderNavbar currentRoute =
       , Css.c "border-stormy-100"
       ]
 
-  primaryItem route text =
+  primaryItem route =
     HH.a
-      [ Route.href route, HP.classes logoClasses ]
-      [ HH.text text ]
+      [ Route.href route, HP.class_ (Css.c "mr-5") ]
+      [ Icon.sinchLogo ]
 
   navbarItem route text =
     HH.a
