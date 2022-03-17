@@ -76,7 +76,7 @@ type Slots
     , commercial :: Commercial.Slot Unit
     , notes :: Notes.Slot Unit
     , observers :: Observers.Slot Unit
-    , selectSolution :: Select.Slot Unit String -- Output is solution ID.
+    , selectSolution :: Select.Slot Int String -- Output is solution ID.
     , selectPriceBook :: Select.Slot Unit Int -- Output is price book index.
     , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
@@ -1028,7 +1028,7 @@ render state =
             [ renderSmallTitle "Solution"
             , HH.slot
                 (Proxy :: Proxy "selectSolution")
-                unit
+                secIdx
                 Select.component
                 ( Select.defaultInput
                     { values =
