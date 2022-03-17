@@ -200,23 +200,32 @@ renderDetails st =
         , HH.div [ HP.class_ (Css.c "text-raspberry-500") ]
             $ maybe [] (\msg -> [ HH.text msg ])
             $ createError
-        , HH.button
-            [ HP.type_ HP.ButtonSubmit
-            , HP.classes $ [ Css.c "sofa-btn-primary", Css.c "mt-2" ]
-            , HP.enabled actionsAllowed
+        , HH.div
+            [ HP.classes
+                [ Css.c "flex"
+                , Css.c "space-x-4"
+                , Css.c "mt-3"
+                ]
             ]
-            [ HH.text "Save"
-            , if isCreating then
-                Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-              else
-                HH.text ""
+            [ HH.div [ HP.class_ (Css.c "grow") ] []
+            , HH.button
+                [ HP.class_ (Css.c "sofa-btn-secondary")
+                , HP.enabled actionsAllowed
+                , HE.onClick \_ -> CancelNewNote
+                ]
+                [ HH.text "Cancel" ]
+            , HH.button
+                [ HP.type_ HP.ButtonSubmit
+                , HP.class_ (Css.c "sofa-btn-primary")
+                , HP.enabled actionsAllowed
+                ]
+                [ HH.text "Save"
+                , if isCreating then
+                    Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                  else
+                    HH.text ""
+                ]
             ]
-        , HH.button
-            [ HP.classes $ [ Css.c "sofa-btn-secondary", Css.c "mt-2", Css.c "ml-2" ]
-            , HP.enabled actionsAllowed
-            , HE.onClick \_ -> CancelNewNote
-            ]
-            [ HH.text "Cancel" ]
         ]
       where
       isCreating = case st.noteAction of
@@ -309,22 +318,31 @@ renderDetails st =
       , HH.div [ HP.classes [ Css.c "text-raspberry-500", Css.c "w-full" ] ]
           $ maybe [] (\msg -> [ HH.text msg ])
           $ updateError
-      , HH.button
-          [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "mt-1", Css.c "ml-2", Css.c "float-right" ]
-          , HP.enabled actionsAllowed
-          , HE.onClick \_ -> CancelEditNote
+      , HH.div
+          [ HP.classes
+              [ Css.c "flex"
+              , Css.c "space-x-4"
+              , Css.c "mt-3"
+              ]
           ]
-          [ HH.text "Cancel" ]
-      , HH.button
-          [ HP.classes [ Css.c "sofa-btn-primary", Css.c "mt-1", Css.c "float-right" ]
-          , HP.enabled actionsAllowed
-          , HE.onClick \_ -> StopEditNote idx
-          ]
-          [ HH.text "Save"
-          , if isUpdating then
-              Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-            else
-              HH.text ""
+          [ HH.div [ HP.class_ (Css.c "grow") ] []
+          , HH.button
+              [ HP.class_ (Css.c "sofa-btn-secondary")
+              , HP.enabled actionsAllowed
+              , HE.onClick \_ -> CancelEditNote
+              ]
+              [ HH.text "Cancel" ]
+          , HH.button
+              [ HP.class_ (Css.c "sofa-btn-primary")
+              , HP.enabled actionsAllowed
+              , HE.onClick \_ -> StopEditNote idx
+              ]
+              [ HH.text "Save"
+              , if isUpdating then
+                  Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                else
+                  HH.text ""
+              ]
           ]
       ]
     where

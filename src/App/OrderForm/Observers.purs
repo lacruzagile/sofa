@@ -205,23 +205,32 @@ renderDetails st =
         , HH.div [ HP.class_ (Css.c "text-raspberry-500") ]
             $ maybe [] (\msg -> [ HH.text msg ])
             $ createError
-        , HH.button
-            [ HP.type_ HP.ButtonSubmit
-            , HP.classes [ Css.c "sofa-btn-primary", Css.c "mt-2" ]
-            , HP.enabled actionsAllowed
+        , HH.div
+            [ HP.classes
+                [ Css.c "flex"
+                , Css.c "space-x-4"
+                , Css.c "mt-3"
+                ]
             ]
-            [ HH.text "Save"
-            , if isCreating then
-                Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-              else
-                HH.text ""
+            [ HH.div [ HP.class_ (Css.c "grow") ] []
+            , HH.button
+                [ HP.class_ (Css.c "sofa-btn-secondary")
+                , HP.enabled actionsAllowed
+                , HE.onClick \_ -> CancelNewObserver
+                ]
+                [ HH.text "Cancel" ]
+            , HH.button
+                [ HP.type_ HP.ButtonSubmit
+                , HP.class_ (Css.c "sofa-btn-primary")
+                , HP.enabled actionsAllowed
+                ]
+                [ HH.text "Save"
+                , if isCreating then
+                    Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                  else
+                    HH.text ""
+                ]
             ]
-        , HH.button
-            [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "mt-2", Css.c "ml-2" ]
-            , HP.enabled actionsAllowed
-            , HE.onClick \_ -> CancelNewObserver
-            ]
-            [ HH.text "Cancel" ]
         ]
       where
       isCreating = case st.observerAction of
