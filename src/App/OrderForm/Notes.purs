@@ -210,7 +210,7 @@ renderDetails st =
             ]
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-destructive")
+                [ HP.class_ (Css.c "sofa-btn-secondary")
                 , HP.enabled actionsAllowed
                 , HE.onClick \_ -> CancelNewNote
                 ]
@@ -335,7 +335,7 @@ renderDetails st =
           ]
           [ HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
-              [ HP.class_ (Css.c "sofa-btn-destructive")
+              [ HP.class_ (Css.c "sofa-btn-secondary")
               , HP.type_ HP.ButtonButton
               , HP.enabled actionsAllowed
               , HE.onClick \_ -> CancelEditNote

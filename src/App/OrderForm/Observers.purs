@@ -217,7 +217,7 @@ renderDetails st =
             ]
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-destructive")
+                [ HP.class_ (Css.c "sofa-btn-secondary")
                 , HP.type_ HP.ButtonButton
                 , HP.enabled actionsAllowed
                 , HE.onClick \_ -> CancelNewObserver
@@ -344,7 +344,7 @@ renderDetails st =
           ]
           [ HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
-              [ HP.classes [ Css.c "sofa-btn-destructive" ]
+              [ HP.classes [ Css.c "sofa-btn-secondary" ]
               , HP.type_ HP.ButtonButton
               , HP.enabled actionsAllowed
               , HE.onClick \_ -> CancelEditObserver
