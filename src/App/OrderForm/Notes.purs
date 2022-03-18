@@ -8,7 +8,7 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Loadable as Loadable
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.SmartSpec as SS
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -67,7 +67,7 @@ data Action
   | SetEditText String -- ^ Set text of current node edit.
   | StartEditNote Int -- ^ Starts editing the note with the given index.
   | CancelEditNote -- ^ Cancel current note edit.
-  | StopEditNote Int -- ^ Stop and save current note edit with the given index.
+  | StopEditNote Int Event -- ^ Stop and save current note edit with the given index.
 
 component ::
   forall query m.
@@ -163,7 +163,6 @@ renderDetails st =
                 ]
             ]
             (A.mapWithIndex renderNote st.notes)
-      , HH.hr_
       , renderFooter
       ]
 
@@ -172,28 +171,29 @@ renderDetails st =
     _ -> false
 
   renderFooter = case st.newNote of
+    _
+      | isJust st.editNote -> HH.text "" -- Skip footer when editing.
     Nothing ->
-      HH.div [ HP.class_ (Css.c "flex") ]
-        [ HH.button
-            [ HP.classes [ Css.c "sofa-btn-primary" ]
-            , HP.enabled actionsAllowed
-            , HE.onClick \_ -> StartNewNote
-            ]
-            [ HH.text "+ Add Note" ]
-        , HH.div [ HP.class_ (Css.c "grow") ] []
+      HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-4" ] ]
+        [ HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
             [ HP.classes [ Css.c "sofa-btn-secondary" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
             [ HH.text "Close" ]
+        , HH.button
+            [ HP.classes [ Css.c "sofa-btn-primary" ]
+            , HP.enabled actionsAllowed
+            , HE.onClick \_ -> StartNewNote
+            ]
+            [ HH.text "Add" ]
         ]
     Just text ->
       HH.form [ HE.onSubmit StopNewNote ]
         [ HH.textarea
-            [ HP.classes [ Css.c "p-1", Css.c "border", Css.c "w-full" ]
+            [ HP.classes [ Css.c "nectary-input", Css.c "h-36", Css.c "w-full" ]
             , HP.placeholder "Note text."
-            , HP.rows 4
             , HP.value text
             , HE.onValueChange SetNewText
             ]
@@ -205,6 +205,7 @@ renderDetails st =
                 [ Css.c "flex"
                 , Css.c "space-x-4"
                 , Css.c "mt-3"
+                , Css.c "mb-0.5" -- Avoid clipping of buttons.
                 ]
             ]
             [ HH.div [ HP.class_ (Css.c "grow") ] []
@@ -245,7 +246,14 @@ renderDetails st =
     HH.div [ HP.classes [ Css.c "group", Css.c "py-3" ] ]
       [ HH.text n.note
       , HH.div
-          [ HP.classes [ Css.c "text-sm", Css.c "text-gray-600", Css.c "flex" ] ]
+          [ HP.classes
+              [ Css.c "text-sm"
+              , Css.c "text-gray-600"
+              , Css.c "flex"
+              , Css.c "space-x-2"
+              , Css.c "mr-0.5" -- Avoid clipping of buttons.
+              ]
+          ]
           [ HH.div_
               [ maybe
                   (HH.text "New")
@@ -253,6 +261,19 @@ renderDetails st =
                   n.createTime
               ]
           , HH.div [ HP.class_ (Css.c "grow") ] []
+          , HH.button
+              [ HP.classes
+                  $ [ Css.c "sofa-btn-destructive"
+                    , Css.c "h-auto"
+                    , Css.c "py-0"
+                    ]
+                  <> hideable isDeleting
+              , HP.enabled actionsAllowed
+              , HE.onClick $ \_ -> RemoveNote idx
+              ]
+              [ HH.text "Remove"
+              , spinner isDeleting
+              ]
           , HH.button
               [ HP.classes
                   $ [ Css.c "sofa-btn-primary"
@@ -264,20 +285,6 @@ renderDetails st =
               , HE.onClick $ \_ -> StartEditNote idx
               ]
               [ HH.text "Edit" ]
-          , HH.button
-              [ HP.classes
-                  $ [ Css.c "sofa-btn-destructive"
-                    , Css.c "h-auto"
-                    , Css.c "py-0"
-                    , Css.c "ml-2"
-                    ]
-                  <> hideable isDeleting
-              , HP.enabled actionsAllowed
-              , HE.onClick $ \_ -> RemoveNote idx
-              ]
-              [ HH.text "Remove"
-              , spinner isDeleting
-              ]
           ]
       , maybe (HH.text "")
           (\msg -> HH.div [ HP.class_ (Css.c "text-raspberry-500") ] [ HH.text msg ])
@@ -307,11 +314,10 @@ renderDetails st =
       _ -> Nothing
 
   renderEditNote idx note =
-    HH.div_
+    HH.form [ HE.onSubmit (StopEditNote idx) ]
       [ HH.textarea
-          [ HP.classes [ Css.c "p-1", Css.c "border", Css.c "w-full" ]
+          [ HP.classes [ Css.c "nectary-input", Css.c "h-36", Css.c "w-full" ]
           , HP.placeholder "Note text."
-          , HP.rows 4
           , HP.value note
           , HE.onValueChange SetEditText
           ]
@@ -322,20 +328,23 @@ renderDetails st =
           [ HP.classes
               [ Css.c "flex"
               , Css.c "space-x-4"
-              , Css.c "mt-3"
+              , Css.c "mt-2"
+              , Css.c "mr-0.5" -- Avoid clipping of buttons.
+              , Css.c "mb-0.5" -- Avoid clipping of buttons.
               ]
           ]
           [ HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
               [ HP.class_ (Css.c "sofa-btn-secondary")
+              , HP.type_ HP.ButtonButton
               , HP.enabled actionsAllowed
               , HE.onClick \_ -> CancelEditNote
               ]
               [ HH.text "Cancel" ]
           , HH.button
               [ HP.class_ (Css.c "sofa-btn-primary")
+              , HP.type_ HP.ButtonSubmit
               , HP.enabled actionsAllowed
-              , HE.onClick \_ -> StopEditNote idx
               ]
               [ HH.text "Save"
               , if isUpdating then
@@ -419,7 +428,8 @@ handleAction = case _ of
             mkEditNote <$> A.index st.notes idx
         }
   CancelEditNote -> H.modify_ \st -> st { editNote = Nothing }
-  StopEditNote idx -> do
+  StopEditNote idx event -> do
+    H.liftEffect $ Event.preventDefault event
     state <- H.modify \st -> st { noteAction = NoteUpdating idx Loading }
     let
       mNote = A.index state.notes idx

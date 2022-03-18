@@ -8,10 +8,11 @@ import Data.Array as A
 import Data.Auth (class CredentialStore)
 import Data.Loadable (Loadable(..))
 import Data.Loadable as Loadable
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.SmartSpec as SS
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class.Console (log)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -66,7 +67,7 @@ data Action
   | SetEditEmail String -- ^ Set email of current node edit.
   | StartEditObserver Int -- ^ Starts editing the observer with the given index.
   | CancelEditObserver -- ^ Cancel current observer edit.
-  | StopEditObserver Int -- ^ Stop and save current observer edit with the given index.
+  | StopEditObserver Int Event.Event -- ^ Stop and save current observer edit with the given index.
 
 component ::
   forall query m.
@@ -168,7 +169,6 @@ renderDetails st =
                 ]
             ]
             (A.mapWithIndex renderObserver st.observers)
-      , HH.hr_
       , renderFooter
       ]
 
@@ -177,27 +177,29 @@ renderDetails st =
     _ -> false
 
   renderFooter = case st.newObserver of
+    _
+      | isJust st.editObserver -> HH.text "" -- Skip footer when editing.
     Nothing ->
-      HH.div [ HP.class_ (Css.c "flex") ]
-        [ HH.button
-            [ HP.classes [ Css.c "sofa-btn-primary" ]
-            , HP.enabled actionsAllowed
-            , HE.onClick \_ -> StartNewObserver
-            ]
-            [ HH.text "+ Add Observer" ]
-        , HH.div [ HP.class_ (Css.c "grow") ] []
+      HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-4" ] ]
+        [ HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
             [ HP.classes [ Css.c "sofa-btn-secondary" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
             [ HH.text "Close" ]
+        , HH.button
+            [ HP.classes [ Css.c "sofa-btn-primary" ]
+            , HP.enabled actionsAllowed
+            , HE.onClick \_ -> StartNewObserver
+            ]
+            [ HH.text "Add" ]
         ]
     Just email ->
       HH.form [ HE.onSubmit StopNewObserver ]
         [ HH.input
             [ HP.type_ HP.InputEmail
-            , HP.classes [ Css.c "p-1", Css.c "border", Css.c "w-full" ]
+            , HP.classes [ Css.c "nectary-input", Css.c "w-full" ]
             , HP.placeholder "Observer email address"
             , HP.value email
             , HE.onValueChange SetNewEmail
@@ -210,18 +212,20 @@ renderDetails st =
                 [ Css.c "flex"
                 , Css.c "space-x-4"
                 , Css.c "mt-3"
+                , Css.c "mb-0.5" -- Avoid clipping of buttons.
                 ]
             ]
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-secondary")
+                [ HP.class_ (Css.c "sofa-btn-destructive")
+                , HP.type_ HP.ButtonButton
                 , HP.enabled actionsAllowed
                 , HE.onClick \_ -> CancelNewObserver
                 ]
                 [ HH.text "Cancel" ]
             , HH.button
-                [ HP.type_ HP.ButtonSubmit
-                , HP.class_ (Css.c "sofa-btn-primary")
+                [ HP.class_ (Css.c "sofa-btn-primary")
+                , HP.type_ HP.ButtonSubmit
                 , HP.enabled actionsAllowed
                 ]
                 [ HH.text "Save"
@@ -250,7 +254,14 @@ renderDetails st =
     HH.div [ HP.classes [ Css.c "group", Css.c "py-3" ] ]
       [ HH.text o.observerEmail
       , HH.div
-          [ HP.classes [ Css.c "text-sm", Css.c "text-gray-600", Css.c "flex" ] ]
+          [ HP.classes
+              [ Css.c "text-sm"
+              , Css.c "text-gray-600"
+              , Css.c "flex"
+              , Css.c "space-x-2"
+              , Css.c "mr-0.5" -- Avoid clipping of buttons.
+              ]
+          ]
           [ HH.div_
               [ maybe
                   (HH.text "New")
@@ -258,6 +269,19 @@ renderDetails st =
                   o.createTime
               ]
           , HH.div [ HP.class_ (Css.c "grow") ] []
+          , HH.button
+              [ HP.classes
+                  $ [ Css.c "sofa-btn-destructive"
+                    , Css.c "h-auto"
+                    , Css.c "py-0"
+                    ]
+                  <> hideable isDeleting
+              , HP.enabled actionsAllowed
+              , HE.onClick $ \_ -> RemoveObserver idx
+              ]
+              [ HH.text "Remove"
+              , spinner isDeleting
+              ]
           , HH.button
               [ HP.classes
                   $ [ Css.c "sofa-btn-primary"
@@ -269,20 +293,6 @@ renderDetails st =
               , HE.onClick $ \_ -> StartEditObserver idx
               ]
               [ HH.text "Edit" ]
-          , HH.button
-              [ HP.classes
-                  $ [ Css.c "sofa-btn-destructive"
-                    , Css.c "h-auto"
-                    , Css.c "py-0"
-                    , Css.c "ml-2"
-                    ]
-                  <> hideable isDeleting
-              , HP.enabled actionsAllowed
-              , HE.onClick $ \_ -> RemoveObserver idx
-              ]
-              [ HH.text "Remove"
-              , spinner isDeleting
-              ]
           ]
       , maybe (HH.text "")
           (\msg -> HH.div [ HP.class_ (Css.c "text-raspberry-500") ] [ HH.text msg ])
@@ -312,10 +322,10 @@ renderDetails st =
       _ -> Nothing
 
   renderEditObserver idx observer =
-    HH.div_
+    HH.form [ HE.onSubmit (StopEditObserver idx) ]
       [ HH.input
           [ HP.type_ HP.InputEmail
-          , HP.classes [ Css.c "p-1", Css.c "border", Css.c "w-full" ]
+          , HP.classes [ Css.c "nectary-input", Css.c "w-full" ]
           , HP.placeholder "Observer email address"
           , HP.value observer
           , HE.onValueChange SetEditEmail
@@ -323,22 +333,34 @@ renderDetails st =
       , HH.div [ HP.classes [ Css.c "text-raspberry-500", Css.c "w-full" ] ]
           $ maybe [] (\msg -> [ HH.text msg ])
           $ updateError
-      , HH.button
-          [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "mt-1", Css.c "ml-2", Css.c "float-right" ]
-          , HP.enabled actionsAllowed
-          , HE.onClick \_ -> CancelEditObserver
+      , HH.div
+          [ HP.classes
+              [ Css.c "flex"
+              , Css.c "space-x-4"
+              , Css.c "mt-2"
+              , Css.c "mr-0.5" -- Avoid clipping of buttons.
+              , Css.c "mb-0.5" -- Avoid clipping of buttons.
+              ]
           ]
-          [ HH.text "Cancel" ]
-      , HH.button
-          [ HP.classes [ Css.c "sofa-btn-primary", Css.c "mt-1", Css.c "float-right" ]
-          , HP.enabled actionsAllowed
-          , HE.onClick \_ -> StopEditObserver idx
-          ]
-          [ HH.text "Save"
-          , if isUpdating then
-              Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-            else
-              HH.text ""
+          [ HH.div [ HP.class_ (Css.c "grow") ] []
+          , HH.button
+              [ HP.classes [ Css.c "sofa-btn-secondary" ]
+              , HP.type_ HP.ButtonButton
+              , HP.enabled actionsAllowed
+              , HE.onClick \_ -> CancelEditObserver
+              ]
+              [ HH.text "Cancel" ]
+          , HH.button
+              [ HP.classes [ Css.c "sofa-btn-primary" ]
+              , HP.type_ HP.ButtonSubmit
+              , HP.enabled actionsAllowed
+              ]
+              [ HH.text "Save"
+              , if isUpdating then
+                  Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                else
+                  HH.text ""
+              ]
           ]
       ]
     where
@@ -415,7 +437,8 @@ handleAction = case _ of
             mkEditObserver <$> A.index st.observers idx
         }
   CancelEditObserver -> H.modify_ \st -> st { editObserver = Nothing }
-  StopEditObserver idx -> do
+  StopEditObserver idx event -> do
+    H.liftEffect $ Event.preventDefault event
     state <- H.modify \st -> st { observerAction = ObserverUpdating idx Loading }
     let
       mObserver = A.index state.observers idx
