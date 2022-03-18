@@ -159,6 +159,7 @@ component =
           , noSelectionText = "Type to search value …"
           , loading = Loadable.isLoading st.filtered
           , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+          , onInputFocus = Just $ \_ -> InputFocused
           }
 
 filterAvailable ::

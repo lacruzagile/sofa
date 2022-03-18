@@ -8,12 +8,14 @@ import Data.Array as A
 import Data.Maybe (Maybe(..), maybe)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Select as Sel
 import Select.Setters as SelSet
+import Web.UIEvent.FocusEvent as Event
 import Widgets as Widgets
 
-type RenderState
+type RenderState act
   = { visibility :: Sel.Visibility
     , selected :: Maybe String
     , selectedIndex :: Maybe Int
@@ -23,15 +25,16 @@ type RenderState
     , loading :: Boolean --  ^ Show loading spinner.
     , wrapperClasses :: Array HH.ClassName
     , inputClasses :: Array HH.ClassName
+    , onInputFocus :: Maybe (Event.FocusEvent -> act) -- ^ Action when input is focused.
     }
 
 initRenderState ::
-  forall props.
+  forall act props.
   { visibility :: Sel.Visibility
   , highlightedIndex :: Maybe Int
   | props
   } ->
-  RenderState
+  RenderState act
 initRenderState st =
   { visibility: st.visibility
   , selected: Nothing
@@ -42,9 +45,10 @@ initRenderState st =
   , loading: false
   , wrapperClasses: []
   , inputClasses: []
+  , onInputFocus: Nothing
   }
 
-render :: forall act m. RenderState -> H.ComponentHTML (Sel.Action act) () m
+render :: forall act m. RenderState act -> H.ComponentHTML (Sel.Action act) () m
 render st =
   HH.div [ HP.classes st.wrapperClasses ]
     [ HH.div [ HP.class_ (Css.c "relative") ]
@@ -65,6 +69,7 @@ render st =
         , HP.placeholder st.noSelectionText
         ]
       <> maybe [] (A.singleton <<< HP.value) st.selected
+      <> maybe [] (\act -> [ HE.onFocus (Sel.Action <<< act) ]) st.onInputFocus
 
   inputClasses =
     [ Css.c "nectary-input"
