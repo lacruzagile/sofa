@@ -77,6 +77,20 @@ neuvector:
       - ./nvreport/security-report.csv
       - ./nvreport/scan-repository.json
 
+# Build and publish project documentation.
+pages:
+  extends: .yarn-job
+  stage: deploy
+  only: [ master ]
+  cache:
+    policy: pull
+  script:
+    - yarn spago docs
+    - mv generated-docs/html public
+  artifacts:
+    paths:
+      - public
+
 .deploy-k8s:
   image: alpine:latest
   stage: deploy
