@@ -255,11 +255,18 @@ renderDetails st =
           | st.readOnly =
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-primary"), HE.onClick \_ -> CancelAndCloseDetails ]
+                [ HP.class_ (Css.c "sofa-btn-primary")
+                , HE.onClick \_ -> CancelAndCloseDetails
+                ]
                 [ HH.text "Close" ]
             ]
           | otherwise =
             [ HH.div [ HP.class_ (Css.c "grow") ] []
+            , HH.button
+                [ HP.class_ (Css.c "sofa-btn-secondary")
+                , HE.onClick \_ -> CancelAndCloseDetails
+                ]
+                [ HH.text "Cancel" ]
             , HH.button
                 [ HP.class_ (Css.c "sofa-btn-primary")
                 , HP.enabled
@@ -270,9 +277,6 @@ renderDetails st =
                 , HE.onClick \_ -> AcceptAndCloseDetails
                 ]
                 [ HH.text "OK" ]
-            , HH.button
-                [ HP.class_ (Css.c "sofa-btn-secondary"), HE.onClick \_ -> CancelAndCloseDetails ]
-                [ HH.text "Cancel" ]
             ]
     in
       renderBuyerData $ fromMaybe emptyBuyer $ Loadable.toMaybe buyerLoadable
