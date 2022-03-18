@@ -340,7 +340,7 @@ renderDetails st =
               Loading ->
                 HH.span
                   [ HP.class_ $ Css.c "animate-pulse" ]
-                  [ HH.text "Loading contacts…" ]
+                  [ HH.text "Loading contacts …" ]
               Error _ -> HH.text $ "Error loading contacts"
           ]
 

@@ -139,7 +139,7 @@ selectComponent =
             , Css.c "space-x-3"
             ]
         ]
-        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading buyer" ]
+        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading buyer …" ]
         , Widgets.spinner [ Css.c "my-4" ]
         ]
     _ ->

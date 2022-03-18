@@ -189,7 +189,7 @@ component =
             , Css.c "space-x-3"
             ]
         ]
-        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading billing account" ]
+        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading billing account …" ]
         , Widgets.spinner [ Css.c "my-4" ]
         ]
     _ ->
