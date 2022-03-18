@@ -141,7 +141,7 @@ component =
   render :: Sel.State (State m) -> H.ComponentHTML Action' () m
   render st =
     Typeahead.render
-      $ (Typeahead.initState st)
+      $ (Typeahead.initRenderState st)
           { selected = map fst st.selected
           , selectedIndex =
             do

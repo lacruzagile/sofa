@@ -1,6 +1,6 @@
 -- | Provides Nectary style rendering for a type-ahead component driven by
 -- | Halogen Select.
-module Component.Typeahead (initState, render) where
+module Component.Typeahead (initRenderState, render) where
 
 import Prelude
 import Css as Css
@@ -13,7 +13,7 @@ import Select as Sel
 import Select.Setters as SelSet
 import Widgets as Widgets
 
-type State
+type RenderState
   = { visibility :: Sel.Visibility
     , selected :: Maybe String
     , selectedIndex :: Maybe Int
@@ -25,14 +25,14 @@ type State
     , inputClasses :: Array HH.ClassName
     }
 
-initState ::
+initRenderState ::
   forall props.
   { visibility :: Sel.Visibility
   , highlightedIndex :: Maybe Int
   | props
   } ->
-  State
-initState st =
+  RenderState
+initRenderState st =
   { visibility: st.visibility
   , selected: Nothing
   , selectedIndex: Nothing
@@ -44,7 +44,7 @@ initState st =
   , inputClasses: []
   }
 
-render :: forall act m. State -> H.ComponentHTML (Sel.Action act) () m
+render :: forall act m. RenderState -> H.ComponentHTML (Sel.Action act) () m
 render st =
   HH.div [ HP.classes st.wrapperClasses ]
     [ HH.div [ HP.class_ (Css.c "relative") ]

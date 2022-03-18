@@ -133,7 +133,7 @@ selectComponent =
   render :: Sel.State State -> H.ComponentHTML _ () m
   render st =
     Typeahead.render
-      $ (Typeahead.initState st)
+      $ (Typeahead.initRenderState st)
           { selected = map (\(SS.LegalEntity { registeredName }) -> registeredName) st.selected
           , selectedIndex =
             do

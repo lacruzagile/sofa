@@ -101,7 +101,7 @@ selectComponent =
   render :: Sel.State State -> H.ComponentHTML _ () m
   render st =
     Typeahead.render
-      $ (Typeahead.initState st)
+      $ (Typeahead.initRenderState st)
           { selected = map (\(SS.Product { sku }) -> show sku) st.selected
           , selectedIndex =
             do

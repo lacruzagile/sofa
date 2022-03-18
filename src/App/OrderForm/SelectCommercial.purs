@@ -194,7 +194,7 @@ component =
         ]
     _ ->
       Typeahead.render
-        $ (Typeahead.initState st)
+        $ (Typeahead.initRenderState st)
             { selected = map (\(SS.BillingAccount { displayName }) -> displayName) st.selected
             , selectedIndex =
               do

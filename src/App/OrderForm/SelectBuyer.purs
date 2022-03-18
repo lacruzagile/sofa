@@ -144,7 +144,7 @@ selectComponent =
         ]
     _ ->
       Typeahead.render
-        $ (Typeahead.initState st)
+        $ (Typeahead.initRenderState st)
             { selected = map (\(SS.Buyer { corporateName }) -> corporateName) st.selected
             , selectedIndex =
               do
