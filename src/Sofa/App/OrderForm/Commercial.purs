@@ -133,7 +133,7 @@ renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
 renderSummary st
   | not st.enabled =
     HH.div
-      [ HP.classes [ Css.c "text-2xl", Css.c "text-gray-400" ] ]
+      [ HP.classes [ Css.c "text-gray-400" ] ]
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedCommercial of
     Loaded c ->
@@ -153,7 +153,6 @@ renderSummary st
     okClasses =
       [ Css.c "block"
       , Css.c "text-left"
-      , Css.c "text-2xl"
       , Css.c "underline"
       , Css.c "underline-offset-4"
       , Css.c "decoration-honey-500"
@@ -162,7 +161,6 @@ renderSummary st
     badClasses =
       [ Css.c "block"
       , Css.c "text-left"
-      , Css.c "text-2xl"
       , Css.c "underline"
       , Css.c "underline-offset-4"
       , Css.c "decoration-honey-500"

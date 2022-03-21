@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply font-sans bg-white text-stormy-500;
+    @apply font-sans bg-snow-200 text-stormy-500;
   }
 
   h1 {

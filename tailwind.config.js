@@ -44,6 +44,7 @@ module.exports = {
           700: "#D4DADD",
           600: "#E3E6E8",
           500: "#F1F3F4",
+          200: "#FAFAFA",       /* Not actually in Nectary. */
           100: "#FFFFFF",
         },
         raspberry: {
@@ -125,6 +126,7 @@ module.exports = {
         '128': '32rem',
       },
       maxWidth: {
+        '96': '24rem',
         '128': '32rem',
       },
       minWidth: {

@@ -1,6 +1,7 @@
 module Sofa.App.Router where
 
 import Prelude
+import Data.Array as A
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff, launchAff_)
 import Effect.Aff.Class (class MonadAff)
@@ -75,45 +76,54 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render state =
   HH.div_
-    [ renderNavbar state.route
-    , renderBody state
+    [ renderNavbar
+    , HH.div
+        [ HP.classes
+            [ Css.c "flex"
+            , Css.c "flex-no-wrap"
+            , Css.c "items-stretch"
+            , Css.c "min-h-screen"
+            , Css.c "pt-16"
+            ]
+        ]
+        [ renderSideMenu state.route
+        , renderBody state
+        ]
     ]
 
-renderNavbar ::
+renderSideMenu ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
   Route ->
   H.ComponentHTML Action Slots m
-renderNavbar currentRoute =
+renderSideMenu currentRoute =
   HH.nav [ HP.classes navbarClasses ]
-    [ HH.div [ HP.classes navbarWrapperClasses ]
-        [ primaryItem Route.Home
-        , navbarItem Route.Home "Home"
-        , navbarItem Route.ProductCatalog "Product Catalog"
-        , navbarItem Route.Orders "Orders"
-        , navbarItem Route.OrderForm "Order Form"
-        , expander
-        , navbarItemUser
+    [ HH.ul [ HP.classes [ Css.c "space-y-4" ] ]
+        [ navbarItem Icon.package "Solutions  ⃰" []
+        , navbarItem Icon.longMessage "Order forms"
+            [ navbarSubItem Route.Home "Home"
+            , navbarSubItem Route.ProductCatalog "Product catalog"
+            , navbarSubItem Route.Orders "Orders"
+            , navbarSubItem Route.OrderForm "Order form"
+            ]
+        , navbarItem Icon.piggybank "Billing  ⃰" []
+        , navbarItem Icon.puzzle "Assets  ⃰" []
+        , navbarItem Icon.settings "Project settings  ⃰" []
+        , HH.div
+            [ HP.classes [ Css.c "ml-5", Css.c "pt-10", Css.c "text-stormy-300" ] ]
+            [ HH.text " ⃰ TODO" ]
         ]
     ]
   where
   navbarClasses =
-    [ Css.c "inset-x-0"
-    , Css.c "top-0"
-    , Css.c "h-12"
-    , Css.c "shadow-md"
-    , Css.c "bg-white"
-    ]
-
-  navbarWrapperClasses =
-    [ Css.c "container"
-    , Css.c "h-full"
-    , Css.c "mx-auto"
-    , Css.c "px-5"
-    , Css.c "flex"
-    , Css.c "justify-between"
-    , Css.c "items-center"
+    [ Css.c "w-64"
+    , Css.c "pt-5"
+    , Css.c "pl-3"
+    , Css.c "flex-none"
+    , Css.c "bg-snow-100"
+    , Css.c "border-r"
+    , Css.c "border-snow-600"
     ]
 
   -- Whether the given route is conceptually the same route as the current
@@ -122,35 +132,95 @@ renderNavbar currentRoute =
     Route.Order _ -> route == Route.OrderForm
     _ -> route == currentRoute
 
-  navbarItemClasses route
+  navbarItem icon text children =
+    HH.li_
+      [ HH.div
+          [ HP.classes
+              ( [ Css.c "flex"
+                , Css.c "items-center"
+                , Css.c "font-semibold"
+                ]
+                  <> if A.null children then [] else [ Css.c "nectary-dropdown-icon" ]
+              )
+          ]
+          [ icon
+              [ Icon.classes
+                  [ Css.c "h-10"
+                  , Css.c "mr-2"
+                  , Css.c "bg-snow-500"
+                  , Css.c "rounded-md"
+                  ]
+              ]
+          , HH.div_ [ HH.text text ]
+          ]
+      , HH.ul [ HP.classes [] ] children
+      ]
+
+  navbarSubItemClasses route
     | isCurrentRoute route =
       [ Css.c "inline-flex"
       , Css.c "items-center"
-      , Css.c "h-full"
-      , Css.c "px-3"
-      , Css.c "border-b-2"
+      , Css.c "w-full"
+      , Css.c "pl-12"
+      , Css.c "py-2"
+      , Css.c "border-r-2"
       , Css.c "border-stormy-500"
       ]
     | otherwise =
       [ Css.c "inline-flex"
       , Css.c "items-center"
-      , Css.c "h-full"
-      , Css.c "px-3"
-      , Css.c "border-b"
+      , Css.c "w-full"
+      , Css.c "pl-12"
+      , Css.c "py-2"
+      , Css.c "border-r"
+      , Css.c "hover:border-r-2"
       , Css.c "border-stormy-100"
       ]
+
+  navbarSubItem route text =
+    HH.li_
+      [ HH.a
+          [ Route.href route, HP.classes (navbarSubItemClasses route) ]
+          [ HH.text text ]
+      ]
+
+renderNavbar ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  H.ComponentHTML Action Slots m
+renderNavbar =
+  HH.nav [ HP.classes navbarClasses ]
+    [ HH.div [ HP.classes navbarWrapperClasses ]
+        [ primaryItem Route.Home
+        , expander
+        , navbarSubItemUser
+        ]
+    ]
+  where
+  navbarClasses =
+    [ Css.c "absolute"
+    , Css.c "inset-x-0"
+    , Css.c "top-0"
+    , Css.c "h-16"
+    , Css.c "shadow-md"
+    , Css.c "bg-white"
+    ]
+
+  navbarWrapperClasses =
+    [ Css.c "h-full"
+    , Css.c "px-5"
+    , Css.c "flex"
+    , Css.c "justify-between"
+    , Css.c "items-center"
+    ]
 
   primaryItem route =
     HH.a
       [ Route.href route, HP.class_ (Css.c "mr-5") ]
-      [ Icon.sinchLogo ]
+      [ Icon.sinchLogo [ Icon.classes [ Css.c "h-8" ] ] ]
 
-  navbarItem route text =
-    HH.a
-      [ Route.href route, HP.classes (navbarItemClasses route) ]
-      [ HH.text text ]
-
-  navbarItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
+  navbarSubItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
 
   expander = HH.div [ HP.class_ (Css.c "grow") ] []
 
@@ -161,7 +231,7 @@ renderBody ::
   State ->
   H.ComponentHTML Action Slots m
 renderBody state =
-  HH.main [ HP.classes [ Css.c "container", Css.c "mx-auto", Css.c "px-5" ] ]
+  HH.main [ HP.classes [ Css.c "w-11/12", Css.c "mx-5" ] ]
     [ case state.route of
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm

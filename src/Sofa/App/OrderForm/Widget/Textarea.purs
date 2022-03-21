@@ -51,7 +51,7 @@ render ::
 render st =
   HH.textarea
     [ HP.value $ fromMaybe "" st.value
-    , HP.class_ (Css.c "nectary-textarea")
+    , HP.classes [ Css.c "nectary-textarea", Css.c "w-96" ]
     , HE.onValueChange SetValue
     ]
 

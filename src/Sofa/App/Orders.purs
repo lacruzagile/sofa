@@ -136,6 +136,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HP.classes
             [ Css.c "table"
             , Css.c "w-full"
+            , Css.c "bg-white"
+            , Css.c "rounded-md"
             ]
         ]
 

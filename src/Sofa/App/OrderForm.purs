@@ -418,7 +418,12 @@ render state =
 
     renderQuantityInput cfgIdx (SS.OrderLineConfig olc) =
       HH.input
-        [ HP.classes [ Css.c "nectary-input", Css.c "nectary-input-number" ]
+        [ HP.classes
+            [ Css.c "nectary-input"
+            , Css.c "nectary-input-number"
+            , Css.c "w-full"
+            , Css.c "max-w-96"
+            ]
         , HP.type_ HP.InputNumber
         , HP.min 1.0
         , HP.value $ show olc.quantity
@@ -1148,10 +1153,8 @@ render state =
         HH.div
           [ HP.classes
               [ Css.c "p-3"
-              , Css.c "my-5"
-              , Css.c "rounded-sm"
-              , Css.c "border"
-              , Css.c "border-snow-600"
+              , Css.c "rounded-md"
+              , Css.c "bg-snow-100"
               ]
           ]
           (removeBtn <> subBody)
@@ -1182,7 +1185,7 @@ render state =
     Array (Maybe OrderSection) ->
     H.ComponentHTML Action Slots m
   renderSections sof secs =
-    HH.div_
+    HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-5" ] ]
       $ A.mapWithIndex (renderSection sof) secs
       <> if not isInDraft then
           []
@@ -1191,10 +1194,8 @@ render state =
               [ HP.classes
                   [ Css.c "flex"
                   , Css.c "p-3"
-                  , Css.c "my-5"
-                  , Css.c "rounded-sm"
-                  , Css.c "border"
-                  , Css.c "border-snow-600"
+                  , Css.c "rounded-md"
+                  , Css.c "bg-snow-100"
                   ]
               ]
               [ HH.div [ HP.class_ (Css.c "grow") ] []
@@ -1217,12 +1218,31 @@ render state =
         [ HP.classes
             [ Css.c "p-3"
             , Css.c "space-x-4"
-            , Css.c "rounded-sm"
-            , Css.c "border"
-            , Css.c "border-snow-600"
+            , Css.c "rounded-md"
+            , Css.c "bg-snow-100"
             ]
         ]
         [ Widgets.subTotalTable "Total " subTotal ]
+
+  renderHeaderAndInfo :: OrderForm -> H.ComponentHTML Action Slots m
+  renderHeaderAndInfo orderForm =
+    HH.div
+      [ HP.classes
+          [ Css.c "flex"
+          , Css.c "flex-col"
+          , Css.c "space-y-6"
+          , Css.c "p-8"
+          , Css.c "rounded-md"
+          , Css.c "bg-snow-100"
+          ]
+      ]
+      [ renderOrderDisplayName orderForm.displayName --HH.h2 [ HP.class_ (Css.c "my-0") ] [ HH.text "Untitled order" ]
+      , HH.p
+          [ HP.classes [ Css.c "my-0", Css.c "text-stormy-300" ] ]
+          [ HH.text "Below you can see the details of the order." ]
+      , renderOrderHeader orderForm
+      , renderOrderInfo orderForm
+      ]
 
   renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo orderForm =
@@ -1230,15 +1250,25 @@ render state =
       [ HP.classes
           [ Css.c "flex"
           , Css.c "flex-wrap"
-          , Css.c "p-3"
-          , Css.c "rounded-sm"
+          , Css.c "w-full"
+          , Css.c "p-8"
+          , Css.c "rounded-md"
           , Css.c "border"
           , Css.c "border-snow-600"
+          , Css.c "shadow-md"
           ]
       ]
-      $ [ HH.div [ HP.class_ (Css.c "w-full") ]
-            [ title [ HH.text "Order Name" ]
-            , renderOrderDisplayName orderForm.displayName
+      $ [ HH.div
+            [ HP.classes
+                [ Css.c "mb-5"
+                , Css.c "w-full"
+                , Css.c "flex"
+                , Css.c "items-center"
+                , Css.c "space-x-6"
+                ]
+            ]
+            [ HH.h3_ [ HH.text "Order details" ]
+            , renderOrderStatus orderForm.status
             ]
         ]
       <> withOriginal
@@ -1268,11 +1298,6 @@ render state =
                     ]
                 ]
           )
-      <> [ entry
-            [ title [ HH.text "Status" ]
-            , value [ renderOrderStatus orderForm.status ]
-            ]
-        ]
       <> withOriginal
           ( \o ->
               entry
@@ -1307,8 +1332,9 @@ render state =
     HH.input
       [ HP.type_ HP.InputText
       , HP.classes
-          [ Css.c "nectary-input"
-          , Css.c "text-lg"
+          [ Css.c "focus:nectary-input"
+          , Css.c "text-2xl"
+          , Css.c "font-semibold"
           , Css.c "w-72"
           , Css.c "truncate"
           ]
@@ -1352,32 +1378,33 @@ render state =
   renderOrderHeader orderForm =
     HH.div
       [ HP.classes
-          [ Css.c "p-3"
-          , Css.c "rounded-sm"
+          [ Css.c "flex"
+          , Css.c "flex-col"
+          , Css.c "w-full"
+          , Css.c "space-y-4"
+          , Css.c "p-8"
+          , Css.c "rounded-md"
           , Css.c "border"
           , Css.c "border-snow-600"
+          , Css.c "shadow-md"
           ]
       ]
-      [ title "Legal Entity"
-      , renderSeller
-      , HH.br_
-      , title "Customer"
-      , renderBuyer
-      , HH.br_
-      , title "Commercial"
-      , renderCommercial
+      [ HH.h3 [ HP.class_ (Css.c "mb-5") ] [ HH.text "Seller/Buyer" ]
+      , HH.div [ HP.classes [ Css.c "flex" ] ]
+          [ title "Legal Entity"
+          , renderSeller
+          ]
+      , HH.div [ HP.classes [ Css.c "flex" ] ]
+          [ title "Customer"
+          , renderBuyer
+          ]
+      , HH.div [ HP.classes [ Css.c "flex" ] ]
+          [ title "Commercial"
+          , renderCommercial
+          ]
       ]
     where
-    title t =
-      HH.div
-        [ HP.classes
-            [ Css.c "uppercase"
-            , Css.c "mb-2"
-            , Css.c "text-sm"
-            , Css.c "text-gray-600"
-            ]
-        ]
-        [ HH.text t ]
+    title t = HH.h4 [ HP.classes [ Css.c "w-40" ] ] [ HH.text t ]
 
     renderSeller =
       HH.slot Seller.proxy unit Seller.component
@@ -1400,7 +1427,14 @@ render state =
       getCrmAccountId = orderForm.buyer >>= (\(SS.Buyer { crmAccountId }) -> crmAccountId)
 
   renderOrderFooter sof =
-    footerDiv
+    HH.div
+      [ HP.classes
+          [ Css.c "flex"
+          , Css.c "flex-wrap-reverse"
+          , Css.c "items-center"
+          , Css.c "space-x-4"
+          ]
+      ]
       [ renderOrderSummary sof.orderForm.summary
       , HH.div [ HP.class_ (Css.c "grow") ] []
       , if isFreshOrder then
@@ -1468,35 +1502,23 @@ render state =
       sof.orderFulfillInFlight
         || maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
 
-    footerDiv =
-      HH.div
-        [ HP.classes
-            [ Css.c "flex"
-            , Css.c "flex-wrap-reverse"
-            , Css.c "items-center"
-            , Css.c "my-5"
-            , Css.c "space-x-4"
-            ]
-        ]
-
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
-    [ HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ]
-        [ HH.div [ HP.class_ (Css.c "w-1/3") ] [ renderOrderHeader sof.orderForm ]
-        , HH.div [ HP.class_ (Css.c "w-2/3") ] [ renderOrderInfo sof.orderForm ]
-        ]
-    , renderSections sof sof.orderForm.sections
-    , renderOrderFooter sof
-    , HH.hr [ HP.class_ (Css.c "my-8") ]
-    , HH.details_
-        [ HH.summary
-            [ HP.class_ (Css.c "cursor-pointer") ]
-            [ HH.text "Order Form JSON" ]
-        , HH.pre_
-            [ HH.code_
-                [ HH.text
-                    $ either ("Cannot produce JSON: " <> _) identity
-                    $ toJsonStr sof.orderForm
+    [ HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-5" ] ]
+        [ renderHeaderAndInfo sof.orderForm
+        , renderSections sof sof.orderForm.sections
+        , renderOrderFooter sof
+        , HH.hr_
+        , HH.details_
+            [ HH.summary
+                [ HP.class_ (Css.c "cursor-pointer") ]
+                [ HH.text "Order Form JSON" ]
+            , HH.pre_
+                [ HH.code_
+                    [ HH.text
+                        $ either ("Cannot produce JSON: " <> _) identity
+                        $ toJsonStr sof.orderForm
+                    ]
                 ]
             ]
         ]

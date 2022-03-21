@@ -11,6 +11,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore, Credentials(..), credentialsAreReadOnly, getCredentials, login, logout)
 import Sofa.Widgets as Widgets
@@ -72,8 +73,16 @@ render = case _ of
   where
   renderLoggedOut =
     HH.button
-      [ HE.onClick $ \_ -> SetState $ LoggingIn mempty ]
-      [ HH.text "Login" ]
+      [ HP.classes
+          [ Css.c "flex"
+          , Css.c "flex-col"
+          , Css.c "items-center"
+          ]
+      , HE.onClick $ \_ -> SetState $ LoggingIn mempty
+      ]
+      [ Icon.user [ Icon.classes [ Css.c "w-8", Css.c "h-8" ] ]
+      , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text "Login" ]
+      ]
 
   renderLoggingIn st =
     Widgets.modal
@@ -134,8 +143,17 @@ render = case _ of
       HH.text user
     else
       HH.button
-        [ HP.title $ "Logged in as " <> user, HE.onClick $ \_ -> Logout ]
-        [ HH.text "Logout" ]
+        [ HP.classes
+            [ Css.c "flex"
+            , Css.c "flex-col"
+            , Css.c "items-center"
+            ]
+        , HP.title $ "Logged in as " <> user
+        , HE.onClick $ \_ -> Logout
+        ]
+        [ Icon.user [ Icon.classes [ Css.c "w-8", Css.c "h-8" ] ]
+        , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text "Logout" ]
+        ]
 
 handleAction ::
   forall output m.

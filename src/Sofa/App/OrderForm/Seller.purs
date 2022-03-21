@@ -116,7 +116,6 @@ renderSummary st = case st.acceptedSeller of
   okClasses =
     [ Css.c "block"
     , Css.c "text-left"
-    , Css.c "text-2xl"
     , Css.c "underline"
     , Css.c "underline-offset-4"
     , Css.c "decoration-honey-500"
@@ -125,7 +124,6 @@ renderSummary st = case st.acceptedSeller of
   badClasses =
     [ Css.c "block"
     , Css.c "text-left"
-    , Css.c "text-2xl"
     , Css.c "underline"
     , Css.c "underline-offset-4"
     , Css.c "decoration-honey-500"
