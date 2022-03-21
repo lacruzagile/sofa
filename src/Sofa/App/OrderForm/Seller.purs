@@ -14,7 +14,7 @@ import Sofa.App.OrderForm.SelectLegalEntity as SelectLegalEntity
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.SmartSpec as SS
-import Sofa.HtmlUtils (focusElementByQuery)
+import Sofa.HtmlUtils (focusElementByRef)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 
@@ -93,6 +93,9 @@ initialState input = case input of
     , readOnly
     , open: false
     }
+
+okBtnLabel :: H.RefLabel
+okBtnLabel = H.RefLabel "ok-btn"
 
 render ::
   forall m.
@@ -209,7 +212,7 @@ renderDetails st =
               ]
               [ HH.text "Cancel" ]
           , HH.button
-              [ HP.id "seller-ok"
+              [ HP.ref okBtnLabel
               , HP.class_ (Css.c "sofa-btn-primary")
               , HP.enabled (isJust st.seller)
               , HE.onClick \_ -> AcceptAndCloseDetails
@@ -266,7 +269,7 @@ handleAction = case _ of
               , seller = toSeller <$> legalEntity
               }
     -- Switch focus to OK button.
-    focusElementByQuery "button#seller-ok"
+    focusElementByRef okBtnLabel
   UpdateContactPrimary update ->
     let
       setContact (SS.Seller s) = SS.Seller $ s { contacts { primary = update s.contacts.primary } }

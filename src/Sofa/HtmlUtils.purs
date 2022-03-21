@@ -1,6 +1,5 @@
 module Sofa.HtmlUtils
   ( focusElementByRef
-  , focusElementByQuery
   , scrollToBottom
   , selectInputText
   , setInputText
@@ -10,11 +9,8 @@ import Prelude
 import Data.Maybe (maybe)
 import Data.Traversable (for_)
 import Effect (Effect)
-import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Halogen as H
-import Halogen.Aff as HA
-import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as HtmlElement
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
@@ -29,11 +25,6 @@ focusElementByRef ref = do
   element <- H.getHTMLElementRef ref
   for_ element \el ->
     H.liftEffect $ HtmlElement.focus el
-
-focusElementByQuery :: forall m. Bind m => MonadAff m => String -> m Unit
-focusElementByQuery query = do
-  element <- H.liftAff $ HA.selectElement (QuerySelector query)
-  H.liftEffect $ maybe (pure unit) HtmlElement.focus element
 
 selectInputText ∷
   forall state action slots output m.

@@ -14,7 +14,7 @@ import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..), isLoaded)
 import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
-import Sofa.HtmlUtils (focusElementByQuery)
+import Sofa.HtmlUtils (focusElementByRef)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 
@@ -96,6 +96,9 @@ initialState input = case input of
     , enabled: true
     , open: false
     }
+
+okBtnLabel :: H.RefLabel
+okBtnLabel = H.RefLabel "ok-btn"
 
 render ::
   forall m.
@@ -263,7 +266,7 @@ renderDetails st =
             ]
             [ HH.text "Cancel" ]
         , HH.button
-            [ HP.id "commercial-ok"
+            [ HP.ref okBtnLabel
             , HP.class_ (Css.c "sofa-btn-primary")
             , HP.enabled (isLoaded st.commercial)
             , HE.onClick \_ -> AcceptAndCloseDetails
@@ -283,7 +286,7 @@ handleAction = case _ of
   ChooseCommercial commercial -> do
     H.modify_ $ \st -> st { commercial = commercial }
     -- Switch focus to OK button.
-    focusElementByQuery "button#commercial-ok"
+    focusElementByRef okBtnLabel
   OpenDetails -> H.modify_ $ \st -> st { open = true }
   AcceptAndCloseDetails -> do
     st' <- H.modify $ \st -> st { acceptedCommercial = st.commercial, open = false }
