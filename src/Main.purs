@@ -1,18 +1,18 @@
-module Main where
+module Main (main) where
 
 import Prelude
-import App (runAppM)
-import App.OrderForm as OrderForm
-import App.Router as Router
-import Data.Deployment (Deployment, detectDeployment, getCrmQuoteId)
 import Data.Maybe (Maybe(..))
-import Data.SmartSpec (CrmQuoteId)
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.Aff (awaitLoad)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
+import Sofa.App (runAppM)
+import Sofa.App.OrderForm as OrderForm
+import Sofa.App.Router as Router
+import Sofa.Data.Deployment (Deployment, detectDeployment, getCrmQuoteId)
+import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
 

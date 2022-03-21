@@ -2,19 +2,19 @@ module Test.Main where
 
 import Prelude
 import Data.Argonaut (class DecodeJson, class EncodeJson, decodeJson, encodeJson, printJsonDecodeError)
-import Data.BigNumber as BN
-import Data.Currency (unsafeMkCurrency)
 import Data.Either (Either(..))
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Monoid.Additive (Additive(..))
-import Data.Schema (isValidValue)
-import Data.SmartSpec as SS
-import Data.SubTotal (SubTotal(..), IndexedSubTotalEntry(..), calcSubTotal)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Foreign.Object as FO
+import Sofa.Data.BigNumber as BN
+import Sofa.Data.Currency (unsafeMkCurrency)
+import Sofa.Data.Schema (isValidValue)
+import Sofa.Data.SmartSpec as SS
+import Sofa.Data.SubTotal (SubTotal(..), IndexedSubTotalEntry(..), calcSubTotal)
 import Test.QuickCheck ((<?>))
 import Test.QuickCheck as QC
 import Test.Spec (Spec, describe, it)
