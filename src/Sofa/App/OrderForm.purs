@@ -572,7 +572,7 @@ render state =
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
-          $ [ HP.classes [ Css.c "nectary-input", Css.c "nectary-input-number" ]
+          $ [ HP.classes [ Css.c "nectary-input", Css.c "nectary-input-number", Css.c "w-96" ]
             , HP.type_ HP.InputNumber
             , HP.placeholder "Integer"
             , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
@@ -618,7 +618,7 @@ render state =
             in
               HH.input
                 $ [ HP.type_ HP.InputText
-                  , HP.class_ (Css.c "nectary-input")
+                  , HP.classes [ Css.c "nectary-input", Css.c "w-96" ]
                   , HP.placeholder placeholder
                   , HE.onValueChange (act <<< const <<< SS.CvString)
                   ]
@@ -629,7 +629,7 @@ render state =
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
           $ [ HP.type_ HP.InputText
-            , HP.class_ (Css.c "nectary-input")
+            , HP.classes [ Css.c "nectary-input", Css.c "w-96" ]
             , HP.placeholder $ "String matching " <> c.pattern
             , HP.pattern c.pattern
             , HE.onValueChange (act <<< const <<< SS.CvString)
@@ -762,7 +762,7 @@ render state =
     pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
 
     renderCheckbox fallbackTitle schemaEntry inner =
-      HH.label [ HP.classes [ Css.c "my-2" ] ]
+      HH.label [ HP.classes [ Css.c "my-2", Css.c "flex" ] ]
         [ inner
         , withDescription fallbackTitle schemaEntry
         ]
@@ -908,7 +908,7 @@ render state =
       if S.null fallbackTitle then
         inner
       else
-        HH.label [ HP.classes [ Css.c "my-2" ] ]
+        HH.label [ HP.classes [ Css.c "my-2", Css.c "flex", Css.c "flex-col" ] ]
           [ withDescription fallbackTitle schemaEntry
           , inner
           ]
@@ -953,7 +953,7 @@ render state =
           (body true)
       where
       body tt =
-        HH.span
+        HH.div
           [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ]
           [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
           , if tt then Icon.tooltip else HH.text ""
