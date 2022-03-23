@@ -158,6 +158,11 @@
     background-repeat: no-repeat;
   }
 
+  .nectary-short-bounce {
+    @apply animate-bounce motion-reduce:animate-none;
+    animation-iteration-count: 1.5;
+  }
+
   .sofa-small-title {
     @apply
       uppercase

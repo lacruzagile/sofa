@@ -3,6 +3,7 @@ module Sofa.Component.Icon
   , ariaHidden
   , ariaLabel
   , cancel
+  , checkmark
   , classes
   , close
   , id
@@ -15,6 +16,7 @@ module Sofa.Component.Icon
   , sinchLogo
   , textWithTooltip
   , tooltip
+  , upload
   , user
   ) where
 
@@ -73,6 +75,13 @@ cancel attrs =
     [ path
         [ d "M12 2C6.47 2 2 6.47 2 12C2 17.53 6.47 22 12 22C17.53 22 22 17.53 22 12C22 6.47 17.53 2 12 2ZM16.3 16.3C15.91 16.69 15.28 16.69 14.89 16.3L12 13.41L9.11 16.3C8.72 16.69 8.09 16.69 7.7 16.3C7.31 15.91 7.31 15.28 7.7 14.89L10.59 12L7.7 9.11C7.31 8.72 7.31 8.09 7.7 7.7C8.09 7.31 8.72 7.31 9.11 7.7L12 10.59L14.89 7.7C15.28 7.31 15.91 7.31 16.3 7.7C16.69 8.09 16.69 8.72 16.3 9.11L13.41 12L16.3 14.89C16.68 15.27 16.68 15.91 16.3 16.3Z"
         ]
+    ]
+
+checkmark :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+checkmark attrs =
+  svg
+    ([ viewBox "0 0 14 14" ] <> attrs)
+    [ path [ d "M14 1.99999L12.59 0.579987L4.98995 8.17L1.49997 4.5L0.0799694 5.91L4.98995 11L14 1.99999Z" ]
     ]
 
 close :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
@@ -205,6 +214,12 @@ sinchLogo attrs =
     [ path [ d "M199.13,66.25a36.2,36.2,0,0,1-23.46,34.22c-12.17,4.75-26.43,3-40.18-4.77l-10-5.76a35.44,35.44,0,0,1-7.68,6.61l-32,18.72-.06,0V99.12l.06,0L133.9,70.93a35.17,35.17,0,0,1-1.54,6.91l10,5.72c12.84,7.3,22.42,6.15,28.19,3.9a22.78,22.78,0,0,0,13.47-14,23.23,23.23,0,0,0,1.1-7.14,22.24,22.24,0,0,0-14.82-20.94c-5.81-2.19-15.39-3.23-28.14,4.23L64.08,95.32l-.09.06c-8.66,5.07-17.56,7.68-26,7.73a39.15,39.15,0,0,1-14.09-2.47A36.48,36.48,0,0,1,1.75,55.24,36.88,36.88,0,0,1,23.46,32.48c12.17-4.75,26.43-3.06,40.18,4.77l10,5.76a35.26,35.26,0,0,1,7.69-6.61L82,36l3.73-2.18-15.9-9A7,7,0,0,1,76.7,12.67L99.55,25.74l22.39-13A7,7,0,0,1,129,24.77L65.29,61.55a35.26,35.26,0,0,1,1.48-6.44l-10-5.72c-12.83-7.3-22.4-6.15-28.18-3.89a22.38,22.38,0,0,0,.25,42.06c5.8,2.19,15.39,3.23,28.14-4.23l78.21-45.77c8.66-5.07,17.56-7.67,26-7.72a39.14,39.14,0,0,1,14.08,2.47,36.22,36.22,0,0,1,23.87,33.94" ]
     ]
 
+upload :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+upload attrs =
+  svg
+    ([ viewBox "0 0 25 16" ] <> attrs)
+    [ path [ d "M19.725 6.04C19.045 2.59 16.015 0 12.375 0C9.485 0 6.975 1.64 5.725 4.04C2.715 4.36 0.375 6.91 0.375 10C0.375 13.31 3.065 16 6.375 16H19.375C22.135 16 24.375 13.76 24.375 11C24.375 8.36 22.325 6.22 19.725 6.04ZM14.375 9V13H10.375V9H7.375L12.025 4.35C12.225 4.15 12.535 4.15 12.735 4.35L17.375 9H14.375Z" ] ]
+
 user :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 user attrs =
   svg
@@ -230,7 +245,6 @@ type SVGsvg
   = CoreAttributes
       ( ariaHidden :: String
       , ariaLabel :: String
-      , preserveAspectRatio :: String
       , role :: String
       , viewBox :: String
       )
@@ -270,9 +284,6 @@ id = HH.attr (HH.AttrName "id")
 
 fillRule :: forall r i. String -> HH.IProp ( fillRule :: String | r ) i
 fillRule = HH.attr (HH.AttrName "fill-rule")
-
-preserveAspectRatio :: forall r i. String -> HH.IProp ( preserveAspectRatio :: String | r ) i
-preserveAspectRatio = HH.attr (HH.AttrName "preserveAspectRatio")
 
 role :: forall r i. String -> HH.IProp ( role :: String | r ) i
 role = HH.attr (HH.AttrName "role")
