@@ -1099,7 +1099,6 @@ render state =
             , HH.div
                 [ HP.classes
                     [ Css.c "flex"
-                    , Css.c "flex-wrap-reverse"
                     , Css.c "items-center"
                     , Css.c "space-x-4"
                     , Css.c "m-5"
@@ -1108,8 +1107,8 @@ render state =
                     , Css.c "border-t"
                     ]
                 ]
-                [ HH.div [ HP.class_ (Css.c "grow") ] []
-                , renderOrderSectionSummary sec.summary
+                [ renderOrderSectionSummary sec.summary
+                , HH.div [ HP.class_ (Css.c "grow") ] []
                 , if not isInDraft || isAddingOrderLine then
                     HH.text ""
                   else
@@ -1211,7 +1210,19 @@ render state =
   renderOrderSectionSummary = Widgets.subTotalTable ""
 
   renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSummary = Widgets.subTotalTable "Total "
+  renderOrderSummary subTotal
+    | mempty == subTotal = HH.text ""
+    | otherwise =
+      HH.div
+        [ HP.classes
+            [ Css.c "p-3"
+            , Css.c "space-x-4"
+            , Css.c "rounded-sm"
+            , Css.c "border"
+            , Css.c "border-snow-600"
+            ]
+        ]
+        [ Widgets.subTotalTable "Total " subTotal ]
 
   renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo orderForm =
@@ -1390,8 +1401,8 @@ render state =
 
   renderOrderFooter sof =
     footerDiv
-      [ HH.div [ HP.class_ (Css.c "grow") ] []
-      , renderOrderSummary sof.orderForm.summary
+      [ renderOrderSummary sof.orderForm.summary
+      , HH.div [ HP.class_ (Css.c "grow") ] []
       , if isFreshOrder then
           HH.button
             [ HP.class_ (Css.c "sofa-btn-destructive")
@@ -1453,12 +1464,8 @@ render state =
             [ Css.c "flex"
             , Css.c "flex-wrap-reverse"
             , Css.c "items-center"
-            , Css.c "p-3"
             , Css.c "my-5"
             , Css.c "space-x-4"
-            , Css.c "rounded-sm"
-            , Css.c "border"
-            , Css.c "border-snow-600"
             ]
         ]
 
@@ -1470,7 +1477,7 @@ render state =
         ]
     , renderSections sof sof.orderForm.sections
     , renderOrderFooter sof
-    , HH.hr [ HP.class_ (Css.c "my-5") ]
+    , HH.hr [ HP.class_ (Css.c "my-8") ]
     , HH.details_
         [ HH.summary
             [ HP.class_ (Css.c "cursor-pointer") ]
