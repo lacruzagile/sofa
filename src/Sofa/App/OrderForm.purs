@@ -441,7 +441,7 @@ render state =
     renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
       [ HH.div [ HP.classes [ Css.c "my-5", Css.c "p-5", Css.c "border-l-8", Css.c "border-gray-100" ] ]
           [ HH.label_
-              [ HH.span [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ] [ HH.text "Quantity" ]
+              [ HH.div [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ] [ HH.text "Quantity" ]
               , renderQuantityInput cfgIdx olc
               ]
           , if allowRemove then
@@ -513,11 +513,14 @@ render state =
     renderAddProductConfig
       | not isInDraft = []
       | otherwise =
-        [ HH.button
-            [ HP.class_ (Css.c "sofa-btn-secondary")
-            , HE.onClick \_ -> OrderLineAddConfig olIdx
+        [ HH.div [ HP.classes [ Css.c "flex", Css.c "w-full" ] ]
+            [ HH.div [ HP.class_ (Css.c "grow") ] []
+            , HH.button
+                [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-8" ]
+                , HE.onClick \_ -> OrderLineAddConfig olIdx
+                ]
+                [ HH.text "Add configuration" ]
             ]
-            [ HH.text "+ Add configuration" ]
         ]
 
   renderConfigSchema ::
@@ -656,7 +659,7 @@ render state =
           mkElement content =
             if S.null fallbackTitle then
               HH.div
-                [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
+                [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-4" ] ]
                 (content <> [ renderAddListEntry c.items act ])
             else
               HH.fieldset [ HP.classes [ Css.c "my-2", Css.c "flex", Css.c "flex-col", Css.c "border" ] ]
@@ -692,7 +695,7 @@ render state =
         in
           if S.null fallbackTitle then
             HH.div
-              [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
+              [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-4" ] ]
               renderFields
           else
             HH.fieldset
@@ -762,7 +765,7 @@ render state =
     pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
 
     renderCheckbox fallbackTitle schemaEntry inner =
-      HH.label [ HP.classes [ Css.c "my-2", Css.c "flex" ] ]
+      HH.label [ HP.classes [ Css.c "flex" ] ]
         [ inner
         , withDescription fallbackTitle schemaEntry
         ]
@@ -908,7 +911,7 @@ render state =
       if S.null fallbackTitle then
         inner
       else
-        HH.label [ HP.classes [ Css.c "my-2", Css.c "flex", Css.c "flex-col" ] ]
+        HH.label [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
           [ withDescription fallbackTitle schemaEntry
           , inner
           ]
@@ -997,7 +1000,7 @@ render state =
           [ HH.button
               [ HP.classes
                   [ Css.c "sofa-btn-secondary"
-                  , Css.c "h-auto"
+                  , Css.c "h-8"
                   , Css.c "m-5"
                   , Css.c "py-0"
                   ]
@@ -1013,7 +1016,7 @@ render state =
                   in
                     act (SS.CvArray <<< addEntry <<< toVal)
               ]
-              [ HH.text "+ Add New" ]
+              [ HH.text "Add New" ]
           ]
 
   renderSection ::
@@ -1098,22 +1101,23 @@ render state =
                     [ Css.c "flex"
                     , Css.c "flex-wrap-reverse"
                     , Css.c "items-center"
+                    , Css.c "space-x-4"
                     , Css.c "m-5"
-                    , Css.c "mb-2"
-                    , Css.c "pt-5"
+                    , Css.c "mb-0"
+                    , Css.c "pt-3"
                     , Css.c "border-t"
                     ]
                 ]
-                [ if not isInDraft || isAddingOrderLine then
+                [ HH.div [ HP.class_ (Css.c "grow") ] []
+                , renderOrderSectionSummary sec.summary
+                , if not isInDraft || isAddingOrderLine then
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.c "sofa-btn-secondary" ]
+                      [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-8" ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
-                      [ HH.text "+ Add product" ]
-                , HH.div [ HP.class_ (Css.c "grow") ] []
-                , renderOrderSectionSummary sec.summary
+                      [ HH.text "Add product" ]
                 ]
             ]
     where
@@ -1196,10 +1200,10 @@ render state =
               ]
               [ HH.div [ HP.class_ (Css.c "grow") ] []
               , HH.button
-                  [ HP.class_ (Css.c "sofa-btn-primary")
+                  [ HP.classes [ Css.c "sofa-btn-primary", Css.c "h-8" ]
                   , HE.onClick \_ -> AddSection
                   ]
-                  [ HH.text "+ Add section" ]
+                  [ HH.text "Add section" ]
               ]
           ]
 
