@@ -479,7 +479,7 @@ render state =
                   ]
                   [ Tooltip.render
                       ( Tooltip.defaultInput
-                          { text = id
+                          { text = "Configuration ID: " <> id
                           , orientation = Tooltip.Left
                           , width = Just "20rem"
                           }
