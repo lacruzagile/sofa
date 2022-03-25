@@ -143,7 +143,7 @@ getOrders ::
   CredentialStore m =>
   Maybe String ->
   m (Loadable { orders :: Array OrderForm, nextPageToken :: Maybe String })
-getOrders nextPageToken = getRJson url
+getOrders nextPageToken = filterNextPageToken <$> getRJson url
   where
   url = ordersUrl <> "?pageSize=10" <> pageToken
 
