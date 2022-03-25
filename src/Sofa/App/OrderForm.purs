@@ -44,7 +44,7 @@ import Sofa.App.OrderForm.Widget.Dropdown as WDropdown
 import Sofa.App.OrderForm.Widget.Radio as WRadio
 import Sofa.App.OrderForm.Widget.Textarea as WTextarea
 import Sofa.App.OrderForm.Widget.Typeahead as WTypeahead
-import Sofa.App.Requests (getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
+import Sofa.App.Requests (deleteOrder, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
@@ -1406,7 +1406,15 @@ render state =
       , if isFreshOrder then
           HH.button
             [ HP.class_ (Css.c "sofa-btn-destructive")
-            , HP.disabled $ not sof.orderForm.changed
+            , HP.disabled
+                $ let
+                    changed = sof.orderForm.changed
+
+                    inDraft =
+                      (sof.orderForm.status == SS.OsInDraft)
+                        && isJust sof.orderForm.original
+                  in
+                    not (changed || inDraft)
             , HE.onClick $ \_ -> DiscardOrder
             ]
             [ HH.text "Discard order" ]
@@ -1435,9 +1443,11 @@ render state =
           ]
       ]
     where
-    -- An order is fresh (i.e., not yet created in the backend) if we have the
-    -- original order object.
-    isFreshOrder = isNothing sof.orderForm.original
+    -- An order is in draft status or fresh (i.e., not yet created in the
+    -- backend).
+    isFreshOrder =
+      sof.orderForm.status == SS.OsInDraft
+        || isNothing sof.orderForm.original
 
     preventCreate =
       sof.orderUpdateInFlight
@@ -2240,6 +2250,25 @@ handleAction = case _ of
             , estimatedUsage = estimatedUsage
             }
   DiscardOrder -> do
+    state <- H.get
+    case state of
+      -- If the order exists in the backend then we'll also delete it there, but
+      -- only if the order is in the draft status.
+      Initialized
+        ( Loaded
+          { orderForm:
+            { original: Just (SS.OrderForm { id: Just orderId })
+            , status: SS.OsInDraft
+            }
+        }
+      ) -> do
+        result <- H.lift $ deleteOrder orderId
+        case result of
+          Error msg -> H.liftEffect $ Console.error $ "Error deleting order: " <> msg
+          Loaded _ -> H.liftEffect $ Console.log $ "Deleted order: " <> show orderId
+          _ -> pure unit
+        pure unit
+      _ -> pure unit
     -- Reloading the catalog will reset the state.
     loadCatalog Nothing
   CreateUpdateOrder -> do

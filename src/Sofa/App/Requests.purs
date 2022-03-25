@@ -8,9 +8,11 @@ module Sofa.App.Requests
   , getBuyers
   , getDataSourceEnum
   , getLegalEntities
+  , getProductCatalog
+  -- * Order
+  , deleteOrder
   , getOrder
   , getOrders
-  , getProductCatalog
   , patchOrder
   , postOrder
   , postOrderFulfillment
@@ -179,6 +181,11 @@ patchOrder orderId orderForm = patchRJson url orderForm
 
 postOrder :: forall m. MonadAff m => CredentialStore m => OrderForm -> m (Loadable OrderForm)
 postOrder orderForm = postRJson ordersUrl orderForm
+
+deleteOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable Unit)
+deleteOrder orderId = deleteR_ url
+  where
+  url = ordersUrl </> show orderId
 
 postOrderFulfillment :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
 postOrderFulfillment orderId = postRJson_ url
