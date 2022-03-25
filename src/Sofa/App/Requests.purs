@@ -27,13 +27,13 @@ module Sofa.App.Requests
 import Prelude
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, decodeJson, (.:))
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple)
 import Effect.Aff.Class (class MonadAff)
 import Foreign.Object as FO
 import JSURI (encodeURIComponent)
 import Sofa.Data.Auth (class CredentialStore)
-import Sofa.Data.Loadable (Loadable, deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
+import Sofa.Data.Loadable (Loadable(..), deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
 import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
 
 -- | Base URL to use for the ordering service.
@@ -152,6 +152,20 @@ getOrders nextPageToken = getRJson url
       tok <- nextPageToken
       tokParam <- encodeURIComponent tok
       pure $ "&pageToken=" <> tokParam
+
+  -- If the next page token is an empty string then we'll change it to a Nothing
+  -- value.
+  filterNextPageToken = case _ of
+    Loaded r ->
+      Loaded
+        $ r
+            { nextPageToken =
+              case r.nextPageToken of
+                Nothing -> Nothing
+                Just "" -> Nothing
+                t -> t
+            }
+    r -> r
 
 getOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
 getOrder orderId = getRJson url
