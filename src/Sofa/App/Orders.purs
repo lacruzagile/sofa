@@ -184,17 +184,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderNewOrderLink =
     HH.a
       [ Route.href Route.OrderForm
-      , HP.classes
-          [ Css.c "relative"
-          , Css.c "float-right"
-          , Css.c "sofa-btn-primary"
-          ]
+      , HP.class_ (Css.c "sofa-btn-primary")
       ]
-      [ HH.text "+ New order" ]
+      [ HH.text "New order" ]
 
   renderContent =
-    [ renderNewOrderLink
-    , HH.h1_ [ HH.text "Orders" ]
+    [ HH.div [ HP.classes [ Css.c "flex", Css.c "items-center" ] ]
+        [ HH.h1 [ HP.class_ (Css.c "grow") ] [ HH.text "Orders" ]
+        , renderNewOrderLink
+        ]
     , renderOrders
     , maybe (HH.text "") renderError state.error
     ]
