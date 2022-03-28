@@ -80,7 +80,10 @@ render = case _ of
           ]
       , HE.onClick $ \_ -> SetState $ LoggingIn mempty
       ]
-      [ Icon.user [ Icon.classes [ Css.c "w-8", Css.c "h-8" ] ]
+      [ Icon.user
+          [ Icon.classes [ Css.c "w-8", Css.c "h-8" ]
+          , Icon.ariaHidden true
+          ]
       , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text "Login" ]
       ]
 
@@ -151,7 +154,10 @@ render = case _ of
         , HP.title $ "Logged in as " <> user
         , HE.onClick $ \_ -> Logout
         ]
-        [ Icon.user [ Icon.classes [ Css.c "w-8", Css.c "h-8" ] ]
+        [ Icon.user
+            [ Icon.classes [ Css.c "w-8", Css.c "h-8" ]
+            , Icon.ariaHidden true
+            ]
         , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text "Logout" ]
         ]
 

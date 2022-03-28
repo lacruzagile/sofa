@@ -150,6 +150,7 @@ renderSideMenu currentRoute =
                   , Css.c "bg-snow-500"
                   , Css.c "rounded-md"
                   ]
+              , Icon.ariaHidden true
               ]
           , HH.div_ [ HH.text text ]
           ]
@@ -218,7 +219,11 @@ renderNavbar =
   primaryItem route =
     HH.a
       [ Route.href route, HP.class_ (Css.c "mr-5") ]
-      [ Icon.sinchLogo [ Icon.classes [ Css.c "h-8" ] ] ]
+      [ Icon.sinchLogo
+          [ Icon.classes [ Css.c "h-8" ]
+          , Icon.ariaLabel "SOFA Home"
+          ]
+      ]
 
   navbarSubItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
 

@@ -1,11 +1,14 @@
 module Sofa.Component.Icon
-  ( classes
+  ( ariaHidden
+  , ariaLabel
+  , classes
   , close
   , id
   , longMessage
   , package
   , piggybank
   , puzzle
+  , role
   , settings
   , sinchLogo
   , textWithTooltip
@@ -32,6 +35,7 @@ tooltip :: forall w i. HH.HTML w i
 tooltip =
   svg
     [ viewBox "0 0 16 16"
+    , role "img"
     , classes
         [ Css.c "inline-block"
         , Css.c "fill-current"
@@ -47,6 +51,7 @@ close :: forall w i. HH.HTML w i
 close =
   svg
     [ viewBox "0 0 14 14"
+    , role "img"
     , classes
         [ Css.c "inline-block"
         , Css.c "fill-current"
@@ -62,7 +67,7 @@ close =
 longMessage :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 longMessage attrs =
   svg
-    ([ viewBox "0 0 48 48" ] <> attrs)
+    ([ viewBox "0 0 48 48", role "img" ] <> attrs)
     [ path
         [ d "M27.0928 33H15.9353C15.6872 33 15.4493 32.8946 15.2739 32.7071C15.0985 32.5196 15 32.2652 15 32C15 31.7348 15.0985 31.4804 15.2739 31.2929C15.4493 31.1054 15.6872 31 15.9353 31H27.0647C27.3128 31 27.5507 31.1054 27.7261 31.2929C27.9015 31.4804 28 31.7348 28 32C28 32.2652 27.9015 32.5196 27.7261 32.7071C27.5507 32.8946 27.3128 33 27.0647 33H27.0928Z"
         , classes [ Css.c "fill-tropical-500" ]
@@ -95,7 +100,7 @@ longMessage attrs =
 
 package :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 package attrs =
-  svg ([ viewBox "0 0 48 48" ] <> attrs)
+  svg ([ viewBox "0 0 48 48", role "img" ] <> attrs)
     [ path
         [ d "M17.5 14.5L28.2757 20.3612L30.9274 18.9584L19.7307 13.3199L17.5 14.5Z"
         , classes [ Css.c "fill-stormy-500" ]
@@ -110,7 +115,7 @@ package attrs =
 
 piggybank :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 piggybank attrs =
-  svg ([ viewBox "0 0 48 48" ] <> attrs)
+  svg ([ viewBox "0 0 48 48", role "img" ] <> attrs)
     [ path
         [ fillRule "evenodd"
         , clipRule "evenodd"
@@ -135,7 +140,7 @@ piggybank attrs =
 
 puzzle :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 puzzle attrs =
-  svg ([ viewBox "0 0 48 48" ] <> attrs)
+  svg ([ viewBox "0 0 48 48", role "img" ] <> attrs)
     [ path
         [ d "M41.9899 22.07V16C41.9899 15.45 41.536 15 40.9813 15H36.9164C36.8357 14.62 36.7248 14.15 36.5533 13.66C36.3516 13.1 36.049 12.47 35.5951 11.96C35.111 11.43 34.4352 11 33.5375 11C32.6398 11 31.964 11.43 31.4899 11.96C31.036 12.47 30.7334 13.1 30.5317 13.66C30.3501 14.15 30.2392 14.62 30.1585 15H30.0072H28V17H30.0072H31.0159C31.5403 17 31.9741 16.61 32.0245 16.09C32.0245 16.09 32.0245 16.08 32.0245 16.07C32.0245 16.05 32.0346 16.01 32.0346 15.96C32.0447 15.86 32.0648 15.72 32.0951 15.56C32.1556 15.22 32.2565 14.78 32.4179 14.34C32.5793 13.9 32.7709 13.53 32.9928 13.29C33.1945 13.07 33.366 13 33.5375 13C33.7089 13 33.8804 13.07 34.0821 13.29C34.2939 13.53 34.4957 13.9 34.6571 14.34C34.8184 14.77 34.9193 15.21 34.9798 15.56C35.0101 15.73 35.0303 15.87 35.0403 15.96C35.0403 16.01 35.0504 16.04 35.0504 16.07C35.0504 16.08 35.0504 16.09 35.0504 16.09C35.1009 16.61 35.5346 17 36.0591 17H39.9726V21.23C39.5994 21.31 39.1455 21.42 38.6715 21.59C38.1268 21.79 37.5115 22.08 37.0072 22.52C36.4928 22.98 36.0591 23.63 36.0591 24.5C36.0591 25.38 36.4726 26.06 36.9971 26.54C37.5014 27 38.1268 27.3 38.6816 27.5C39.1556 27.67 39.5994 27.77 39.9726 27.85V31H36.2305C35.6859 31 35.232 31.44 35.2219 31.98C35.2219 31.98 35.2219 31.99 35.2219 32C35.2219 32.02 35.2219 32.06 35.2118 32.1C35.2017 32.19 35.1916 32.33 35.1715 32.5C35.1311 32.84 35.0504 33.27 34.9193 33.69C34.6167 34.62 34.2133 35 33.6988 35C33.1643 35 32.7205 34.59 32.3775 33.66C32.2262 33.24 32.1254 32.8 32.0749 32.47C32.0447 32.3 32.0346 32.17 32.0245 32.07C32.0245 32.02 32.0144 31.99 32.0144 31.97C32.0144 31.96 32.0144 31.95 32.0144 31.95C31.9841 31.41 31.5504 31 31.0159 31H30.0072H28V33H30.0072H30.1383C30.2089 33.39 30.3199 33.86 30.5014 34.34C30.8948 35.41 31.8026 37 33.719 37C35.6556 37 36.513 35.38 36.8559 34.31C37.0072 33.84 37.098 33.38 37.1585 33H40.9914C41.5461 33 42 32.55 42 32V27C42 26.48 41.5965 26.05 41.072 26C41.072 26 41.062 26 41.0519 26C41.0317 26 40.9914 25.99 40.951 25.99C40.8602 25.98 40.719 25.96 40.5576 25.93C40.2248 25.87 39.8012 25.78 39.3775 25.63C38.9539 25.48 38.6009 25.29 38.3689 25.08C38.1571 24.89 38.0764 24.71 38.0764 24.5C38.0764 24.37 38.1268 24.22 38.3487 24.03C38.5807 23.82 38.9438 23.64 39.3775 23.48C39.8012 23.33 40.2349 23.22 40.5677 23.16C40.7291 23.13 40.8703 23.11 40.9611 23.09C41.0115 23.08 41.0418 23.08 41.062 23.08C41.072 23.08 41.0821 23.08 41.0821 23.08C41.6066 23 41.9899 22.58 41.9899 22.07Z"
         , classes [ Css.c "fill-stormy-500" ]
@@ -148,7 +153,7 @@ puzzle attrs =
 
 settings :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 settings attrs =
-  svg ([ viewBox "0 0 48 48" ] <> attrs)
+  svg ([ viewBox "0 0 48 48", role "img" ] <> attrs)
     [ path
         [ fillRule "evenodd"
         , clipRule "evenodd"
@@ -166,14 +171,14 @@ settings attrs =
 sinchLogo :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 sinchLogo attrs =
   svg
-    ([ viewBox "0 0 200 130.31" ] <> attrs)
+    ([ viewBox "0 0 200 130.31", role "img" ] <> attrs)
     [ path [ d "M199.13,66.25a36.2,36.2,0,0,1-23.46,34.22c-12.17,4.75-26.43,3-40.18-4.77l-10-5.76a35.44,35.44,0,0,1-7.68,6.61l-32,18.72-.06,0V99.12l.06,0L133.9,70.93a35.17,35.17,0,0,1-1.54,6.91l10,5.72c12.84,7.3,22.42,6.15,28.19,3.9a22.78,22.78,0,0,0,13.47-14,23.23,23.23,0,0,0,1.1-7.14,22.24,22.24,0,0,0-14.82-20.94c-5.81-2.19-15.39-3.23-28.14,4.23L64.08,95.32l-.09.06c-8.66,5.07-17.56,7.68-26,7.73a39.15,39.15,0,0,1-14.09-2.47A36.48,36.48,0,0,1,1.75,55.24,36.88,36.88,0,0,1,23.46,32.48c12.17-4.75,26.43-3.06,40.18,4.77l10,5.76a35.26,35.26,0,0,1,7.69-6.61L82,36l3.73-2.18-15.9-9A7,7,0,0,1,76.7,12.67L99.55,25.74l22.39-13A7,7,0,0,1,129,24.77L65.29,61.55a35.26,35.26,0,0,1,1.48-6.44l-10-5.72c-12.83-7.3-22.4-6.15-28.18-3.89a22.38,22.38,0,0,0,.25,42.06c5.8,2.19,15.39,3.23,28.14-4.23l78.21-45.77c8.66-5.07,17.56-7.67,26-7.72a39.14,39.14,0,0,1,14.08,2.47,36.22,36.22,0,0,1,23.87,33.94" ]
     ]
 
 user :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 user attrs =
   svg
-    ([ viewBox "0 0 48 48", preserveAspectRatio "xMinYMin meet" ] <> attrs)
+    ([ viewBox "0 0 48 48", role "img" ] <> attrs)
     [ path
         [ classes [ Css.c "fill-tropical-500" ]
         , fillRule "evenodd"
@@ -193,7 +198,10 @@ type CoreAttributes r
 
 type SVGsvg
   = CoreAttributes
-      ( preserveAspectRatio :: String
+      ( ariaHidden :: String
+      , ariaLabel :: String
+      , preserveAspectRatio :: String
+      , role :: String
       , viewBox :: String
       )
 
@@ -218,6 +226,12 @@ svg = svgElement (HH.ElemName "svg")
 path :: forall w i. HH.Leaf SVGpath w i
 path props = svgElement (HH.ElemName "path") props []
 
+ariaHidden :: forall r i. Boolean -> HH.IProp ( ariaHidden :: String | r ) i
+ariaHidden b = HH.attr (HH.AttrName "aria-hidden") (if b then "true" else "false")
+
+ariaLabel :: forall r i. String -> HH.IProp ( ariaLabel :: String | r ) i
+ariaLabel = HH.attr (HH.AttrName "aria-label")
+
 clipRule :: forall r i. String -> HH.IProp ( clipRule :: String | r ) i
 clipRule = HH.attr (HH.AttrName "clip-rule")
 
@@ -229,6 +243,9 @@ fillRule = HH.attr (HH.AttrName "fill-rule")
 
 preserveAspectRatio :: forall r i. String -> HH.IProp ( preserveAspectRatio :: String | r ) i
 preserveAspectRatio = HH.attr (HH.AttrName "preserveAspectRatio")
+
+role :: forall r i. String -> HH.IProp ( role :: String | r ) i
+role = HH.attr (HH.AttrName "role")
 
 viewBox :: forall r i. String -> HH.IProp ( viewBox :: String | r ) i
 viewBox = HH.attr (HH.AttrName "viewBox")
