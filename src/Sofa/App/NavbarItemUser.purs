@@ -71,21 +71,40 @@ render = case _ of
   LoggingIn s -> renderLoggingIn s
   LoggedIn s -> renderLoggedIn s
   where
-  renderLoggedOut =
+  renderUserBtn text attrs =
     HH.button
-      [ HP.classes
-          [ Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "items-center"
-          ]
-      , HE.onClick $ \_ -> SetState $ LoggingIn mempty
-      ]
+      ( [ HP.classes
+            [ Css.c "flex"
+            , Css.c "flex-col"
+            , Css.c "place-content-center"
+            , Css.c "items-center"
+            , Css.c "h-full"
+            , Css.c "px-5"
+            ]
+        ]
+          <> attrs
+      )
       [ Icon.user
           [ Icon.classes [ Css.c "w-8", Css.c "h-8" ]
           , Icon.ariaHidden true
           ]
-      , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text "Login" ]
+      , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text text ]
       ]
+
+  renderLoggedOut =
+    renderUserBtn
+      "Login"
+      [ HE.onClick \_ -> SetState $ LoggingIn mempty ]
+
+  renderLoggedIn { readOnly, user } =
+    if readOnly then
+      HH.text user
+    else
+      renderUserBtn
+        "Logout"
+        [ HP.title $ "Logged in as " <> user
+        , HE.onClick $ \_ -> Logout
+        ]
 
   renderLoggingIn st =
     Widgets.modal
@@ -140,26 +159,6 @@ render = case _ of
       , Css.c "border-red-400"
       , Css.c "text-raspberry-500"
       ]
-
-  renderLoggedIn { readOnly, user } =
-    if readOnly then
-      HH.text user
-    else
-      HH.button
-        [ HP.classes
-            [ Css.c "flex"
-            , Css.c "flex-col"
-            , Css.c "items-center"
-            ]
-        , HP.title $ "Logged in as " <> user
-        , HE.onClick $ \_ -> Logout
-        ]
-        [ Icon.user
-            [ Icon.classes [ Css.c "w-8", Css.c "h-8" ]
-            , Icon.ariaHidden true
-            ]
-        , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text "Logout" ]
-        ]
 
 handleAction ::
   forall output m.

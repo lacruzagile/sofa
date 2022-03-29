@@ -102,8 +102,7 @@ renderSideMenu currentRoute =
     [ HH.ul [ HP.classes [ Css.c "space-y-4" ] ]
         [ navbarItem Icon.package "Solutions  ⃰" []
         , navbarItem Icon.longMessage "Order forms"
-            [ navbarSubItem Route.Home "Home"
-            , navbarSubItem Route.ProductCatalog "Product catalog"
+            [ navbarSubItem Route.ProductCatalog "Product catalog"
             , navbarSubItem Route.Orders "Orders"
             , navbarSubItem Route.OrderForm "Order form"
             ]
@@ -210,7 +209,6 @@ renderNavbar =
 
   navbarWrapperClasses =
     [ Css.c "h-full"
-    , Css.c "px-5"
     , Css.c "flex"
     , Css.c "justify-between"
     , Css.c "items-center"
@@ -218,9 +216,11 @@ renderNavbar =
 
   primaryItem route =
     HH.a
-      [ Route.href route, HP.class_ (Css.c "mr-5") ]
+      [ Route.href route
+      , HP.classes [ Css.c "flex", Css.c "w-64", Css.c "h-full" ]
+      ]
       [ Icon.sinchLogo
-          [ Icon.classes [ Css.c "h-8" ]
+          [ Icon.classes [ Css.c "m-auto", Css.c "h-8" ]
           , Icon.ariaLabel "SOFA Home"
           ]
       ]
