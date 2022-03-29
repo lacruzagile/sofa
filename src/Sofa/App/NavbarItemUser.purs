@@ -12,9 +12,9 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.Component.Icon as Icon
+import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore, Credentials(..), credentialsAreReadOnly, getCredentials, login, logout)
-import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 
@@ -107,8 +107,8 @@ render = case _ of
         ]
 
   renderLoggingIn st =
-    Widgets.modal
-      [ Widgets.modalCloseBtn (\_ -> SetState LoggedOut) ]
+    Modal.render
+      [ Modal.closeBtn (\_ -> SetState LoggedOut) ]
       $ HH.div_
           [ HH.h2 [ HP.class_ (Css.c "mb-3") ] [ HH.text "Login" ]
           , HH.form [ HP.class_ (Css.c "w-96"), HE.onSubmit Login ]

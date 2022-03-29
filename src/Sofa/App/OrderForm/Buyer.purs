@@ -16,6 +16,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm.SelectBuyer as SelectBuyer
 import Sofa.App.Requests (getBuyerContacts)
+import Sofa.Component.Modal as Modal
 import Sofa.Component.Select as Select
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -151,10 +152,10 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Widgets.modal modalToolbar $ renderBody st.buyer
+    , Modal.render modalToolbar $ renderBody st.buyer
     ]
   where
-  modalToolbar = [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
+  modalToolbar = [ Modal.closeBtn (\_ -> CancelAndCloseDetails) ]
 
   mkWebsiteUrl s
     | startsWith "http://" s || startsWith "https://" s = s

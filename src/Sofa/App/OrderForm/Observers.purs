@@ -11,6 +11,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.Requests (deleteOrderObserver, patchOrderObserver, postOrderObserver)
+import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
@@ -137,10 +138,10 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Widgets.modal [ closeBtn ] $ renderBody
+    , Modal.render [ closeBtn ] $ renderBody
     ]
   where
-  closeBtn = Widgets.modalCloseBtn (\_ -> CloseDetails)
+  closeBtn = Modal.closeBtn (\_ -> CloseDetails)
 
   renderBody =
     HH.div

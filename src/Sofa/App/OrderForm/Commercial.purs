@@ -9,13 +9,13 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm.SelectCommercial as SelectCommercial
+import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..), isLoaded)
 import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (focusElementByRef)
-import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -174,10 +174,10 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Widgets.modal modalToolbar $ renderBody st.commercial
+    , Modal.render modalToolbar $ renderBody st.commercial
     ]
   where
-  modalToolbar = [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
+  modalToolbar = [ Modal.closeBtn (\_ -> CancelAndCloseDetails) ]
 
   renderBody commercialLoadable =
     HH.div

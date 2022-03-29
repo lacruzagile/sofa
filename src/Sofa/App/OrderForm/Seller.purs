@@ -11,6 +11,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm.SelectLegalEntity as SelectLegalEntity
+import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.SmartSpec as SS
@@ -137,10 +138,10 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Widgets.modal modalToolbar $ renderBody st.seller
+    , Modal.render modalToolbar $ renderBody st.seller
     ]
   where
-  modalToolbar = [ Widgets.modalCloseBtn (\_ -> CancelAndCloseDetails) ]
+  modalToolbar = [ Modal.closeBtn (\_ -> CancelAndCloseDetails) ]
 
   renderBody sellerOpt =
     let
