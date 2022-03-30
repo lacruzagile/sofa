@@ -165,6 +165,10 @@ renderSideMenu currentRoute =
       , Css.c "py-2"
       , Css.c "border-r-2"
       , Css.c "border-stormy-500"
+      , Css.c "outline-none"
+      , Css.c "ring-0"
+      , Css.c "focus:ring-2"
+      , Css.c "ring-tropical-700"
       ]
     | otherwise =
       [ Css.c "inline-flex"
@@ -175,6 +179,10 @@ renderSideMenu currentRoute =
       , Css.c "border-r"
       , Css.c "hover:border-r-2"
       , Css.c "border-stormy-100"
+      , Css.c "outline-none"
+      , Css.c "ring-0"
+      , Css.c "focus:ring-2"
+      , Css.c "ring-tropical-700"
       ]
 
   navbarSubItem route text =
