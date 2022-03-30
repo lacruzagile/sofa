@@ -1,6 +1,8 @@
 module Sofa.Component.Icon
-  ( ariaHidden
+  ( add
+  , ariaHidden
   , ariaLabel
+  , cancel
   , classes
   , close
   , id
@@ -22,6 +24,19 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Safe.Coerce (coerce)
 import Sofa.Css as Css
+
+add :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+add attrs =
+  svg
+    ( [ viewBox "0 0 24 24"
+      , role "img"
+      ]
+        <> attrs
+    )
+    [ path
+        [ d "M18 13H13V18C13 18.55 12.55 19 12 19C11.45 19 11 18.55 11 18V13H6C5.45 13 5 12.55 5 12C5 11.45 5.45 11 6 11H11V6C11 5.45 11.45 5 12 5C12.55 5 13 5.45 13 6V11H18C18.55 11 19 11.45 19 12C19 12.55 18.55 13 18 13Z"
+        ]
+    ]
 
 -- | A plain text followed by a tooltip icon.
 textWithTooltip :: forall w i. String -> HH.HTML w i
@@ -45,6 +60,19 @@ tooltip =
         ]
     ]
     [ path [ d "M7.25 12.5h1.5V11h-1.5v1.5ZM8 .5C3.86.5.5 3.86.5 8c0 4.14 3.36 7.5 7.5 7.5 4.14 0 7.5-3.36 7.5-7.5C15.5 3.86 12.14.5 8 .5ZM8 14c-3.308 0-6-2.693-6-6 0-3.308 2.692-6 6-6 3.307 0 6 2.692 6 6 0 3.307-2.693 6-6 6ZM8 3.5a3 3 0 0 0-3 3h1.5C6.5 5.675 7.175 5 8 5s1.5.675 1.5 1.5c0 1.5-2.25 1.313-2.25 3.75h1.5C8.75 8.562 11 8.375 11 6.5a3 3 0 0 0-3-3Z" ]
+    ]
+
+cancel :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+cancel attrs =
+  svg
+    ( [ viewBox "0 0 24 24"
+      , role "img"
+      ]
+        <> attrs
+    )
+    [ path
+        [ d "M12 2C6.47 2 2 6.47 2 12C2 17.53 6.47 22 12 22C17.53 22 22 17.53 22 12C22 6.47 17.53 2 12 2ZM16.3 16.3C15.91 16.69 15.28 16.69 14.89 16.3L12 13.41L9.11 16.3C8.72 16.69 8.09 16.69 7.7 16.3C7.31 15.91 7.31 15.28 7.7 14.89L10.59 12L7.7 9.11C7.31 8.72 7.31 8.09 7.7 7.7C8.09 7.31 8.72 7.31 9.11 7.7L12 10.59L14.89 7.7C15.28 7.31 15.91 7.31 16.3 7.7C16.69 8.09 16.69 8.72 16.3 9.11L13.41 12L16.3 14.89C16.68 15.27 16.68 15.91 16.3 16.3Z"
+        ]
     ]
 
 close :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i

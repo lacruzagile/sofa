@@ -120,17 +120,18 @@
       ring-0
       flex
       items-center
-      space-x-1
       relative
       h-6
-      py-0.5
       px-2
       border-none
       rounded-full
       bg-snow-600
       box-border
       text-xs
-      text-stormy-500;
+      text-stormy-500
+      ring-0
+      focus:ring-2
+      ring-tropical-700;
   }
 
   .nectary-dropdown-icon {

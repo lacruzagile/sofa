@@ -3,14 +3,16 @@ module Sofa.App.OrderForm.Observers (Slot, Input(..), Output(..), proxy, compone
 
 import Prelude
 import Data.Array as A
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Sofa.App.Requests (deleteOrderObserver, patchOrderObserver, postOrderObserver)
+import Halogen.HTML.Properties.ARIA as HPAria
+import Sofa.App.Requests (deleteOrderObserver, postOrderObserver)
+import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -39,9 +41,7 @@ type Output
 type State
   = { orderId :: Maybe SS.OrderId
     , observers :: Array SS.OrderObserver
-    , editObserver :: Maybe EditObserver -- ^ Observer currently being edited.
     , newObserver :: Maybe String -- ^ Observer currently being built.
-    , open :: Boolean -- ^ Whether the observers modal is open.
     , observerAction :: ObserverAction
     }
 
@@ -52,22 +52,12 @@ data ObserverAction
   | ObserverDeleting Int (Loadable Unit)
   | ObserverUpdating Int (Loadable Unit)
 
--- | A observer with the given index being edited.
-type EditObserver
-  = { index :: Int, observer :: String }
-
 data Action
-  = OpenDetails
-  | CloseDetails
-  | SetNewEmail String -- ^ Set observer email of new observer.
+  = SetNewEmail String -- ^ Set observer email of new observer.
   | StartNewObserver -- ^ Start adding a new observer.
   | CancelNewObserver -- ^ Cancel the new observer.
   | StopNewObserver Event -- ^ Stop and save the new observer.
   | RemoveObserver Int -- ^ Remove the observer with the given index.
-  | SetEditEmail String -- ^ Set email of current node edit.
-  | StartEditObserver Int -- ^ Starts editing the observer with the given index.
-  | CancelEditObserver -- ^ Cancel current observer edit.
-  | StopEditObserver Int Event.Event -- ^ Stop and save current observer edit with the given index.
 
 component ::
   forall query m.
@@ -85,9 +75,7 @@ initialState :: Input -> State
 initialState input =
   { orderId: input.orderId
   , observers: input.observers
-  , editObserver: Nothing
   , newObserver: Nothing
-  , open: false
   , observerAction: ObserverIdle Nothing
   }
 
@@ -97,51 +85,55 @@ mkObserver observerEmail =
     { observerId: Nothing, createTime: Nothing, observerEmail
     }
 
-getObserverEmail :: SS.OrderObserver -> String
-getObserverEmail (SS.OrderObserver { observerEmail }) = observerEmail
-
-setObserverEmail :: SS.OrderObserver -> String -> SS.OrderObserver
-setObserverEmail (SS.OrderObserver observer) email =
-  SS.OrderObserver
-    $ observer { observerEmail = email }
-
 render ::
   forall slots m.
   MonadAff m =>
   State -> H.ComponentHTML Action slots m
-render state
-  | state.open = renderDetails state
-  | otherwise = renderSummary state
+render state = case state.newObserver of
+  Nothing -> renderSummary state
+  Just o -> renderModal state o
 
 renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
-renderSummary st = btn
-  where
-  btn = HH.button [ HP.classes btnClasses, HE.onClick $ \_ -> OpenDetails ] label
-
-  label = case A.length st.observers of
-    0 -> [ HH.text "No observers" ]
-    1 -> [ HH.text "1 observer" ]
-    n -> [ HH.text (show n), HH.text " observers" ]
-
-  btnClasses =
-    [ Css.c "block"
-    , Css.c "text-left"
-    , Css.c "underline"
-    , Css.c "underline-offset-4"
-    , Css.c "decoration-honey-500"
+renderSummary st =
+  HH.div
+    [ HP.classes
+        [ Css.c "flex"
+        , Css.c "flex-wrap"
+        , Css.c "justify-start"
+        , Css.c "gap-x-4"
+        , Css.c "gap-y-2"
+        ]
     ]
+    (A.mapWithIndex (renderShowObserver st) st.observers <> [ btn ])
+  where
+  btn =
+    HH.button
+      [ HP.classes [ Css.c "nectary-tag" ]
+      , HE.onClick $ \_ -> StartNewObserver
+      , HPAria.label "Add observer"
+      ]
+      [ Icon.add
+          [ Icon.classes
+              [ Css.c "w-4"
+              , Css.c "h-4"
+              , Css.c "fill-stormy-400"
+              ]
+          ]
+      ]
 
-renderDetails ::
+renderModal ::
   forall slots m.
   MonadAff m =>
-  State -> H.ComponentHTML Action slots m
-renderDetails st =
+  State -> String -> H.ComponentHTML Action slots m
+renderModal state observer =
   HH.div_
-    [ renderSummary st
-    , Modal.render [ closeBtn ] $ renderBody
+    [ renderSummary state
+    , Modal.render [] $ renderBody
     ]
   where
-  closeBtn = Modal.closeBtn (\_ -> CloseDetails)
+  actionsAllowed = case state.observerAction of
+    ObserverIdle _ -> true
+    _ -> false
 
   renderBody =
     HH.div
@@ -154,225 +146,93 @@ renderDetails st =
           , Css.c "space-y-4"
           ]
       ]
-      [ if A.null st.observers then
-          HH.div
-            [ HP.classes [ Css.c "text-lg", Css.c "text-gray-600" ] ]
-            [ HH.text "No observers available" ]
+      [ HH.form [ HE.onSubmit StopNewObserver ]
+          [ HH.input
+              [ HP.type_ HP.InputEmail
+              , HP.classes [ Css.c "nectary-input", Css.c "w-full" ]
+              , HP.placeholder "Observer email address"
+              , HP.value observer
+              , HE.onValueChange SetNewEmail
+              ]
+          , HH.div [ HP.class_ (Css.c "text-raspberry-500") ]
+              $ maybe [] (\msg -> [ HH.text msg ])
+              $ createError
+          , HH.div
+              [ HP.classes
+                  [ Css.c "flex"
+                  , Css.c "space-x-4"
+                  , Css.c "mt-3"
+                  , Css.c "mb-0.5" -- Avoid clipping of buttons.
+                  ]
+              ]
+              [ HH.div [ HP.class_ (Css.c "grow") ] []
+              , HH.button
+                  [ HP.class_ (Css.c "sofa-btn-secondary")
+                  , HP.type_ HP.ButtonButton
+                  , HP.enabled actionsAllowed
+                  , HE.onClick \_ -> CancelNewObserver
+                  ]
+                  [ HH.text "Cancel" ]
+              , HH.button
+                  [ HP.class_ (Css.c "sofa-btn-primary")
+                  , HP.type_ HP.ButtonSubmit
+                  , HP.enabled actionsAllowed
+                  ]
+                  [ HH.text "Save"
+                  , if isCreating then
+                      Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                    else
+                      HH.text ""
+                  ]
+              ]
+          ]
+      ]
+    where
+    isCreating = case state.observerAction of
+      ObserverCreating Loading -> true
+      _ -> false
+
+    createError = case state.observerAction of
+      ObserverIdle (Just (ObserverCreating (Error msg))) -> Just msg
+      _ -> Nothing
+
+renderShowObserver ∷ forall w. State → Int → SS.OrderObserver → HH.HTML w Action
+renderShowObserver state idx (SS.OrderObserver o) =
+  HH.div [ HP.classes [ Css.c "nectary-tag", Css.c "pl-3", Css.c "pr-0" ] ]
+    [ HH.div_ [ HH.text o.observerEmail ]
+    , let
+        wrapperClasses = [ Css.c "flex", Css.c "w-7", Css.c "h-full", Css.c "pr-1" ]
+      in
+        if isDeleting then
+          HH.div [ HP.classes wrapperClasses ]
+            [ Widgets.spinner [ Css.c "w-3", Css.c "h-3", Css.c "m-auto" ]
+            ]
         else
-          HH.div
-            [ HP.classes
-                [ Css.c "flex"
-                , Css.c "flex-col"
-                , Css.c "space-y-4"
-                , Css.c "max-h-128"
-                , Css.c "overflow-auto"
+          HH.button
+            [ HP.classes wrapperClasses
+            , HP.enabled actionsAllowed
+            , HE.onClick $ \_ -> RemoveObserver idx
+            ]
+            [ Icon.cancel
+                [ Icon.classes
+                    [ Css.c "w-3.5"
+                    , Css.c "h-3.5"
+                    , Css.c "m-auto"
+                    , Css.c "fill-stormy-400"
+                    ]
+                , Icon.ariaLabel "Remove"
                 ]
             ]
-            (A.mapWithIndex renderObserver st.observers)
-      , renderFooter
-      ]
-
-  actionsAllowed = case st.observerAction of
-    ObserverIdle _ -> true
+    ]
+  where
+  isDeleting = case state.observerAction of
+    ObserverDeleting didx Loading
+      | idx == didx -> true
     _ -> false
 
-  renderFooter = case st.newObserver of
-    _
-      | isJust st.editObserver -> HH.text "" -- Skip footer when editing.
-    Nothing ->
-      HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-4" ] ]
-        [ HH.div [ HP.class_ (Css.c "grow") ] []
-        , HH.button
-            [ HP.classes [ Css.c "sofa-btn-secondary" ]
-            , HP.enabled actionsAllowed
-            , HE.onClick \_ -> CloseDetails
-            ]
-            [ HH.text "Close" ]
-        , HH.button
-            [ HP.classes [ Css.c "sofa-btn-primary" ]
-            , HP.enabled actionsAllowed
-            , HE.onClick \_ -> StartNewObserver
-            ]
-            [ HH.text "Add" ]
-        ]
-    Just email ->
-      HH.form [ HE.onSubmit StopNewObserver ]
-        [ HH.input
-            [ HP.type_ HP.InputEmail
-            , HP.classes [ Css.c "nectary-input", Css.c "w-full" ]
-            , HP.placeholder "Observer email address"
-            , HP.value email
-            , HE.onValueChange SetNewEmail
-            ]
-        , HH.div [ HP.class_ (Css.c "text-raspberry-500") ]
-            $ maybe [] (\msg -> [ HH.text msg ])
-            $ createError
-        , HH.div
-            [ HP.classes
-                [ Css.c "flex"
-                , Css.c "space-x-4"
-                , Css.c "mt-3"
-                , Css.c "mb-0.5" -- Avoid clipping of buttons.
-                ]
-            ]
-            [ HH.div [ HP.class_ (Css.c "grow") ] []
-            , HH.button
-                [ HP.class_ (Css.c "sofa-btn-secondary")
-                , HP.type_ HP.ButtonButton
-                , HP.enabled actionsAllowed
-                , HE.onClick \_ -> CancelNewObserver
-                ]
-                [ HH.text "Cancel" ]
-            , HH.button
-                [ HP.class_ (Css.c "sofa-btn-primary")
-                , HP.type_ HP.ButtonSubmit
-                , HP.enabled actionsAllowed
-                ]
-                [ HH.text "Save"
-                , if isCreating then
-                    Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-                  else
-                    HH.text ""
-                ]
-            ]
-        ]
-      where
-      isCreating = case st.observerAction of
-        ObserverCreating Loading -> true
-        _ -> false
-
-      createError = case st.observerAction of
-        ObserverIdle (Just (ObserverCreating (Error msg))) -> Just msg
-        _ -> Nothing
-
-  renderObserver idx n = case st.editObserver of
-    Just { index, observer }
-      | idx == index -> renderEditObserver idx observer
-    _ -> renderShowObserver idx n
-
-  renderShowObserver idx (SS.OrderObserver o) =
-    HH.div [ HP.classes [ Css.c "group", Css.c "py-3" ] ]
-      [ HH.text o.observerEmail
-      , HH.div
-          [ HP.classes
-              [ Css.c "text-sm"
-              , Css.c "text-gray-600"
-              , Css.c "flex"
-              , Css.c "space-x-2"
-              , Css.c "mr-0.5" -- Avoid clipping of buttons.
-              ]
-          ]
-          [ HH.div_
-              [ maybe
-                  (HH.text "New")
-                  Widgets.dateWithTimeTooltipRight
-                  o.createTime
-              ]
-          , HH.div [ HP.class_ (Css.c "grow") ] []
-          , HH.button
-              [ HP.classes
-                  $ [ Css.c "sofa-btn-destructive"
-                    , Css.c "h-auto"
-                    , Css.c "py-0"
-                    ]
-                  <> hideable isDeleting
-              , HP.enabled actionsAllowed
-              , HE.onClick $ \_ -> RemoveObserver idx
-              ]
-              [ HH.text "Remove"
-              , spinner isDeleting
-              ]
-          , HH.button
-              [ HP.classes
-                  $ [ Css.c "sofa-btn-primary"
-                    , Css.c "h-auto"
-                    , Css.c "py-0"
-                    ]
-                  <> hideable false
-              , HP.enabled actionsAllowed
-              , HE.onClick $ \_ -> StartEditObserver idx
-              ]
-              [ HH.text "Edit" ]
-          ]
-      , maybe (HH.text "")
-          (\msg -> HH.div [ HP.class_ (Css.c "text-raspberry-500") ] [ HH.text msg ])
-          $ deleteError
-      ]
-    where
-    hideable p =
-      if not p then
-        [ Css.c "invisible", Css.c "group-hover:visible" ]
-      else
-        []
-
-    spinner p =
-      if p then
-        Widgets.spinner [ Css.c "w-4", Css.c "h-4", Css.c "ml-2", Css.c "align-middle" ]
-      else
-        HH.text ""
-
-    isDeleting = case st.observerAction of
-      ObserverDeleting didx Loading
-        | idx == didx -> true
-      _ -> false
-
-    deleteError = case st.observerAction of
-      ObserverIdle (Just (ObserverDeleting didx (Error msg)))
-        | idx == didx -> Just msg
-      _ -> Nothing
-
-  renderEditObserver idx observer =
-    HH.form [ HE.onSubmit (StopEditObserver idx) ]
-      [ HH.input
-          [ HP.type_ HP.InputEmail
-          , HP.classes [ Css.c "nectary-input", Css.c "w-full" ]
-          , HP.placeholder "Observer email address"
-          , HP.value observer
-          , HE.onValueChange SetEditEmail
-          ]
-      , HH.div [ HP.classes [ Css.c "text-raspberry-500", Css.c "w-full" ] ]
-          $ maybe [] (\msg -> [ HH.text msg ])
-          $ updateError
-      , HH.div
-          [ HP.classes
-              [ Css.c "flex"
-              , Css.c "space-x-4"
-              , Css.c "mt-2"
-              , Css.c "mr-0.5" -- Avoid clipping of buttons.
-              , Css.c "mb-0.5" -- Avoid clipping of buttons.
-              ]
-          ]
-          [ HH.div [ HP.class_ (Css.c "grow") ] []
-          , HH.button
-              [ HP.classes [ Css.c "sofa-btn-secondary" ]
-              , HP.type_ HP.ButtonButton
-              , HP.enabled actionsAllowed
-              , HE.onClick \_ -> CancelEditObserver
-              ]
-              [ HH.text "Cancel" ]
-          , HH.button
-              [ HP.classes [ Css.c "sofa-btn-primary" ]
-              , HP.type_ HP.ButtonSubmit
-              , HP.enabled actionsAllowed
-              ]
-              [ HH.text "Save"
-              , if isUpdating then
-                  Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
-                else
-                  HH.text ""
-              ]
-          ]
-      ]
-    where
-    isUpdating = case st.observerAction of
-      ObserverUpdating didx Loading
-        | idx == didx -> true
-      _ -> false
-
-    updateError = case st.observerAction of
-      ObserverIdle (Just (ObserverUpdating didx (Error msg)))
-        | idx == didx -> Just msg
-      _ -> Nothing
+  actionsAllowed = case state.observerAction of
+    ObserverIdle _ -> true
+    _ -> false
 
 handleAction ::
   forall slots m.
@@ -380,10 +240,6 @@ handleAction ::
   CredentialStore m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
-  OpenDetails -> H.modify_ $ \st -> st { open = true }
-  CloseDetails ->
-    H.modify_ \st ->
-      st { newObserver = Nothing, open = false }
   SetNewEmail email -> H.modify_ \st -> st { newObserver = Just email }
   StartNewObserver -> H.modify_ \st -> st { newObserver = Just "" }
   CancelNewObserver -> H.modify_ \st -> st { newObserver = Nothing }
@@ -424,42 +280,3 @@ handleAction = case _ of
           , observerAction = ObserverIdle (Just $ ObserverDeleting idx observerResult)
           }
     H.raise state'.observers
-  SetEditEmail email ->
-    H.modify_ \st ->
-      st { editObserver = (\n -> n { observer = email }) <$> st.editObserver }
-  StartEditObserver idx ->
-    H.modify_ \st ->
-      st
-        { editObserver =
-          let
-            mkEditObserver n = { index: idx, observer: getObserverEmail n }
-          in
-            mkEditObserver <$> A.index st.observers idx
-        }
-  CancelEditObserver -> H.modify_ \st -> st { editObserver = Nothing }
-  StopEditObserver idx event -> do
-    H.liftEffect $ Event.preventDefault event
-    state <- H.modify \st -> st { observerAction = ObserverUpdating idx Loading }
-    let
-      mObserver = A.index state.observers idx
-    observerResult <- case { oid: state.orderId, observer: mObserver, eobserver: state.editObserver } of
-      { oid: Just oid
-      , observer: Just observer@(SS.OrderObserver { observerId: Just ooid })
-      , eobserver: Just { observer: email }
-      } -> H.lift $ patchOrderObserver oid ooid (setObserverEmail observer email)
-      _ -> pure Idle
-    st' <-
-      H.modify \st ->
-        st
-          { editObserver = Nothing
-          , observers =
-            fromMaybe st.observers
-              $ case st.editObserver of
-                  Just { index, observer } -> A.modifyAt index (\n -> setObserverEmail n observer) st.observers
-                  _ -> Nothing
-          , observerAction =
-            ObserverIdle
-              $ Just
-              $ ObserverUpdating idx (const unit <$> observerResult)
-          }
-    H.raise st'.observers

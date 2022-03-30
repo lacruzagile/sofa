@@ -1267,8 +1267,12 @@ render state =
                 , Css.c "space-x-6"
                 ]
             ]
-            [ HH.h3_ [ HH.text "Order details" ]
+            [ HH.h3_ [ HH.text "Order information" ]
             , renderOrderStatus orderForm.status
+            ]
+        , HH.div [ HP.classes [ Css.c "flex", Css.c "w-full", Css.c "my-4" ] ]
+            [ HH.h4 [ HP.classes [ Css.c "w-40" ] ] [ HH.text "Observers" ]
+            , renderOrderObservers orderId orderForm.observers
             ]
         ]
       <> withOriginal
@@ -1308,10 +1312,6 @@ render state =
       <> [ entry
             [ title [ HH.text "Notes" ]
             , renderOrderNotes orderId orderForm.notes
-            ]
-        , entry
-            [ title [ HH.text "Observers" ]
-            , renderOrderObservers orderId orderForm.observers
             ]
         ]
     where

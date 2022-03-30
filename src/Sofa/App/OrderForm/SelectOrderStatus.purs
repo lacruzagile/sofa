@@ -131,6 +131,7 @@ selectComponent =
           , Css.c "border"
           , Css.c "rounded-sm"
           , Css.c "divide-y"
+          , Css.c "z-10"
           ]
 
     renderItem idx status =
