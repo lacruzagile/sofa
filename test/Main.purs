@@ -11,6 +11,7 @@ import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Foreign.Object as FO
 import Sofa.Data.BigNumber as BN
+import Sofa.Data.Bytes as Bytes
 import Sofa.Data.Currency (unsafeMkCurrency)
 import Sofa.Data.Schema (isValidValue)
 import Sofa.Data.SmartSpec as SS
@@ -53,6 +54,9 @@ main =
             validatesObject
           describe "oneOf" do
             validatesOneOf
+        describe "Bytes" do
+          describe "showPretty" do
+            validatesBytesShowPretty
 
 -- | A EUR charge currency.
 eurChargeCurrency :: SS.ChargeCurrency
@@ -456,3 +460,14 @@ validatesOneOf = do
               }
           ]
       }
+
+validatesBytesShowPretty :: Spec Unit
+validatesBytesShowPretty = do
+  it "validates showPretty for 120"
+    $ Bytes.showPretty 120.0 `shouldEqual` "120.0 B"
+  it "validates showPretty for 1234.0"
+    $ Bytes.showPretty 1234.0 `shouldEqual` "1.2 KiB"
+  it "validates showPretty for 9876543.0"
+    $ Bytes.showPretty 9876543.0 `shouldEqual` "9.4 MiB"
+  it "validates showPretty for 9876543210.0"
+    $ Bytes.showPretty 9876543210.0 `shouldEqual` "9.2 GiB"
