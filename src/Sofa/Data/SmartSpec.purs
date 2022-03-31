@@ -137,6 +137,7 @@ import Data.List.Lazy as LL
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
+import Data.MediaType (MediaType(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.NonEmpty ((:|))
 import Data.Set (Set)
@@ -1278,6 +1279,10 @@ data SchemaWidget
   | SwAssetConfigLink
     { sku :: String -- ^ ECMAScript regex of eligible SKUs.
     }
+  | SwFileAttachment
+    { maxSize :: Maybe Number
+    , mediaTypes :: Maybe (Array MediaType)
+    }
 
 instance decodeJsonSchemaWidget :: DecodeJson SchemaWidget where
   decodeJson json = do
@@ -1302,6 +1307,14 @@ instance decodeJsonSchemaWidget :: DecodeJson SchemaWidget where
       "asset-config-link" -> do
         sku <- o .: "sku"
         pure $ SwAssetConfigLink { sku }
+      "file-attachment" -> do
+        maxSize <- o .:? "maxSize"
+        mediaTypes <- o .:? "mediaTypes"
+        pure
+          $ SwFileAttachment
+              { maxSize
+              , mediaTypes: map (map MediaType) mediaTypes
+              }
       _ -> Left (TypeMismatch "SchemaWidget")
 
 instance encodeJsonSchemaWidget :: EncodeJson SchemaWidget where
@@ -1327,6 +1340,11 @@ instance encodeJsonSchemaWidget :: EncodeJson SchemaWidget where
       ("type" := "asset-config-link")
         ~> ("sku" := x.sku)
         ~> jsonEmptyObject
+    SwFileAttachment x ->
+      ("type" := "file-attachment")
+        ~> ("maxSize" :=? x.maxSize)
+        ~>? ("mediaTypes" :=? map (map unwrap) x.mediaTypes)
+        ~>? jsonEmptyObject
 
 type ConfigSchemaEntryMeta
   = ( title :: Maybe String

@@ -54,6 +54,7 @@ to generate this file without the comments in this block.
   , "stringutils"
   , "transformers"
   , "tuples"
+  , "unsafe-coerce"
   , "uuid"
   , "variant"
   , "web-dom"

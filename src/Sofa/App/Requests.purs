@@ -1,34 +1,37 @@
 -- | Contains various AJAX requests.
 module Sofa.App.Requests
-  ( appendPathPiece
+  ( FileStatus(..)
+  , appendPathPiece
+  , deleteFile
+  , deleteOrder
+  , deleteOrderNote
+  , deleteOrderObserver
   , getBillingAccount
   , getBillingAccounts
   , getBuyer
   , getBuyerContacts
   , getBuyers
   , getDataSourceEnum
+  , getFileContent
+  , getFileMetadata
   , getLegalEntities
-  , getProductCatalog
-  -- * Order
-  , deleteOrder
   , getOrder
   , getOrders
+  , getProductCatalog
   , patchOrder
+  , patchOrderNote
+  , patchOrderObserver
+  , postFile
   , postOrder
   , postOrderFulfillment
-  -- * Order Notes
-  , deleteOrderNote
-  , patchOrderNote
   , postOrderNote
-  -- * Order Observers
-  , deleteOrderObserver
-  , patchOrderObserver
   , postOrderObserver
   ) where
 
 import Prelude
 import Control.Alternative ((<|>))
-import Data.Argonaut (class DecodeJson, decodeJson, (.:))
+import Data.Argonaut (class DecodeJson, JsonDecodeError(..), decodeJson, (.:))
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple)
 import Effect.Aff.Class (class MonadAff)
@@ -36,7 +39,7 @@ import Foreign.Object as FO
 import JSURI (encodeURIComponent)
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..), deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
-import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
 
 -- | Base URL to use for the ordering service.
 foreign import orderingBaseUrl :: String
@@ -46,6 +49,9 @@ foreign import smartSpecBaseUrl :: String
 
 -- | Name of the Smart Spec product catalog file that should be loaded.
 foreign import smartSpecProdCatalogFilename :: String
+
+filesUrl :: String
+filesUrl = orderingBaseUrl </> "v1alpha1" </> "files"
 
 ordersUrl :: String
 ordersUrl = orderingBaseUrl </> "v1alpha1" </> "orders"
@@ -305,3 +311,91 @@ getDataSourceEnum url authenticate = map parse <$> result
   result
     | authenticate = getRJson url
     | otherwise = getJson url
+
+type FileId
+  = String
+
+type FileBody
+  = { file :: String
+    , metadata ::
+        { fileName :: String
+        , "type" :: Maybe String
+        }
+    , orderLineId :: OrderLineId
+    }
+
+data FileStatus
+  = FsPending
+  | FsInProgress
+  | FsSuccess
+  | FsFailed
+
+derive instance eqFileStatus :: Eq FileStatus
+
+instance showFileStatus :: Show FileStatus where
+  show = case _ of
+    FsPending -> "PENDING"
+    FsInProgress -> "IN_PROGRESS"
+    FsSuccess -> "SUCCESS"
+    FsFailed -> "FAILED"
+
+instance decodeJsonFileStatus :: DecodeJson FileStatus where
+  decodeJson json = do
+    string <- decodeJson json
+    case string of
+      "PENDING" -> Right FsPending
+      "IN_PROGRESS" -> Right FsInProgress
+      "SUCCESS" -> Right FsSuccess
+      "FAILED" -> Right FsFailed
+      _ -> Left (TypeMismatch "FileStatus")
+
+type FileRsp
+  = { fileId :: String
+    , fileName :: String
+    , fileSize :: Int
+    , status :: Maybe FileStatus
+    , "type" :: String
+    }
+
+getFileContent ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  FileId ->
+  m (Loadable String)
+getFileContent fileId = map conv <$> getRJson url
+  where
+  url = filesUrl </> fileId </> "download"
+
+  conv :: { file :: String } -> String
+  conv { file } = file
+
+getFileMetadata ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  FileId ->
+  m (Loadable FileRsp)
+getFileMetadata fileId = getRJson url
+  where
+  url = filesUrl </> fileId </> "metadata"
+
+postFile ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  FileBody ->
+  m (Loadable FileRsp)
+postFile = postRJson url
+  where
+  url = filesUrl </> "upload"
+
+deleteFile ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  FileId ->
+  m (Loadable Unit)
+deleteFile fileId = deleteR_ url
+  where
+  url = filesUrl </> fileId

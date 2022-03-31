@@ -1,14 +1,15 @@
 module Sofa.Data.Loadable
   ( Loadable(..)
-  , isLoading
-  , isLoaded
-  , toMaybe
   , deleteR_
   , getJson
   , getRJson
+  , isIdle
+  , isLoaded
+  , isLoading
   , patchRJson
   , postRJson
   , postRJson_
+  , toMaybe
   ) where
 
 import Prelude
@@ -46,6 +47,12 @@ instance bindLoadable :: Bind Loadable where
   bind (Loaded x) f = f x
   bind Loading _ = Loading
   bind (Error err) _ = Error err
+
+-- | Whether the given loadable is in an idle state.
+isIdle :: forall a. Loadable a -> Boolean
+isIdle = case _ of
+  Idle -> true
+  _ -> false
 
 -- | Whether the given loadable is in a loading state.
 isLoading :: forall a. Loadable a -> Boolean

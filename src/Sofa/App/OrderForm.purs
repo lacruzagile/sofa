@@ -41,6 +41,7 @@ import Sofa.App.OrderForm.Seller as Seller
 import Sofa.App.OrderForm.Widget.AssetConfigLink as WAssetConfigLink
 import Sofa.App.OrderForm.Widget.Checkbox as WCheckbox
 import Sofa.App.OrderForm.Widget.Dropdown as WDropdown
+import Sofa.App.OrderForm.Widget.FileAttachment as WFileAttachment
 import Sofa.App.OrderForm.Widget.Radio as WRadio
 import Sofa.App.OrderForm.Widget.Textarea as WTextarea
 import Sofa.App.OrderForm.Widget.Typeahead as WTypeahead
@@ -85,6 +86,7 @@ type Slots
     , widgetAssetConfigLink :: WAssetConfigLink.Slot ConfigEntryIndex
     , widgetCheckbox :: WCheckbox.Slot ConfigEntryIndex
     , widgetDropdown :: WDropdown.Slot ConfigEntryIndex
+    , widgetFileAttachment :: WFileAttachment.Slot ConfigEntryIndex
     , widgetRadio :: WRadio.Slot ConfigEntryIndex
     , widgetTextarea :: WTextarea.Slot ConfigEntryIndex
     , widgetTypeahead :: WTypeahead.Slot ConfigEntryIndex
@@ -392,7 +394,7 @@ render state =
                           [ HP.classes [ Css.c "text-lg", Css.c "cursor-pointer" ] ]
                           [ HH.text "Configurations" ]
                       ]
-                    <> renderProductConfigs product ol.configs
+                    <> renderProductConfigs product ol.orderLineId ol.configs
                     <> renderAddProductConfig
                 ]
             )
@@ -437,13 +439,14 @@ render state =
                   }
         ]
 
-    renderProductConfigs product configs =
+    renderProductConfigs product orderLineId configs =
       let
         allowRemove = A.length configs > 1 && isInDraft
       in
-        A.concat (A.mapWithIndex (renderProductConfig allowRemove product) configs)
+        A.concat
+          $ A.mapWithIndex (renderProductConfig allowRemove product orderLineId) configs
 
-    renderProductConfig allowRemove product cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
+    renderProductConfig allowRemove product orderLineId cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
       [ HH.div [ HP.classes [ Css.c "my-5", Css.c "p-5", Css.c "border-l-8", Css.c "border-gray-100" ] ]
           [ HH.label_
               [ HH.div [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ] [ HH.text "Quantity" ]
@@ -497,6 +500,7 @@ render state =
               Just c ->
                 maybe (HH.text "")
                   ( renderConfigSchema
+                      orderLineId
                       { sectionIndex: olIdx.sectionIndex
                       , orderLineIndex: olIdx.orderLineIndex
                       , configIndex: cfgIdx
@@ -529,12 +533,18 @@ render state =
         ]
 
   renderConfigSchema ::
+    Maybe SS.OrderLineId ->
     ConfigIndex ->
     ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
     SS.ConfigValue ->
     SS.ConfigSchemaEntry ->
     H.ComponentHTML Action Slots m
-  renderConfigSchema configIdx onChange config = renderEntry rootEntryIdx onChange "" (Just config)
+  renderConfigSchema orderLineId configIdx onChange config =
+    renderEntry
+      rootEntryIdx
+      onChange
+      ""
+      (Just config)
     where
     rootEntryIdx = { configIndex: configIdx, entryIndex: SList.Nil }
 
@@ -871,6 +881,19 @@ render state =
                       _ -> []
                 }
                 (mact (act <<< const))
+            SS.SwFileAttachment { maxSize, mediaTypes } -> case orderLineId of
+              Nothing -> HH.text "Please save the order first."
+              Just olid ->
+                HH.slot
+                  WFileAttachment.proxy
+                  entryIdx
+                  WFileAttachment.component
+                  { orderLineId: olid
+                  , value: maybe' (\_ -> mkDefaultConfig schemaEntry) Just value
+                  , maxSize
+                  , mediaTypes
+                  }
+                  (mact (act <<< const))
       where
       insufficientDataError =
         HH.span
