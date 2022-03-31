@@ -2588,8 +2588,9 @@ instance decodeJsonOrderLineConfig :: DecodeJson OrderLineConfig where
 
 instance encodeJsonOrderLineConfig :: EncodeJson OrderLineConfig where
   encodeJson (OrderLineConfig x) =
-    ("id" := x.id)
-      ~> ("quantity" := x.quantity)
+    -- The `id` field is not yet supported by ordering service:
+    -- ("id" := x.id) ~>
+    ("quantity" := x.quantity)
       ~> ("config" :=? x.config)
       ~>? jsonEmptyObject
 
