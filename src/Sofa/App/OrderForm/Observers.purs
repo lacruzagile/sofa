@@ -19,6 +19,7 @@ import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
+import Sofa.HtmlUtils (focusElementByRef)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (Event)
@@ -143,12 +144,13 @@ renderModal state observer =
           , Css.c "max-w-128"
           , Css.c "flex"
           , Css.c "flex-col"
-          , Css.c "space-y-4"
+          , Css.c "gap-y-4"
           ]
       ]
       [ HH.form [ HE.onSubmit StopNewObserver ]
           [ HH.input
-              [ HP.type_ HP.InputEmail
+              [ HP.ref refEmailInput
+              , HP.type_ HP.InputEmail
               , HP.classes [ Css.c "nectary-input", Css.c "w-full" ]
               , HP.placeholder "Observer email address"
               , HP.value observer
@@ -160,7 +162,7 @@ renderModal state observer =
           , HH.div
               [ HP.classes
                   [ Css.c "flex"
-                  , Css.c "space-x-4"
+                  , Css.c "gap-x-4"
                   , Css.c "mt-3"
                   , Css.c "mb-0.5" -- Avoid clipping of buttons.
                   ]
@@ -234,18 +236,23 @@ renderShowObserver state idx (SS.OrderObserver o) =
     ObserverIdle _ -> true
     _ -> false
 
+refEmailInput :: H.RefLabel
+refEmailInput = H.RefLabel "email"
+
 handleAction ::
   forall slots m.
   MonadAff m =>
   CredentialStore m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
-  SetNewEmail email -> H.modify_ \st -> st { newObserver = Just email }
-  StartNewObserver -> H.modify_ \st -> st { newObserver = Just "" }
-  CancelNewObserver -> H.modify_ \st -> st { newObserver = Nothing }
+  SetNewEmail email -> H.modify_ _ { newObserver = Just email }
+  StartNewObserver -> do
+    H.modify_ _ { newObserver = Just "" }
+    focusElementByRef refEmailInput
+  CancelNewObserver -> H.modify_ _ { newObserver = Nothing }
   StopNewObserver event -> do
     H.liftEffect $ Event.preventDefault event
-    state <- H.modify \st -> st { observerAction = ObserverCreating Loading }
+    state <- H.modify _ { observerAction = ObserverCreating Loading }
     case Tuple state.orderId state.newObserver of
       Tuple (Just oid) (Just email) -> do
         observerResult <- H.lift $ postOrderObserver oid (mkObserver email)
@@ -262,7 +269,7 @@ handleAction = case _ of
         H.raise state'.observers
       _ -> pure unit
   RemoveObserver idx -> do
-    state <- H.modify \st -> st { observerAction = ObserverDeleting idx Loading }
+    state <- H.modify _ { observerAction = ObserverDeleting idx Loading }
     let
       mObserver = A.index state.observers idx
     observerResult <- case Tuple state.orderId mObserver of
