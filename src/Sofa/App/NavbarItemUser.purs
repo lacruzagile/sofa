@@ -107,11 +107,13 @@ render = case _ of
         ]
 
   renderLoggingIn st =
-    Modal.render
-      [ Modal.closeBtn (\_ -> SetState LoggedOut) ]
+    Modal.render []
       $ HH.div_
-          [ HH.h2 [ HP.class_ (Css.c "mb-3") ] [ HH.text "Login" ]
-          , HH.form [ HP.class_ (Css.c "w-96"), HE.onSubmit Login ]
+          [ HH.h2 [ HP.classes [ Css.c "mt-0", Css.c "mb-4" ] ] [ HH.text "Login" ]
+          , HH.form
+              [ HP.classes [ Css.c "w-96", Css.c "flex", Css.c "flex-col", Css.c "gap-y-3" ]
+              , HE.onSubmit Login
+              ]
               [ HH.input
                   [ HP.type_ HP.InputText
                   , HP.id "auth-user"
@@ -131,24 +133,29 @@ render = case _ of
                   , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { pass = Just v }
                   ]
               , case st.error of
-                  Nothing -> HH.span_ []
+                  Nothing -> HH.text ""
                   Just msg -> HH.div [ HP.classes errorClasses ] [ HH.text msg ]
-              , HH.button
-                  [ HP.type_ HP.ButtonSubmit
-                  , HP.classes [ Css.c "sofa-btn-primary", Css.c "w-full", Css.c "my-2" ]
+              , HH.div [ HP.classes [ Css.c "flex", Css.c "gap-x-4" ] ]
+                  [ HH.div [ HP.class_ (Css.c "grow") ] []
+                  , HH.button
+                      [ HP.class_ (Css.c "sofa-btn-secondary")
+                      , HP.type_ HP.ButtonButton
+                      , HE.onClick \_ -> SetState LoggedOut
+                      ]
+                      [ HH.text "Cancel" ]
+                  , HH.button
+                      [ HP.type_ HP.ButtonSubmit
+                      , HP.classes [ Css.c "sofa-btn-primary" ]
+                      ]
+                      [ HH.text "Login" ]
                   ]
-                  [ HH.text "Login" ]
               ]
           ]
     where
     textInputClasses =
-      [ Css.c "w-full"
-      , Css.c "block"
-      , Css.c "p-2"
-      , Css.c "my-2"
-      , Css.c "bg-gray-100"
-      , Css.c "rounded-sm"
-      , Css.c "shadow-sm"
+      [ Css.c "nectary-input"
+      , Css.c "invalid:border-stormy-200"
+      , Css.c "w-full"
       ]
 
     errorClasses =
