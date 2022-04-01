@@ -1272,8 +1272,9 @@ render state =
     HH.div
       [ HP.classes
           [ Css.c "flex"
-          , Css.c "flex-wrap"
+          , Css.c "flex-col"
           , Css.c "w-full"
+          , Css.c "gap-y-4"
           , Css.c "p-8"
           , Css.c "rounded-md"
           , Css.c "border"
@@ -1281,42 +1282,35 @@ render state =
           , Css.c "shadow-md"
           ]
       ]
-      $ [ HH.div
-            [ HP.classes
-                [ Css.c "mb-5"
-                , Css.c "w-full"
-                , Css.c "flex"
-                , Css.c "items-center"
-                , Css.c "space-x-6"
-                ]
-            ]
-            [ HH.h3_ [ HH.text "Order information" ]
-            , renderOrderStatus orderForm.status
-            ]
-        , HH.div [ HP.classes [ Css.c "flex", Css.c "w-full", Css.c "my-4" ] ]
-            [ HH.h4 [ HP.classes [ Css.c "w-40" ] ] [ HH.text "Observers" ]
-            , renderOrderObservers orderId orderForm.observers
-            ]
-        ]
-      <> withOriginal
+      [ HH.div
+          [ HP.classes
+              [ Css.c "mb-6"
+              , Css.c "flex"
+              , Css.c "items-center"
+              , Css.c "gap-x-6"
+              ]
+          ]
+          [ HH.h3_ [ HH.text "Order information" ]
+          , renderOrderStatus orderForm.status
+          ]
+      , withOriginal
           ( \o ->
               entry
-                [ title [ HH.text "Order ID" ]
+                [ title "Order ID"
                 , value [ HH.text $ maybe "Not Available" show o.id ]
                 ]
           )
-      <> case orderForm.crmQuoteId of
-          Nothing -> []
+      , case orderForm.crmQuoteId of
+          Nothing -> HH.text ""
           Just (SS.CrmQuoteId id) ->
-            [ entry
-                [ title [ HH.text "Quote ID" ]
-                , value [ HH.text id ]
-                ]
-            ]
-      <> withOriginal
+            entry
+              [ title "Quote ID"
+              , value [ HH.text id ]
+              ]
+      , withOriginal
           ( \o ->
               entry
-                [ title [ HH.text "Created" ]
+                [ title "Created"
                 , value
                     [ maybe
                         (HH.text "Not Available")
@@ -1325,30 +1319,34 @@ render state =
                     ]
                 ]
           )
-      <> withOriginal
+      , withOriginal
           ( \o ->
               entry
-                [ title [ HH.text "Approval" ]
+                [ title "Approval"
                 , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
                 ]
           )
-      <> [ entry
-            [ title [ HH.text "Notes" ]
-            , renderOrderNotes orderId orderForm.notes
-            ]
-        ]
+      , entry
+          [ title "Observers"
+          , renderOrderObservers orderId orderForm.observers
+          ]
+      , entry
+          [ title "Notes"
+          , renderOrderNotes orderId orderForm.notes
+          ]
+      ]
     where
-    entry = HH.div [ HP.classes [ Css.c "mr-10", Css.c "my-2" ] ]
+    entry = HH.div [ HP.classes [ Css.c "flex" ] ]
 
-    title = HH.div [ HP.classes [ Css.c "uppercase", Css.c "mb-2", Css.c "text-sm", Css.c "text-gray-600" ] ]
+    title t = HH.h4 [ HP.classes [ Css.c "w-40" ] ] [ HH.text t ]
 
     value = HH.div_
 
     orderId = orderForm.original >>= \(SS.OrderForm order) -> order.id
 
     withOriginal renderEntry = case orderForm.original of
-      Nothing -> []
-      Just (SS.OrderForm o) -> [ renderEntry o ]
+      Nothing -> HH.text ""
+      Just (SS.OrderForm o) -> renderEntry o
 
   renderOrderDisplayName :: Maybe String -> H.ComponentHTML Action Slots m
   renderOrderDisplayName name =
@@ -1404,7 +1402,7 @@ render state =
           [ Css.c "flex"
           , Css.c "flex-col"
           , Css.c "w-full"
-          , Css.c "space-y-4"
+          , Css.c "gap-y-4"
           , Css.c "p-8"
           , Css.c "rounded-md"
           , Css.c "border"
@@ -1412,7 +1410,7 @@ render state =
           , Css.c "shadow-md"
           ]
       ]
-      [ HH.h3 [ HP.class_ (Css.c "mb-5") ] [ HH.text "Seller/Buyer" ]
+      [ HH.h3 [ HP.class_ (Css.c "mb-6") ] [ HH.text "Seller/Buyer" ]
       , HH.div [ HP.classes [ Css.c "flex" ] ]
           [ title "Legal Entity"
           , renderSeller
