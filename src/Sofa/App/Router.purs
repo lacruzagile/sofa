@@ -1,7 +1,6 @@
 module Sofa.App.Router where
 
 import Prelude
-import Data.Array as A
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff, launchAff_)
 import Effect.Aff.Class (class MonadAff)
@@ -135,12 +134,10 @@ renderSideMenu currentRoute =
     HH.li_
       [ HH.div
           [ HP.classes
-              ( [ Css.c "flex"
-                , Css.c "items-center"
-                , Css.c "font-semibold"
-                ]
-                  <> if A.null children then [] else [ Css.c "nectary-dropdown-icon" ]
-              )
+              [ Css.c "flex"
+              , Css.c "items-center"
+              , Css.c "font-semibold"
+              ]
           ]
           [ icon
               [ Icon.classes
