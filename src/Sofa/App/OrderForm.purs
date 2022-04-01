@@ -1564,8 +1564,8 @@ render state =
 
   loading =
     [ HH.p
-        [ HP.classes [ Css.c "animate-pulse", Css.c "text-2xl", Css.c "text-center" ] ]
-        [ HH.text "Loading …" ]
+        [ HP.classes [ Css.c "animate-pulse", Css.c "text-2xl" ] ]
+        [ HH.text "Loading product catalog …" ]
     ]
 
   defRender ::
