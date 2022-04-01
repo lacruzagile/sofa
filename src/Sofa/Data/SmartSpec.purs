@@ -2030,7 +2030,7 @@ instance decodeJsonAddress :: DecodeJson Address where
     city <- getString o "city" 1 80
     stateOrProvince <- o .:? "stateOrProvince" <|> pure Nothing
     county <- getString o "county" 1 50
-    country <- o .:? "country"
+    country <- o .:? "country" <|> pure Nothing
     postOfficeBox <- getString o "postOfficeBox" 1 20
     postalCode <- getString o "postalCode" 1 20
     pure
