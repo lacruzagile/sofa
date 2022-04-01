@@ -99,10 +99,11 @@ renderSideMenu ::
 renderSideMenu currentRoute =
   HH.nav [ HP.classes navbarClasses ]
     [ HH.ul [ HP.classes [ Css.c "space-y-4" ] ]
-        [ navbarItem Icon.package "Solutions  ⃰" []
-        , navbarItem Icon.longMessage "Order forms"
+        [ navbarItem Icon.package "Solutions  ⃰"
             [ navbarSubItem Route.ProductCatalog "Product catalog"
-            , navbarSubItem Route.Orders "Orders"
+            ]
+        , navbarItem Icon.longMessage "Order forms"
+            [ navbarSubItem Route.Orders "Orders"
             , navbarSubItem Route.OrderForm "Order form"
             ]
         , navbarItem Icon.piggybank "Billing  ⃰" []
