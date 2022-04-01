@@ -1063,9 +1063,22 @@ render state =
                 Select.component
                 ( Select.defaultInput
                     { values =
-                      map
-                        (\(Tuple i s) -> Tuple (HH.text $ solutionLabel s) i)
-                        (Map.toUnfoldable pc.solutions)
+                      let
+                        notSameSolutionId id' =
+                          maybe
+                            true
+                            (\{ solution: SS.Solution { id } } -> id' /= id)
+
+                        isSolutionAvailable id = A.all (notSameSolutionId id) sof.orderForm.sections
+
+                        -- Filters out solutions that are already used for other
+                        -- order sections.
+                        filterAvailableSolutions = Map.filterKeys isSolutionAvailable
+                      in
+                        map
+                          (\(Tuple i s) -> Tuple (HH.text $ solutionLabel s) i)
+                          $ Map.toUnfoldable
+                          $ filterAvailableSolutions pc.solutions
                     , noSelectionText = "Please choose a solution"
                     , wrapperClasses = [ Css.c "w-96" ]
                     }
