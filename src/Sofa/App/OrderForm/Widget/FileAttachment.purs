@@ -119,10 +119,12 @@ resetFile = do
       let
         mkIdle = case _ of
           Loaded _ -> Idle
+          Error "Not found" -> Idle
           l -> unsafeCoerce l -- Safe since Loaded is handled.
       res <- mkIdle <$> H.lift (deleteFile fileId)
       when (Loadable.isIdle res) do
         H.modify_ _ { fileId = Nothing }
+        H.raise Nothing
       pure res
 
 handleAction ::
