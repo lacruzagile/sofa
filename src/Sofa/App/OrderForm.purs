@@ -2,6 +2,7 @@ module Sofa.App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
 import Control.Alternative (guard, (<|>))
+import Control.Parallel (parallel, sequential)
 import Data.Argonaut (encodeJson, stringifyWithIndent)
 import Data.Array (foldl, head, modifyAt, snoc)
 import Data.Array as A
@@ -18,7 +19,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.String as S
-import Data.Traversable (sequence, traverse)
+import Data.Traversable (for_, sequence, traverse)
 import Data.Tuple (Tuple(..))
 import Data.UUID (UUID)
 import Data.UUID as UUID
@@ -45,7 +46,7 @@ import Sofa.App.OrderForm.Widget.FileAttachment as WFileAttachment
 import Sofa.App.OrderForm.Widget.Radio as WRadio
 import Sofa.App.OrderForm.Widget.Textarea as WTextarea
 import Sofa.App.OrderForm.Widget.Typeahead as WTypeahead
-import Sofa.App.Requests (deleteOrder, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
+import Sofa.App.Requests (deleteFile, deleteOrder, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
@@ -1945,6 +1946,46 @@ modifyOrderForm ::
   { orderForm :: OrderForm | r }
 modifyOrderForm f r = r { orderForm = calcTotal (f r.orderForm) { changed = true } }
 
+-- | Finds all file IDs within the given section.
+findSectionFileIds ::
+  OrderSection ->
+  Array String
+findSectionFileIds section =
+  A.concatMap findLineFileIds
+    $ A.catMaybes section.orderLines
+
+-- | Finds all file IDs within the given order line.
+findLineFileIds ::
+  OrderLine ->
+  Array String
+findLineFileIds orderLine = do
+  SS.OrderLineConfig { config } <- orderLine.configs
+  value <- maybe [] A.singleton config
+  getFileIds value
+  where
+  fileTag = Just (SS.CvString "FILE_ATTACHMENT")
+
+  getFileIds = case _ of
+    SS.CvArray arr -> A.concatMap getFileIds arr
+    SS.CvObject m
+      | Map.lookup "type" m == fileTag -> case Map.lookup "fileId" m of
+        Just (SS.CvString str) -> [ str ]
+        _ -> []
+      | otherwise -> A.concatMap getFileIds $ A.fromFoldable $ Map.values m
+    _ -> []
+
+-- | Deletes all given file attachments in parallel. Note, we ignore the result
+-- | of these calls, i.e., fatalistically assume that they will succeed.
+deleteFileAttachments ::
+  forall slots output m.
+  MonadAff m =>
+  CredentialStore m =>
+  Array String ->
+  H.HalogenM State Action slots output m Unit
+deleteFileAttachments fileIds =
+  sequential
+    $ for_ fileIds (parallel <<< H.lift <<< deleteFile)
+
 toPricingCurrency :: SS.Commercial -> Maybe SS.PricingCurrency
 toPricingCurrency (SS.Commercial { billingCurrency }) = Just billingCurrency
 
@@ -2143,7 +2184,14 @@ handleAction = case _ of
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderSection sectionIndex _ { priceBook = priceBook }
-  RemoveSection { sectionIndex } ->
+  RemoveSection { sectionIndex } -> do
+    state <- H.get
+    maybe' pure deleteFileAttachments
+      $ case state of
+          Initialized (Loaded { orderForm: { sections } }) -> do
+            section <- join $ A.index sections sectionIndex
+            pure $ findSectionFileIds section
+          _ -> Nothing
     modifyInitialized
       $ modifyOrderForm \order ->
           order
@@ -2155,7 +2203,15 @@ handleAction = case _ of
       $ modifyOrderForm
       $ modifyOrderSection sectionIndex \section ->
           section { orderLines = snoc section.orderLines Nothing }
-  RemoveOrderLine { sectionIndex, orderLineIndex } ->
+  RemoveOrderLine { sectionIndex, orderLineIndex } -> do
+    state <- H.get
+    maybe' pure deleteFileAttachments
+      $ case state of
+          Initialized (Loaded { orderForm: { sections } }) -> do
+            { orderLines } <- join $ A.index sections sectionIndex
+            orderLine <- join $ A.index orderLines orderLineIndex
+            pure $ findLineFileIds orderLine
+          _ -> Nothing
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderSection sectionIndex \section ->

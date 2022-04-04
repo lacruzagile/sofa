@@ -43,6 +43,7 @@ to generate this file without the comments in this block.
   , "now"
   , "numbers"
   , "ordered-collections"
+  , "parallel"
   , "prelude"
   , "quickcheck"
   , "routing"
