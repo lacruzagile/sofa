@@ -867,18 +867,18 @@ render state =
                 , configs:
                     case state of
                       Initialized (Loaded { orderForm: { sections } }) -> do
-                        mS <- sections
-                        case mS of
+                        section <-
+                          maybe [] A.singleton
+                            $ join
+                            $ A.index sections entryIdx.configIndex.sectionIndex
+                        mOrderLine <- section.orderLines
+                        case mOrderLine of
                           Nothing -> []
-                          Just s -> do
-                            mO <- s.orderLines
-                            case mO of
-                              Nothing -> []
-                              Just o ->
-                                let
-                                  SS.Product { sku } = o.product
-                                in
-                                  [ Tuple sku o.configs ]
+                          Just orderLine ->
+                            let
+                              SS.Product { sku } = orderLine.product
+                            in
+                              [ Tuple sku orderLine.configs ]
                       _ -> []
                 }
                 (mact (act <<< const))
