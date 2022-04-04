@@ -2329,7 +2329,9 @@ handleAction = case _ of
         $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
   OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, alter } ->
     let
-      alterConfig (SS.OrderLineConfig olc) = SS.OrderLineConfig $ olc { config = Just $ alter olc.config }
+      alterConfig (SS.OrderLineConfig olc) =
+        SS.OrderLineConfig
+          $ olc { config = Just $ alter olc.config }
 
       updateOrderLine :: UUID -> OrderLine -> OrderLine
       updateOrderLine configId ol =
