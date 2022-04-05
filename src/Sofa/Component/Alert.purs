@@ -63,8 +63,8 @@ renderIcon =
     case _ of
       Informative -> Icon.info (attrs "fill-informative-500")
       Success -> Icon.checkCircle (attrs "fill-success-500")
-      Warning -> Icon.info (attrs "fill-warning-500")
-      Error -> Icon.info (attrs "fill-raspberry-500")
+      Warning -> Icon.warning (attrs "fill-warning-500")
+      Error -> Icon.error (attrs "fill-raspberry-500")
 
 closeBtn :: forall w i. (Unit -> i) -> HH.HTML w i
 closeBtn closeAction =
