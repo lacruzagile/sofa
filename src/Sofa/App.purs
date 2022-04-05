@@ -1,5 +1,6 @@
 module Sofa.App
-  ( AppM
+  ( Env
+  , AppM
   , runAppM
   ) where
 
@@ -11,6 +12,7 @@ import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
+import Sofa.Component.Alerts (class MonadAlert, AlertSink)
 import Sofa.Data.Auth (class CredentialStore, Credentials(..))
 import Sofa.Data.Deployment (Deployment)
 import Sofa.Data.Deployment as Deployment
@@ -20,6 +22,7 @@ import Web.Storage.Storage as LS
 
 type Env
   = { deployment :: Deployment
+    , alertSink :: AlertSink
     }
 
 newtype AppM a
@@ -38,6 +41,12 @@ derive newtype instance monadAppM :: Monad AppM
 derive newtype instance monadAffAppM :: MonadAff AppM
 
 derive newtype instance monadEffectAppM :: MonadEffect AppM
+
+instance monadAlertAppM :: MonadAlert AppM where
+  getAlertSink = do
+    AppM
+      $ ReaderT
+      $ \{ alertSink } -> pure alertSink
 
 instance credentialStoreAppM :: CredentialStore AppM where
   credentialsAreReadOnly =
@@ -105,5 +114,5 @@ instance credentialStoreAppM :: CredentialStore AppM where
             LS.removeItem "sofa-cred" s
 
 -- | Runs the `AppM` monad, takes the initial credentials as input.
-runAppM :: forall a. Deployment -> AppM a -> Aff a
-runAppM deployment (AppM m) = runReaderT m { deployment }
+runAppM :: forall a. Env -> AppM a -> Aff a
+runAppM env (AppM m) = runReaderT m env

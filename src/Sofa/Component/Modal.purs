@@ -26,7 +26,7 @@ closeBtn closeAction =
     , HP.style "font-size:0"
     , HE.onClick $ \_ -> closeAction unit
     ]
-    [ Icon.close [ Icon.ariaLabel "Close" ] ]
+    [ Icon.close3 [ Icon.ariaLabel "Close" ] ]
 
 render ::
   forall slot action.

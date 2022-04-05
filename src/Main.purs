@@ -8,10 +8,11 @@ import Halogen as H
 import Halogen.Aff (awaitLoad)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
-import Sofa.App (runAppM)
+import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Router as Router
-import Sofa.Data.Deployment (Deployment, detectDeployment, getCrmQuoteId)
+import Sofa.Component.Alerts as Alert
+import Sofa.Data.Deployment (detectDeployment, getCrmQuoteId)
 import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
@@ -21,24 +22,27 @@ main = do
   deployment <- detectDeployment
   mCrmQuoteId <- getCrmQuoteId
   HA.runHalogenAff do
+    alertSink <- Alert.mkAlertSink
+    let
+      env = { deployment, alertSink }
     awaitLoad
     mBody <- HA.selectElement (QuerySelector "#sofa-app")
     case mBody of
       Nothing -> pure unit
       Just body -> case mCrmQuoteId of
-        Nothing -> runFull deployment body
-        Just crmQuoteId -> runOnlyOrderForm deployment crmQuoteId body
+        Nothing -> runFull env body
+        Just crmQuoteId -> runOnlyOrderForm env crmQuoteId body
 
-runFull :: Deployment -> Html.HTMLElement -> Aff Unit
-runFull deployment body = do
+runFull :: Env -> Html.HTMLElement -> Aff Unit
+runFull env body = do
   let
-    router = H.hoist (runAppM deployment) Router.component
+    router = H.hoist (runAppM env) Router.component
   app <- runUI router unit body
   Router.startRouting app
 
-runOnlyOrderForm :: Deployment -> CrmQuoteId -> Html.HTMLElement -> Aff Unit
-runOnlyOrderForm deployment crmQuoteId body =
+runOnlyOrderForm :: Env -> CrmQuoteId -> Html.HTMLElement -> Aff Unit
+runOnlyOrderForm env crmQuoteId body =
   let
-    router = H.hoist (runAppM deployment) OrderForm.component
+    router = H.hoist (runAppM env) OrderForm.component
   in
     void $ runUI router (OrderForm.ExistingCrmQuoteId crmQuoteId) body

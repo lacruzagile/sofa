@@ -3,10 +3,14 @@ module Sofa.Component.Icon
   , ariaHidden
   , ariaLabel
   , cancel
+  , checkCircle
   , checkmark
   , classes
   , close
+  , close3
+  , error
   , id
+  , info
   , longMessage
   , package
   , piggybank
@@ -18,6 +22,7 @@ module Sofa.Component.Icon
   , tooltip
   , upload
   , user
+  , warning
   ) where
 
 import Prelude
@@ -38,6 +43,12 @@ add attrs =
     [ path
         [ d "M18 13H13V18C13 18.55 12.55 19 12 19C11.45 19 11 18.55 11 18V13H6C5.45 13 5 12.55 5 12C5 11.45 5.45 11 6 11H11V6C11 5.45 11.45 5 12 5C12.55 5 13 5.45 13 6V11H18C18.55 11 19 11.45 19 12C19 12.55 18.55 13 18 13Z"
         ]
+    ]
+
+info :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+info attrs =
+  svg ([ viewBox "0 0 24 24", role "img" ] <> attrs)
+    [ path [ d "M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 17C11.45 17 11 16.55 11 16V12C11 11.45 11.45 11 12 11C12.55 11 13 11.45 13 12V16C13 16.55 12.55 17 12 17ZM13 9H11V7H13V9Z" ]
     ]
 
 -- | A plain text followed by a tooltip icon.
@@ -84,23 +95,29 @@ checkmark attrs =
     [ path [ d "M14 1.99999L12.59 0.579987L4.98995 8.17L1.49997 4.5L0.0799694 5.91L4.98995 11L14 1.99999Z" ]
     ]
 
+checkCircle :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+checkCircle attrs =
+  svg
+    ([ viewBox "0 0 24 24" ] <> attrs)
+    [ path [ d "M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM9.29 16.29L5.7 12.7C5.31 12.31 5.31 11.68 5.7 11.29C6.09 10.9 6.72 10.9 7.11 11.29L10 14.17L16.88 7.29C17.27 6.9 17.9 6.9 18.29 7.29C18.68 7.68 18.68 8.31 18.29 8.7L10.7 16.29C10.32 16.68 9.68 16.68 9.29 16.29Z" ]
+    ]
+
+close3 :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+close3 attrs = close ([ classes [ Css.c "w-3", Css.c "h-3" ] ] <> attrs)
+
 close :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 close attrs =
   svg
-    ( [ viewBox "0 0 14 14"
-      , role "img"
-      , classes
-          [ Css.c "inline-block"
-          , Css.c "fill-current"
-          , Css.c "w-3"
-          , Css.c "h-3"
-          ]
-      ]
-        <> attrs
-    )
+    ([ viewBox "0 0 14 14", role "img" ] <> attrs)
     [ path
         [ d "M13.3.71a.996.996 0 0 0-1.41 0L7 5.59 2.11.7A.996.996 0 1 0 .7 2.11L5.59 7 .7 11.89a.996.996 0 1 0 1.41 1.41L7 8.41l4.89 4.89a.996.996 0 1 0 1.41-1.41L8.41 7l4.89-4.89c.38-.38.38-1.02 0-1.4Z"
         ]
+    ]
+
+error :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+error attrs =
+  svg ([ viewBox "0 0 18 18" ] <> attrs)
+    [ path [ d "M12.32 0H5.68C5.42 0 5.16 0.11 4.98 0.29L0.29 4.98C0.11 5.16 0 5.42 0 5.68V12.31C0 12.58 0.11 12.83 0.29 13.02L4.97 17.7C5.16 17.89 5.42 18 5.68 18H12.31C12.58 18 12.83 17.89 13.02 17.71L17.7 13.03C17.89 12.84 17.99 12.59 17.99 12.32V5.68C17.99 5.41 17.88 5.16 17.7 4.97L13.02 0.29C12.84 0.11 12.58 0 12.32 0ZM9 14.3C8.28 14.3 7.7 13.72 7.7 13C7.7 12.28 8.28 11.7 9 11.7C9.72 11.7 10.3 12.28 10.3 13C10.3 13.72 9.72 14.3 9 14.3ZM9 10C8.45 10 8 9.55 8 9V5C8 4.45 8.45 4 9 4C9.55 4 10 4.45 10 5V9C10 9.55 9.55 10 9 10Z" ]
     ]
 
 longMessage :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
@@ -236,6 +253,12 @@ user attrs =
         , clipRule "evenodd"
         , d "M17.724 31.24C16.111 32.705 15 34.929 15 38a1 1 0 1 1-2 0c0-3.596 1.322-6.371 3.378-8.24 2.04-1.854 4.74-2.76 7.425-2.76 5.385 0 10.909 3.675 11.196 10.96a1 1 0 1 1-1.998.08c-.239-6.05-4.715-9.04-9.198-9.04-2.25 0-4.451.76-6.08 2.24Z"
         ]
+    ]
+
+warning :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+warning attrs =
+  svg ([ viewBox "0 0 24 24" ] <> attrs)
+    [ path [ d "M2.72998 21.0001H21.26C22.03 21.0001 22.51 20.1701 22.13 19.5001L12.86 3.50006C12.47 2.83006 11.51 2.83006 11.13 3.50006L1.85998 19.5001C1.47998 20.1701 1.95998 21.0001 2.72998 21.0001ZM13 18.0001H11V16.0001H13V18.0001ZM12 14.0001C11.45 14.0001 11 13.5501 11 13.0001V11.0001C11 10.4501 11.45 10.0001 12 10.0001C12.55 10.0001 13 10.4501 13 11.0001V13.0001C13 13.5501 12.55 14.0001 12 14.0001Z" ]
     ]
 
 type CoreAttributes r

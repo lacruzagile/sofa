@@ -7,6 +7,7 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Routing.Hash (matches)
 import Sofa.App.Home as Home
@@ -14,6 +15,10 @@ import Sofa.App.NavbarItemUser as NavbarItemUser
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Orders as Orders
 import Sofa.App.ProductCatalog as ProductCatalog
+import Sofa.Component.Alert (AlertType)
+import Sofa.Component.Alert as Alert
+import Sofa.Component.Alerts (class MonadAlert)
+import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -41,18 +46,20 @@ type Slots
     , orderForm :: OrderForm.Slot Unit
     , orders :: Orders.Slot Unit
     , navbarItemUser :: NavbarItemUser.Slot Unit
+    , nectaryAlerts :: Alerts.Slot Unit
     )
 
 data Query a
   = GotoRoute Route a
 
 data Action
-  = ToggleMenu
+  = DoAlert AlertType
 
 component ::
   forall input output m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   H.Component Query input output m
 component =
   H.mkComponent
@@ -62,6 +69,7 @@ component =
         H.mkEval
           H.defaultEval
             { handleQuery = handleQuery
+            , handleAction = handleAction
             }
     }
 
@@ -72,6 +80,7 @@ render ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   State -> H.ComponentHTML Action Slots m
 render state =
   HH.div_
@@ -87,6 +96,7 @@ render state =
         ]
         [ renderSideMenu state.route
         , renderBody state
+        , HH.slot_ Alerts.proxy unit Alerts.component absurd
         ]
     ]
 
@@ -109,6 +119,24 @@ renderSideMenu currentRoute =
         , navbarItem Icon.piggybank "Billing  ⃰" []
         , navbarItem Icon.puzzle "Assets  ⃰" []
         , navbarItem Icon.settings "Project settings  ⃰" []
+        , navbarItem Icon.package "Alert test"
+            $ let
+                btn typ =
+                  HH.li
+                    [ HP.classes [ Css.c "w-full", Css.c "pl-12", Css.c "py-2" ]
+                    ]
+                    [ HH.button
+                        [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-8" ]
+                        , HE.onClick \_ -> DoAlert typ
+                        ]
+                        [ HH.text (show typ) ]
+                    ]
+              in
+                [ btn Alert.Informative
+                , btn Alert.Success
+                , btn Alert.Warning
+                , btn Alert.Error
+                ]
         , HH.div
             [ HP.classes [ Css.c "ml-5", Css.c "pt-10", Css.c "text-stormy-300" ] ]
             [ HH.text " ⃰ TODO" ]
@@ -273,3 +301,16 @@ handleQuery = case _ of
   GotoRoute route next -> do
     H.modify_ _ { route = route }
     pure (Just next)
+
+handleAction ::
+  forall slots output m.
+  MonadAlert m =>
+  Action -> H.HalogenM State Action slots output m Unit
+handleAction = case _ of
+  DoAlert typ -> do
+    H.lift
+      $ Alerts.push
+      $ Alert.defaultAlert
+          { type_ = typ
+          , content = HH.span_ [ HH.text "Got an alert of type ", HH.text (show typ) ]
+          }

@@ -407,11 +407,12 @@ render state =
             [ HP.classes
                 [ Css.c "relative"
                 , Css.c "float-right"
+                , Css.c "p-2"
                 , Css.c "cursor-pointer"
                 ]
             , HE.onClick \_ -> RemoveOrderLine olIdx
             ]
-            [ Icon.close [ Icon.ariaLabel "Remove order line" ] ]
+            [ Icon.close3 [ Icon.ariaLabel "Remove order line" ] ]
         ]
 
     body subBody =
@@ -1179,12 +1180,13 @@ render state =
                 [ HP.classes
                     [ Css.c "relative"
                     , Css.c "float-right"
-                    , Css.c "-top-2"
+                    , Css.c "p-2"
+                    , Css.c "-m-3"
                     , Css.c "cursor-pointer"
                     ]
                 , HE.onClick \_ -> RemoveSection { sectionIndex: secIdx }
                 ]
-                [ Icon.close [ Icon.ariaLabel "Remove order section" ] ]
+                [ Icon.close3 [ Icon.ariaLabel "Remove order section" ] ]
             ]
       in
         HH.div
