@@ -14,6 +14,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
+import Web.HTML as H
 
 data AlertType
   = Informative
@@ -31,12 +32,15 @@ instance showAlertType :: Show AlertType where
 type Alert w i
   = { type_ :: AlertType
     , content :: HH.HTML w i
+    , classes :: Array H.ClassName
+    -- ^ Extra classes to add to wrapper div.
     }
 
 defaultAlert :: forall w i. Alert w i
 defaultAlert =
   { type_: Informative
   , content: HH.text ""
+  , classes: []
   }
 
 typeBgClass :: AlertType -> HH.ClassName
@@ -86,15 +90,17 @@ render :: forall w i. Alert w i -> HH.HTML w i
 render alert =
   HH.div
     [ HP.classes
-        [ Css.c "w-full"
-        , Css.c "md:w-[45.5rem]" -- 768px - 2.5rem (due to m-5)
-        , Css.c "flex"
-        , Css.c "gap-x-3"
-        , Css.c "p-3"
-        , Css.c "rounded"
-        , Css.c "shadow-md"
-        , typeBgClass alert.type_
-        ]
+        ( [ Css.c "w-full"
+          , Css.c "md:w-[45.5rem]" -- 768px - 2.5rem (due to m-5)
+          , Css.c "flex"
+          , Css.c "gap-x-3"
+          , Css.c "p-3"
+          , Css.c "rounded"
+          , Css.c "shadow-md"
+          , typeBgClass alert.type_
+          ]
+            <> alert.classes
+        )
     ]
     [ HH.fromPlainHTML (renderIcon alert.type_)
     , HH.div

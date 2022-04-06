@@ -61,12 +61,14 @@ type State
 type AlertState
   = { id :: UUID
     , alert :: PlainAlert
+    , removing :: Boolean
     }
 
 data Action
   = Initialize
   | Push PlainAlert
-  | Remove (Maybe H.SubscriptionId) UUID
+  | StartRemove UUID
+  | FinishRemove UUID
 
 typeTtl :: AlertType -> Maybe Milliseconds
 typeTtl = case _ of
@@ -74,6 +76,9 @@ typeTtl = case _ of
   Success -> Just $ Milliseconds 8_000.0
   Warning -> Just $ Milliseconds 10_000.0
   Error -> Nothing
+
+fadeDuration :: Milliseconds
+fadeDuration = Milliseconds 300.0
 
 component ::
   forall query input output m.
@@ -108,14 +113,24 @@ render state =
     $ map renderAlert state.alerts
   where
   renderAlert :: AlertState -> H.ComponentHTML Action slots m
-  renderAlert { id, alert } =
+  renderAlert { id, alert, removing } =
     Alert.render
       $ alert
           { content =
             HH.div_
-              [ Alert.closeBtn (\_ -> Remove Nothing id)
+              [ Alert.closeBtn (\_ -> StartRemove id)
               , HH.fromPlainHTML alert.content
               ]
+          , classes =
+            alert.classes
+              <> if removing then
+                  [ Css.c "transition"
+                  , Css.c "duration-300" -- Must match value of 'fadeDuration'.
+                  , Css.c "opacity-0"
+                  , Css.c "scale-y-0"
+                  ]
+                else
+                  [ Css.c "opacity-100" ]
           }
 
 handleAction ::
@@ -126,41 +141,57 @@ handleAction ::
 handleAction = case _ of
   Initialize -> do
     alertSink <- H.lift getAlertSink
-    _ <- H.subscribe =<< listenLoop alertSink
-    pure unit
+    startListenLoop alertSink
   Push alert -> do
     id <- H.liftEffect genUUID
     let
       ttl = typeTtl alert.type_
-    H.modify_ \st -> st { alerts = st.alerts <> [ { id, alert } ] }
-    maybe' pure (timer id) ttl
-  Remove sid id -> do
-    H.modify_ \st -> st { alerts = A.filter (\a -> a.id /= id) st.alerts }
-    maybe' pure H.unsubscribe sid
 
-listenLoop ::
+      alertState = { id, alert, removing: false }
+    H.modify_ \st -> st { alerts = st.alerts <> [ alertState ] }
+    maybe' pure (oneShotTimer (StartRemove id)) ttl
+  StartRemove id -> do
+    H.modify_ \st ->
+      st
+        { alerts =
+          let
+            markRemoving a
+              | a.id == id = a { removing = true }
+              | otherwise = a
+          in
+            map markRemoving st.alerts
+        }
+    oneShotTimer (FinishRemove id) fadeDuration
+  FinishRemove id -> do
+    H.modify_ \st -> st { alerts = A.filter (\a -> a.id /= id) st.alerts }
+
+startListenLoop ::
   forall slots output m.
   MonadAff m =>
-  AlertSink -> H.HalogenM State Action slots output m (HS.Emitter Action)
-listenLoop (AlertSink sink) = do
+  AlertSink -> H.HalogenM State Action slots output m Unit
+startListenLoop (AlertSink sink) = do
   { emitter, listener } <- H.liftEffect HS.create
   _ <-
     H.liftAff $ Aff.forkAff $ forever
       $ do
           alert <- AVar.take sink
           H.liftEffect $ HS.notify listener (Push alert)
-  pure emitter
+  -- Can ignore the result since we want to maintain the subscription for the
+  -- entire component life cycle.
+  _ <- H.subscribe emitter
+  pure unit
 
-timer ::
+-- | Triggers the given action after the given number of milliseconds.
+oneShotTimer ::
   forall slots output m.
   MonadAff m =>
-  UUID -> Milliseconds -> H.HalogenM State Action slots output m Unit
-timer alertId ttl = do
+  Action -> Milliseconds -> H.HalogenM State Action slots output m Unit
+oneShotTimer action delay = do
   { emitter, listener } <- H.liftEffect HS.create
   sid <- H.subscribe emitter
   _ <-
-    H.liftAff $ Aff.forkAff
-      $ do
-          Aff.delay ttl
-          H.liftEffect $ HS.notify listener (Remove (Just sid) alertId)
+    H.fork do
+      H.liftAff $ Aff.delay delay
+      H.liftEffect $ HS.notify listener action
+      H.unsubscribe sid
   pure unit
