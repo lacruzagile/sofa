@@ -1156,10 +1156,18 @@ render state =
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-8" ]
+                      [ HP.classes
+                          [ Css.c "sofa-btn-secondary"
+                          , Css.c "px-6"
+                          , Css.c "gap-x-4"
+                          ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
-                      [ HH.text "Add product" ]
+                      [ Icon.add
+                          [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
+                          ]
+                      , HH.text "Add product"
+                      ]
                 ]
             ]
     where
@@ -1239,10 +1247,18 @@ render state =
               ]
               [ HH.div [ HP.class_ (Css.c "grow") ] []
               , HH.button
-                  [ HP.classes [ Css.c "sofa-btn-primary", Css.c "h-8" ]
+                  [ HP.classes
+                      [ Css.c "sofa-btn-secondary"
+                      , Css.c "px-6"
+                      , Css.c "gap-x-4"
+                      ]
                   , HE.onClick \_ -> AddSection
                   ]
-                  [ HH.text "Add section" ]
+                  [ Icon.add
+                      [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
+                      ]
+                  , HH.text "Add section"
+                  ]
               ]
           ]
 
