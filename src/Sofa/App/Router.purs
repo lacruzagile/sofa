@@ -267,6 +267,7 @@ renderBody ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   State ->
   H.ComponentHTML Action Slots m
 renderBody state =

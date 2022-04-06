@@ -12,6 +12,9 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.App.Requests (deleteOrderObserver, postOrderObserver)
+import Sofa.Component.Alert as Alert
+import Sofa.Component.Alerts (class MonadAlert)
+import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
@@ -63,6 +66,7 @@ data Action
 component ::
   forall query m.
   MonadAff m =>
+  MonadAlert m =>
   CredentialStore m =>
   H.Component query Input Output m
 component =
@@ -243,6 +247,7 @@ handleAction ::
   forall slots m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   SetNewEmail email -> H.modify_ _ { newObserver = Just email }
@@ -256,6 +261,7 @@ handleAction = case _ of
     case Tuple state.orderId state.newObserver of
       Tuple (Just oid) (Just email) -> do
         observerResult <- H.lift $ postOrderObserver oid (mkObserver email)
+        maybeReportError "Failed to create observer." observerResult
         state' <-
           H.modify \st ->
             st
@@ -277,6 +283,7 @@ handleAction = case _ of
         (Just oid)
         (Just (SS.OrderObserver { observerId: Just nid })) -> H.lift $ deleteOrderObserver oid nid
       _ -> pure Idle
+    maybeReportError "Failed to delete observer." observerResult
     state' <-
       H.modify \st ->
         st
@@ -287,3 +294,25 @@ handleAction = case _ of
           , observerAction = ObserverIdle (Just $ ObserverDeleting idx observerResult)
           }
     H.raise state'.observers
+
+maybeReportError ::
+  forall slots m a.
+  MonadAlert m =>
+  String -> Loadable a -> H.HalogenM State Action slots Output m Unit
+maybeReportError msg = case _ of
+  Error errMsg ->
+    H.lift
+      $ Alerts.push
+      $ Alert.defaultAlert
+          { type_ = Alert.Error
+          , content =
+            HH.div_
+              [ HH.p_ [ HH.text msg ]
+              , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
+                  [ HH.strong_ [ HH.text "Error" ]
+                  , HH.text ": "
+                  , HH.text errMsg
+                  ]
+              ]
+          }
+  _ -> pure unit

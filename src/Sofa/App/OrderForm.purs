@@ -48,6 +48,7 @@ import Sofa.App.OrderForm.Widget.Textarea as WTextarea
 import Sofa.App.OrderForm.Widget.Typeahead as WTypeahead
 import Sofa.App.Requests (deleteFile, deleteOrder, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
+import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
 import Sofa.Component.Tabs as Tabs
@@ -228,6 +229,7 @@ component ::
   forall query output m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   H.Component query Input output m
 component =
   H.mkComponent
@@ -247,7 +249,12 @@ initialState = Initializing
 initialize :: Maybe Action
 initialize = Just Initialize
 
-render :: forall m. MonadAff m => CredentialStore m => State -> H.ComponentHTML Action Slots m
+render ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  MonadAlert m =>
+  State -> H.ComponentHTML Action Slots m
 render state =
   HH.section (if inQuoteContext then [ HP.class_ (Css.c "mx-5") ] else [])
     [ if inQuoteContext then
