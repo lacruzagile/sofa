@@ -11,6 +11,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Select as Sel
 import Select.Setters as SelSet
+import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Widgets as Widgets
 import Web.UIEvent.FocusEvent as Event
@@ -56,6 +57,12 @@ render st =
             Widgets.spinner [ Css.c "absolute", Css.c "right-2.5", Css.c "top-4" ]
           else
             HH.text ""
+        , HH.div [ HP.classes [ Css.c "absolute", Css.c "left-2.5", Css.c "top-3.5" ] ]
+            [ Icon.search
+                [ Icon.classes [ Css.c "w-6", Css.c "h-6" ]
+                , Icon.ariaHidden true
+                ]
+            ]
         , renderInput
         , renderResults
         ]
@@ -65,7 +72,8 @@ render st =
   renderInput =
     HH.input
       $ SelSet.setInputProps
-      $ [ HP.classes $ inputClasses <> st.inputClasses
+      $ [ HP.type_ HP.InputSearch
+        , HP.classes $ inputClasses <> st.inputClasses
         , HP.placeholder st.noSelectionText
         ]
       <> maybe [] (A.singleton <<< HP.value) st.selected
@@ -76,6 +84,7 @@ render st =
     , Css.c "w-full"
     , Css.c "text-left"
     , Css.c "truncate"
+    , Css.c "pl-11"
     ]
       <> (if st.loading then [ Css.c "pr-8" ] else [ Css.c "nectary-dropdown-icon" ])
       <> (if st.visibility == Sel.Off then [] else [ Css.c "rounded-b-none" ])
