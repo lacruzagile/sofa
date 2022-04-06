@@ -96,8 +96,8 @@ render state =
         ]
         [ renderSideMenu state.route
         , renderBody state
-        , HH.slot_ Alerts.proxy unit Alerts.component absurd
         ]
+    , HH.slot_ Alerts.proxy unit Alerts.component absurd
     ]
 
 renderSideMenu ::

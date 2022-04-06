@@ -102,12 +102,14 @@ render state =
     [ HP.classes
         [ Css.c "fixed"
         , Css.c "bottom-0"
-        , Css.c "inset-x-0"
+        , Css.c "right-0"
+        , Css.c "max-w-[45.5rem]" -- 768px - 2.5rem (due to m-5)
         , Css.c "m-5"
         , Css.c "flex"
         , Css.c "flex-col"
         , Css.c "items-end"
         , Css.c "gap-y-3"
+        , Css.c "pointer-events-none"
         ]
     ]
     $ map renderAlert state.alerts
@@ -123,8 +125,10 @@ render state =
               ]
           , classes =
             alert.classes
+              <> [ Css.c "pointer-events-auto" ]
               <> if removing then
                   [ Css.c "transition"
+                  , Css.c "motion-reduce:transition-none"
                   , Css.c "duration-300" -- Must match value of 'fadeDuration'.
                   , Css.c "opacity-0"
                   , Css.c "scale-y-0"

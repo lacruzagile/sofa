@@ -77,6 +77,7 @@ closeBtn closeAction =
         [ Css.c "float-right"
         , Css.c "p-4"
         , Css.c "-m-3"
+        , Css.c "ml-0"
         ]
     , HE.onClick $ \_ -> closeAction unit
     ]
@@ -90,9 +91,7 @@ render :: forall w i. Alert w i -> HH.HTML w i
 render alert =
   HH.div
     [ HP.classes
-        ( [ Css.c "w-full"
-          , Css.c "md:w-[45.5rem]" -- 768px - 2.5rem (due to m-5)
-          , Css.c "flex"
+        ( [ Css.c "flex"
           , Css.c "gap-x-3"
           , Css.c "p-3"
           , Css.c "rounded"
