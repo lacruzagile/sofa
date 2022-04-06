@@ -15,6 +15,7 @@ import Data.DateTime as DateTime
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Set as Set
+import Data.Tuple (Tuple(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Sofa.Component.Tooltip as TT
@@ -108,13 +109,12 @@ monetaryAmount currency amount = format <$> Currency.formatToParts currency amou
 subTotalTable :: forall w i. String -> SubTotal -> HH.HTML w i
 subTotalTable title (SubTotal summary) =
   HH.table [ HP.classes [ Css.c "p-5", Css.c "table-auto" ] ]
-    $ [ HH.tr [ HP.classes [ Css.c "uppercase", Css.c "text-sm", Css.c "text-gray-600" ] ]
-          $ th summary.usage (title <> "Usage")
-          <> th summary.monthly (title <> "Monthly")
-          <> th summary.quarterly (title <> "Quarterly")
-          <> th summary.onetime (title <> "Onetime")
-      ]
-    <> map renderRow currencies
+    $ A.mapMaybe renderRow
+        [ Tuple "Usage" summary.usage
+        , Tuple "Monthly" summary.monthly
+        , Tuple "Quarterly" summary.quarterly
+        , Tuple "Onetime" summary.onetime
+        ]
   where
   currencies =
     A.fromFoldable
@@ -125,35 +125,31 @@ subTotalTable title (SubTotal summary) =
           , SubTotal.toCurrencies summary.onetime
           ]
 
-  th sumry name =
-    if SubTotal.isEmpty sumry then
-      []
-    else
-      [ HH.th [ HP.classes [ Css.c "px-5", Css.c "font-normal" ] ] [ HH.text name ] ]
+  renderRow (Tuple label sumry)
+    | SubTotal.isEmpty sumry = Nothing
+    | otherwise =
+      Just
+        $ HH.tr_
+        $ [ th (title <> label) ]
+        <> map (renderCell sumry) currencies
 
-  td sumry =
-    if SubTotal.isEmpty sumry then
-      const []
-    else
-      let
-        td' currency s =
-          [ HH.td
-              [ HP.classes [ Css.c "px-5", Css.c "text-right" ] ]
-              [ renderSubTotalEntry currency s ]
+  renderCell sumry currency =
+    td currency
+      $ fromMaybe mempty
+      $ SubTotal.toSubTotalEntry currency sumry
+
+  th label =
+    HH.th
+      [ HP.classes
+          [ Css.c "text-right", Css.c "font-semibold"
           ]
-      in
-        \currency ->
-          td' currency
-            $ fromMaybe mempty
-            $ SubTotal.toSubTotalEntry currency sumry
+      ]
+      [ HH.text label ]
 
-  renderRow currency =
-    HH.tr_
-      $ []
-      <> td summary.usage currency
-      <> td summary.monthly currency
-      <> td summary.quarterly currency
-      <> td summary.onetime currency
+  td currency s =
+    HH.td
+      [ HP.classes [ Css.c "text-right", Css.c "text-lg" ] ]
+      [ renderSubTotalEntry currency s ]
 
   -- | Render a sub-total entry.
   renderSubTotalEntry :: SS.ChargeCurrency -> SubTotal.SubTotalEntry -> HH.HTML w i
@@ -165,9 +161,9 @@ subTotalTable title (SubTotal summary) =
         [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
         [ renderPrice discountPriceClasses amount.price ]
     where
-    listPriceClasses = [ Css.c "px-3", Css.c "text-lg", Css.c "text-right" ]
+    listPriceClasses = [ Css.c "pl-5" ]
 
-    discountPriceClasses = [ Css.c "px-3", Css.c "text-lg", Css.c "text-right", Css.c "text-raspberry-500" ]
+    discountPriceClasses = [ Css.c "pl-5", Css.c "text-raspberry-500" ]
 
     renderPrice classes (Additive n) =
       HH.span
