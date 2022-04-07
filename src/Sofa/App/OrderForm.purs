@@ -30,6 +30,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.App.Charge (Slot, component, proxy) as Charge
 import Sofa.App.NavbarItemUser as NavbarItemUser
 import Sofa.App.OrderForm.Buyer as Buyer
@@ -1397,8 +1398,9 @@ render state =
       EditableInput.component
       { value: fromMaybe "" name
       , placeholder: "Unnamed order"
-      , classes: [ Css.c "w-fit", Css.c "max-w-128", Css.c "text-2xl", Css.c "truncate" ]
-      , inputProps: []
+      , classes: [ Css.c "w-fit", Css.c "max-w-128", Css.c "text-2xl" ]
+      , editButtonProps: [ HPAria.label "Edit order name" ]
+      , inputProps: [ HP.attr (H.AttrName "maxlength") "50" ]
       }
       SetOrderDisplayName
 

@@ -2,8 +2,6 @@ module Sofa.Component.EditableInput (Slot, Input(..), Output(..), Action, proxy,
 
 import Prelude
 import DOM.HTML.Indexed as HTMLI
-import Data.Maybe (Maybe(..))
-import Data.Number.Format (fixed, toStringWith)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -12,9 +10,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
-import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (focusElementByRef)
-import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
@@ -30,6 +26,8 @@ type Input
     , placeholder :: String
     , classes :: Array HH.ClassName
     -- ^ Extra classes to add to the view and edit elements.
+    , editButtonProps :: Array (HH.IProp HTMLI.HTMLbutton Action)
+    -- ^ Extra properties to add to the edit button.
     , inputProps :: Array (HH.IProp HTMLI.HTMLinput Action)
     -- ^ Extra properties to add to the input element.
     }
@@ -46,6 +44,8 @@ type State
     , placeholder :: String
     , classes :: Array HH.ClassName
     -- ^ Extra classes to add to the view and edit elements.
+    , editButtonProps :: Array (HH.IProp HTMLI.HTMLbutton Action)
+    -- ^ Extra properties to add to the edit button.
     , inputProps :: Array (HH.IProp HTMLI.HTMLinput Action)
     -- ^ Extra properties to add to the input element.
     , editState :: EditState
@@ -74,6 +74,7 @@ initialState input =
   { value: input.value
   , placeholder: input.placeholder
   , classes: input.classes
+  , editButtonProps: input.editButtonProps
   , inputProps: input.inputProps
   , editState: Viewing
   }
@@ -88,13 +89,15 @@ render state = case state.editState of
           )
       ]
       [ if state.value == "" then
-          HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text state.placeholder ]
+          HH.div
+            [ HP.classes [ Css.c "truncate", Css.c "text-stormy-300" ] ]
+            [ HH.text state.placeholder ]
         else
-          HH.text state.value
+          HH.div
+            [ HP.class_ (Css.c "truncate") ]
+            [ HH.text state.value ]
       , HH.button
-          [ HE.onClick \_ -> SetEditing
-          , HPAria.label "Edit order name"
-          ]
+          ([ HE.onClick \_ -> SetEditing ] <> state.editButtonProps)
           [ Icon.editorMode
               [ Icon.classes
                   [ Css.c "w-[1em]"
