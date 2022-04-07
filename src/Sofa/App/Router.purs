@@ -123,10 +123,10 @@ renderSideMenu currentRoute =
             $ let
                 btn typ =
                   HH.li
-                    [ HP.classes [ Css.c "w-full", Css.c "pl-12", Css.c "py-2" ]
+                    [ HP.classes [ Css.c "w-full", Css.c "pl-4", Css.c "py-2" ]
                     ]
                     [ HH.button
-                        [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-8" ]
+                        [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-6", Css.c "text-sm" ]
                         , HE.onClick \_ -> DoAlert typ
                         ]
                         [ HH.text (show typ) ]
@@ -145,12 +145,9 @@ renderSideMenu currentRoute =
   where
   navbarClasses =
     [ Css.c "w-64"
-    , Css.c "pt-5"
-    , Css.c "pl-3"
+    , Css.c "pt-8"
+    , Css.c "pl-4"
     , Css.c "flex-none"
-    , Css.c "bg-snow-100"
-    , Css.c "border-r"
-    , Css.c "border-snow-600"
     ]
 
   -- Whether the given route is conceptually the same route as the current
@@ -165,51 +162,48 @@ renderSideMenu currentRoute =
           [ HP.classes
               [ Css.c "flex"
               , Css.c "items-center"
+              , Css.c "text-sm"
               , Css.c "font-semibold"
               ]
           ]
           [ icon
               [ Icon.classes
-                  [ Css.c "h-10"
-                  , Css.c "mr-2"
-                  , Css.c "bg-snow-500"
-                  , Css.c "rounded-md"
+                  [ Css.c "h-6"
+                  , Css.c "mr-4"
                   ]
               , Icon.ariaHidden true
               ]
           , HH.div_ [ HH.text text ]
           ]
-      , HH.ul [ HP.classes [] ] children
+      , case children of
+          [] -> HH.text ""
+          _ -> HH.ul [ HP.classes [ Css.c "pt-4", Css.c "ml-6" ] ] children
       ]
 
-  navbarSubItemClasses route
-    | isCurrentRoute route =
-      [ Css.c "inline-flex"
-      , Css.c "items-center"
-      , Css.c "w-full"
-      , Css.c "pl-12"
-      , Css.c "py-2"
-      , Css.c "border-r-2"
-      , Css.c "border-stormy-500"
-      , Css.c "outline-none"
-      , Css.c "ring-0"
-      , Css.c "focus:ring-2"
-      , Css.c "ring-tropical-700"
-      ]
-    | otherwise =
-      [ Css.c "inline-flex"
-      , Css.c "items-center"
-      , Css.c "w-full"
-      , Css.c "pl-12"
-      , Css.c "py-2"
-      , Css.c "border-r"
-      , Css.c "hover:border-r-2"
-      , Css.c "border-stormy-100"
-      , Css.c "outline-none"
-      , Css.c "ring-0"
-      , Css.c "focus:ring-2"
-      , Css.c "ring-tropical-700"
-      ]
+  navbarSubItemClasses route =
+    [ Css.c "inline-flex"
+    , Css.c "items-center"
+    , Css.c "w-full"
+    , Css.c "pl-4"
+    , Css.c "py-2"
+    , Css.c "ring-0"
+    , Css.c "ring-tropical-700"
+    , Css.c "focus:ring-1"
+    , Css.c "outline-none"
+    , Css.c "text-xs"
+    ]
+      <> if isCurrentRoute route then
+          [ Css.c "border-l-2"
+          , Css.c "border-tropical-500"
+          , Css.c "text-tropical-500"
+          ]
+        else
+          [ Css.c "border-l"
+          , Css.c "hover:border-l-2"
+          , Css.c "border-dirt-400"
+          , Css.c "outline-none"
+          , Css.c "text-dirt-400"
+          ]
 
   navbarSubItem route text =
     HH.li_
@@ -237,7 +231,6 @@ renderNavbar =
     , Css.c "inset-x-0"
     , Css.c "top-0"
     , Css.c "h-16"
-    , Css.c "shadow-md"
     , Css.c "bg-white"
     ]
 
