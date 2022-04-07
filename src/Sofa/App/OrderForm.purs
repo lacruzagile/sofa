@@ -49,6 +49,7 @@ import Sofa.App.OrderForm.Widget.Typeahead as WTypeahead
 import Sofa.App.Requests (deleteFile, deleteOrder, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
 import Sofa.Component.Alerts (class MonadAlert)
+import Sofa.Component.EditableInput as EditableInput
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
 import Sofa.Component.Tabs as Tabs
@@ -93,6 +94,7 @@ type Slots
     , widgetTextarea :: WTextarea.Slot ConfigEntryIndex
     , widgetTypeahead :: WTypeahead.Slot ConfigEntryIndex
     , nectaryTabs :: Tabs.Slot ConfigEntryIndex
+    , orderName :: EditableInput.Slot Unit
     , navbarItemUser :: NavbarItemUser.Slot Unit
     -- ^ Temporary until we have working Salesforce login.
     )
@@ -1389,19 +1391,15 @@ render state =
 
   renderOrderDisplayName :: Maybe String -> H.ComponentHTML Action Slots m
   renderOrderDisplayName name =
-    HH.input
-      [ HP.type_ HP.InputText
-      , HP.classes
-          [ Css.c "focus:nectary-input"
-          , Css.c "text-2xl"
-          , Css.c "font-semibold"
-          , Css.c "w-72"
-          , Css.c "truncate"
-          ]
-      , HP.value $ fromMaybe "" name
-      , HP.placeholder "Unnamed order"
-      , HE.onValueChange SetOrderDisplayName
-      ]
+    HH.slot
+      (Proxy :: Proxy "orderName")
+      unit
+      EditableInput.component
+      { value: fromMaybe "" name
+      , classes: [ Css.c "w-fit", Css.c "max-w-128", Css.c "text-2xl", Css.c "truncate" ]
+      , inputProps: [ HP.placeholder "Unnamed order" ]
+      }
+      SetOrderDisplayName
 
   renderOrderStatus :: SS.OrderStatus -> H.ComponentHTML Action Slots m
   renderOrderStatus selected =
