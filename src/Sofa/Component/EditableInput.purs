@@ -27,6 +27,7 @@ proxy = Proxy
 
 type Input
   = { value :: String
+    , placeholder :: String
     , classes :: Array HH.ClassName
     -- ^ Extra classes to add to the view and edit elements.
     , inputProps :: Array (HH.IProp HTMLI.HTMLinput Action)
@@ -42,6 +43,7 @@ data EditState
 
 type State
   = { value :: String
+    , placeholder :: String
     , classes :: Array HH.ClassName
     -- ^ Extra classes to add to the view and edit elements.
     , inputProps :: Array (HH.IProp HTMLI.HTMLinput Action)
@@ -70,6 +72,7 @@ component =
 initialState :: Input -> State
 initialState input =
   { value: input.value
+  , placeholder: input.placeholder
   , classes: input.classes
   , inputProps: input.inputProps
   , editState: Viewing
@@ -84,7 +87,10 @@ render state = case state.editState of
               <> state.classes
           )
       ]
-      [ HH.text state.value
+      [ if state.value == "" then
+          HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text state.placeholder ]
+        else
+          HH.text state.value
       , HH.button
           [ HE.onClick \_ -> SetEditing
           , HPAria.label "Edit order name"
@@ -116,6 +122,7 @@ render state = case state.editState of
             , HP.type_ HP.InputText
             , HP.classes [ Css.c "grow", Css.c "outline-none" ]
             , HP.value value
+            , HP.placeholder state.placeholder
             , HE.onValueInput UpdateValue
             ]
               <> state.inputProps

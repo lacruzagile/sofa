@@ -1396,8 +1396,9 @@ render state =
       unit
       EditableInput.component
       { value: fromMaybe "" name
+      , placeholder: "Unnamed order"
       , classes: [ Css.c "w-fit", Css.c "max-w-128", Css.c "text-2xl", Css.c "truncate" ]
-      , inputProps: [ HP.placeholder "Unnamed order" ]
+      , inputProps: []
       }
       SetOrderDisplayName
 
