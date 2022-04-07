@@ -91,7 +91,8 @@ render :: forall w i. Alert w i -> HH.HTML w i
 render alert =
   HH.div
     [ HP.classes
-        ( [ Css.c "flex"
+        ( [ Css.c "w-full"
+          , Css.c "flex"
           , Css.c "gap-x-3"
           , Css.c "p-3"
           , Css.c "rounded"

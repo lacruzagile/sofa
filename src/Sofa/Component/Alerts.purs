@@ -102,8 +102,8 @@ render state =
     [ HP.classes
         [ Css.c "fixed"
         , Css.c "bottom-0"
+        , Css.c "left-64" -- Avoid the side menu.
         , Css.c "right-0"
-        , Css.c "max-w-[45.5rem]" -- 768px - 2.5rem (due to m-5)
         , Css.c "m-5"
         , Css.c "flex"
         , Css.c "flex-col"
