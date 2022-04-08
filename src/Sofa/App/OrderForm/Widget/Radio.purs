@@ -92,6 +92,7 @@ render st = case st.available of
     HH.label_
       [ HH.input
           [ HP.type_ InputRadio
+          , HP.class_ (Css.c "nectary-input-radio")
           , HP.checked $ st.selected == Just v
           , HE.onChange \_ -> Select v
           ]

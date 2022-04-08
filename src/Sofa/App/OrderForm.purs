@@ -583,7 +583,7 @@ render state =
           renderCheckbox fallbackTitle schemaEntry
             $ HH.input
                 [ HP.type_ HP.InputCheckbox
-                , HP.classes [ Css.c "mr-5" ]
+                , HP.classes [ Css.c "nectary-input-checkbox", Css.c "mr-5" ]
                 , HP.checked checked
                 , HE.onChecked (act <<< const <<< SS.CvBoolean)
                 ]

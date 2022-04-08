@@ -224,6 +224,7 @@ renderDetails st =
                         [ HH.input
                             [ HP.type_ HP.InputRadio
                             , HP.name "buyer-existing-customer"
+                            , HP.class_ (Css.c "nectary-input-radio")
                             , HP.checked $ not buyer.existingCustomer
                             , HP.enabled $ not st.readOnly
                             , HE.onChange \_ -> SetCustomerStatus false
@@ -234,6 +235,7 @@ renderDetails st =
                         [ HH.input
                             [ HP.type_ HP.InputRadio
                             , HP.name "buyer-existing-customer"
+                            , HP.class_ (Css.c "nectary-input-radio")
                             , HP.checked buyer.existingCustomer
                             , HP.enabled $ not st.readOnly
                             , HE.onChange \_ -> SetCustomerStatus true

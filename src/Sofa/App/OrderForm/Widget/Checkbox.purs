@@ -80,7 +80,7 @@ render st = case st.available of
   Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
   Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No data available …" ]
   Loaded available ->
-    HH.fieldset [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
+    HH.fieldset [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-2" ] ]
       $ map renderItem available
   where
   containerClasses = []
@@ -93,6 +93,7 @@ render st = case st.available of
     HH.label_
       [ HH.input
           [ HP.type_ InputCheckbox
+          , HP.class_ (Css.c "nectary-input-checkbox")
           , HP.checked $ Set.member v st.selected
           , HE.onChecked $ Check v
           ]
