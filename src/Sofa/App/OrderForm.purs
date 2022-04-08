@@ -1383,13 +1383,6 @@ render state =
           [ title "Notes"
           , renderOrderNotes orderId orderForm.notes
           ]
-      , HH.div
-          [ HP.class_ (Css.c "flex") ]
-          [ HH.div [ HP.class_ (Css.c "grow") ] []
-          , HH.button
-              [ HP.classes [ Css.c "sofa-btn-primary", Css.c "h-8" ] ]
-              [ HH.text "Edit" ]
-          ]
       ]
     where
     entry = HH.div [ HP.classes [ Css.c "flex" ] ]
@@ -1476,12 +1469,6 @@ render state =
       , HH.div [ HP.classes [ Css.c "flex" ] ]
           [ title "Commercial"
           , renderCommercial
-          ]
-      , HH.div [ HP.class_ (Css.c "flex") ]
-          [ HH.div [ HP.class_ (Css.c "grow") ] []
-          , HH.button
-              [ HP.classes [ Css.c "sofa-btn-primary", Css.c "h-8" ] ]
-              [ HH.text "Edit" ]
           ]
       ]
     where
