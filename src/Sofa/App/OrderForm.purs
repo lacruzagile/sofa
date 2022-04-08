@@ -20,7 +20,8 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.String as S
 import Data.Traversable (for_, sequence, traverse)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
+import Data.Tuple.Nested (tuple3, uncurry3)
 import Data.UUID (UUID)
 import Data.UUID as UUID
 import Effect.Aff.Class (class MonadAff)
@@ -47,9 +48,11 @@ import Sofa.App.OrderForm.Widget.FileAttachment as WFileAttachment
 import Sofa.App.OrderForm.Widget.Radio as WRadio
 import Sofa.App.OrderForm.Widget.Textarea as WTextarea
 import Sofa.App.OrderForm.Widget.Typeahead as WTypeahead
-import Sofa.App.Requests (deleteFile, deleteOrder, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
+import Sofa.App.Requests (deleteFile, deleteOrder, deleteOrderLine, deleteOrderSection, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.App.SchemaDataSource (DataSourceEnumResult, getDataSourceEnum)
+import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
+import Sofa.Component.Alerts as Alerts
 import Sofa.Component.EditableInput as EditableInput
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
@@ -2074,7 +2077,9 @@ mkNilPriceBook solution = do
 handleAction ::
   forall output m.
   MonadAff m =>
-  CredentialStore m => Action -> H.HalogenM State Action Slots output m Unit
+  CredentialStore m =>
+  MonadAlert m =>
+  Action -> H.HalogenM State Action Slots output m Unit
 handleAction = case _ of
   NoOp -> pure unit
   Initialize -> do
@@ -2225,12 +2230,46 @@ handleAction = case _ of
             section <- join $ A.index sections sectionIndex
             pure $ findSectionFileIds section
           _ -> Nothing
-    modifyInitialized
-      $ modifyOrderForm \order ->
-          order
-            { sections =
-              fromMaybe order.sections $ A.deleteAt sectionIndex order.sections
-            }
+    deleteResult <-
+      H.lift
+        $ maybe' (pure <<< Loaded) (uncurry deleteOrderSection)
+        $ case state of
+            Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
+              section <- join $ A.index sections sectionIndex
+              sectionId <- section.orderSectionId
+              pure (Tuple orderId sectionId)
+            _ -> Nothing
+    case deleteResult of
+      Loading -> pure unit
+      Idle -> pure unit
+      Loaded _ -> do
+        modifyInitialized
+          $ modifyOrderForm \order ->
+              order
+                { sections =
+                  fromMaybe order.sections $ A.deleteAt sectionIndex order.sections
+                }
+        H.lift
+          $ Alerts.push
+          $ Alert.defaultAlert
+              { type_ = Alert.Success
+              , content = HH.text "Deleted order section"
+              }
+      Error errMsg ->
+        H.lift
+          $ Alerts.push
+          $ Alert.defaultAlert
+              { type_ = Alert.Error
+              , content =
+                HH.div_
+                  [ HH.p_ [ HH.text "Error deleting order section" ]
+                  , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
+                      [ HH.strong_ [ HH.text "Error" ]
+                      , HH.text ": "
+                      , HH.text errMsg
+                      ]
+                  ]
+              }
   AddOrderLine { sectionIndex } ->
     modifyInitialized
       $ modifyOrderForm
@@ -2245,14 +2284,50 @@ handleAction = case _ of
             orderLine <- join $ A.index orderLines orderLineIndex
             pure $ findLineFileIds orderLine
           _ -> Nothing
-    modifyInitialized
-      $ modifyOrderForm
-      $ modifyOrderSection sectionIndex \section ->
-          section
-            { orderLines =
-              fromMaybe section.orderLines
-                $ A.deleteAt orderLineIndex section.orderLines
-            }
+    deleteResult <-
+      H.lift
+        $ maybe' (pure <<< Loaded) (uncurry3 deleteOrderLine)
+        $ case state of
+            Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
+              section <- join $ A.index sections sectionIndex
+              orderLine <- join $ A.index section.orderLines orderLineIndex
+              sectionId <- section.orderSectionId
+              lineId <- orderLine.orderLineId
+              pure (tuple3 orderId sectionId lineId)
+            _ -> Nothing
+    case deleteResult of
+      Loading -> pure unit
+      Idle -> pure unit
+      Loaded _ -> do
+        modifyInitialized
+          $ modifyOrderForm
+          $ modifyOrderSection sectionIndex \section ->
+              section
+                { orderLines =
+                  fromMaybe section.orderLines
+                    $ A.deleteAt orderLineIndex section.orderLines
+                }
+        H.lift
+          $ Alerts.push
+          $ Alert.defaultAlert
+              { type_ = Alert.Success
+              , content = HH.text "Deleted order line"
+              }
+      Error errMsg ->
+        H.lift
+          $ Alerts.push
+          $ Alert.defaultAlert
+              { type_ = Alert.Error
+              , content =
+                HH.div_
+                  [ HH.p_ [ HH.text "Error deleting order line" ]
+                  , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
+                      [ HH.strong_ [ HH.text "Error" ]
+                      , HH.text ": "
+                      , HH.text errMsg
+                      ]
+                  ]
+              }
   OrderLineSetProduct { sectionIndex, orderLineIndex, product } ->
     let
       mkOrderLine :: UUID -> SS.Product -> OrderLine

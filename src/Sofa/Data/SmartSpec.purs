@@ -43,14 +43,14 @@ module Sofa.Data.SmartSpec
   , OrderId(..)
   , OrderLine(..)
   , OrderLineConfig(..)
-  , OrderLineId
+  , OrderLineId(..)
   , OrderLineStatus(..)
   , OrderNote(..)
   , OrderNoteId
   , OrderObserver(..)
   , OrderObserverId
   , OrderSection(..)
-  , OrderSectionId
+  , OrderSectionId(..)
   , OrderStatus(..)
   , PaymentCurrency(..)
   , Platform(..)
@@ -2614,11 +2614,12 @@ instance encodeJsonOrderLineConfig :: EncodeJson OrderLineConfig where
 newtype OrderLineId
   = OrderLineId String
 
-derive newtype instance showOrderLineId :: Show OrderLineId
-
 derive newtype instance decodeJsonOrderLineId :: DecodeJson OrderLineId
 
 derive newtype instance encodeJsonOrderLineId :: EncodeJson OrderLineId
+
+instance showOrderLineId :: Show OrderLineId where
+  show (OrderLineId id) = id
 
 newtype OrderLine
   = OrderLine
@@ -2668,11 +2669,12 @@ instance encodeJsonOrderLine :: EncodeJson OrderLine where
 newtype OrderSectionId
   = OrderSectionId String
 
-derive newtype instance showOrderSectionId :: Show OrderSectionId
-
 derive newtype instance decodeJsonOrderSectionId :: DecodeJson OrderSectionId
 
 derive newtype instance encodeJsonOrderSectionId :: EncodeJson OrderSectionId
+
+instance showOrderSectionId :: Show OrderSectionId where
+  show (OrderSectionId id) = id
 
 newtype OrderSection
   = OrderSection

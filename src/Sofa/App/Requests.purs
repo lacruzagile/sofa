@@ -6,6 +6,8 @@ module Sofa.App.Requests
   , deleteOrder
   , deleteOrderNote
   , deleteOrderObserver
+  , deleteOrderSection
+  , deleteOrderLine
   , getBillingAccount
   , getBillingAccounts
   , getBuyer
@@ -39,7 +41,7 @@ import Foreign.Object as FO
 import JSURI (encodeURIComponent)
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..), deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
-import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
 
 -- | Base URL to use for the ordering service.
 foreign import orderingBaseUrl :: String
@@ -192,6 +194,35 @@ deleteOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadab
 deleteOrder orderId = deleteR_ url
   where
   url = ordersUrl </> show orderId
+
+deleteOrderSection ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderSectionId ->
+  m (Loadable Unit)
+deleteOrderSection orderId sectionId = deleteR_ url
+  where
+  url = ordersUrl </> show orderId </> "order-sections" </> show sectionId
+
+deleteOrderLine ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  OrderId ->
+  OrderSectionId ->
+  OrderLineId ->
+  m (Loadable Unit)
+deleteOrderLine orderId sectionId lineId = deleteR_ url
+  where
+  url =
+    ordersUrl
+      </> show orderId
+      </> "order-sections"
+      </> show sectionId
+      </> "order-lines"
+      </> show lineId
 
 postOrderFulfillment :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
 postOrderFulfillment orderId = postRJson_ url
