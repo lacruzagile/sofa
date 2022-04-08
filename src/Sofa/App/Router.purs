@@ -145,9 +145,10 @@ renderSideMenu currentRoute =
   where
   navbarClasses =
     [ Css.c "w-64"
-    , Css.c "pt-8"
+    , Css.c "pt-2"
     , Css.c "pl-4"
     , Css.c "flex-none"
+    , Css.c "bg-snow-100"
     ]
 
   -- Whether the given route is conceptually the same route as the current
@@ -162,7 +163,6 @@ renderSideMenu currentRoute =
           [ HP.classes
               [ Css.c "flex"
               , Css.c "items-center"
-              , Css.c "text-sm"
               , Css.c "font-semibold"
               ]
           ]
@@ -190,19 +190,19 @@ renderSideMenu currentRoute =
     , Css.c "ring-tropical-700"
     , Css.c "focus:ring-1"
     , Css.c "outline-none"
-    , Css.c "text-xs"
     ]
       <> if isCurrentRoute route then
           [ Css.c "border-l-2"
           , Css.c "border-tropical-500"
           , Css.c "text-tropical-500"
+          , Css.c "font-semibold"
           ]
         else
           [ Css.c "border-l"
-          , Css.c "hover:border-l-2"
-          , Css.c "border-dirt-400"
+          , Css.c "border-stormy-300"
           , Css.c "outline-none"
           , Css.c "text-stormy-300"
+          , Css.c "hover:text-tropical-500"
           ]
 
   navbarSubItem route text =
@@ -247,7 +247,7 @@ renderNavbar =
       , HP.classes [ Css.c "flex", Css.c "w-64", Css.c "h-full" ]
       ]
       [ Icon.sinchLogo
-          [ Icon.classes [ Css.c "m-auto", Css.c "h-8" ]
+          [ Icon.classes [ Css.c "ml-6", Css.c "my-auto", Css.c "h-6" ]
           , Icon.ariaLabel "SOFA Home"
           ]
       ]
