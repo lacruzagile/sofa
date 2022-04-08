@@ -180,68 +180,53 @@ renderDetails st =
   modalToolbar = [ Modal.closeBtn (\_ -> CancelAndCloseDetails) ]
 
   renderBody commercialLoadable =
-    HH.div
-      [ HP.classes
-          [ Css.c "w-full"
-          , Css.c "min-w-96"
-          , Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "space-y-4"
+    HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-4" ] ]
+      [ case st.crmAccountId of
+          Just crmAccountId
+            | not st.readOnly ->
+              HH.slot
+                SelectCommercial.proxy
+                unit
+                SelectCommercial.component
+                crmAccountId
+                ChooseCommercial
+          _ -> HH.text ""
+      , case commercialLoadable of
+          Error err ->
+            HH.p
+              [ HP.classes
+                  [ Css.c "p-3"
+                  , Css.c "bg-red-100"
+                  , Css.c "border"
+                  , Css.c "border-red-400"
+                  , Css.c "text-raspberry-500"
+                  ]
+              ]
+              [ HH.text err ]
+          _ -> HH.text ""
+      , HH.div
+          [ HP.classes
+              [ Css.c "w-full"
+              , Css.c "min-w-96"
+              , Css.c "p-8"
+              , Css.c "grid"
+              , Css.c "grid-cols-[12rem_auto]"
+              , Css.c "gap-4"
+              , Css.c "rounded"
+              , Css.c "bg-snow-500"
+              ]
           ]
+          $ [ renderSmallTitle "Billing Option"
+            , HH.div_ [ maybe empty renderBillingOption mCommercial ]
+            , renderSmallTitle "Contract Term"
+            , HH.div_ [ maybe empty renderContractTerm mCommercial ]
+            , renderSmallTitle "Payment Currency"
+            , HH.div_ [ maybe empty renderPaymentCurrency mCommercial ]
+            , renderSmallTitle "Billing Currency"
+            , HH.div_ [ maybe empty renderBillingCurrency mCommercial ]
+            ]
+      , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
       ]
-      $ [ case st.crmAccountId of
-            Just crmAccountId
-              | not st.readOnly ->
-                HH.slot
-                  SelectCommercial.proxy
-                  unit
-                  SelectCommercial.component
-                  crmAccountId
-                  ChooseCommercial
-            _ -> HH.text ""
-        , case commercialLoadable of
-            Error err ->
-              HH.p
-                [ HP.classes
-                    [ Css.c "p-3"
-                    , Css.c "bg-red-100"
-                    , Css.c "border"
-                    , Css.c "border-red-400"
-                    , Css.c "text-raspberry-500"
-                    ]
-                ]
-                [ HH.text err ]
-            _ -> HH.text ""
-        , HH.div [ HP.classes [ Css.c "flex" ] ]
-            [ HH.div [ HP.class_ (Css.c "w-1/2") ]
-                [ renderSmallTitle "Billing Option"
-                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
-                    [ maybe empty renderBillingOption mCommercial
-                    ]
-                ]
-            , HH.div [ HP.class_ (Css.c "w-1/2") ]
-                [ renderSmallTitle "Contract Term"
-                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
-                    [ maybe empty renderContractTerm mCommercial
-                    ]
-                ]
-            ]
-        , HH.div [ HP.classes [ Css.c "flex" ] ]
-            [ HH.div [ HP.class_ (Css.c "w-1/2") ]
-                [ renderSmallTitle "Payment Currency"
-                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
-                    [ maybe empty renderPaymentCurrency mCommercial
-                    ]
-                ]
-            , HH.div [ HP.class_ (Css.c "w-1/2") ]
-                [ renderSmallTitle "Billing Currency"
-                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
-                    [ maybe empty renderBillingCurrency mCommercial ]
-                ]
-            ]
-        , HH.hr_
-        , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
-        ]
     where
     mCommercial = Loadable.toMaybe commercialLoadable
 
@@ -272,7 +257,7 @@ renderDetails st =
             [ HH.text "OK" ]
         ]
 
-  renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
+  renderSmallTitle t = HH.h4_ [ HH.text t ]
 
 handleAction ::
   forall slots m.

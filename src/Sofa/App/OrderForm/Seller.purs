@@ -138,16 +138,14 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Modal.render modalToolbar $ renderBody st.seller
+    , Modal.render [] $ renderBody st.seller
     ]
   where
-  modalToolbar = [ Modal.closeBtn (\_ -> CancelAndCloseDetails) ]
-
   renderBody sellerOpt =
     let
       defaultCurrency = HH.text $ maybe "" (show <<< _.defaultBankCurrency <<< unwrap) st.legalEntity
 
-      subtleComma = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text ", " ]
+      subtleComma = HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text ", " ]
 
       currencies =
         A.intersperse subtleComma
@@ -156,43 +154,42 @@ renderDetails st =
           $ maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity
 
       renderSellerData (SS.Seller seller) =
-        HH.div
-          [ HP.classes
-              [ Css.c "w-full"
-              , Css.c "min-w-128"
-              , Css.c "flex"
-              , Css.c "flex-col"
-              , Css.c "space-y-4"
-              ]
+        HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-4" ] ]
+          [ if st.readOnly then
+              HH.text ""
+            else
+              HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd ChooseLegalEntity
+          , if seller.registeredName == "" then
+              HH.text ""
+            else
+              HH.div
+                [ HP.classes
+                    [ Css.c "w-full"
+                    , Css.c "p-8"
+                    , Css.c "min-w-128"
+                    , Css.c "grid"
+                    , Css.c "grid-cols-[12rem_auto]"
+                    , Css.c "gap-4"
+                    , Css.c "rounded"
+                    , Css.c "bg-snow-500"
+                    ]
+                ]
+                $ [ HH.h3 [ HP.class_ (Css.c "col-span-2") ] [ HH.text seller.registeredName ]
+                  , renderSmallTitle "Bank currency"
+                  , defaultCurrency
+                  , renderSmallTitle "Available currencies"
+                  , HH.div_ currencies
+                  , renderSmallTitle "Primary Contact"
+                  , renderContact seller.contacts.primary
+                  , renderSmallTitle "Finance Contact"
+                  , renderContact seller.contacts.finance
+                  , renderSmallTitle "Support Contact"
+                  , renderContact seller.contacts.support
+                  , HH.h4 [ HP.class_ (Css.c "col-span-2") ] [ HH.text "Address" ]
+                  ]
+                <> Widgets.address seller.address
+          , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
           ]
-          $ [ if st.readOnly then
-                HH.text ""
-              else
-                HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd ChooseLegalEntity
-            , HH.div_
-                [ renderSmallTitle "Registered Name"
-                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-2xl" ] ] [ HH.text seller.registeredName ]
-                ]
-            , HH.div [ HP.class_ (Css.c "flex") ]
-                [ HH.div [ HP.class_ (Css.c "w-1/2") ]
-                    [ renderSmallTitle "Default Bank Currency"
-                    , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-2xl" ] ] [ defaultCurrency ]
-                    ]
-                , HH.div [ HP.class_ (Css.c "w-1/2") ]
-                    [ renderSmallTitle "Available Currencies"
-                    , HH.div [ HP.classes [ Css.c "ml-2" ] ] currencies
-                    ]
-                ]
-            , renderContact "Primary Contact" seller.contacts.primary
-            , renderContact "Finance Contact" seller.contacts.finance
-            , renderContact "Support Contact" seller.contacts.support
-            , HH.div_
-                [ renderSmallTitle "Address"
-                , Widgets.address seller.address
-                ]
-            , HH.hr_
-            , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
-            ]
 
       bottomButtons
         | st.readOnly =
@@ -221,9 +218,9 @@ renderDetails st =
     in
       renderSellerData $ fromMaybe emptySeller sellerOpt
 
-  renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
+  renderSmallTitle t = HH.h4_ [ HH.text t ]
 
-  renderContact label (SS.Contact contact) =
+  renderContact (SS.Contact contact) =
     let
       opt = case _ of
         Nothing -> []
@@ -237,14 +234,11 @@ renderDetails st =
       subtleSlash = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text " / " ]
     in
       HH.div_
-        [ renderSmallTitle label
-        , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
-            $ handleNoContact
-            $ A.intersperse subtleSlash
-            $ opt contact.displayName
-            <> opt contact.email
-            <> opt contact.phone
-        ]
+        $ handleNoContact
+        $ A.intersperse subtleSlash
+        $ opt contact.displayName
+        <> opt contact.email
+        <> opt contact.phone
 
 handleAction ::
   forall slots m.

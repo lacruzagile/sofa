@@ -34,8 +34,15 @@ proxy = Proxy
 
 type Slots
   = ( selectBuyer :: SelectBuyer.Slot Unit
-    , nectaryDropdown :: Select.Slot String SS.Contact
+    , nectaryDropdown :: Select.Slot Int SS.Contact
     )
+
+type ContactType
+  = Int
+
+contactPrimary = 1 :: ContactType
+
+contactFinance = 2 :: ContactType
 
 type Input
   = Maybe
@@ -152,11 +159,9 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Modal.render modalToolbar $ renderBody st.buyer
+    , Modal.render [] $ renderBody st.buyer
     ]
   where
-  modalToolbar = [ Modal.closeBtn (\_ -> CancelAndCloseDetails) ]
-
   mkWebsiteUrl s
     | startsWith "http://" s || startsWith "https://" s = s
     | otherwise = "https://" <> s
@@ -164,93 +169,85 @@ renderDetails st =
   renderBody buyerLoadable =
     let
       renderBuyerData (SS.Buyer buyer) =
-        HH.div
-          [ HP.classes
-              [ Css.c "w-full"
-              , Css.c "min-w-128"
-              , Css.c "flex"
-              , Css.c "flex-col"
-              , Css.c "space-y-4"
-              ]
+        HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-4" ] ]
+          [ if st.readOnly then
+              HH.text ""
+            else
+              HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd ChooseBuyer
+          , case buyerLoadable of
+              Error err ->
+                HH.p
+                  [ HP.classes
+                      [ Css.c "p-3"
+                      , Css.c "bg-red-100"
+                      , Css.c "border"
+                      , Css.c "border-red-400"
+                      , Css.c "text-raspberry-500"
+                      ]
+                  ]
+                  [ HH.text err ]
+              _ -> HH.text ""
+          , if buyer.corporateName == "" then
+              HH.text ""
+            else
+              HH.div
+                [ HP.classes
+                    [ Css.c "w-full"
+                    , Css.c "min-w-128"
+                    , Css.c "p-8"
+                    , Css.c "grid"
+                    , Css.c "grid-cols-[12rem_auto]"
+                    , Css.c "gap-4"
+                    , Css.c "rounded"
+                    , Css.c "bg-snow-500"
+                    ]
+                ]
+                $ [ HH.h3 [ HP.class_ (Css.c "col-span-2") ] [ HH.text buyer.corporateName ]
+                  , renderSmallTitle "CRM Account ID"
+                  , HH.div_ [ HH.text (maybe "N/A" unwrap buyer.crmAccountId) ]
+                  , renderSmallTitle "Registration No"
+                  , HH.div_ [ HH.text buyer.registrationNr ]
+                  , renderSmallTitle "Tax ID"
+                  , HH.div_ [ HH.text buyer.taxId ]
+                  , renderSmallTitle "Website"
+                  , if S.null buyer.website then
+                      HH.div_ [ HH.text "" ]
+                    else
+                      HH.a [ HP.href (mkWebsiteUrl buyer.website) ] [ HH.text buyer.website ]
+                  , HH.h4 [ HP.class_ (Css.c "col-span-2") ] [ HH.text "Primary Contact" ]
+                  , renderContact contactPrimary buyer.contacts.primary SetContactPrimary
+                  , HH.h4 [ HP.class_ (Css.c "col-span-2") ] [ HH.text "Finance Contact" ]
+                  , renderContact contactFinance buyer.contacts.finance SetContactFinance
+                  , HH.h4 [ HP.class_ (Css.c "col-span-2") ] [ HH.text "Customer Status" ]
+                  , HH.fieldset [ HP.class_ (Css.c "col-span-2") ]
+                      [ HH.label [ HP.class_ (Css.c "ml-2") ]
+                          [ HH.input
+                              [ HP.type_ HP.InputRadio
+                              , HP.name "buyer-existing-customer"
+                              , HP.class_ (Css.c "nectary-input-radio")
+                              , HP.checked $ not buyer.existingCustomer
+                              , HP.enabled $ not st.readOnly
+                              , HE.onChange \_ -> SetCustomerStatus false
+                              ]
+                          , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "New Customer" ]
+                          ]
+                      , HH.label [ HP.class_ (Css.c "ml-2") ]
+                          [ HH.input
+                              [ HP.type_ HP.InputRadio
+                              , HP.name "buyer-existing-customer"
+                              , HP.class_ (Css.c "nectary-input-radio")
+                              , HP.checked buyer.existingCustomer
+                              , HP.enabled $ not st.readOnly
+                              , HE.onChange \_ -> SetCustomerStatus true
+                              ]
+                          , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "Existing Customer" ]
+                          ]
+                      ]
+                  , HH.h4 [ HP.class_ (Css.c "col-span-2") ] [ HH.text "Address" ]
+                  ]
+                <> Widgets.address buyer.address
+          , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
           ]
-          $ [ if st.readOnly then
-                HH.text ""
-              else
-                HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd ChooseBuyer
-            , case buyerLoadable of
-                Error err ->
-                  HH.p
-                    [ HP.classes
-                        [ Css.c "mt-5"
-                        , Css.c "p-3"
-                        , Css.c "bg-red-100"
-                        , Css.c "border"
-                        , Css.c "border-red-400"
-                        , Css.c "text-raspberry-500"
-                        ]
-                    ]
-                    [ HH.text err ]
-                _ -> HH.text ""
-            , HH.div_
-                [ renderSmallTitle "Corporate Name"
-                , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-2xl" ] ] [ HH.text buyer.corporateName ]
-                ]
-            , HH.div_
-                [ renderSmallTitle "CRM Account ID"
-                , HH.div [ HP.class_ (Css.c "ml-2") ] [ HH.text (maybe "N/A" unwrap buyer.crmAccountId) ]
-                ]
-            , HH.div_
-                [ renderSmallTitle "Registration No"
-                , HH.div [ HP.class_ (Css.c "ml-2") ] [ HH.text buyer.registrationNr ]
-                ]
-            , HH.div_
-                [ renderSmallTitle "Tax ID"
-                , HH.div [ HP.class_ (Css.c "ml-2") ] [ HH.text buyer.taxId ]
-                ]
-            , HH.div_
-                [ renderSmallTitle "Website"
-                , HH.div [ HP.class_ (Css.c "ml-2") ]
-                    $ if S.null buyer.website then
-                        []
-                      else
-                        [ HH.a [ HP.href (mkWebsiteUrl buyer.website) ] [ HH.text buyer.website ] ]
-                ]
-            , renderContact "Primary Contact" buyer.contacts.primary SetContactPrimary
-            , renderContact "Finance Contact" buyer.contacts.finance SetContactFinance
-            , HH.div_
-                [ renderSmallTitle "Customer Status"
-                , HH.fieldset_
-                    [ HH.label [ HP.class_ (Css.c "ml-2") ]
-                        [ HH.input
-                            [ HP.type_ HP.InputRadio
-                            , HP.name "buyer-existing-customer"
-                            , HP.class_ (Css.c "nectary-input-radio")
-                            , HP.checked $ not buyer.existingCustomer
-                            , HP.enabled $ not st.readOnly
-                            , HE.onChange \_ -> SetCustomerStatus false
-                            ]
-                        , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "New Customer" ]
-                        ]
-                    , HH.label [ HP.class_ (Css.c "ml-2") ]
-                        [ HH.input
-                            [ HP.type_ HP.InputRadio
-                            , HP.name "buyer-existing-customer"
-                            , HP.class_ (Css.c "nectary-input-radio")
-                            , HP.checked buyer.existingCustomer
-                            , HP.enabled $ not st.readOnly
-                            , HE.onChange \_ -> SetCustomerStatus true
-                            ]
-                        , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text "Existing Customer" ]
-                        ]
-                    ]
-                ]
-            , HH.div_
-                [ renderSmallTitle "Address"
-                , Widgets.address buyer.address
-                ]
-            , HH.hr_
-            , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
-            ]
         where
         bottomButtons
           | st.readOnly =
@@ -282,14 +279,14 @@ renderDetails st =
     in
       renderBuyerData $ fromMaybe emptyBuyer $ Loadable.toMaybe buyerLoadable
 
-  renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
+  renderSmallTitle t = HH.h4_ [ HH.text t ]
 
   renderContact ::
-    String ->
+    ContactType ->
     SS.Contact ->
     (SS.Contact -> Action) ->
     H.ComponentHTML Action Slots m
-  renderContact label (SS.Contact contact) act
+  renderContact contactType (SS.Contact contact) act
     | st.readOnly =
       let
         opt = case _ of
@@ -303,15 +300,12 @@ renderDetails st =
 
         subtleSlash = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text " / " ]
       in
-        HH.div_
-          [ renderSmallTitle label
-          , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ]
-              $ handleNoContact
-              $ A.intersperse subtleSlash
-              $ opt contact.displayName
-              <> opt contact.email
-              <> opt contact.phone
-          ]
+        HH.div [ HP.class_ (Css.c "col-span-2") ]
+          $ handleNoContact
+          $ A.intersperse subtleSlash
+          $ opt contact.displayName
+          <> opt contact.email
+          <> opt contact.phone
     | otherwise =
       let
         selectOption c@(SS.Contact { displayName, email }) =
@@ -323,9 +317,8 @@ renderDetails st =
             )
             c
       in
-        HH.label_
-          [ renderSmallTitle label
-          , case st.buyerAvailableContacts of
+        HH.div [ HP.class_ (Css.c "col-span-2") ]
+          [ case st.buyerAvailableContacts of
               Idle -> HH.text "No contacts loaded"
               Loaded contacts ->
                 let
@@ -337,7 +330,7 @@ renderDetails st =
                       , wrapperClasses = [ Css.c "min-w-[20rem]", Css.c "max-w-128" ]
                       }
                 in
-                  HH.slot Select.proxy label Select.component input act
+                  HH.slot Select.proxy contactType Select.component input act
               Loading ->
                 HH.span
                   [ HP.class_ $ Css.c "animate-pulse" ]

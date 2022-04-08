@@ -50,14 +50,14 @@ dateWithTimeTooltipRight t =
     )
     (HH.text $ SS.prettyDate (DateTime.date t))
 
-address :: forall slot action. SS.Address -> HH.HTML slot action
+address :: forall w i. SS.Address -> Array (HH.HTML w i)
 address (SS.Address addr) =
   let
     entryRaw title value = case value of
       Nothing -> []
       Just v ->
-        [ HH.div [ HP.classes [ Css.c "text-sm", Css.c "text-gray-700" ] ] [ HH.text title ]
-        , HH.div [ HP.classes [ Css.c "ml-2", Css.c "text-lg" ] ] v
+        [ HH.h4_ [ HH.text title ]
+        , HH.div_ v
         ]
 
     entry title value = entryRaw title ((\v -> [ HH.text v ]) <$> value)
@@ -66,17 +66,16 @@ address (SS.Address addr) =
       [] -> Nothing
       xs -> Just xs
   in
-    HH.div [ HP.classes [ Css.c "ml-2", Css.c "flex", Css.c "flex-col" ] ]
-      $ entryRaw "Street"
-          ( maybeArray
-              $ A.intersperse HH.br_
-              $ map HH.text
-              $ A.catMaybes
-                  [ addr.line1
-                  , addr.line2
-                  , addr.line3
-                  ]
-          )
+    entryRaw "Street"
+      ( maybeArray
+          $ A.intersperse HH.br_
+          $ map HH.text
+          $ A.catMaybes
+              [ addr.line1
+              , addr.line2
+              , addr.line3
+              ]
+      )
       <> entry "P/O Box" addr.postOfficeBox
       <> entry "Postal Code" addr.postalCode
       <> entry "City" addr.city
