@@ -1457,9 +1457,9 @@ render state =
           , Css.c "shadow-md"
           ]
       ]
-      [ HH.h3 [ HP.class_ (Css.c "mb-6") ] [ HH.text "Seller/Buyer" ]
+      [ HH.h3 [ HP.class_ (Css.c "mb-6") ] [ HH.text "Order details" ]
       , HH.div [ HP.classes [ Css.c "flex" ] ]
-          [ title "Legal Entity"
+          [ title "Legal entity"
           , renderSeller
           ]
       , HH.div [ HP.classes [ Css.c "flex" ] ]
@@ -1628,7 +1628,7 @@ render state =
 
   renderContent :: Array (H.ComponentHTML Action Slots m)
   renderContent =
-    [ HH.h1_ [ HH.text "Order Form" ] ]
+    [ HH.h1_ [ HH.text "Order form" ] ]
       <> case state of
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm

@@ -85,11 +85,11 @@ render state = HH.section_ [ HH.article_ content ]
           ( dataItem "SKU" (show po.sku)
               <> opt (dataItem "Title") po.title
               <> dataItem "Required" (show po.required)
-              <> dataItem "Quote Line Visible" (show po.quoteLineVisible)
+              <> dataItem "Quote line visible" (show po.quoteLineVisible)
               <> dataItem "Quantity" (show po.quantity)
-              <> dataItem "Min Quantity" (show po.minQuantity)
-              <> dataItem "Max Quantity" (show po.maxQuantity)
-              <> dataItem "Selected by Default" (show po.selectedByDefault)
+              <> dataItem "Min quantity" (show po.minQuantity)
+              <> dataItem "Max quantity" (show po.maxQuantity)
+              <> dataItem "Selected by default" (show po.selectedByDefault)
               <> dataItem "Type" (show po.type_)
           )
       ]
@@ -98,7 +98,7 @@ render state = HH.section_ [ HH.article_ content ]
   productOptions = maybe [] (html <<< blockList <<< map productOption)
     where
     html x =
-      [ HH.dt_ [ HH.text "Product Options" ]
+      [ HH.dt_ [ HH.text "Product options" ]
       , HH.dd_ [ x ]
       ]
 
@@ -124,8 +124,8 @@ render state = HH.section_ [ HH.article_ content ]
 
     renderString v =
       HH.dl_
-        ( opt (dataItem "Minimum Length" <<< show) v.minLength
-            <> opt (dataItem "Maximum Length" <<< show) v.maxLength
+        ( opt (dataItem "Minimum length" <<< show) v.minLength
+            <> opt (dataItem "Maximum length" <<< show) v.maxLength
             <> opt (dataItem "Default") v.default
         )
 
@@ -164,8 +164,8 @@ render state = HH.section_ [ HH.article_ content ]
           <> opt (dataItem "Title") p.title
           <> opt (dataItem "Description") p.description
           <> opt (dataItemRaw "Attributes" <<< renderConfigValues) p.attr
-          <> opt (dataItemRaw "Order Configuration Schema" <<< configSchemaEntry) p.orderConfigSchema
-          <> opt (dataItemRaw "Asset Configuration Schema" <<< configSchemaEntry) p.assetConfigSchema
+          <> opt (dataItemRaw "Order configuration schema" <<< configSchemaEntry) p.orderConfigSchema
+          <> opt (dataItemRaw "Asset configuration schema" <<< configSchemaEntry) p.assetConfigSchema
           <> productOptions p.options
           <> opt (dataItem "Features" <<< const "TODO") p.features
           <> dataItemRaw "Units" (renderSpecUnits p.chargeUnits)
@@ -179,7 +179,7 @@ render state = HH.section_ [ HH.article_ content ]
       <> opt (dataItem "Title") u.title
       <> opt (dataItem "Description") u.description
       <> dataItem "Kind" (show u.kind)
-      <> opt (dataItemRaw "Price Dimension Schema" <<< configSchemaEntry) u.priceDimSchema
+      <> opt (dataItemRaw "Price dimension schema" <<< configSchemaEntry) u.priceDimSchema
 
   renderSpecUnits :: Array SS.ChargeUnit -> H.ComponentHTML Action Slots m
   renderSpecUnits = blockList <<< map (HH.li_ <<< singleton <<< renderSpecUnit)
@@ -213,7 +213,7 @@ render state = HH.section_ [ HH.article_ content ]
       HH.li_
         [ HH.dl_
             ( dataItem "Currency" (show p.currency)
-                <> opt (dataItemRaw "Rate Cards" <<< renderRateCards defaultCurrency prodMap) p.rateCards
+                <> opt (dataItemRaw "Rate cards" <<< renderRateCards defaultCurrency prodMap) p.rateCards
             )
         ]
 
@@ -278,7 +278,7 @@ render state = HH.section_ [ HH.article_ content ]
           $ dataItem "ID" sol.id
           <> opt (dataItem "Title") sol.title
           <> opt (dataItem "Description") sol.description
-          <> dataItemRaw "Price Books" (blockList (map (renderPrice prodMap) sol.priceBooks))
+          <> dataItemRaw "Price books" (blockList (map (renderPrice prodMap) sol.priceBooks))
           <> dataItemRaw "Products" (blockList (map product sol.products))
       ]
     where
@@ -288,7 +288,7 @@ render state = HH.section_ [ HH.article_ content ]
         $ sol.products
 
   productCatalog (SS.ProductCatalog pc) =
-    [ HH.h1_ [ HH.text (fromMaybe "Untitled Product Catalog" pc.title) ]
+    [ HH.h1_ [ HH.text (fromMaybe "Untitled product catalog" pc.title) ]
     , HH.h2_ [ HH.text "Description" ]
     , HH.p_ [ HH.text $ fromMaybe "No description" pc.description ]
     , HH.h2_ [ HH.text "Solutions" ]

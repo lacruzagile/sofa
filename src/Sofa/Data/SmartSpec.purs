@@ -2456,12 +2456,12 @@ instance encodeOrderStatus :: EncodeJson OrderStatus where
 -- | Show pretty order status.
 prettyOrderStatus :: OrderStatus -> String
 prettyOrderStatus = case _ of
-  OsInDraft -> "In Draft"
-  OsInReview -> "In Review"
-  OsInApproval -> "In Approval"
-  OsInSignature -> "In Signature"
-  OsInConfiguration -> "In Configuration"
-  OsInFulfillment -> "In Fulfillment"
+  OsInDraft -> "In draft"
+  OsInReview -> "In review"
+  OsInApproval -> "In approval"
+  OsInSignature -> "In signature"
+  OsInConfiguration -> "In configuration"
+  OsInFulfillment -> "In fulfillment"
   OsFulfilled -> "Fulfilled"
   OsCancelled -> "Cancelled"
 
