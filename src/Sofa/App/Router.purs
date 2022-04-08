@@ -202,7 +202,7 @@ renderSideMenu currentRoute =
           , Css.c "hover:border-l-2"
           , Css.c "border-dirt-400"
           , Css.c "outline-none"
-          , Css.c "text-dirt-400"
+          , Css.c "text-stormy-300"
           ]
 
   navbarSubItem route text =
