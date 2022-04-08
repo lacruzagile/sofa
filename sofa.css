@@ -73,7 +73,7 @@
       outline-none
       border
       border-stormy-200
-      rounded-sm
+      rounded
       bg-white
       text-stormy-500
       placeholder:text-stormy-300
@@ -191,7 +191,7 @@
       outline-none
       border
       border-stormy-200
-      rounded-sm
+      rounded
       text-stormy-500
       resize-y
       placeholder:text-stormy-300
