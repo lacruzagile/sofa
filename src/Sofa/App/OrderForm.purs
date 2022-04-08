@@ -461,7 +461,9 @@ render state =
     renderProductConfig allowRemove product orderLineId cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
       [ HH.div [ HP.classes [ Css.c "my-5", Css.c "p-5", Css.c "border-l-8", Css.c "border-gray-100" ] ]
           [ HH.label_
-              [ HH.div [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ] [ HH.text "Quantity" ]
+              [ HH.div
+                  [ HP.classes [ Css.c "sofa-small-title" ] ]
+                  [ HH.text "Quantity" ]
               , renderQuantityInput cfgIdx olc
               ]
           , if allowRemove then
@@ -997,7 +999,12 @@ render state =
       where
       body tt =
         HH.div
-          [ HP.classes [ Css.c "sofa-small-title", Css.c "mr-5" ] ]
+          [ HP.classes
+              [ Css.c "sofa-small-title"
+              , Css.c "flex"
+              , Css.c "items-center"
+              ]
+          ]
           [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
           , if tt then Icon.tooltip else HH.text ""
           ]

@@ -41,7 +41,14 @@ render ::
   HH.HTML slot action ->
   HH.HTML slot action
 render input content =
-  HH.div [ HP.classes [ Css.c "sofa-tooltip-group", Css.c "inline-block", Css.c "relative" ] ]
+  HH.div
+    [ HP.classes
+        [ Css.c "sofa-tooltip-group"
+        , Css.c "inline-block"
+        , Css.c "relative"
+        , Css.c "w-fit"
+        ]
+    ]
     [ content
     , HH.div
         [ HP.classes
