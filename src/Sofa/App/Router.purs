@@ -119,7 +119,7 @@ renderSideMenu currentRoute =
         , navbarItem Icon.piggybank "Billing  ⃰" []
         , navbarItem Icon.puzzle "Assets  ⃰" []
         , navbarItem Icon.settings "Project settings  ⃰" []
-        , navbarItem Icon.package "Alert test"
+        , navbarItem Icon.package "Alert test  ⃰  ⃰"
             $ let
                 btn typ =
                   HH.li
@@ -138,8 +138,11 @@ renderSideMenu currentRoute =
                 , btn Alert.Error
                 ]
         , HH.div
-            [ HP.classes [ Css.c "ml-5", Css.c "pt-10", Css.c "text-stormy-300" ] ]
-            [ HH.text " ⃰ TODO" ]
+            [ HP.classes [ Css.c "pt-10", Css.c "text-stormy-300" ] ]
+            [ HH.text "  ⃰ TODO" ]
+        , HH.div
+            [ HP.classes [ Css.c "text-stormy-300" ] ]
+            [ HH.text "  ⃰  ⃰ Ignore this" ]
         ]
     ]
   where
