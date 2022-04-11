@@ -141,14 +141,23 @@ renderDetails st =
     , Modal.render [] $ renderBody st.seller
     ]
   where
+  notAvailableIfNull = case _ of
+    [] -> HH.div [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text "None" ]
+    elems -> HH.div_ elems
+
   renderBody sellerOpt =
     let
-      defaultCurrency = HH.text $ maybe "" (show <<< _.defaultBankCurrency <<< unwrap) st.legalEntity
+      defaultCurrency =
+        notAvailableIfNull
+          $ case st.legalEntity of
+              Nothing -> []
+              Just (SS.LegalEntity le) -> [ HH.text (show le.defaultBankCurrency) ]
 
       subtleComma = HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text ", " ]
 
       currencies =
-        A.intersperse subtleComma
+        notAvailableIfNull
+          $ A.intersperse subtleComma
           $ map (HH.text <<< show)
           $ A.fromFoldable
           $ maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity
@@ -178,7 +187,7 @@ renderDetails st =
                   , renderSmallTitle "Bank currency"
                   , defaultCurrency
                   , renderSmallTitle "Available currencies"
-                  , HH.div_ currencies
+                  , currencies
                   , renderSmallTitle "Primary Contact"
                   , renderContact seller.contacts.primary
                   , renderSmallTitle "Finance Contact"
@@ -227,14 +236,9 @@ renderDetails st =
         Just "" -> []
         Just val -> [ HH.text val ]
 
-      handleNoContact = case _ of
-        [] -> [ HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text "None" ] ]
-        vals -> vals
-
-      subtleSlash = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text " / " ]
+      subtleSlash = HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text " / " ]
     in
-      HH.div_
-        $ handleNoContact
+      notAvailableIfNull
         $ A.intersperse subtleSlash
         $ opt contact.displayName
         <> opt contact.email
