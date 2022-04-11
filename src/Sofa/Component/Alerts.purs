@@ -72,8 +72,8 @@ data Action
 
 typeTtl :: AlertType -> Maybe Milliseconds
 typeTtl = case _ of
-  Informative -> Just $ Milliseconds 8_000.0
-  Success -> Just $ Milliseconds 8_000.0
+  Informative -> Just $ Milliseconds 10_000.0
+  Success -> Just $ Milliseconds 5_000.0
   Warning -> Just $ Milliseconds 10_000.0
   Error -> Nothing
 
