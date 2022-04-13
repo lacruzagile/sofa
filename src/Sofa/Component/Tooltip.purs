@@ -3,6 +3,7 @@
 module Sofa.Component.Tooltip
   ( Input
   , Orientation(..)
+  , contentWithIcon
   , defaultInput
   , render
   ) where
@@ -11,6 +12,7 @@ import Prelude
 import Data.Maybe (Maybe(..), maybe)
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 
 -- | The orientation of the tooltip relative the content. E.g., 'Top' indicates
@@ -34,6 +36,15 @@ defaultInput =
   , width: Nothing
   , inverted: false
   }
+
+-- | Some HTML content followed by a tooltip icon.
+contentWithIcon ∷ forall w i. HH.HTML w i → HH.HTML w i
+contentWithIcon content =
+  HH.span
+    [ HP.classes [ Css.c "flex", Css.c "items-center" ] ]
+    [ content
+    , Icon.tooltip
+    ]
 
 render ::
   forall slot action.

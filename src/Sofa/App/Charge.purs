@@ -1,33 +1,37 @@
 -- | A component that presents a view of product charges and quantity.
-module Sofa.App.Charge (Slot, Output, proxy, component) where
+module Sofa.App.Charge (Output, Slot, component, proxy) where
 
 import Prelude
 import DOM.HTML.Indexed as HTML
 import Data.Array (mapWithIndex)
 import Data.Array as A
 import Data.Either (Either(..))
-import Data.Foldable (traverse_)
 import Data.FoldableWithIndex (findMapWithIndex)
+import Data.Int as Int
 import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
 import Data.Newtype (unwrap)
 import Data.Set as Set
+import Data.String (Pattern(..), stripSuffix) as S
+import Data.String.Utils (stripChars) as S
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.EditablePrice as EditablePrice
-import Sofa.App.EditableQuantity as EditableQuantity
 import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Sofa.Data.Charge as Charge
+import Sofa.Data.Currency (numberFormatter)
 import Sofa.Data.Quantity (QuantityMap, Quantity)
+import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Type.Proxy (Proxy(..))
 
@@ -39,7 +43,6 @@ proxy = Proxy
 
 type Slots
   = ( editablePrice :: EditablePrice.Slot PriceIndex
-    , editableQuantity :: EditableQuantity.Slot QuantityIndex
     )
 
 type PriceIndex
@@ -53,6 +56,8 @@ type Input
     , defaultCurrency :: SS.ChargeCurrency
     , charges :: Array SS.Charge
     , estimatedUsage :: QuantityMap
+    , readOnly :: Boolean
+    -- ^ Whether editing the quantity and price should be allowed.
     }
 
 type Output
@@ -63,6 +68,8 @@ type State
     , defaultCurrency :: SS.ChargeCurrency
     , charges :: Array SS.Charge
     , estimatedUsage :: QuantityMap
+    , readOnly :: Boolean
+    -- ^ Whether editing the quantity and price should be allowed.
     , aggregatedQuantity :: AggregatedQuantityMap
     }
 
@@ -89,7 +96,8 @@ type AggregatedQuantity
   = QuantityType Int
 
 data Action
-  = SetCustomPrice PriceIndex SS.Price
+  = NoOp
+  | SetCustomPrice PriceIndex SS.Price
   | SetQuantity QuantityIndex (Maybe Int)
 
 component :: forall query m. MonadAff m => H.Component query Input Output m
@@ -106,36 +114,53 @@ initialState input =
   , defaultCurrency: input.defaultCurrency
   , charges: input.charges
   , estimatedUsage: input.estimatedUsage
+  , readOnly: input.readOnly
   , aggregatedQuantity: aggregateQuantity input.estimatedUsage
   }
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
-render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity } =
+render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, readOnly } =
   HH.ul_
     $ A.mapWithIndex (\i r -> HH.li_ [ renderCharge i r ]) charges
   where
-  opt :: forall a b. (a -> Array b) -> Maybe a -> Array b
-  opt = maybe []
-
-  renderDataItem label value =
-    [ HH.dt_ [ HH.text label ]
-    , HH.dd_ [ value ]
-    ]
-
-  renderDataItemString label value = renderDataItem label $ HH.text value
-
   renderEditablePrice :: PriceIndex -> SS.Price -> Maybe SS.ChargeCurrency -> H.ComponentHTML Action Slots m
   renderEditablePrice priceIdx price currency =
     HH.slot EditablePrice.proxy priceIdx EditablePrice.component input
       $ SetCustomPrice priceIdx
     where
     input :: EditablePrice.Input
-    input = { price: price, currency: fromMaybe defaultCurrency currency }
+    input =
+      { price: price
+      , currency: fromMaybe defaultCurrency currency
+      , readOnly
+      }
 
-  renderEditableQuantity :: QuantityIndex -> Maybe Quantity -> H.ComponentHTML Action Slots m
-  renderEditableQuantity quantityIdx qty =
-    HH.slot EditableQuantity.proxy quantityIdx EditableQuantity.component qty
-      $ SetQuantity quantityIdx
+  renderEditableUsage :: QuantityIndex -> Maybe Quantity -> H.ComponentHTML Action Slots m
+  renderEditableUsage quantityIdx qty
+    | readOnly = HH.text (maybe "0" (numberFormatter <<< Int.toNumber) qty)
+    | otherwise =
+      HH.input
+        [ HP.type_ HP.InputText
+        , HP.classes
+            [ Css.c "nectary-input"
+            , Css.c "px-2"
+            , Css.c "w-24"
+            ]
+        , HP.value (maybe "0" (numberFormatter <<< Int.toNumber) qty)
+        , HE.onValueChange
+            ( maybe NoOp (SetQuantity quantityIdx <<< Just)
+                <<< parseQuantity
+            )
+        ]
+
+  parseQuantity :: String -> Maybe Int
+  parseQuantity = parseMagInt <<< S.stripChars ", "
+    where
+    parseMagInt s = case S.stripSuffix (S.Pattern "M") s of
+      Just s' -> (1_000_000 * _) <$> Int.fromString s'
+      Nothing -> case S.stripSuffix (S.Pattern "k") s of
+        Just s' -> (1_000 * _) <$> Int.fromString s'
+        Nothing -> Int.fromString s
 
   findDimQuantity :: SS.ChargeUnitId -> SS.DimValue -> Maybe Quantity
   findDimQuantity unitId dim = do
@@ -144,8 +169,8 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       Left q' -> pure q'
       Right dimMap -> Map.lookup dim dimMap
 
-  renderEstimatedVolume :: QuantityIndex -> SS.DimValue -> Maybe (H.ComponentHTML Action Slots m)
-  renderEstimatedVolume quantityIdx dim = do
+  renderEstimatedUsage :: QuantityIndex -> SS.DimValue -> Maybe (H.ComponentHTML Action Slots m)
+  renderEstimatedUsage quantityIdx dim = do
     chargeKind <- Charge.lookupChargeKind quantityIdx.unitId unitMap
     if chargeKind /= SS.CkUsage then
       Nothing
@@ -153,7 +178,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       let
         usage = findDimQuantity quantityIdx.unitId dim
       in
-        Just $ renderEditableQuantity quantityIdx usage
+        Just $ renderEditableUsage quantityIdx usage
 
   renderTotalEstimatedVolume :: SS.ChargeUnitId -> Maybe (H.ComponentHTML Action Slots m)
   renderTotalEstimatedVolume unitId = do
@@ -164,7 +189,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       Just $ HH.text $ fromMaybe "N/A"
         $ do
             q <- Map.lookup unitId aggregatedQuantity
-            pure $ show $ qtToValue q
+            pure $ numberFormatter $ Int.toNumber $ qtToValue q
 
   renderDimVals :: Array String -> SS.DimValue -> Array (H.ComponentHTML Action Slots m)
   renderDimVals dimKeys (SS.DimValue v) = renderConfigValue dimKeys v
@@ -208,18 +233,23 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
           charge.currency
       ]
         <> maybe [] (\q -> [ HH.br_, HH.text "Estimated Volume: ", q ])
-            (renderEstimatedVolume { unitId: charge.unit, dim: Nothing } nullDim)
+            (renderEstimatedUsage { unitId: charge.unit, dim: Nothing } nullDim)
 
     renderChargeDim charge =
       [ renderUnitHdr "ChargeDim" charge.unit
-      , table
-          $ [ thead
+      , HH.table_
+          $ [ HH.thead_
                 [ HH.tr_
-                    $ thColSpan (A.length dims) [ HH.text "Dimension" ]
-                    <> [ th_ [ HH.text "Price" ] ]
-                , HH.tr_
-                    $ map (th_ <<< A.singleton <<< HH.text) dims
+                    $ thColSpan
+                        (A.length dimLabels)
+                        (centered <> borderedBelow)
+                        [ HH.text "Dimension" ]
                     <> [ th_ [] ]
+                , HH.tr [ HP.classes borderedBelow ]
+                    $ map (th_ <<< A.singleton) dimLabels
+                    <> [ th gappedLeft [] [ HH.text "Price" ]
+                      , th_ [ HH.text "Est. Usage" ]
+                      ]
                 ]
             ]
           <> A.mapWithIndex renderChargeRow charge.priceByDim
@@ -233,32 +263,22 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
           ( \q ->
               [ tfoot
                   [ HH.tr_
-                      $ thColSpanAlignRight (A.length dims)
-                          [ Tooltip.render
-                              (Tooltip.defaultInput { text = "Total Estimated Usage" })
-                              (HH.text "Total #")
-                          ]
-                      <> [ td_ [ q ] ]
+                      $ thTotalEstimatedUsageLabel (A.length dimLabels)
+                      <> [ td_ [], td_ [ q ] ]
                   ]
               ]
           )
           (renderTotalEstimatedVolume unitId)
 
-      -- Fatalistically assume that all units use the same dimensions.
-      dims = case unit of
-        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ FO.keys o.properties
-        Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
-        _ -> []
+      dimLabels = maybe [] unitDimLabels unit
+
+      dimKeys = maybe [] unitDimKeys unit
 
       renderChargeRow dimIdx (SS.PricePerDim p) =
-        HH.tr_
-          $ map (td_ <<< A.singleton) (if A.null dims then [] else renderDimVals dims p.dim)
-          <> [ td_
-                $ [ renderEditablePrice pIdx
-                      price
-                      charge.currency
-                  ]
-                <> maybe [] (\q -> [ HH.text " × ", q ]) (renderEstimatedVolume qIdx p.dim)
+        HH.tr [ HP.classes [ Css.c "h-16", Css.c "even:bg-honey-100" ] ]
+          $ map (td_ <<< A.singleton) (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
+          <> [ td_ [ renderEditablePrice pIdx price charge.currency ]
+            , td_ $ maybe [] A.singleton $ renderEstimatedUsage qIdx p.dim
             ]
         where
         pIdx = { chargeIdx, subChargeIdx, dimIdx, unitIdx: 0, segIdx: 0 }
@@ -269,8 +289,8 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
     renderChargeSeg c =
       [ renderUnitHdr "ChargeSeg" c.unit
-      , table
-          $ [ thead
+      , HH.table_
+          $ [ HH.thead_
                 [ HH.tr_
                     [ th_ [ HH.text "Segment" ]
                     , th_ [ HH.text "Price" ]
@@ -283,7 +303,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
       ]
         <> maybe []
             (\q -> [ HH.br_, HH.text "Estimated Volume: ", q ])
-            (renderEstimatedVolume { unitId: c.unit, dim: Nothing } nullDim)
+            (renderEstimatedUsage { unitId: c.unit, dim: Nothing } nullDim)
       where
       SS.Segmentation { model, segments } = c.segmentation
 
@@ -316,49 +336,72 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
     SS.ChargeDimUnitOptSeg c -> renderChargeDimUnitOptSeg c
     where
     renderChargeDimUnitOptSeg charge =
-      [ table
-          $ [ thead
-                [ HH.tr_
-                    $ thColSpan (A.length dims) [ HH.text "Dimension" ]
-                    <> [ th [ HP.colSpan $ A.length units ] [ HH.text "Unit" ] ]
-                , HH.tr_
-                    $ map (th_ <<< A.singleton)
-                    $ (HH.text <$> dims)
-                    <> renderUnitLabels
+      [ HH.table_
+          $ [ HH.thead_
+                [ HH.tr [ HP.classes borderedBelow ]
+                    $ thColSpan
+                        (A.length dimLabels)
+                        (gappedRight <> centered)
+                        [ HH.text "Dimension" ]
+                    <> A.concatMap
+                        ( thColSpan
+                            2
+                            (gappedLeft <> centered)
+                            <<< renderUnitLabel
+                        )
+                        units
+                , HH.tr [ HP.classes borderedBelow ]
+                    $ map (th [] [] <<< A.singleton) dimLabels
+                    <> A.concatMap
+                        ( const
+                            [ th gappedLeft [] [ HH.text "Price" ]
+                            , th_ [ HH.text "Est. Usage" ]
+                            ]
+                        )
+                        units
                 ]
             ]
           <> mapWithIndex renderChargeRow charge.priceByUnitByDim
-          <> totalEstimatedRow
+          <> renderTotalEstimatedRow
       ]
       where
       units = A.mapMaybe (\id -> Map.lookup id unitMap) $ Set.toUnfoldable charge.units
 
-      renderUnitLabels = mkLabel <$> units
+      renderUnitLabel = A.singleton <<< mkLabel
         where
         mkLabel u =
           Tooltip.render
             (Tooltip.defaultInput { text = show $ _.kind $ unwrap u })
-            (HH.text $ Charge.chargeUnitLabel u)
+            (HH.text $ Charge.chargeUnitLabel u <> " unit")
 
       -- Fatalistically assume that there is at least one unit defined, then
       -- fatalistically assume that all units use the same dimensions.
-      dims = case A.head units of
-        Just (SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) }) -> A.fromFoldable $ FO.keys o.properties
-        Just (SS.ChargeUnit { priceDimSchema: Just _ }) -> [ "" ]
-        _ -> []
+      dimLabels = maybe [] unitDimLabels (A.head units)
 
-      totalEstimatedRow
+      -- Fatalistically assume that there is at least one unit defined, then
+      -- fatalistically assume that all units use the same dimensions.
+      dimKeys = maybe [] unitDimKeys (A.head units)
+
+      renderTotalEstimatedRow
         | A.all A.null totalEstimatedCells = []
         | otherwise =
-          [ tfoot
-              [ HH.tr_
-                  $ thColSpanAlignRight (A.length dims)
-                      [ Tooltip.render
-                          (Tooltip.defaultInput { text = "Total Estimated Usage" })
-                          (HH.text "Total #")
-                      ]
-                  <> (td_ <$> totalEstimatedCells)
-                  <> [ td_ [] ]
+          [ HH.tfoot_
+              [ HH.tr [ HP.classes borderedAbove ]
+                  $ thTotalEstimatedUsageLabel (A.length dimLabels)
+                  <> A.concatMap
+                      ( \c ->
+                          [ td_ []
+                          , td
+                              ( if readOnly then
+                                  []
+                                else
+                                  -- When editable then we have to adjust for the input box padding.
+                                  [ Css.c "pl-5" ]
+                              )
+                              c
+                          ]
+                      )
+                      totalEstimatedCells
               ]
           ]
 
@@ -380,20 +423,22 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
         SS.PricePerDimUnitOptSeg (SS.PricePerDimUnitSeg p) ->
           HH.tr_
             $ map (td_ <<< A.singleton)
-            $ (if A.null dims then [] else renderDimVals dims p.dim)
+            $ (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
             <> A.mapWithIndex (renderPriceBySegmentPerUnit p.dim dimIdx) p.priceBySegmentByUnit
         SS.PricePerDimUnitOptNoSeg (SS.PricePerDimUnit p) ->
-          HH.tr_
-            $ map (td_ <<< A.singleton)
-            $ (if A.null dims then [] else renderDimVals dims p.dim)
-            <> A.mapWithIndex (renderPricePerUnit p.dim dimIdx) p.priceByUnit
+          let
+            tdOne = td_ <<< A.singleton
+          in
+            HH.tr [ HP.classes [ Css.c "h-16", Css.c "even:bg-honey-100" ] ]
+              $ (if A.null dimKeys then [] else map tdOne (renderDimVals dimKeys p.dim))
+              <> map tdOne (A.concat (A.mapWithIndex (renderPricePerUnit p.dim dimIdx) p.priceByUnit))
 
       renderPriceBySegmentPerUnit _dim _dimIdx _priceIdx (SS.PricePerUnitSeg _ppus) = HH.text "TODO"
 
       renderPricePerUnit dim dimIdx unitIdx (SS.PricePerUnit ppu) =
-        HH.div_
-          $ [ renderEditablePrice pIdx price (currency ppu.unit) ]
-          <> maybe [] (\q -> [ HH.text " × ", q ]) (renderEstimatedVolume qIdx dim)
+        [ renderEditablePrice pIdx price (currency ppu.unit)
+        , fromMaybe (HH.text "") (renderEstimatedUsage qIdx dim)
+        ]
         where
         pIdx = { chargeIdx, subChargeIdx: 0, dimIdx, unitIdx, segIdx: 0 }
 
@@ -403,67 +448,100 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity }
 
   renderCharge :: Int -> SS.Charge -> H.ComponentHTML Action Slots m
   renderCharge chargeIdx charge =
-    HH.section [ HP.class_ (Css.c "overflow-auto") ]
-      $ renderChargeInner chargeIdx charge
-      <> [ HH.dl_
-            $ opt (renderDataItemString "Description") (Charge.description charge)
-        -- <> renderDataItemString "Term of Price Change" (show c.termOfPriceChangeInDays <> " days")
+    HH.section_
+      $ [ case Charge.description charge of
+            Nothing -> HH.text ""
+            Just d -> HH.p [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text d ]
         ]
+      <> renderChargeInner chargeIdx charge
 
-table :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-table = HH.table_
+thTotalEstimatedUsageLabel :: forall w i. Int -> Array (HH.HTML w i)
+thTotalEstimatedUsageLabel numDims = case numDims of
+  0 -> thLabel
+  _ -> thColSpan (numDims - 1) [] [] <> thLabel
+  where
+  thLabel =
+    [ th_
+        [ Tooltip.render
+            (Tooltip.defaultInput { text = "Total Estimated Usage" })
+            (HH.text "Total #")
+        ]
+    ]
 
-thead :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-thead = HH.thead [ HP.classes [ Css.c "border-b" ] ]
+unitDimLabels :: forall w i. SS.ChargeUnit -> Array (HH.HTML w i)
+unitDimLabels = case _ of
+  SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) } ->
+    let
+      withDesc cse label = case SS.configSchemaEntryDescription cse of
+        Nothing -> HH.text label
+        Just description ->
+          Tooltip.render
+            (Tooltip.defaultInput { text = description, width = Just "20rem" })
+            (Tooltip.contentWithIcon $ HH.text label)
+
+      dimLabel key cse = withDesc cse $ fromMaybe key $ Schema.getTitle cse
+    in
+      FO.values $ FO.mapWithKey dimLabel o.properties
+  SS.ChargeUnit { priceDimSchema: Just _ } -> [ HH.text "" ]
+  _ -> []
+
+unitDimKeys :: SS.ChargeUnit -> Array String
+unitDimKeys = case _ of
+  SS.ChargeUnit { priceDimSchema: Just (SS.CseObject o) } -> FO.keys o.properties
+  _ -> []
 
 tfoot :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-tfoot = HH.thead [ HP.classes [ Css.c "border-t" ] ]
+tfoot = HH.thead [ HP.classes [ Css.c "border-t", Css.c "border-stormy-200" ] ]
 
-th :: forall w i. HH.Node HTML.HTMLth w i
-th props =
-  HH.th
-    $ [ HP.classes
-          [ Css.c "p-3"
-          , Css.c "text-center"
-          , Css.c "font-semibold"
-          , Css.c "text-sm"
-          , Css.c "text-stormy-200"
-          ]
-      ]
-    <> props
+thBaseClasses ∷ Array HH.ClassName
+thBaseClasses =
+  [ Css.c "py-3"
+  , Css.c "px-3"
+  , Css.c "box-content"
+  , Css.c "font-semibold"
+  , Css.c "text-stormy-200"
+  ]
 
-thRight :: forall w i. HH.Node HTML.HTMLth w i
-thRight props =
-  HH.th
-    $ [ HP.classes
-          [ Css.c "p-3"
-          , Css.c "text-right"
-          , Css.c "font-semibold"
-          , Css.c "text-sm"
-          , Css.c "text-stormy-200"
-          ]
-      ]
-    <> props
+th :: forall w i. Array HH.ClassName -> HH.Node HTML.HTMLth w i
+th classes props = HH.th $ [ HP.classes (thBaseClasses <> classes) ] <> props
 
 th_ :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-th_ = th []
+th_ = th [] []
+
+td :: forall w i. Array HH.ClassName -> Array (HH.HTML w i) -> HH.HTML w i
+td classes = HH.td [ HP.classes ([ Css.c "px-3" ] <> classes) ]
 
 td_ :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-td_ = HH.td [ HP.classes [ Css.c "p-3" ] ]
+td_ = td []
 
-thColSpan :: forall m. Int -> Array (H.ComponentHTML Action Slots m) -> Array (H.ComponentHTML Action Slots m)
-thColSpan colSpan els
-  | colSpan == 0 = []
-  | otherwise = [ th [ HP.colSpan colSpan ] els ]
-
-thColSpanAlignRight ::
-  forall m.
+thColSpan ::
+  forall w i.
   Int ->
-  Array (H.ComponentHTML Action Slots m) ->
-  Array (H.ComponentHTML Action Slots m)
-thColSpanAlignRight colSpan els
+  Array HH.ClassName ->
+  Array (HH.HTML w i) ->
+  Array (HH.HTML w i)
+thColSpan colSpan classes els
   | colSpan == 0 = []
-  | otherwise = [ thRight [ HP.colSpan colSpan ] els ]
+  | otherwise = [ th classes [ HP.colSpan colSpan ] els ]
+
+borderedBelow :: Array HH.ClassName
+borderedBelow = [ Css.c "border-b", Css.c "border-stormy-200" ]
+
+borderedAbove ∷ Array HH.ClassName
+borderedAbove = [ Css.c "border-t", Css.c "border-stormy-200" ]
+
+centered :: Array HH.ClassName
+centered = [ Css.c "text-center" ]
+
+-- | CSS classes the produce a gap in the table row border to the right of the
+-- | current cell.
+gappedRight :: Array HH.ClassName
+gappedRight = [ Css.c "border-r-8", Css.c "border-transparent" ]
+
+-- | CSS classes the produce a gap in the table row border to the left of the
+-- | current cell.
+gappedLeft :: Array HH.ClassName
+gappedLeft = [ Css.c "border-l-8", Css.c "border-transparent" ]
 
 showChargeUnitRef :: SS.ChargeUnitId -> String
 showChargeUnitRef (SS.ChargeUnitId id) = id
@@ -487,6 +565,7 @@ aggregateQuantity quantityMap =
 
 handleAction :: forall m. Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
+  NoOp -> pure unit
   SetCustomPrice { chargeIdx, subChargeIdx, dimIdx, unitIdx, segIdx } (SS.Price price) ->
     let
       updatePrice ::
@@ -594,25 +673,6 @@ handleAction = case _ of
             { estimatedUsage = estimatedUsage'
             , aggregatedQuantity = aggregateQuantity estimatedUsage'
             }
-    -- If we are setting a dimension specific quantity then override the value
-    -- of the aggregate unit quantity component.
-    when (isJust dim)
-      $ let
-          q' = qtToValue <$> Map.lookup unitId st'.aggregatedQuantity
-        in
-          H.tell EditableQuantity.proxy { unitId, dim: Nothing } (EditableQuantity.SetQuantity q')
-    -- If we are setting an aggregated quantity then override the dimension
-    -- specific values.
-    when (isNothing dim)
-      $ traverse_
-          ( \dim' ->
-              H.tell EditableQuantity.proxy
-                { unitId, dim: Just dim' }
-                (EditableQuantity.SetQuantity Nothing)
-          )
-      $ Set.unions
-      $ Charge.dims
-      <$> st'.charges
     -- Inform the parent component (typically the order form) about the new
     -- prices and quantity.
     H.raise { charges: st'.charges, estimatedUsage: st'.estimatedUsage }
