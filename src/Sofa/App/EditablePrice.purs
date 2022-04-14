@@ -187,7 +187,7 @@ render state
                               isJust discount
                         , HE.onClick \_ -> RemoveDiscount
                         ]
-                        [ HH.text "Remove discount" ]
+                        [ HH.text "Remove" ]
                     , HH.div [ HP.class_ (Css.c "grow") ] []
                     , HH.button
                         [ HP.type_ HP.ButtonButton
