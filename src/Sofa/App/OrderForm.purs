@@ -547,10 +547,19 @@ render state =
         [ HH.div [ HP.classes [ Css.c "flex", Css.c "w-full" ] ]
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-8" ]
+                [ HP.classes
+                    [ Css.c "sofa-btn-secondary"
+                    , Css.c "h-8"
+                    , Css.c "px-6"
+                    , Css.c "gap-x-4"
+                    ]
                 , HE.onClick \_ -> OrderLineAddConfig olIdx
                 ]
-                [ HH.text "Add configuration" ]
+                [ Icon.add
+                    [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
+                    ]
+                , HH.text "Add configuration"
+                ]
             ]
         ]
 
