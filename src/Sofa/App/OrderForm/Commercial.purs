@@ -174,12 +174,15 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Modal.render modalToolbar $ renderBody st.commercial
+    , Modal.render
+        $ Modal.defaultInput
+            { title = HH.text "Commercial"
+            , closeAction = Just (const CancelAndCloseDetails)
+            , content = renderContent st.commercial
+            }
     ]
   where
-  modalToolbar = [ Modal.closeBtn (\_ -> CancelAndCloseDetails) ]
-
-  renderBody commercialLoadable =
+  renderContent commercialLoadable =
     HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-4" ] ]
       [ case st.crmAccountId of
           Just crmAccountId

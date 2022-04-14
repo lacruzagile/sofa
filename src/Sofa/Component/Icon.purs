@@ -7,7 +7,7 @@ module Sofa.Component.Icon
   , checkmark
   , classes
   , close
-  , close3
+  , close6
   , editorMode
   , error
   , id
@@ -111,16 +111,14 @@ checkCircle attrs =
     [ path [ d "M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM9.29 16.29L5.7 12.7C5.31 12.31 5.31 11.68 5.7 11.29C6.09 10.9 6.72 10.9 7.11 11.29L10 14.17L16.88 7.29C17.27 6.9 17.9 6.9 18.29 7.29C18.68 7.68 18.68 8.31 18.29 8.7L10.7 16.29C10.32 16.68 9.68 16.68 9.29 16.29Z" ]
     ]
 
-close3 :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
-close3 attrs = close ([ classes [ Css.c "w-3", Css.c "h-3" ] ] <> attrs)
+close6 :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+close6 attrs = close ([ classes [ Css.c "w-6", Css.c "h-6" ] ] <> attrs)
 
 close :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 close attrs =
   svg
-    ([ viewBox "0 0 14 14", role "img" ] <> attrs)
-    [ path
-        [ d "M13.3.71a.996.996 0 0 0-1.41 0L7 5.59 2.11.7A.996.996 0 1 0 .7 2.11L5.59 7 .7 11.89a.996.996 0 1 0 1.41 1.41L7 8.41l4.89 4.89a.996.996 0 1 0 1.41-1.41L8.41 7l4.89-4.89c.38-.38.38-1.02 0-1.4Z"
-        ]
+    ([ viewBox "0 0 24 24" ] <> attrs)
+    [ path [ d "M18.3 5.70997C17.91 5.31997 17.28 5.31997 16.89 5.70997L12 10.59L7.10997 5.69997C6.71997 5.30997 6.08997 5.30997 5.69997 5.69997C5.30997 6.08997 5.30997 6.71997 5.69997 7.10997L10.59 12L5.69997 16.89C5.30997 17.28 5.30997 17.91 5.69997 18.3C6.08997 18.69 6.71997 18.69 7.10997 18.3L12 13.41L16.89 18.3C17.28 18.69 17.91 18.69 18.3 18.3C18.69 17.91 18.69 17.28 18.3 16.89L13.41 12L18.3 7.10997C18.68 6.72997 18.68 6.08997 18.3 5.70997Z" ]
     ]
 
 error :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i

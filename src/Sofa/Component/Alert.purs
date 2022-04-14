@@ -75,16 +75,13 @@ closeBtn closeAction =
   HH.button
     [ HP.classes
         [ Css.c "float-right"
-        , Css.c "p-4"
+        , Css.c "p-3"
         , Css.c "-m-3"
         , Css.c "ml-0"
         ]
     , HE.onClick $ \_ -> closeAction unit
     ]
-    [ Icon.close
-        [ Icon.classes [ Css.c "w-3.5", Css.c "h-3.5" ]
-        , Icon.ariaLabel "Close"
-        ]
+    [ Icon.close6 [ Icon.ariaLabel "Close" ]
     ]
 
 render :: forall w i. Alert w i -> HH.HTML w i

@@ -133,12 +133,15 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Modal.render [ closeBtn ] $ renderBody
+    , Modal.render
+        $ Modal.defaultInput
+            { title = HH.text "Notes"
+            , closeAction = Just (const CloseDetails)
+            , content = renderContent
+            }
     ]
   where
-  closeBtn = Modal.closeBtn (\_ -> CloseDetails)
-
-  renderBody =
+  renderContent =
     HH.div
       [ HP.classes
           [ Css.c "w-full"

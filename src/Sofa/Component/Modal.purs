@@ -1,11 +1,11 @@
 -- | A pseudo-component providing Nectary style modals.
 module Sofa.Component.Modal
-  ( render
-  , closeBtn
+  ( defaultInput
+  , render
   ) where
 
 import Prelude
-import Data.Array as A
+import Data.Maybe (Maybe(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
@@ -13,36 +13,37 @@ import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 
-closeBtn :: forall slot action. (Unit -> action) -> HH.HTML slot action
-closeBtn closeAction =
-  HH.button
-    [ HP.classes
-        [ Css.c "cursor-pointer"
-        , Css.c "px-3"
-        , Css.c "py-3"
-        ]
-    -- Apparently needed to make the SVG appear completely centered in the
-    -- button.
-    , HP.style "font-size:0"
-    , HE.onClick $ \_ -> closeAction unit
-    ]
-    [ Icon.close3 [ Icon.ariaLabel "Close" ] ]
+type Input w i
+  = { title :: HH.PlainHTML
+    , closeAction :: Maybe (Unit -> i)
+    -- ^ The close action to trigger when the close icon is clicked. If
+    -- nothing then no close button is added.
+    , content :: HH.HTML w i
+    }
 
-render ::
-  forall slot action.
-  Array (HH.HTML slot action) ->
-  HH.HTML slot action ->
-  HH.HTML slot action
-render toolbarContent body =
+defaultInput :: forall w i. Input w i
+defaultInput =
+  { title: HH.text ""
+  , closeAction: Nothing
+  , content: HH.text ""
+  }
+
+render :: forall w i. Input w i -> HH.HTML w i
+render input =
   faded
     [ wrapper
-        $ [ if A.null toolbarContent then empty else toolbar toolbarContent
-          , body
+        $ [ HH.div [ HP.classes [ Css.c "mb-4", Css.c "flex" ] ]
+              [ HH.h3
+                  [ HP.class_ (Css.c "grow") ]
+                  [ HH.fromPlainHTML input.title ]
+              , case input.closeAction of
+                  Nothing -> HH.text ""
+                  Just act -> renderCloseButton act
+              ]
+          , input.content
           ]
     ]
   where
-  empty = HH.span_ []
-
   faded =
     HH.div
       [ HP.classes
@@ -71,12 +72,14 @@ render toolbarContent body =
       , HPAria.modal "true"
       ]
 
-  toolbar =
-    HH.div
+  renderCloseButton act =
+    HH.button
       [ HP.classes
-          [ Css.c "relative"
-          , Css.c "float-right"
+          [ Css.c "cursor-pointer"
           , Css.c "flex"
-          , Css.c "-m-8"
+          , Css.c "items-center"
+          , Css.c "justify-center"
           ]
+      , HE.onClick $ \_ -> act unit
       ]
+      [ Icon.close6 [ Icon.ariaLabel "Close" ] ]

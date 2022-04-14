@@ -425,7 +425,7 @@ render state =
                 ]
             , HE.onClick \_ -> RemoveOrderLine olIdx
             ]
-            [ Icon.close3 [ Icon.ariaLabel "Remove order line" ] ]
+            [ Icon.close6 [ Icon.ariaLabel "Remove order line" ] ]
         ]
 
     body subBody =
@@ -1214,7 +1214,7 @@ render state =
                     ]
                 , HE.onClick \_ -> RemoveSection { sectionIndex: secIdx }
                 ]
-                [ Icon.close3 [ Icon.ariaLabel "Remove order section" ] ]
+                [ Icon.close6 [ Icon.ariaLabel "Remove order section" ] ]
             ]
       in
         HH.div

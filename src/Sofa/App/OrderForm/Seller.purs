@@ -138,14 +138,18 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Modal.render [] $ renderBody st.seller
+    , Modal.render
+        $ Modal.defaultInput
+            { title = HH.text "Legal entity"
+            , content = renderContent st.seller
+            }
     ]
   where
   notAvailableIfNull = case _ of
     [] -> HH.div [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text "None" ]
     elems -> HH.div_ elems
 
-  renderBody sellerOpt =
+  renderContent sellerOpt =
     let
       defaultCurrency =
         notAvailableIfNull

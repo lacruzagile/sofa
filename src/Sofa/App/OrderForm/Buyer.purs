@@ -159,14 +159,18 @@ renderDetails ::
 renderDetails st =
   HH.div_
     [ renderSummary st
-    , Modal.render [] $ renderBody st.buyer
+    , Modal.render
+        $ Modal.defaultInput
+            { title = HH.text "Customer"
+            , content = renderContent st.buyer
+            }
     ]
   where
   mkWebsiteUrl s
     | startsWith "http://" s || startsWith "https://" s = s
     | otherwise = "https://" <> s
 
-  renderBody buyerLoadable =
+  renderContent buyerLoadable =
     let
       renderBuyerData (SS.Buyer buyer) =
         HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-4" ] ]

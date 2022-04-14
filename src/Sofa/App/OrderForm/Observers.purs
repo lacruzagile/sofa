@@ -133,14 +133,18 @@ renderModal ::
 renderModal state observer =
   HH.div_
     [ renderSummary state
-    , Modal.render [] $ renderBody
+    , Modal.render
+        $ Modal.defaultInput
+            { title = HH.text "Add observer"
+            , content = renderContent
+            }
     ]
   where
   actionsAllowed = case state.observerAction of
     ObserverIdle _ -> true
     _ -> false
 
-  renderBody =
+  renderContent =
     HH.div
       [ HP.classes
           [ Css.c "w-full"
