@@ -142,55 +142,53 @@ render state =
       [ HP.class_ (Css.c class_) ]
       [ HH.text text ]
 
-  renderBodySkeleton text bottom =
+  renderBodySkeleton icon text bottom =
     [ HH.div
         [ HP.classes
             [ Css.c "w-max"
             , Css.c "mx-auto"
             , Css.c "flex"
             , Css.c "items-center"
-            , Css.c "space-x-2"
+            , Css.c "gap-x-2"
             ]
         ]
-        [ Icon.upload [ Icon.classes [ Css.c "h-4", Css.c "fill-stormy-300" ] ]
+        [ icon
         , text
         ]
     , bottom
     ]
 
+  renderBodyUpload =
+    renderBodySkeleton
+      $ Icon.upload [ Icon.classes [ Css.c "h-4", Css.c "fill-stormy-300" ] ]
+
+  renderBodySuccess =
+    renderBodySkeleton
+      $ Icon.done
+          [ Icon.classes
+              [ Css.c "h-8"
+              , Css.c "fill-success-500"
+              , Css.c "nectary-short-bounce"
+              ]
+          ]
+
   renderBody = case state.status of
     Loading ->
-      renderBodySkeleton (renderText_ "Attaching …")
+      renderBodyUpload (renderText_ "Attaching …")
         $ Widgets.spinner [ Css.c "w-8", Css.c "h-8", Css.c "mx-auto" ]
     Loaded msg ->
-      renderBodySkeleton (renderText_ msg)
-        $ HH.div
+      renderBodySuccess (renderText_ msg)
+        $ HH.button
             [ HP.classes
-                [ Css.c "flex"
-                , Css.c "gap-x-4"
+                [ Css.c "sofa-btn-destructive"
+                , Css.c "h-8"
                 , Css.c "mx-auto"
-                , Css.c "nectary-short-bounce"
                 ]
+            , HE.onClick \_ -> ResetStatus
             ]
-            [ Icon.checkmark
-                [ Icon.classes
-                    [ Css.c "w-8"
-                    , Css.c "h-8"
-                    , Css.c "fill-success-500"
-                    ]
-                ]
-            , HH.button
-                [ HP.classes
-                    [ Css.c "sofa-btn-secondary"
-                    , Css.c "h-8"
-                    ]
-                , HE.onClick \_ -> ResetStatus
-                ]
-                [ HH.text "Redo"
-                ]
-            ]
+            [ HH.text "Remove" ]
     Error msg ->
-      renderBodySkeleton (renderText "text-raspberry-500" msg)
+      renderBodyUpload (renderText "text-raspberry-500" msg)
         $ HH.button
             [ HP.classes
                 [ Css.c "sofa-btn-secondary"
@@ -199,10 +197,9 @@ render state =
                 ]
             , HE.onClick \_ -> ResetStatus
             ]
-            [ HH.text "Retry"
-            ]
+            [ HH.text "Retry" ]
     Idle ->
-      renderBodySkeleton (renderText_ "Drop a file here to attach or …")
+      renderBodyUpload (renderText_ "Drop a file here to attach or …")
         $ let
             accept = maybe [] (\a -> [ HP.accept a ]) state.accept
 

@@ -5,6 +5,7 @@ module Sofa.Component.Alert
   , AlertType(..)
   , closeBtn
   , defaultAlert
+  , errorAlert
   , render
   ) where
 
@@ -42,6 +43,21 @@ defaultAlert =
   , content: HH.text ""
   , classes: []
   }
+
+errorAlert :: forall w i. String -> String -> Alert w i
+errorAlert message reason =
+  defaultAlert
+    { type_ = Error
+    , content =
+      HH.div_
+        [ HH.p_ [ HH.text message ]
+        , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
+            [ HH.strong_ [ HH.text "Error" ]
+            , HH.text ": "
+            , HH.text reason
+            ]
+        ]
+    }
 
 typeBgClass :: AlertType -> HH.ClassName
 typeBgClass = case _ of

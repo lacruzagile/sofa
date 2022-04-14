@@ -4,10 +4,10 @@ module Sofa.Component.Icon
   , ariaLabel
   , cancel
   , checkCircle
-  , checkmark
   , classes
   , close
   , close6
+  , done
   , editorMode
   , error
   , id
@@ -97,13 +97,6 @@ cancel attrs =
         ]
     ]
 
-checkmark :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
-checkmark attrs =
-  svg
-    ([ viewBox "0 0 14 14" ] <> attrs)
-    [ path [ d "M14 1.99999L12.59 0.579987L4.98995 8.17L1.49997 4.5L0.0799694 5.91L4.98995 11L14 1.99999Z" ]
-    ]
-
 checkCircle :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 checkCircle attrs =
   svg
@@ -119,6 +112,13 @@ close attrs =
   svg
     ([ viewBox "0 0 24 24" ] <> attrs)
     [ path [ d "M18.3 5.70997C17.91 5.31997 17.28 5.31997 16.89 5.70997L12 10.59L7.10997 5.69997C6.71997 5.30997 6.08997 5.30997 5.69997 5.69997C5.30997 6.08997 5.30997 6.71997 5.69997 7.10997L10.59 12L5.69997 16.89C5.30997 17.28 5.30997 17.91 5.69997 18.3C6.08997 18.69 6.71997 18.69 7.10997 18.3L12 13.41L16.89 18.3C17.28 18.69 17.91 18.69 18.3 18.3C18.69 17.91 18.69 17.28 18.3 16.89L13.41 12L18.3 7.10997C18.68 6.72997 18.68 6.08997 18.3 5.70997Z" ]
+    ]
+
+done :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+done attrs =
+  svg
+    ([ viewBox "0 0 24 24" ] <> attrs)
+    [ path [ d "M9 16.1999L5.5 12.6999C5.11 12.3099 4.49 12.3099 4.1 12.6999C3.71 13.0899 3.71 13.7099 4.1 14.0999L8.29 18.2899C8.68 18.6799 9.31 18.6799 9.7 18.2899L20.3 7.69995C20.69 7.30995 20.69 6.68995 20.3 6.29995C19.91 5.90995 19.29 5.90995 18.9 6.29995L9 16.1999Z" ]
     ]
 
 error :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i

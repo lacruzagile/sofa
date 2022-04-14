@@ -14,6 +14,9 @@ import Effect.Console (log)
 import Halogen as H
 import Halogen.HTML as HH
 import Sofa.App.Requests (deleteFile, getFileMetadata, postFile)
+import Sofa.Component.Alert as Alert
+import Sofa.Component.Alerts (class MonadAlert)
+import Sofa.Component.Alerts as Alerts
 import Sofa.Component.FileUpload (readAsBase64)
 import Sofa.Component.FileUpload as FileUpload
 import Sofa.Data.Auth (class CredentialStore)
@@ -58,7 +61,10 @@ data Action
 
 component ::
   forall query m.
-  MonadAff m => CredentialStore m => H.Component query Input Output m
+  MonadAff m =>
+  CredentialStore m =>
+  MonadAlert m =>
+  H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
@@ -105,6 +111,26 @@ render st =
     )
     UploadedFile
 
+fileAlert ::
+  forall a m.
+  MonadAlert m =>
+  String ->
+  String ->
+  Loadable a ->
+  H.HalogenM State Action Slots Output m Unit
+fileAlert successMsg errorMsg = case _ of
+  Error msg ->
+    H.lift
+      $ Alerts.push
+      $ Alert.errorAlert errorMsg msg
+  _ ->
+    H.lift
+      $ Alerts.push
+      $ Alert.defaultAlert
+          { type_ = Alert.Success
+          , content = HH.text successMsg
+          }
+
 -- | Deletes the current file from the backend, if any such file exists.
 resetFile ::
   forall m.
@@ -131,6 +157,7 @@ handleAction ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> do
@@ -149,6 +176,7 @@ handleAction = case _ of
   -- if one exists.
   UploadedFile Nothing -> do
     result <- resetFile
+    fileAlert "Removed file." "Error removing file." result
     H.tell FileUpload.proxy unit (FileUpload.SetStatus result)
   -- If the user uploads a file then we
   --
@@ -177,6 +205,7 @@ handleAction = case _ of
                     }
                 , orderLineId: orderLineId
                 }
+        fileAlert "Attached file." "Error attaching file." result
         case result of
           Loaded { fileId } -> do
             H.modify_ _ { fileId = Just fileId }
@@ -199,4 +228,4 @@ handleAction = case _ of
               $ unsafeCoerce result -- Safe since we've handled the Loaded case.
 
 showFile :: String -> Number -> String
-showFile name size = name <> " (" <> Bytes.showPretty size <> ")"
+showFile name size = "Attached " <> name <> " (" <> Bytes.showPretty size <> ")"
