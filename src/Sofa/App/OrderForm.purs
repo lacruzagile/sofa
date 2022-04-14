@@ -2263,18 +2263,7 @@ handleAction = case _ of
       Error errMsg ->
         H.lift
           $ Alerts.push
-          $ Alert.defaultAlert
-              { type_ = Alert.Error
-              , content =
-                HH.div_
-                  [ HH.p_ [ HH.text "Error deleting order section" ]
-                  , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
-                      [ HH.strong_ [ HH.text "Error" ]
-                      , HH.text ": "
-                      , HH.text errMsg
-                      ]
-                  ]
-              }
+          $ Alert.errorAlert "Error deleting order section" errMsg
   AddOrderLine { sectionIndex } ->
     modifyInitialized
       $ modifyOrderForm
