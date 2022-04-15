@@ -2340,8 +2340,8 @@ handleAction = case _ of
         , statusReason: ""
         , product: prod
         , charges: Nothing
-        , unitMap: Charge.productChargeUnitMap product
-        , configs: mkDefaultConfigs configId product
+        , unitMap: Charge.productChargeUnitMap prod
+        , configs: mkDefaultConfigs configId prod
         , estimatedUsage: Map.empty
         }
 
@@ -2361,7 +2361,7 @@ handleAction = case _ of
           requiredProds = A.mapMaybe (requiredSkuCode >=> (\o -> Map.lookup o solProds)) <$> p.options
 
           -- Since we don't have access to the Effect monad here we generate a
-          -- v5 UUID instead. It's namespace is the ID of the originating order
+          -- v5 UUID instead. Its namespace is the ID of the originating order
           -- line.
           mkId i = UUID.genv5UUID (show i) uuidNamespace
         in
