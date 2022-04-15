@@ -2504,6 +2504,17 @@ handleAction = case _ of
         Loaded o' -> loadExisting o'
         _ -> modifyInitialized $ _ { orderUpdateInFlight = false }
 
+      alert = case _ of
+        Error msg ->
+          Alerts.push
+            $ Alert.errorAlert "Failed to save order." msg
+        _ ->
+          Alerts.push
+            $ Alert.defaultAlert
+                { type_ = Alert.Success
+                , content = HH.text "Order successfully saved."
+                }
+
       run json =
         maybe'
           (\_ -> postOrder json)
@@ -2517,6 +2528,7 @@ handleAction = case _ of
           modifyInitialized $ _ { orderUpdateInFlight = true }
           order <- H.lift $ run json (getOrderId st')
           ld order
+          H.lift $ alert order
       _ -> pure unit
   FulfillOrder -> do
     st <- H.get
