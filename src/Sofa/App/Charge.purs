@@ -3,7 +3,6 @@ module Sofa.App.Charge (Output, Slot, component, proxy) where
 
 import Prelude
 import DOM.HTML.Indexed as HTML
-import Data.Array (mapWithIndex)
 import Data.Array as A
 import Data.Either (Either(..))
 import Data.FoldableWithIndex (findMapWithIndex)
@@ -12,9 +11,8 @@ import Data.List (List)
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', maybe)
 import Data.Monoid.Additive (Additive(..))
-import Data.Newtype (unwrap)
 import Data.Set as Set
 import Data.String (Pattern(..), stripSuffix) as S
 import Data.String.Utils (stripChars) as S
@@ -135,50 +133,12 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
       , readOnly
       }
 
-  renderEditableUsage :: QuantityIndex -> Maybe Quantity -> H.ComponentHTML Action Slots m
-  renderEditableUsage quantityIdx qty
-    | readOnly = HH.text (maybe "0" (numberFormatter <<< Int.toNumber) qty)
-    | otherwise =
-      HH.input
-        [ HP.type_ HP.InputText
-        , HP.classes
-            [ Css.c "nectary-input"
-            , Css.c "px-2"
-            , Css.c "w-24"
-            ]
-        , HP.value (maybe "0" (numberFormatter <<< Int.toNumber) qty)
-        , HE.onValueChange
-            ( maybe NoOp (SetQuantity quantityIdx <<< Just)
-                <<< parseQuantity
-            )
-        ]
-
-  parseQuantity :: String -> Maybe Int
-  parseQuantity = parseMagInt <<< S.stripChars ", "
-    where
-    parseMagInt s = case S.stripSuffix (S.Pattern "M") s of
-      Just s' -> (1_000_000 * _) <$> Int.fromString s'
-      Nothing -> case S.stripSuffix (S.Pattern "k") s of
-        Just s' -> (1_000 * _) <$> Int.fromString s'
-        Nothing -> Int.fromString s
-
   findDimQuantity :: SS.ChargeUnitId -> SS.DimValue -> Maybe Quantity
   findDimQuantity unitId dim = do
     q <- Map.lookup unitId estimatedUsage
     case q of
       Left q' -> pure q'
       Right dimMap -> Map.lookup dim dimMap
-
-  renderEstimatedUsage :: QuantityIndex -> SS.DimValue -> Maybe (H.ComponentHTML Action Slots m)
-  renderEstimatedUsage quantityIdx dim = do
-    chargeKind <- Charge.lookupChargeKind quantityIdx.unitId unitMap
-    if chargeKind /= SS.CkUsage then
-      Nothing
-    else
-      let
-        usage = findDimQuantity quantityIdx.unitId dim
-      in
-        Just $ renderEditableUsage quantityIdx usage
 
   renderTotalEstimatedVolume :: SS.ChargeUnitId -> Maybe (H.ComponentHTML Action Slots m)
   renderTotalEstimatedVolume unitId = do
@@ -224,68 +184,84 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
         , HH.sup_ [ HH.text " (", HH.text kind, HH.text ")" ]
         ]
 
-    renderChargeSimple charge =
-      [ renderUnitHdr "ChargeSimple" charge.unit
-      , HH.text "Price: "
-      , renderEditablePrice
-          { chargeIdx, subChargeIdx, dimIdx: 0, unitIdx: 0, segIdx: 0 }
-          (SS.Price { price: charge.price, listPrice: charge.listPrice, discount: charge.discount })
-          charge.currency
-      ]
-        <> maybe [] (\q -> [ HH.br_, HH.text "Estimated Volume: ", q ])
-            (renderEstimatedUsage { unitId: charge.unit, dim: Nothing } nullDim)
-
-    renderChargeDim charge =
-      [ renderUnitHdr "ChargeDim" charge.unit
-      , HH.table_
-          $ [ HH.thead_
-                [ HH.tr_
-                    $ thColSpan
-                        (A.length dimLabels)
-                        (centered <> borderedBelow)
-                        [ HH.text "Dimension" ]
-                    <> [ th_ [] ]
-                , HH.tr [ HP.classes borderedBelow ]
-                    $ map (th_ <<< A.singleton) dimLabels
-                    <> [ th gappedLeft [] [ HH.text "Price" ]
-                      , th_ [ HH.text "Est. Usage" ]
-                      ]
+    renderChargeSimple charge = case Map.lookup charge.unit unitMap of
+      Nothing -> [ HH.text $ "Error: Unit " <> show charge.unit <> " not found." ]
+      Just unit@(SS.ChargeUnit { kind }) ->
+        [ HH.table_
+            [ HH.thead_ [ HH.tr [ HP.classes borderedBelow ] (thUnitLabel unit) ]
+            , HH.tbody_
+                [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "odd:bg-honey-100" ] ]
+                    [ td_ [ renderEditablePrice pIdx price charge.currency ]
+                    , td_ [ renderChargeUnit' kind qIdx nullDim ]
+                    ]
                 ]
             ]
-          <> A.mapWithIndex renderChargeRow charge.priceByDim
-          <> renderTotalEstimatedVolumeRow
-      ]
+        ]
       where
-      unit = Map.lookup charge.unit unitMap
+      pIdx :: PriceIndex
+      pIdx = { chargeIdx, subChargeIdx: 0, dimIdx: 0, unitIdx: 0, segIdx: 0 }
 
-      renderTotalEstimatedVolumeRow =
-        maybe []
-          ( \q ->
-              [ tfoot
-                  [ HH.tr_
-                      $ thTotalEstimatedUsageLabel (A.length dimLabels)
-                      <> [ td_ [], td_ [ q ] ]
+      qIdx :: QuantityIndex
+      qIdx = { unitId: charge.unit, dim: Nothing }
+
+      price =
+        SS.Price
+          { listPrice: charge.listPrice
+          , price: charge.price
+          , discount: charge.discount
+          }
+
+    renderChargeDim charge = case Map.lookup charge.unit unitMap of
+      Nothing -> [ HH.text $ "Error: Unit " <> show charge.unit <> " not defined." ]
+      Just unit -> renderWithUnit unit
+      where
+      renderWithUnit :: SS.ChargeUnit -> Array (H.ComponentHTML Action Slots m)
+      renderWithUnit unit =
+        [ HH.table_
+            $ [ HH.thead_
+                  [ HH.tr [ HP.classes borderedBelow ]
+                      $ thColSpan
+                          (A.length dimLabels)
+                          (gappedRight <> centered)
+                          [ HH.text "Dimension" ]
+                      <> thUnitLabel unit
+                  , HH.tr [ HP.classes borderedBelow ]
+                      $ map (th_ <<< A.singleton) dimLabels
+                      <> thUnitSubLabels unit
                   ]
               ]
-          )
-          (renderTotalEstimatedVolume unitId)
-
-      dimLabels = maybe [] unitDimLabels unit
-
-      dimKeys = maybe [] unitDimKeys unit
-
-      renderChargeRow dimIdx (SS.PricePerDim p) =
-        HH.tr [ HP.classes [ Css.c "h-16", Css.c "even:bg-honey-100" ] ]
-          $ map (td_ <<< A.singleton) (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
-          <> [ td_ [ renderEditablePrice pIdx price charge.currency ]
-            , td_ $ maybe [] A.singleton $ renderEstimatedUsage qIdx p.dim
-            ]
+            <> A.mapWithIndex (renderChargeRow unit) charge.priceByDim
+            <> renderTotalEstimatedVolumeRow
+        ]
         where
-        pIdx = { chargeIdx, subChargeIdx, dimIdx, unitIdx: 0, segIdx: 0 }
+        renderTotalEstimatedVolumeRow =
+          maybe []
+            ( \q ->
+                [ tfoot
+                    [ HH.tr_
+                        $ thTotalEstimatedUsageLabel (A.length dimLabels)
+                        <> [ td_ [], td_ [ q ] ]
+                    ]
+                ]
+            )
+            (renderTotalEstimatedVolume unitId)
 
-        qIdx = { unitId: charge.unit, dim: Just p.dim }
+        dimLabels = unitDimLabels unit
 
-        price = SS.Price { price: p.price, listPrice: p.listPrice, discount: p.discount }
+        dimKeys = unitDimKeys unit
+
+        renderChargeRow (SS.ChargeUnit u) dimIdx (SS.PricePerDim p) =
+          HH.tr [ HP.classes [ Css.c "h-16", Css.c "even:bg-honey-100" ] ]
+            $ map (td_ <<< A.singleton) (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
+            <> [ td_ [ renderEditablePrice pIdx price charge.currency ]
+              , td_ [ renderChargeUnit' u.kind qIdx p.dim ]
+              ]
+          where
+          pIdx = { chargeIdx, subChargeIdx, dimIdx, unitIdx: 0, segIdx: 0 }
+
+          qIdx = { unitId: charge.unit, dim: Just p.dim }
+
+          price = SS.Price { price: p.price, listPrice: p.listPrice, discount: p.discount }
 
     renderChargeSeg c =
       [ renderUnitHdr "ChargeSeg" c.unit
@@ -301,9 +277,10 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
       , HH.text "Segmentation model: "
       , HH.text $ show model
       ]
-        <> maybe []
-            (\q -> [ HH.br_, HH.text "Estimated Volume: ", q ])
-            (renderEstimatedUsage { unitId: c.unit, dim: Nothing } nullDim)
+        <> [ HH.br_
+          , HH.text "Estimated Volume: "
+          , renderChargeUnit { unitId: c.unit, dim: Nothing } nullDim
+          ]
       where
       SS.Segmentation { model, segments } = c.segmentation
 
@@ -343,36 +320,17 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
                         (A.length dimLabels)
                         (gappedRight <> centered)
                         [ HH.text "Dimension" ]
-                    <> A.concatMap
-                        ( thColSpan
-                            2
-                            (gappedLeft <> centered)
-                            <<< renderUnitLabel
-                        )
-                        units
+                    <> A.concatMap thUnitLabel units
                 , HH.tr [ HP.classes borderedBelow ]
                     $ map (th [] [] <<< A.singleton) dimLabels
-                    <> A.concatMap
-                        ( const
-                            [ th gappedLeft [] [ HH.text "Price" ]
-                            , th_ [ HH.text "Est. Usage" ]
-                            ]
-                        )
-                        units
+                    <> A.concatMap thUnitSubLabels units
                 ]
             ]
-          <> mapWithIndex renderChargeRow charge.priceByUnitByDim
+          <> A.mapWithIndex renderChargeRow charge.priceByUnitByDim
           <> renderTotalEstimatedRow
       ]
       where
       units = A.mapMaybe (\id -> Map.lookup id unitMap) $ Set.toUnfoldable charge.units
-
-      renderUnitLabel = A.singleton <<< mkLabel
-        where
-        mkLabel u =
-          Tooltip.render
-            (Tooltip.defaultInput { text = show $ _.kind $ unwrap u })
-            (HH.text $ Charge.chargeUnitLabel u <> " unit")
 
       -- Fatalistically assume that there is at least one unit defined, then
       -- fatalistically assume that all units use the same dimensions.
@@ -437,7 +395,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
 
       renderPricePerUnit dim dimIdx unitIdx (SS.PricePerUnit ppu) =
         [ renderEditablePrice pIdx price (currency ppu.unit)
-        , fromMaybe (HH.text "") (renderEstimatedUsage qIdx dim)
+        , renderChargeUnit qIdx dim
         ]
         where
         pIdx = { chargeIdx, subChargeIdx: 0, dimIdx, unitIdx, segIdx: 0 }
@@ -454,6 +412,84 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
             Just d -> HH.p [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text d ]
         ]
       <> renderChargeInner chargeIdx charge
+
+  -- | Renders the charge unit for the given quantity index. The charge kind is
+  -- | looked up from the `unitMap`.
+  renderChargeUnit qIdx dim =
+    fromMaybe' renderError do
+      chargeKind <- Charge.lookupChargeKind qIdx.unitId unitMap
+      pure $ renderChargeUnit' chargeKind qIdx dim
+    where
+    renderError _ =
+      Tooltip.render
+        ( Tooltip.defaultInput
+            { text =
+              "Solution file refers to undefined charge unit "
+                <> show qIdx.unitId
+                <> "."
+            }
+        )
+        $ Tooltip.contentWithIcon (HH.text "Error")
+
+  -- | Renders the charge unit for the given charge kind and quantity index.
+  renderChargeUnit' chargeKind qIdx dim = case chargeKind of
+    SS.CkOnetime -> HH.text "/Item"
+    SS.CkMonthly -> HH.text "/Month"
+    SS.CkQuarterly -> HH.text "/Quarter"
+    SS.CkUsage ->
+      let
+        usage = findDimQuantity qIdx.unitId dim
+      in
+        renderEditableUsage readOnly qIdx usage
+    SS.CkSegment -> HH.text "/Segment" -- ???
+
+renderEditableUsage :: forall m. Boolean -> QuantityIndex -> Maybe Quantity -> H.ComponentHTML Action Slots m
+renderEditableUsage readOnly quantityIdx qty
+  | readOnly = HH.text (maybe "0" (numberFormatter <<< Int.toNumber) qty)
+  | otherwise =
+    HH.input
+      [ HP.type_ HP.InputText
+      , HP.classes
+          [ Css.c "nectary-input"
+          , Css.c "px-2"
+          , Css.c "w-24"
+          ]
+      , HP.value (maybe "0" (numberFormatter <<< Int.toNumber) qty)
+      , HE.onValueChange
+          ( maybe NoOp (SetQuantity quantityIdx <<< Just)
+              <<< parseQuantity
+          )
+      ]
+    where
+    parseQuantity :: String -> Maybe Int
+    parseQuantity = parseMagInt <<< S.stripChars ", "
+      where
+      parseMagInt s = case S.stripSuffix (S.Pattern "M") s of
+        Just s' -> (1_000_000 * _) <$> Int.fromString s'
+        Nothing -> case S.stripSuffix (S.Pattern "k") s of
+          Just s' -> (1_000 * _) <$> Int.fromString s'
+          Nothing -> Int.fromString s
+
+thUnitLabel :: forall w i. SS.ChargeUnit -> Array (HH.HTML w i)
+thUnitLabel unit@(SS.ChargeUnit u) =
+  thColSpan numCols (maybeGapped <> centered)
+    [ Tooltip.render
+        (Tooltip.defaultInput { text = show u.kind })
+        (HH.text $ Charge.chargeUnitLabel unit <> " unit")
+    ]
+  where
+  numCols = 2 -- if u.kind == SS.CkUsage then 2 else 1
+
+  maybeGapped = maybe [] (\_ -> gappedLeft) u.priceDimSchema
+
+thUnitSubLabels :: forall w i. SS.ChargeUnit -> Array (HH.HTML w i)
+thUnitSubLabels (SS.ChargeUnit u) = case u.kind of
+  SS.CkUsage -> [ thPrice, th_ [ HH.text "Est. Usage" ] ]
+  _ -> [ thPrice, th_ [] ]
+  where
+  thPrice = th maybeGapped [] [ HH.text "Price" ]
+
+  maybeGapped = maybe [] (\_ -> gappedLeft) u.priceDimSchema
 
 thTotalEstimatedUsageLabel :: forall w i. Int -> Array (HH.HTML w i)
 thTotalEstimatedUsageLabel numDims = case numDims of
