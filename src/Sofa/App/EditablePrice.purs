@@ -9,6 +9,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.Component.Modal as Modal
+import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Sofa.Data.BigNumber as BN
 import Sofa.Data.Currency as Currency
@@ -221,15 +222,17 @@ renderPrice (SS.Price p) (SS.ChargeCurrency currency) = price
   price = case p.discount of
     Nothing -> showPrice p.listPrice
     Just d ->
-      [ HH.span
-          [ HP.class_ (Css.c "text-raspberry-500")
-          , HP.title
-              $ "Discount: "
-              <> showDiscount d
-              <> ". Without discount: "
-              <> Currency.formatter currency p.listPrice
-          ]
-          (showPrice p.price)
+      [ Tooltip.render
+          ( Tooltip.defaultInput
+              { text =
+                "Discount: "
+                  <> showDiscount d
+                  <> ". Without discount: "
+                  <> Currency.formatter currency p.listPrice
+              }
+          )
+          $ HH.span [ HP.class_ (Css.c "text-raspberry-500") ]
+              (showPrice p.price)
       ]
 
   showPrice = Widgets.monetaryAmount currency

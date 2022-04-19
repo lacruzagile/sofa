@@ -19,6 +19,7 @@ import Data.Tuple (Tuple(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Sofa.Component.Tooltip as TT
+import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Sofa.Data.BigNumber as BN
 import Sofa.Data.Currency (Currency)
@@ -156,9 +157,12 @@ subTotalTable title (SubTotal summary) =
     if amount.price == amount.listPrice then
       renderPrice listPriceClasses amount.price
     else
-      HH.span
-        [ HP.title ("Without discounts: " <> showMonetary amount.listPrice) ]
-        [ renderPrice discountPriceClasses amount.price ]
+      Tooltip.render
+        ( Tooltip.defaultInput
+            { text = "Without discounts: " <> showMonetary amount.listPrice
+            }
+        )
+        $ renderPrice discountPriceClasses amount.price
     where
     listPriceClasses = [ Css.c "pl-5" ]
 
