@@ -177,13 +177,6 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
 
     nullDim = SS.DimValue SS.CvNull
 
-    renderUnitHdr :: String -> SS.ChargeUnitId -> H.ComponentHTML Action Slots m
-    renderUnitHdr kind u =
-      HH.h4_
-        [ HH.text $ showChargeUnitRef u
-        , HH.sup_ [ HH.text " (", HH.text kind, HH.text ")" ]
-        ]
-
     renderChargeSimple charge = case Map.lookup charge.unit unitMap of
       Nothing -> [ HH.text $ "Error: Unit " <> show charge.unit <> " not found." ]
       Just unit@(SS.ChargeUnit { kind }) ->
@@ -263,26 +256,35 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
 
           price = SS.Price { price: p.price, listPrice: p.listPrice, discount: p.discount }
 
-    renderChargeSeg c =
-      [ renderUnitHdr "ChargeSeg" c.unit
-      , HH.table_
-          $ [ HH.thead_
-                [ HH.tr_
-                    [ th_ [ HH.text "Segment" ]
-                    , th_ [ HH.text "Price" ]
+    renderChargeSeg c = case Map.lookup c.unit unitMap of
+      Nothing -> [ HH.text $ "Error: Unit " <> show c.unit <> " not found." ]
+      Just unit ->
+        [ HH.table_
+            $ [ HH.thead_
+                  [ HH.tr [ HP.classes borderedBelow ] (thUnitLabel unit)
+                  , HH.tr_
+                      [ th_ [ HH.text "Est. Usage" ]
+                      , th_ [ HH.text "Price" ]
+                      , th_ [ renderSegmentLabel ]
+                      ]
+                  ]
+              , HH.tbody_
+                  $ [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
+                        [ td_ [ renderChargeUnit { unitId: c.unit, dim: Nothing } nullDim ]
+                        , td_ []
+                        , td_ []
+                        ]
                     ]
-                ]
-            ]
-          <> map renderChargeSegRow segments
-      , HH.text "Segmentation model: "
-      , HH.text $ show model
-      ]
-        <> [ HH.br_
-          , HH.text "Estimated Volume: "
-          , renderChargeUnit { unitId: c.unit, dim: Nothing } nullDim
-          ]
+                  <> map renderChargeSegRow segments
+              ]
+        ]
       where
       SS.Segmentation { model, segments } = c.segmentation
+
+      renderSegmentLabel =
+        Tooltip.render
+          (Tooltip.defaultInput { text = "Segmentation model: " <> show model })
+          (HH.text "Segment")
 
       renderPrice segIdx p =
         renderEditablePrice
@@ -291,8 +293,8 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
           c.currency
 
       renderChargeSegRow seg@(SS.Segment { minimum }) =
-        HH.tr_
-          [ td_ [ HH.text $ showSegment seg ]
+        HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
+          [ td_ []
           , td_
               [ fromMaybe (HH.text "N/A")
                   $ findMapWithIndex
@@ -304,6 +306,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
                       )
                       c.priceBySegment
               ]
+          , td_ [ HH.text $ showSegment seg ]
           ]
 
   renderChargeInner :: Int -> SS.Charge -> Array (H.ComponentHTML Action Slots m)
@@ -472,14 +475,12 @@ renderEditableUsage readOnly quantityIdx qty
 
 thUnitLabel :: forall w i. SS.ChargeUnit -> Array (HH.HTML w i)
 thUnitLabel unit@(SS.ChargeUnit u) =
-  thColSpan numCols (maybeGapped <> centered)
+  thColSpan 2 (maybeGapped <> centered)
     [ Tooltip.render
         (Tooltip.defaultInput { text = show u.kind })
         (HH.text $ Charge.chargeUnitLabel unit <> " unit")
     ]
   where
-  numCols = 2 -- if u.kind == SS.CkUsage then 2 else 1
-
   maybeGapped = maybe [] (\_ -> gappedLeft) u.priceDimSchema
 
 thUnitSubLabels :: forall w i. SS.ChargeUnit -> Array (HH.HTML w i)
@@ -579,11 +580,10 @@ gappedRight = [ Css.c "border-r-8", Css.c "border-transparent" ]
 gappedLeft :: Array HH.ClassName
 gappedLeft = [ Css.c "border-l-8", Css.c "border-transparent" ]
 
-showChargeUnitRef :: SS.ChargeUnitId -> String
-showChargeUnitRef (SS.ChargeUnitId id) = id
-
 showSegment :: SS.Segment -> String
-showSegment (SS.Segment s) = "[" <> show s.minimum <> "," <> maybe "∞" show s.exclusiveMaximum <> ")"
+showSegment (SS.Segment s) = case s.exclusiveMaximum of
+  Nothing -> "from " <> show s.minimum
+  Just emax -> show s.minimum <> " to " <> show (emax - 1)
 
 aggregateQuantity :: QuantityMap -> AggregatedQuantityMap
 aggregateQuantity quantityMap =
