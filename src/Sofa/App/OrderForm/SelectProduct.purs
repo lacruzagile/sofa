@@ -10,6 +10,7 @@ import Data.Traversable (for_)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Select as Sel
 import Sofa.Component.Typeahead as Typeahead
 import Sofa.Css as Css
@@ -76,7 +77,11 @@ selectComponent =
             let
               pat = S.Pattern $ S.toLower str
 
-              match (SS.Product { sku }) = S.contains pat (S.toLower (show sku))
+              containsPat t = S.contains pat (S.toLower t)
+
+              match (SS.Product { sku, title }) =
+                containsPat (show sku)
+                  || maybe false containsPat title
             in
               A.filter match st.available
           }
@@ -113,4 +118,13 @@ selectComponent =
           }
 
   renderItem :: SS.Product -> HH.PlainHTML
-  renderItem (SS.Product { sku }) = HH.text (show sku)
+  renderItem (SS.Product { sku, title }) = case title of
+    Nothing -> HH.text (show sku)
+    Just t ->
+      HH.div_
+        [ HH.text t
+        , HH.br_
+        , HH.span
+            [ HP.classes [ Css.c "text-xs", Css.c "text-stormy-300" ] ]
+            [ HH.text (show sku) ]
+        ]

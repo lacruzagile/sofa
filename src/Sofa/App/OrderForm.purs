@@ -351,14 +351,25 @@ render state =
     Just ol ->
       let
         SS.Product product = ol.product
+
+        renderProductTitle = case product.title of
+          Nothing -> HH.text (show product.sku)
+          Just t ->
+            HH.div_
+              [ HH.span
+                  [ HP.classes [ Css.c "text-lg", Css.c "font-semibold" ] ]
+                  [ HH.text t ]
+              , HH.br_
+              , HH.span
+                  [ HP.classes [ Css.c "text-xs", Css.c "text-stormy-300" ] ]
+                  [ HH.text (show product.sku) ]
+              ]
       in
         body
           $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
                 $ [ HH.div [ HP.class_ (Css.c "w-3/5") ]
                       [ renderSmallTitle "Product"
-                      , HH.span
-                          [ HP.classes [ Css.c "text-lg", Css.c "font-semibold" ] ]
-                          [ HH.text $ show product.sku ]
+                      , renderProductTitle
                       ]
                   , HH.div [ HP.class_ (Css.c "w-1/5") ]
                       [ renderSmallTitle "Status"
