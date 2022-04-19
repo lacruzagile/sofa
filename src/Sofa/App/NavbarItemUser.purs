@@ -129,47 +129,44 @@ render = case _ of
       ]
 
     renderContent =
-      HH.div_
-        [ HH.h2 [ HP.classes [ Css.c "mt-0", Css.c "mb-4" ] ] [ HH.text "Login" ]
-        , HH.form
-            [ HP.classes [ Css.c "w-96", Css.c "flex", Css.c "flex-col", Css.c "gap-y-3" ]
-            , HE.onSubmit Login
+      HH.form
+        [ HP.classes [ Css.c "w-96", Css.c "flex", Css.c "flex-col", Css.c "gap-y-3" ]
+        , HE.onSubmit Login
+        ]
+        [ HH.input
+            [ HP.type_ HP.InputText
+            , HP.id "auth-user"
+            , HP.required true
+            , HP.placeholder "Username"
+            , HP.classes textInputClasses
+            , HP.value $ fromMaybe "" st.user
+            , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { user = Just v }
             ]
-            [ HH.input
-                [ HP.type_ HP.InputText
-                , HP.id "auth-user"
-                , HP.required true
-                , HP.placeholder "Username"
-                , HP.classes textInputClasses
-                , HP.value $ fromMaybe "" st.user
-                , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { user = Just v }
+        , HH.input
+            [ HP.type_ HP.InputPassword
+            , HP.id "auth-pass"
+            , HP.required true
+            , HP.placeholder "Password"
+            , HP.classes textInputClasses
+            , HP.value $ fromMaybe "" st.pass
+            , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { pass = Just v }
+            ]
+        , case st.error of
+            Nothing -> HH.text ""
+            Just msg -> HH.div [ HP.classes errorClasses ] [ HH.text msg ]
+        , HH.div [ HP.classes [ Css.c "flex", Css.c "gap-x-4" ] ]
+            [ HH.div [ HP.class_ (Css.c "grow") ] []
+            , HH.button
+                [ HP.class_ (Css.c "sofa-btn-secondary")
+                , HP.type_ HP.ButtonButton
+                , HE.onClick \_ -> SetState LoggedOut
                 ]
-            , HH.input
-                [ HP.type_ HP.InputPassword
-                , HP.id "auth-pass"
-                , HP.required true
-                , HP.placeholder "Password"
-                , HP.classes textInputClasses
-                , HP.value $ fromMaybe "" st.pass
-                , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { pass = Just v }
+                [ HH.text "Cancel" ]
+            , HH.button
+                [ HP.type_ HP.ButtonSubmit
+                , HP.classes [ Css.c "sofa-btn-primary" ]
                 ]
-            , case st.error of
-                Nothing -> HH.text ""
-                Just msg -> HH.div [ HP.classes errorClasses ] [ HH.text msg ]
-            , HH.div [ HP.classes [ Css.c "flex", Css.c "gap-x-4" ] ]
-                [ HH.div [ HP.class_ (Css.c "grow") ] []
-                , HH.button
-                    [ HP.class_ (Css.c "sofa-btn-secondary")
-                    , HP.type_ HP.ButtonButton
-                    , HE.onClick \_ -> SetState LoggedOut
-                    ]
-                    [ HH.text "Cancel" ]
-                , HH.button
-                    [ HP.type_ HP.ButtonSubmit
-                    , HP.classes [ Css.c "sofa-btn-primary" ]
-                    ]
-                    [ HH.text "Login" ]
-                ]
+                [ HH.text "Login" ]
             ]
         ]
 
