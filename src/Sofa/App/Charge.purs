@@ -6,6 +6,7 @@ import DOM.HTML.Indexed as HTML
 import Data.Array as A
 import Data.Either (Either(..))
 import Data.FoldableWithIndex (findMapWithIndex)
+import Data.Int (even)
 import Data.Int as Int
 import Data.List (List)
 import Data.List as List
@@ -183,7 +184,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
         [ HH.table_
             [ HH.thead_ [ HH.tr [ HP.classes borderedBelow ] (thUnitLabel unit) ]
             , HH.tbody_
-                [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "odd:bg-honey-100" ] ]
+                [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
                     [ td_ [ renderEditablePrice pIdx price charge.currency ]
                     , td_ [ renderChargeUnit' kind qIdx nullDim ]
                     ]
@@ -244,8 +245,13 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
         dimKeys = unitDimKeys unit
 
         renderChargeRow (SS.ChargeUnit u) dimIdx (SS.PricePerDim p) =
-          HH.tr [ HP.classes [ Css.c "h-16", Css.c "even:bg-honey-100" ] ]
-            $ map (td_ <<< A.singleton) (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
+          HH.tr
+            [ HP.classes
+                [ Css.c "h-16"
+                , Css.c $ if even dimIdx then "bg-honey-100" else ""
+                ]
+            ]
+            $ map tdOne_ (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
             <> [ td_ [ renderEditablePrice pIdx price charge.currency ]
               , td_ [ renderChargeUnit' u.kind qIdx p.dim ]
               ]
@@ -383,16 +389,19 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
       renderChargeRow dimIdx = case _ of
         SS.PricePerDimUnitOptSeg (SS.PricePerDimUnitSeg p) ->
           HH.tr_
-            $ map (td_ <<< A.singleton)
+            $ map tdOne_
             $ (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
             <> A.mapWithIndex (renderPriceBySegmentPerUnit p.dim dimIdx) p.priceBySegmentByUnit
         SS.PricePerDimUnitOptNoSeg (SS.PricePerDimUnit p) ->
-          let
-            tdOne = td_ <<< A.singleton
-          in
-            HH.tr [ HP.classes [ Css.c "h-16", Css.c "even:bg-honey-100" ] ]
-              $ (if A.null dimKeys then [] else map tdOne (renderDimVals dimKeys p.dim))
-              <> map tdOne (A.concat (A.mapWithIndex (renderPricePerUnit p.dim dimIdx) p.priceByUnit))
+          HH.tr
+            [ HP.classes
+                [ Css.c "h-16"
+                , Css.c $ if even dimIdx then "bg-honey-100" else ""
+                ]
+            ]
+            $ map tdOne_
+            $ renderDimVals dimKeys p.dim
+            <> A.concat (A.mapWithIndex (renderPricePerUnit p.dim dimIdx) p.priceByUnit)
 
       renderPriceBySegmentPerUnit _dim _dimIdx _priceIdx (SS.PricePerUnitSeg _ppus) = HH.text "TODO"
 
@@ -550,6 +559,9 @@ td classes = HH.td [ HP.classes ([ Css.c "px-3" ] <> classes) ]
 
 td_ :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
 td_ = td []
+
+tdOne_ :: forall w i. HH.HTML w i -> HH.HTML w i
+tdOne_ e = td_ [ e ]
 
 thColSpan ::
   forall w i.
