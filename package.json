@@ -12,7 +12,8 @@
     "docker-build": "yarn build && docker build -f docker/Dockerfile -t sofa:latest .",
     "start": "sed -i 's/&& module.require /\\&\\& false /' ./output/Affjax/foreign.js && parcel serve sofa-dev.html",
     "test": "spago test",
-    "watch": "spago build --watch --clear-screen"
+    "watch": "spago build --watch --clear-screen",
+    "format": "find src -name '*.purs' -exec purty format --write '{}' ';'"
   },
   "resolutions": {
     "lmdb": "2.1.7"
@@ -22,6 +23,7 @@
     "parcel": "^2.0.0",
     "postcss": "^8.4.5",
     "purescript": "^0.14.5",
+    "purty": "^7.0.0",
     "spago": "^0.20.5",
     "tailwindcss": "^3.0.7"
   },

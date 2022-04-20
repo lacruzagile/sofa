@@ -2688,6 +2688,11 @@ purescript@^0.14.5:
   dependencies:
     purescript-installer "^0.2.0"
 
+purty@^7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/purty/-/purty-7.0.0.tgz#3a714a2155f543118c6831e1fb41b84d17de2b59"
+  integrity sha512-gHHghPEjRY39GUJ8KnOMRfPArJILGCXwEhX6BmEdNiLgZuCjLLBLyawGiKFjYMfy8H5Dsk5NbgwIGslrPrernA==
+
 qs@~6.5.2:
   version "6.5.3"
   resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.3.tgz#3aeeffc91967ef6e35c0e488ef46fb296ab76aad"

@@ -16,8 +16,6 @@
           buildInputs = with pkgs; [
             dhall-lsp-server
             nodePackages.purescript-language-server
-            nodePackages.purty
-            nodejs
             purescript
             spago
             yarn
