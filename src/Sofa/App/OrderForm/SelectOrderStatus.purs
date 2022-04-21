@@ -11,6 +11,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Select as Sel
 import Select.Setters as SelSet
+import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.SmartSpec as SS
@@ -140,16 +141,21 @@ selectComponent =
             [ HP.classes $ itemClasses <> selectedClasses <> highlightClasses
             ]
         )
-        (renderOrderStatus status)
+        $ if status == st.selected then
+            [ HH.div [ HP.class_ (Css.c "grow") ] [ renderOrderStatus ]
+            , Icon.done [ Icon.classes [ Css.c "w-4" ] ]
+            ]
+          else
+            [ renderOrderStatus ]
       where
-      itemClasses = [ Css.c "p-2", Css.c "pr-8" ]
+      itemClasses = [ Css.c "p-2" ]
 
       highlightClasses
         | st.highlightedIndex == Just idx = [ Css.c "bg-snow-500" ]
         | otherwise = []
 
       selectedClasses
-        | status == st.selected = [ Css.c "nectary-icon-check" ]
+        | status == st.selected = [ Css.c "flex", Css.c "gap-x-2" ]
         | otherwise = []
 
-    renderOrderStatus status = [ HH.text (SS.prettyOrderStatus status) ]
+      renderOrderStatus = HH.text (SS.prettyOrderStatus status)

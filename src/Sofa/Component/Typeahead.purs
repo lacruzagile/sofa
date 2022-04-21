@@ -117,25 +117,27 @@ render st =
         $ A.mapWithIndex renderItem st.values
 
   renderItem :: Int -> HH.PlainHTML -> H.ComponentHTML _ () m
-  renderItem idx value =
+  renderItem idx item =
     HH.li
       ( SelSet.setItemProps idx
           [ HP.classes $ itemClasses <> selectedClasses <> highlightClasses
           ]
       )
-      [ HH.fromPlainHTML value ]
+      $ if st.selectedIndex == Just idx then
+          [ HH.div
+              [ HP.classes [ Css.c "truncate", Css.c "grow" ] ]
+              [ HH.fromPlainHTML item ]
+          , Icon.done [ Icon.classes [ Css.c "w-6" ] ]
+          ]
+        else
+          [ HH.fromPlainHTML item ]
     where
-    itemClasses =
-      [ Css.c "relative"
-      , Css.c "p-2"
-      , Css.c "pr-8"
-      , Css.c "truncate"
-      ]
+    itemClasses = [ Css.c "relative", Css.c "p-2", Css.c "truncate" ]
 
     highlightClasses
       | st.highlightedIndex == Just idx = [ Css.c "bg-snow-500" ]
       | otherwise = []
 
     selectedClasses
-      | st.selectedIndex == Just idx = [ Css.c "nectary-icon-check" ]
+      | st.selectedIndex == Just idx = [ Css.c "flex", Css.c "gap-x-2" ]
       | otherwise = []

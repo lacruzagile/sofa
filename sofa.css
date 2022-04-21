@@ -231,22 +231,6 @@
     background-repeat: no-repeat;
   }
 
-  .nectary-icon-check {
-    @apply pr-8;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24' viewBox='0 0 24 24' width='24' style='fill:%2300000088'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
-    background-position: calc(100% - 0.75rem) 50%;
-    background-size: 1rem 1rem;
-    background-repeat: no-repeat;
-  }
-
-  .nectary-icon-cancel {
-    @apply pr-8;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='xMinYMin meet' height='24' style='fill:%2300000088'%3E%3Cpath d='M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2Zm4.3 14.3a.996.996 0 0 1-1.41 0L12 13.41 9.11 16.3a.996.996 0 1 1-1.41-1.41L10.59 12 7.7 9.11A.996.996 0 1 1 9.11 7.7L12 10.59l2.89-2.89a.996.996 0 1 1 1.41 1.41L13.41 12l2.89 2.89c.38.38.38 1.02 0 1.41Z'%3E%3C/path%3E%3C/svg%3E");
-    background-position: calc(100% - 0.75rem) 50%;
-    background-size: 1rem 1rem;
-    background-repeat: no-repeat;
-  }
-
   .nectary-short-bounce {
     @apply animate-bounce motion-reduce:animate-none;
     animation-iteration-count: 1.5;
