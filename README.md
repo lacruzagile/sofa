@@ -22,11 +22,11 @@ in a terminal to fetch the most recent build. Then open
 
 ### Code formatting
 
-Formatting is done using [purty](https://gitlab.com/joneshf/purty),
-for example,
+Formatting of the PureScript code is done using [purty]. It can be run
+by
 
 ``` sh-session
-$ find src -name '*.purs' -exec purty format --write '{}' ';'
+$ yarn format
 ```
 
 ### Running locally
@@ -75,3 +75,4 @@ The `salesforce` directory contains the necessary files to produce a Salesforce 
 [Spago]: https://github.com/purescript/spago
 [Yarn]: https://yarnpkg.com/
 [jq]: https://stedolan.github.io/jq/
+[purty]: https://gitlab.com/joneshf/purty
