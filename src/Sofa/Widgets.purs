@@ -178,5 +178,17 @@ subTotalTable title (SubTotal summary) =
 spinner :: forall w i. Array HH.ClassName -> HH.HTML w i
 spinner classes =
   HH.div
-    [ HP.classes $ [ Css.c "sofa-spinner" ] <> classes ]
+    [ HP.classes $ spinnerClasses <> classes ]
     []
+  where
+  spinnerClasses =
+    map Css.c
+      [ "inline-block"
+      , "border-4"
+      , "border-snow-700"
+      , "border-b-stormy-500"
+      , "rounded-full"
+      , "animate-spin"
+      , "w-5"
+      , "h-5"
+      ]
