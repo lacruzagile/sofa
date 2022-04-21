@@ -196,7 +196,7 @@ render state = HH.section_ [ HH.article_ content ]
       , defaultCurrency
       , charges
       , estimatedUsage: Map.empty
-      , priceOnly: false
+      , priceOnly: true
       , readOnly: true
       }
       (\_ -> NoOp)

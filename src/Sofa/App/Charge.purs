@@ -368,6 +368,7 @@ render { unitMap
       dimKeys = maybe [] unitDimKeys (A.head units)
 
       renderTotalEstimatedRow
+        | priceOnly = []
         | A.all A.null totalEstimatedCells = []
         | otherwise =
           [ HH.tfoot_
@@ -459,7 +460,10 @@ render { unitMap
                 <> "."
             }
         )
-        $ Tooltip.contentWithIcon (HH.text "Error")
+        $ Tooltip.contentWithIcon
+        $ HH.span
+            [ HP.class_ (Css.c "text-raspberry-500") ]
+            [ HH.text "Error" ]
 
   -- | Renders the charge unit for the given charge kind and quantity index.
   renderChargeUnit' chargeKind qIdx dim = case chargeKind of
