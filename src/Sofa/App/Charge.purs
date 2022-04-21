@@ -55,6 +55,8 @@ type Input
     , defaultCurrency :: SS.ChargeCurrency
     , charges :: Array SS.Charge
     , estimatedUsage :: QuantityMap
+    , priceOnly :: Boolean
+    -- ^ Whether to only show the prices, i.e., without quantities.
     , readOnly :: Boolean
     -- ^ Whether editing the quantity and price should be allowed.
     }
@@ -67,6 +69,8 @@ type State
     , defaultCurrency :: SS.ChargeCurrency
     , charges :: Array SS.Charge
     , estimatedUsage :: QuantityMap
+    , priceOnly :: Boolean
+    -- ^ Whether to only show the prices, i.e., without quantities.
     , readOnly :: Boolean
     -- ^ Whether editing the quantity and price should be allowed.
     , aggregatedQuantity :: AggregatedQuantityMap
@@ -113,12 +117,20 @@ initialState input =
   , defaultCurrency: input.defaultCurrency
   , charges: input.charges
   , estimatedUsage: input.estimatedUsage
+  , priceOnly: input.priceOnly
   , readOnly: input.readOnly
   , aggregatedQuantity: aggregateQuantity input.estimatedUsage
   }
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
-render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, readOnly } =
+render { unitMap
+, defaultCurrency
+, charges
+, estimatedUsage
+, aggregatedQuantity
+, priceOnly
+, readOnly
+} =
   HH.ul_
     $ A.mapWithIndex (\i r -> HH.li_ [ renderCharge i r ]) charges
   where
@@ -221,24 +233,26 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
                       <> thUnitLabel unit
                   , HH.tr [ HP.classes borderedBelow ]
                       $ map (th_ <<< A.singleton) dimLabels
-                      <> thUnitSubLabels unit
+                      <> thUnitSubLabels priceOnly unit
                   ]
               ]
             <> A.mapWithIndex (renderChargeRow unit) charge.priceByDim
             <> renderTotalEstimatedVolumeRow
         ]
         where
-        renderTotalEstimatedVolumeRow =
-          maybe []
-            ( \q ->
-                [ tfoot
-                    [ HH.tr_
-                        $ thTotalEstimatedUsageLabel (A.length dimLabels)
-                        <> [ td_ [], td_ [ q ] ]
-                    ]
-                ]
-            )
-            (renderTotalEstimatedVolume unitId)
+        renderTotalEstimatedVolumeRow
+          | priceOnly = []
+          | otherwise =
+            maybe []
+              ( \q ->
+                  [ tfoot
+                      [ HH.tr_
+                          $ thTotalEstimatedUsageLabel (A.length dimLabels)
+                          <> [ td_ [], td_ [ q ] ]
+                      ]
+                  ]
+              )
+              (renderTotalEstimatedVolume unitId)
 
         dimLabels = unitDimLabels unit
 
@@ -269,18 +283,22 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
             $ [ HH.thead_
                   [ HH.tr [ HP.classes borderedBelow ] (thUnitLabel unit)
                   , HH.tr_
-                      [ th_ [ HH.text "Est. Usage" ]
+                      [ if priceOnly then HH.text "" else th_ [ HH.text "Est. Usage" ]
                       , th_ [ HH.text "Price" ]
                       , th_ [ renderSegmentLabel ]
                       ]
                   ]
               , HH.tbody_
-                  $ [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
-                        [ td_ [ renderChargeUnit { unitId: c.unit, dim: Nothing } nullDim ]
-                        , td_ []
-                        , td_ []
+                  $ ( if priceOnly then
+                        [ HH.text "" ]
+                      else
+                        [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
+                            [ td_ [ renderChargeUnit { unitId: c.unit, dim: Nothing } nullDim ]
+                            , td_ []
+                            , td_ []
+                            ]
                         ]
-                    ]
+                    )
                   <> map renderChargeSegRow segments
               ]
         ]
@@ -300,7 +318,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
 
       renderChargeSegRow seg@(SS.Segment { minimum }) =
         HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
-          [ td_ []
+          [ if priceOnly then HH.text "" else td_ []
           , td_
               [ fromMaybe (HH.text "N/A")
                   $ findMapWithIndex
@@ -332,7 +350,7 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
                     <> A.concatMap thUnitLabel units
                 , HH.tr [ HP.classes borderedBelow ]
                     $ map (th [] [] <<< A.singleton) dimLabels
-                    <> A.concatMap thUnitSubLabels units
+                    <> A.concatMap (thUnitSubLabels priceOnly) units
                 ]
             ]
           <> A.mapWithIndex renderChargeRow charge.priceByUnitByDim
@@ -448,11 +466,14 @@ render { unitMap, defaultCurrency, charges, estimatedUsage, aggregatedQuantity, 
     SS.CkOnetime -> HH.text "/Item"
     SS.CkMonthly -> HH.text "/Month"
     SS.CkQuarterly -> HH.text "/Quarter"
-    SS.CkUsage ->
-      let
-        usage = findDimQuantity qIdx.unitId dim
-      in
-        renderEditableUsage readOnly qIdx usage
+    SS.CkUsage
+      | priceOnly -> HH.text "/Item"
+    SS.CkUsage
+      | otherwise ->
+        let
+          usage = findDimQuantity qIdx.unitId dim
+        in
+          renderEditableUsage readOnly qIdx usage
     SS.CkSegment -> HH.text "/Segment" -- ???
 
 renderEditableUsage :: forall m. Boolean -> QuantityIndex -> Maybe Quantity -> H.ComponentHTML Action Slots m
@@ -492,9 +513,10 @@ thUnitLabel unit@(SS.ChargeUnit u) =
   where
   maybeGapped = maybe [] (\_ -> gappedLeft) u.priceDimSchema
 
-thUnitSubLabels :: forall w i. SS.ChargeUnit -> Array (HH.HTML w i)
-thUnitSubLabels (SS.ChargeUnit u) = case u.kind of
-  SS.CkUsage -> [ thPrice, th_ [ HH.text "Est. Usage" ] ]
+thUnitSubLabels :: forall w i. Boolean -> SS.ChargeUnit -> Array (HH.HTML w i)
+thUnitSubLabels priceOnly (SS.ChargeUnit u) = case u.kind of
+  SS.CkUsage
+    | not priceOnly -> [ thPrice, th_ [ HH.text "Est. Usage" ] ]
   _ -> [ thPrice, th_ [] ]
   where
   thPrice = th maybeGapped [] [ HH.text "Price" ]

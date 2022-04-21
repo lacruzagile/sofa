@@ -295,6 +295,7 @@ render state =
       , defaultCurrency
       , charges
       , estimatedUsage
+      , priceOnly: false
       , readOnly: not isInDraft
       }
       ( \result ->

@@ -192,7 +192,13 @@ render state = HH.section_ [ HH.article_ content ]
   renderRateCardCharges :: SS.ChargeCurrency -> Charge.ChargeUnitMap -> Array SS.Charge -> H.ComponentHTML Action Slots m
   renderRateCardCharges defaultCurrency unitMap charges =
     HH.slot Charge.proxy unit Charge.component
-      { unitMap, defaultCurrency, charges, estimatedUsage: Map.empty, readOnly: true }
+      { unitMap
+      , defaultCurrency
+      , charges
+      , estimatedUsage: Map.empty
+      , priceOnly: false
+      , readOnly: true
+      }
       (\_ -> NoOp)
 
   renderRateCard :: SS.ChargeCurrency -> Charge.ChargeUnitMap -> SS.RateCard -> H.ComponentHTML Action Slots m
