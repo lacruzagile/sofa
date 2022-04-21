@@ -170,13 +170,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderLoadMore = case state.nextPageToken of
     Loading ->
       HH.button
-        [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "w-full", Css.c "mb-3" ]
+        [ HP.classes [ Css.c "nectary-btn-secondary", Css.c "w-full", Css.c "mb-3" ]
         , HP.disabled true
         ]
         [ Widgets.spinner [] ]
     Loaded (Just tok) ->
       HH.button
-        ( [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "w-full", Css.c "mb-3" ]
+        ( [ HP.classes [ Css.c "nectary-btn-secondary", Css.c "w-full", Css.c "mb-3" ]
           , HE.onClick \_ -> LoadNext (Just tok)
           ]
         )
@@ -186,7 +186,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderNewOrderLink =
     HH.a
       [ Route.href Route.OrderForm
-      , HP.class_ (Css.c "sofa-btn-primary")
+      , HP.class_ (Css.c "nectary-btn-primary")
       ]
       [ HH.text "New order" ]
 

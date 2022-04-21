@@ -181,13 +181,13 @@ renderDetails st =
       HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-4" ] ]
         [ HH.div [ HP.class_ (Css.c "grow") ] []
         , HH.button
-            [ HP.classes [ Css.c "sofa-btn-secondary" ]
+            [ HP.classes [ Css.c "nectary-btn-secondary" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
             [ HH.text "Close" ]
         , HH.button
-            [ HP.classes [ Css.c "sofa-btn-primary" ]
+            [ HP.classes [ Css.c "nectary-btn-primary" ]
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> StartNewNote
             ]
@@ -214,14 +214,14 @@ renderDetails st =
             ]
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-secondary")
+                [ HP.class_ (Css.c "nectary-btn-secondary")
                 , HP.enabled actionsAllowed
                 , HE.onClick \_ -> CancelNewNote
                 ]
                 [ HH.text "Cancel" ]
             , HH.button
                 [ HP.type_ HP.ButtonSubmit
-                , HP.class_ (Css.c "sofa-btn-primary")
+                , HP.class_ (Css.c "nectary-btn-primary")
                 , HP.enabled actionsAllowed
                 ]
                 [ HH.text "Save"
@@ -267,7 +267,7 @@ renderDetails st =
           , HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
               [ HP.classes
-                  $ [ Css.c "sofa-btn-destructive"
+                  $ [ Css.c "nectary-btn-destructive"
                     , Css.c "h-auto"
                     , Css.c "py-0"
                     ]
@@ -280,7 +280,7 @@ renderDetails st =
               ]
           , HH.button
               [ HP.classes
-                  $ [ Css.c "sofa-btn-primary"
+                  $ [ Css.c "nectary-btn-primary"
                     , Css.c "h-auto"
                     , Css.c "py-0"
                     ]
@@ -339,14 +339,14 @@ renderDetails st =
           ]
           [ HH.div [ HP.class_ (Css.c "grow") ] []
           , HH.button
-              [ HP.class_ (Css.c "sofa-btn-secondary")
+              [ HP.class_ (Css.c "nectary-btn-secondary")
               , HP.type_ HP.ButtonButton
               , HP.enabled actionsAllowed
               , HE.onClick \_ -> CancelEditNote
               ]
               [ HH.text "Cancel" ]
           , HH.button
-              [ HP.class_ (Css.c "sofa-btn-primary")
+              [ HP.class_ (Css.c "nectary-btn-primary")
               , HP.type_ HP.ButtonSubmit
               , HP.enabled actionsAllowed
               ]

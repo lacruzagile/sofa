@@ -177,14 +177,14 @@ renderModal state observer =
               ]
               [ HH.div [ HP.class_ (Css.c "grow") ] []
               , HH.button
-                  [ HP.class_ (Css.c "sofa-btn-secondary")
+                  [ HP.class_ (Css.c "nectary-btn-secondary")
                   , HP.type_ HP.ButtonButton
                   , HP.enabled actionsAllowed
                   , HE.onClick \_ -> CancelNewObserver
                   ]
                   [ HH.text "Cancel" ]
               , HH.button
-                  [ HP.class_ (Css.c "sofa-btn-primary")
+                  [ HP.class_ (Css.c "nectary-btn-primary")
                   , HP.type_ HP.ButtonSubmit
                   , HP.enabled actionsAllowed
                   ]

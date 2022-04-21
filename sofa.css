@@ -252,15 +252,7 @@
     animation-iteration-count: 1.5;
   }
 
-  .sofa-small-title {
-    @apply
-      uppercase
-      my-2
-      text-sm
-      text-gray-600;
-  }
-
-  .sofa-btn-primary {
+  .nectary-btn-primary {
     @apply
       inline-flex
       items-center
@@ -284,7 +276,7 @@
       rounded;
   }
 
-  .sofa-btn-secondary {
+  .nectary-btn-secondary {
     @apply
       inline-flex
       items-center
@@ -311,7 +303,7 @@
       rounded;
   }
 
-  .sofa-btn-cta {
+  .nectary-btn-cta {
     @apply
       inline-flex
       items-center
@@ -336,7 +328,7 @@
       rounded;
   }
 
-  .sofa-btn-destructive {
+  .nectary-btn-destructive {
     @apply
       inline-flex
       items-center
@@ -372,6 +364,14 @@
       animate-spin
       w-5
       h-5;
+  }
+
+  .sofa-small-title {
+    @apply
+      uppercase
+      my-2
+      text-sm
+      text-gray-600;
   }
 
   .sofa-order-status-select {

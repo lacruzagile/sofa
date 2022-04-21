@@ -157,14 +157,14 @@ render = case _ of
         , HH.div [ HP.classes [ Css.c "flex", Css.c "gap-x-4" ] ]
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-secondary")
+                [ HP.class_ (Css.c "nectary-btn-secondary")
                 , HP.type_ HP.ButtonButton
                 , HE.onClick \_ -> SetState LoggedOut
                 ]
                 [ HH.text "Cancel" ]
             , HH.button
                 [ HP.type_ HP.ButtonSubmit
-                , HP.classes [ Css.c "sofa-btn-primary" ]
+                , HP.classes [ Css.c "nectary-btn-primary" ]
                 ]
                 [ HH.text "Login" ]
             ]

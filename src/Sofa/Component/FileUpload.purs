@@ -180,7 +180,7 @@ render state =
       renderBodySuccess (renderText_ msg)
         $ HH.button
             [ HP.classes
-                [ Css.c "sofa-btn-destructive"
+                [ Css.c "nectary-btn-destructive"
                 , Css.c "h-8"
                 , Css.c "mx-auto"
                 ]
@@ -191,7 +191,7 @@ render state =
       renderBodyUpload (renderText "text-raspberry-500" msg)
         $ HH.button
             [ HP.classes
-                [ Css.c "sofa-btn-secondary"
+                [ Css.c "nectary-btn-secondary"
                 , Css.c "h-8"
                 , Css.c "mx-auto"
                 ]
@@ -213,7 +213,7 @@ render state =
           in
             HH.label
               [ HP.classes
-                  [ Css.c "sofa-btn-secondary"
+                  [ Css.c "nectary-btn-secondary"
                   , Css.c "h-8"
                   , Css.c "text-sm"
                   , Css.c "mx-auto"

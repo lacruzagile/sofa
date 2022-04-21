@@ -81,7 +81,7 @@ render state
     Viewing ->
       HH.button
         [ HP.classes
-            [ Css.c "sofa-btn-secondary"
+            [ Css.c "nectary-btn-secondary"
             , Css.c "w-full"
             , Css.c "text-stormy-500"
             ]
@@ -180,7 +180,7 @@ render state
                     ]
                     [ HH.button
                         [ HP.type_ HP.ButtonButton
-                        , HP.class_ (Css.c "sofa-btn-destructive")
+                        , HP.class_ (Css.c "nectary-btn-destructive")
                         , HP.enabled
                             let
                               SS.Price { discount } = state.price
@@ -192,13 +192,13 @@ render state
                     , HH.div [ HP.class_ (Css.c "grow") ] []
                     , HH.button
                         [ HP.type_ HP.ButtonButton
-                        , HP.class_ (Css.c "sofa-btn-secondary")
+                        , HP.class_ (Css.c "nectary-btn-secondary")
                         , HE.onClick \_ -> CloseEditing
                         ]
                         [ HH.text "Cancel" ]
                     , HH.button
                         [ HP.type_ HP.ButtonSubmit
-                        , HP.class_ (Css.c "sofa-btn-primary")
+                        , HP.class_ (Css.c "nectary-btn-primary")
                         , HP.enabled (value /= "")
                         ]
                         [ HH.text "Save new price" ]

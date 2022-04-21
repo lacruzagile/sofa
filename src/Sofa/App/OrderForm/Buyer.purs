@@ -257,7 +257,7 @@ renderDetails st =
           | st.readOnly =
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-primary")
+                [ HP.class_ (Css.c "nectary-btn-primary")
                 , HE.onClick \_ -> CancelAndCloseDetails
                 ]
                 [ HH.text "Close" ]
@@ -265,12 +265,12 @@ renderDetails st =
           | otherwise =
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-secondary")
+                [ HP.class_ (Css.c "nectary-btn-secondary")
                 , HE.onClick \_ -> CancelAndCloseDetails
                 ]
                 [ HH.text "Cancel" ]
             , HH.button
-                [ HP.class_ (Css.c "sofa-btn-primary")
+                [ HP.class_ (Css.c "nectary-btn-primary")
                 , HP.enabled
                     ( Loadable.isLoaded st.buyer
                         && (buyer.contacts.primary /= SS.emptyContact)

@@ -126,7 +126,7 @@ renderSideMenu currentRoute =
                     [ HP.classes [ Css.c "w-full", Css.c "pl-4", Css.c "py-2" ]
                     ]
                     [ HH.button
-                        [ HP.classes [ Css.c "sofa-btn-secondary", Css.c "h-6", Css.c "text-sm" ]
+                        [ HP.classes [ Css.c "nectary-btn-secondary", Css.c "h-6", Css.c "text-sm" ]
                         , HE.onClick \_ -> DoAlert typ
                         ]
                         [ HH.text (show typ) ]

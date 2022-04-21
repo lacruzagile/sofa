@@ -491,7 +491,7 @@ render state =
                 [ HP.classes
                     [ Css.c "relative"
                     , Css.c "float-right"
-                    , Css.c "sofa-btn-destructive"
+                    , Css.c "nectary-btn-destructive"
                     , Css.c "h-auto"
                     , Css.c "ml-2"
                     , Css.c "py-0"
@@ -560,7 +560,7 @@ render state =
             [ HH.div [ HP.class_ (Css.c "grow") ] []
             , HH.button
                 [ HP.classes
-                    [ Css.c "sofa-btn-secondary"
+                    [ Css.c "nectary-btn-secondary"
                     , Css.c "h-8"
                     , Css.c "px-6"
                     , Css.c "gap-x-4"
@@ -1057,7 +1057,7 @@ render state =
       | otherwise =
         HH.button
           [ HP.classes
-              [ Css.c "sofa-btn-destructive"
+              [ Css.c "nectary-btn-destructive"
               , Css.c "h-auto"
               , Css.c "relative"
               , Css.c "float-right"
@@ -1075,7 +1075,7 @@ render state =
         HH.div_
           [ HH.button
               [ HP.classes
-                  [ Css.c "sofa-btn-secondary"
+                  [ Css.c "nectary-btn-secondary"
                   , Css.c "h-8"
                   , Css.c "m-5"
                   , Css.c "py-0"
@@ -1203,7 +1203,7 @@ render state =
                   else
                     HH.button
                       [ HP.classes
-                          [ Css.c "sofa-btn-secondary"
+                          [ Css.c "nectary-btn-secondary"
                           , Css.c "px-6"
                           , Css.c "gap-x-4"
                           ]
@@ -1294,7 +1294,7 @@ render state =
               [ HH.div [ HP.class_ (Css.c "grow") ] []
               , HH.button
                   [ HP.classes
-                      [ Css.c "sofa-btn-secondary"
+                      [ Css.c "nectary-btn-secondary"
                       , Css.c "px-6"
                       , Css.c "gap-x-4"
                       ]
@@ -1536,7 +1536,7 @@ render state =
       , HH.div [ HP.class_ (Css.c "grow") ] []
       , if isFreshOrder then
           HH.button
-            [ HP.class_ (Css.c "sofa-btn-destructive")
+            [ HP.class_ (Css.c "nectary-btn-destructive")
             , HP.disabled
                 $ let
                     changed = sof.orderForm.changed
@@ -1551,7 +1551,7 @@ render state =
             [ HH.text "Discard order" ]
         else
           HH.button
-            [ HP.class_ (Css.c "sofa-btn-primary")
+            [ HP.class_ (Css.c "nectary-btn-primary")
             , HP.disabled preventFulfill
             , HE.onClick $ \_ -> FulfillOrder
             ]
@@ -1562,7 +1562,7 @@ render state =
                 HH.text ""
             ]
       , HH.button
-          [ HP.class_ (Css.c "sofa-btn-primary")
+          [ HP.class_ (Css.c "nectary-btn-primary")
           , HP.disabled preventCreate
           , HE.onClick $ \_ -> CreateUpdateOrder
           ]
