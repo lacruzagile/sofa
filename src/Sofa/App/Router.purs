@@ -118,30 +118,9 @@ renderSideMenu currentRoute =
         , navbarItem Icon.piggybank "Billing  ⃰" []
         , navbarItem Icon.puzzle "Assets  ⃰" []
         , navbarItem Icon.settings "Project settings  ⃰" []
-        , navbarItem Icon.package "Alert test  ⃰  ⃰"
-            $ let
-                btn typ =
-                  HH.li
-                    [ Css.classes [ "w-full", "pl-4", "py-2" ]
-                    ]
-                    [ HH.button
-                        [ Css.classes [ "nectary-btn-secondary", "h-6", "text-sm" ]
-                        , HE.onClick \_ -> DoAlert typ
-                        ]
-                        [ HH.text (show typ) ]
-                    ]
-              in
-                [ btn Alert.Informative
-                , btn Alert.Success
-                , btn Alert.Warning
-                , btn Alert.Error
-                ]
         , HH.div
             [ Css.classes [ "pt-10", "text-stormy-300" ] ]
             [ HH.text "  ⃰ TODO" ]
-        , HH.div
-            [ Css.classes [ "text-stormy-300" ] ]
-            [ HH.text "  ⃰  ⃰ Ignore this" ]
         ]
     ]
   where
