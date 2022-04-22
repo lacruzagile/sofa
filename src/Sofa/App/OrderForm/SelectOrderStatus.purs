@@ -1,4 +1,10 @@
-module Sofa.App.OrderForm.SelectOrderStatus (Slot, Output(..), proxy, component) where
+module Sofa.App.OrderForm.SelectOrderStatus
+  ( Output(..)
+  , Slot
+  , component
+  , proxy
+  , statusColorClass
+  ) where
 
 import Prelude
 import Data.Array ((!!))
@@ -32,6 +38,18 @@ type Output
 type State
   = ( selected :: SS.OrderStatus
     )
+
+statusColorClass :: SS.OrderStatus -> HH.ClassName
+statusColorClass status =
+  Css.c case status of
+    SS.OsInDraft -> "bg-snow-600"
+    SS.OsInReview -> "bg-informative-200"
+    SS.OsInApproval -> "bg-informative-200"
+    SS.OsInSignature -> "bg-informative-200"
+    SS.OsInConfiguration -> "bg-informative-200"
+    SS.OsInFulfillment -> "bg-informative-200"
+    SS.OsFulfilled -> "bg-success-200"
+    SS.OsCancelled -> "bg-warning-200"
 
 component ::
   forall query m.
@@ -81,17 +99,6 @@ selectComponent =
   render :: Sel.State State -> H.ComponentHTML _ () m
   render st = HH.span_ [ renderInput, renderResults ]
     where
-    colorClass =
-      Css.c case st.selected of
-        SS.OsInDraft -> "bg-snow-600"
-        SS.OsInReview -> "bg-informative-200"
-        SS.OsInApproval -> "bg-informative-200"
-        SS.OsInSignature -> "bg-informative-200"
-        SS.OsInConfiguration -> "bg-informative-200"
-        SS.OsInFulfillment -> "bg-informative-200"
-        SS.OsFulfilled -> "bg-success-200"
-        SS.OsCancelled -> "bg-warning-200"
-
     renderInput :: H.ComponentHTML _ () m
     renderInput =
       HH.button
@@ -99,7 +106,7 @@ selectComponent =
             [ HP.classes
                 [ Css.c "nectary-tag"
                 , Css.c "nectary-dropdown-icon"
-                , colorClass
+                , statusColorClass st.selected
                 , Css.c case st.visibility of
                     Sel.On -> "invisible"
                     Sel.Off -> "visible"

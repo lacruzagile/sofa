@@ -9,7 +9,9 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm as OrderForm
+import Sofa.App.OrderForm.SelectOrderStatus (statusColorClass)
 import Sofa.App.Requests (getOrders)
+import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
@@ -91,10 +93,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder (SS.OrderForm o) =
     trow
       [ tcell [ maybe (HH.text "N/A") Widgets.dateWithTimeTooltip o.createTime ]
-      , tcell [ HH.text $ SS.prettyOrderStatus o.status ]
       , tcell [ HH.text buyer ]
       , tcell [ HH.text seller ]
       , tcell [ HH.text $ fromMaybe "" $ o.displayName ]
+      , tcell
+          [ HH.div
+              [ HP.classes
+                  [ Css.c "nectary-tag"
+                  , Css.c "w-fit"
+                  , statusColorClass o.status
+                  ]
+              ]
+              [ HH.text $ SS.prettyOrderStatus o.status ]
+          ]
       ]
     where
     rowClasses = [ Css.c "table-row", Css.c "hover:bg-gray-100" ]
@@ -119,11 +130,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
       [ table
           [ thead
               [ trow
-                  [ thcell [ HH.text "Created" ]
-                  , thcell [ HH.text "Status" ]
+                  [ thcell [ HH.text "Date" ]
                   , thcell [ HH.text "Customer" ]
-                  , thcell [ HH.text "Legal Entity" ]
+                  , thcell [ HH.text "Legal entity" ]
                   , thcell [ HH.text "Name" ]
+                  , thcell [ HH.text "Status" ]
                   ]
               ]
           , tbody $ map renderOrder state.orders
@@ -183,6 +194,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HH.text "Load more" ]
     _ -> HH.text ""
 
+  renderSearchForm =
+    HH.form [ HP.class_ (Css.c "relative") ]
+      [ HH.div [ HP.classes [ Css.c "absolute", Css.c "left-2.5", Css.c "top-3.5" ] ]
+          [ Icon.search
+              [ Icon.classes [ Css.c "w-6", Css.c "h-6", Css.c "fill-stormy-300" ]
+              , Icon.ariaHidden true
+              ]
+          ]
+      , HH.input
+          [ HP.type_ HP.InputSearch
+          , HP.classes
+              [ Css.c "nectary-input"
+              , Css.c "w-96"
+              , Css.c "pl-10"
+              ]
+          , HP.placeholder "Search (not yet functional)"
+          ]
+      ]
+
   renderNewOrderLink =
     HH.a
       [ Route.href Route.OrderForm
@@ -191,8 +221,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
       [ HH.text "New order" ]
 
   renderContent =
-    [ HH.div [ HP.classes [ Css.c "flex", Css.c "items-center" ] ]
-        [ HH.h1 [ HP.class_ (Css.c "grow") ] [ HH.text "Orders" ]
+    [ HH.div
+        [ HP.classes
+            [ Css.c "my-5"
+            , Css.c "flex"
+            , Css.c "flex-wrap"
+            , Css.c "items-center"
+            , Css.c "gap-4"
+            ]
+        ]
+        [ HH.h1 [ HP.classes [ Css.c "grow", Css.c "my-0" ] ] [ HH.text "Orders" ]
+        , renderSearchForm
         , renderNewOrderLink
         ]
     , renderOrders
