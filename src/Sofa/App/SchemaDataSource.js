@@ -1,5 +1,5 @@
 "use strict";
 
-exports.replaceAllFun = p => f => s => {
-  return s.replaceAll(p, f);
+exports.replaceAllFun = pat => fun => str => {
+  return () => str.replaceAll(pat, fun);
 };

@@ -946,7 +946,7 @@ render state =
       mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe String -> m DataSourceEnumResult
       mkGetEnumData dataSource =
         let
-          getCommercial _unit = case state of
+          getCommercial = pure case state of
             Initialized (Loaded { orderForm: { commercial } }) -> commercial
             _ -> Nothing
         in

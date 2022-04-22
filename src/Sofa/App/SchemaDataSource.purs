@@ -7,15 +7,17 @@ import Prelude
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple)
+import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class (liftEffect)
 import JSURI (encodeURIComponent)
 import Sofa.App.Requests as Requests
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.SmartSpec (BillingAccountId(..), Commercial(..), ConfigValue, SchemaDataSourceEnum(..))
 
--- | The 'replaceAll' method taking a function as replacer.
-foreign import replaceAllFun :: String -> (Unit -> String) -> String -> String
+-- | The 'replaceAll' method taking an effect as replacer.
+foreign import replaceAllFun :: String -> Effect String -> String -> Effect String
 
 type DataSourceEnumResult
   = Loadable (Array (Tuple String ConfigValue))
@@ -30,7 +32,7 @@ getDataSourceEnum ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
-  { getCommercial :: Unit -> Maybe Commercial } ->
+  { getCommercial :: Effect (Maybe Commercial) } ->
   SchemaDataSourceEnum ->
   Maybe String ->
   m (Loadable (Array (Tuple String ConfigValue)))
@@ -42,17 +44,20 @@ getDataSourceEnum vars dataSource input = case dataSource of
       pure $ Loaded available
   SdsEnumHttpGet { url: urlTemplate, authenticate } ->
     let
-      varCommercial _ =
-        fromMaybe "" do
-          Commercial commercial <- vars.getCommercial unit
-          BillingAccountId baid <- commercial.billingAccountId
-          encUri baid
+      varCommercial = do
+        mCommercial <- vars.getCommercial
+        pure
+          $ fromMaybe "" do
+              Commercial commercial <- mCommercial
+              BillingAccountId baid <- commercial.billingAccountId
+              encUri baid
 
-      varInput _ = fromMaybe "" $ encUri =<< input
+      varInput = pure $ fromMaybe "" $ encUri =<< input
 
-      url =
+      applyVars =
         replaceAllFun "${input}" varInput
-          $ replaceAllFun "${commercial.billingAccountId}" varCommercial
-          $ urlTemplate
+          <=< replaceAllFun "${commercial.billingAccountId}" varCommercial
     in
-      Requests.getDataSourceEnum url authenticate
+      do
+        url <- liftEffect $ applyVars urlTemplate
+        Requests.getDataSourceEnum url authenticate
