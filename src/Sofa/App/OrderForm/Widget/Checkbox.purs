@@ -80,12 +80,10 @@ render st = case st.available of
   Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
   Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No data available …" ]
   Loaded available ->
-    HH.fieldset [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-2" ] ]
+    HH.fieldset [ Css.classes [ "flex", "flex-col", "gap-y-2" ] ]
       $ map renderItem available
   where
-  containerClasses = []
-
-  infoClasses = containerClasses <> [ Css.c "p-2" ]
+  infoClasses = [ Css.c "p-2" ]
 
   loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
@@ -93,11 +91,11 @@ render st = case st.available of
     HH.label_
       [ HH.input
           [ HP.type_ InputCheckbox
-          , HP.class_ (Css.c "nectary-input-checkbox")
+          , Css.class_ "nectary-input-checkbox"
           , HP.checked $ Set.member v st.selected
           , HE.onChecked $ Check v
           ]
-      , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text key ]
+      , HH.span [ Css.class_ "ml-2" ] [ HH.text key ]
       ]
 
 handleAction ::

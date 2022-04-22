@@ -112,23 +112,28 @@ renderSummary st = case st.acceptedSeller of
   Just (SS.Seller { registeredName }) -> btn okClasses registeredName
   Nothing -> btn badClasses "Select …"
   where
-  btn classes txt = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ] [ HH.text txt ]
+  btn classes txt =
+    HH.button
+      [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
+      [ HH.text txt ]
 
   okClasses =
-    [ Css.c "block"
-    , Css.c "text-left"
-    , Css.c "underline"
-    , Css.c "underline-offset-4"
-    , Css.c "decoration-honey-500"
-    ]
+    Css.cs
+      [ "block"
+      , "text-left"
+      , "underline"
+      , "underline-offset-4"
+      , "decoration-honey-500"
+      ]
 
   badClasses =
-    [ Css.c "block"
-    , Css.c "text-left"
-    , Css.c "underline"
-    , Css.c "underline-offset-4"
-    , Css.c "decoration-honey-500"
-    ]
+    Css.cs
+      [ "block"
+      , "text-left"
+      , "underline"
+      , "underline-offset-4"
+      , "decoration-honey-500"
+      ]
 
 renderDetails ::
   forall m.
@@ -146,7 +151,7 @@ renderDetails st =
     ]
   where
   notAvailableIfNull = case _ of
-    [] -> HH.div [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text "None" ]
+    [] -> HH.div [ Css.class_ "text-stormy-300" ] [ HH.text "None" ]
     elems -> HH.div_ elems
 
   renderContent sellerOpt =
@@ -157,7 +162,7 @@ renderDetails st =
               Nothing -> []
               Just (SS.LegalEntity le) -> [ HH.text (show le.defaultBankCurrency) ]
 
-      subtleComma = HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text ", " ]
+      subtleComma = HH.span [ Css.class_ "text-stormy-300" ] [ HH.text ", " ]
 
       currencies =
         notAvailableIfNull
@@ -167,7 +172,7 @@ renderDetails st =
           $ maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity
 
       renderSellerData (SS.Seller seller) =
-        HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-4" ] ]
+        HH.div [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
           [ if st.readOnly then
               HH.text ""
             else
@@ -176,18 +181,18 @@ renderDetails st =
               HH.text ""
             else
               HH.div
-                [ HP.classes
-                    [ Css.c "w-full"
-                    , Css.c "p-8"
-                    , Css.c "min-w-128"
-                    , Css.c "grid"
-                    , Css.c "grid-cols-[12rem_auto]"
-                    , Css.c "gap-4"
-                    , Css.c "rounded"
-                    , Css.c "bg-snow-500"
+                [ Css.classes
+                    [ "w-full"
+                    , "p-8"
+                    , "min-w-128"
+                    , "grid"
+                    , "grid-cols-[12rem_auto]"
+                    , "gap-4"
+                    , "rounded"
+                    , "bg-snow-500"
                     ]
                 ]
-                $ [ HH.h3 [ HP.class_ (Css.c "col-span-2") ] [ HH.text seller.registeredName ]
+                $ [ HH.h3 [ Css.class_ "col-span-2" ] [ HH.text seller.registeredName ]
                   , renderSmallTitle "Bank currency"
                   , defaultCurrency
                   , renderSmallTitle "Available currencies"
@@ -198,31 +203,31 @@ renderDetails st =
                   , renderContact seller.contacts.finance
                   , renderSmallTitle "Support Contact"
                   , renderContact seller.contacts.support
-                  , HH.h4 [ HP.class_ (Css.c "col-span-2") ] [ HH.text "Address" ]
+                  , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Address" ]
                   ]
                 <> Widgets.address seller.address
-          , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
+          , HH.div [ Css.classes [ "flex", "space-x-5" ] ] bottomButtons
           ]
 
       bottomButtons
         | st.readOnly =
-          [ HH.div [ HP.class_ (Css.c "grow") ] []
+          [ HH.div [ Css.class_ "grow" ] []
           , HH.button
-              [ HP.class_ (Css.c "nectary-btn-primary")
+              [ Css.class_ "nectary-btn-primary"
               , HE.onClick \_ -> CancelAndCloseDetails
               ]
               [ HH.text "Close" ]
           ]
         | otherwise =
-          [ HH.div [ HP.class_ (Css.c "grow") ] []
+          [ HH.div [ Css.class_ "grow" ] []
           , HH.button
-              [ HP.class_ (Css.c "nectary-btn-secondary")
+              [ Css.class_ "nectary-btn-secondary"
               , HE.onClick \_ -> CancelAndCloseDetails
               ]
               [ HH.text "Cancel" ]
           , HH.button
               [ HP.ref okBtnLabel
-              , HP.class_ (Css.c "nectary-btn-primary")
+              , Css.class_ "nectary-btn-primary"
               , HP.enabled (isJust st.seller)
               , HE.onClick \_ -> AcceptAndCloseDetails
               ]
@@ -240,7 +245,7 @@ renderDetails st =
         Just "" -> []
         Just val -> [ HH.text val ]
 
-      subtleSlash = HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text " / " ]
+      subtleSlash = HH.span [ Css.class_ "text-stormy-300" ] [ HH.text " / " ]
     in
       notAvailableIfNull
         $ A.intersperse subtleSlash

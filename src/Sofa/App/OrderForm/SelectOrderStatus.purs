@@ -122,47 +122,47 @@ selectComponent =
       | otherwise =
         HH.div
           ( SelSet.setContainerProps
-              [ HP.classes containerClasses
+              [ Css.classes containerClasses
               , HE.onMouseLeave \_ -> Sel.SetVisibility Sel.Off
               ]
           )
           $ A.mapWithIndex renderItem SS.orderStatuses
         where
         containerClasses =
-          [ Css.c "absolute"
-          , Css.c "-mt-6"
-          , Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "bg-white"
-          , Css.c "text-xs"
-          , Css.c "overflow-auto"
-          , Css.c "border"
-          , Css.c "rounded-sm"
-          , Css.c "divide-y"
-          , Css.c "z-10"
+          [ "absolute"
+          , "-mt-6"
+          , "flex"
+          , "flex-col"
+          , "bg-white"
+          , "text-xs"
+          , "overflow-auto"
+          , "border"
+          , "rounded-sm"
+          , "divide-y"
+          , "z-10"
           ]
 
     renderItem idx status =
       HH.div
         ( SelSet.setItemProps idx
-            [ HP.classes $ itemClasses <> selectedClasses <> highlightClasses
+            [ Css.classes $ itemClasses <> selectedClasses <> highlightClasses
             ]
         )
         $ if status == st.selected then
-            [ HH.div [ HP.class_ (Css.c "grow") ] [ renderOrderStatus ]
+            [ HH.div [ Css.class_ "grow" ] [ renderOrderStatus ]
             , Icon.done [ Icon.classes [ Css.c "w-4" ] ]
             ]
           else
             [ renderOrderStatus ]
       where
-      itemClasses = [ Css.c "p-2" ]
+      itemClasses = [ "p-2" ]
 
       highlightClasses
-        | st.highlightedIndex == Just idx = [ Css.c "bg-snow-500" ]
+        | st.highlightedIndex == Just idx = [ "bg-snow-500" ]
         | otherwise = []
 
       selectedClasses
-        | status == st.selected = [ Css.c "flex", Css.c "gap-x-2" ]
+        | status == st.selected = [ "flex", "gap-x-2" ]
         | otherwise = []
 
       renderOrderStatus = HH.text (SS.prettyOrderStatus status)

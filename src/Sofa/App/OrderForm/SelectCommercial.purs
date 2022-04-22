@@ -11,7 +11,6 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Select as Sel
 import Sofa.App.Requests (getBillingAccount, getBillingAccounts)
 import Sofa.Component.Typeahead as Typeahead
@@ -181,15 +180,15 @@ component =
   render st = case st.selectedFull of
     Loading ->
       HH.div
-        [ HP.classes
-            [ Css.c "nectary-input"
-            , Css.c "w-full"
-            , Css.c "flex"
-            , Css.c "items-center"
-            , Css.c "space-x-3"
+        [ Css.classes
+            [ "nectary-input"
+            , "w-full"
+            , "flex"
+            , "items-center"
+            , "space-x-3"
             ]
         ]
-        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading billing account …" ]
+        [ HH.div [ Css.class_ "grow" ] [ HH.text "Loading billing account …" ]
         , Widgets.spinner [ Css.c "my-4" ]
         ]
     _ ->
@@ -209,7 +208,7 @@ component =
                       HH.span_
                         [ HH.text ba.displayName
                         , HH.text " "
-                        , HH.span [ HP.style "color:gray" ] [ HH.text ba.shortId ]
+                        , HH.span [ Css.class_ "text-stormy-300" ] [ HH.text ba.shortId ]
                         ]
                   in
                     renderItem <$> filtered

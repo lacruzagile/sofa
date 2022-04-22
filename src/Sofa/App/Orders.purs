@@ -77,15 +77,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
   where
   renderError err =
     HH.div
-      [ HP.classes
-          [ Css.c "p-5"
-          , Css.c "bg-red-100"
-          , Css.c "border"
-          , Css.c "border-red-400"
-          , Css.c "text-raspberry-500"
+      [ Css.classes
+          [ "p-5"
+          , "bg-red-100"
+          , "border"
+          , "border-red-400"
+          , "text-raspberry-500"
           ]
       ]
-      [ HH.h3 [ HP.classes [ Css.c "text-lg" ] ] [ HH.text "Error" ]
+      [ HH.h3 [ Css.classes [ "text-lg" ] ] [ HH.text "Error" ]
       , HH.p_ [ HH.text err ]
       ]
 
@@ -108,13 +108,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       ]
     where
-    rowClasses = [ Css.c "table-row", Css.c "hover:bg-gray-100" ]
+    rowClasses = [ "table-row", "hover:bg-gray-100" ]
 
     trow = case o.id of
-      Nothing -> HH.div [ HP.classes rowClasses ]
-      Just id -> HH.a [ Route.href (Route.Order id), HP.classes rowClasses ]
+      Nothing -> HH.div [ Css.classes rowClasses ]
+      Just id -> HH.a [ Route.href (Route.Order id), Css.classes rowClasses ]
 
-    tcell = HH.div [ HP.classes [ Css.c "table-cell", Css.c "p-5" ] ]
+    tcell = HH.div [ Css.classes [ "table-cell", "p-5" ] ]
 
     Tuple buyer seller =
       let
@@ -144,36 +144,36 @@ render state = HH.section_ [ HH.article_ renderContent ]
     where
     table =
       HH.div
-        [ HP.classes
-            [ Css.c "table"
-            , Css.c "w-full"
-            , Css.c "bg-white"
-            , Css.c "rounded-md"
+        [ Css.classes
+            [ "table"
+            , "w-full"
+            , "bg-white"
+            , "rounded-md"
             ]
         ]
 
     thead =
       HH.div
-        [ HP.classes
-            [ Css.c "table-header-group"
-            , Css.c "font-semibold"
-            , Css.c "text-left"
-            , Css.c "text-sm"
-            , Css.c "text-stormy-200"
+        [ Css.classes
+            [ "table-header-group"
+            , "font-semibold"
+            , "text-left"
+            , "text-sm"
+            , "text-stormy-200"
             ]
         ]
 
-    tbody = HH.div [ HP.classes [ Css.c "table-row-group" ] ]
+    tbody = HH.div [ Css.class_ "table-row-group" ]
 
-    trow = HH.div [ HP.classes [ Css.c "table-row" ] ]
+    trow = HH.div [ Css.class_ "table-row" ]
 
     thcell =
       HH.div
-        [ HP.classes
-            [ Css.c "table-cell"
-            , Css.c "px-5"
-            , Css.c "py-3"
-            , Css.c "border-b"
+        [ Css.classes
+            [ "table-cell"
+            , "px-5"
+            , "py-3"
+            , "border-b"
             ]
         ]
 
@@ -181,13 +181,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderLoadMore = case state.nextPageToken of
     Loading ->
       HH.button
-        [ HP.classes [ Css.c "nectary-btn-secondary", Css.c "w-full", Css.c "mb-3" ]
+        [ Css.classes [ "nectary-btn-secondary", "w-full", "mb-3" ]
         , HP.disabled true
         ]
         [ Widgets.spinner [] ]
     Loaded (Just tok) ->
       HH.button
-        ( [ HP.classes [ Css.c "nectary-btn-secondary", Css.c "w-full", Css.c "mb-3" ]
+        ( [ Css.classes [ "nectary-btn-secondary", "w-full", "mb-3" ]
           , HE.onClick \_ -> LoadNext (Just tok)
           ]
         )
@@ -195,8 +195,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
     _ -> HH.text ""
 
   renderSearchForm =
-    HH.form [ HP.class_ (Css.c "relative") ]
-      [ HH.div [ HP.classes [ Css.c "absolute", Css.c "left-2.5", Css.c "top-3.5" ] ]
+    HH.form [ Css.class_ "relative" ]
+      [ HH.div [ Css.classes [ "absolute", "left-2.5", "top-3.5" ] ]
           [ Icon.search
               [ Icon.classes [ Css.c "w-6", Css.c "h-6", Css.c "fill-stormy-300" ]
               , Icon.ariaHidden true
@@ -204,10 +204,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       , HH.input
           [ HP.type_ HP.InputSearch
-          , HP.classes
-              [ Css.c "nectary-input"
-              , Css.c "w-96"
-              , Css.c "pl-10"
+          , Css.classes
+              [ "nectary-input"
+              , "w-96"
+              , "pl-10"
               ]
           , HP.placeholder "Search (not yet functional)"
           ]
@@ -216,21 +216,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderNewOrderLink =
     HH.a
       [ Route.href Route.OrderForm
-      , HP.class_ (Css.c "nectary-btn-primary")
+      , Css.class_ "nectary-btn-primary"
       ]
       [ HH.text "New order" ]
 
   renderContent =
     [ HH.div
-        [ HP.classes
-            [ Css.c "my-5"
-            , Css.c "flex"
-            , Css.c "flex-wrap"
-            , Css.c "items-center"
-            , Css.c "gap-4"
+        [ Css.classes
+            [ "my-5"
+            , "flex"
+            , "flex-wrap"
+            , "items-center"
+            , "gap-4"
             ]
         ]
-        [ HH.h1 [ HP.classes [ Css.c "grow", Css.c "my-0" ] ] [ HH.text "Orders" ]
+        [ HH.h1 [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Orders" ]
         , renderSearchForm
         , renderNewOrderLink
         ]

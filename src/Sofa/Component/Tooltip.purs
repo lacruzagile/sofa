@@ -41,7 +41,7 @@ defaultInput =
 contentWithIcon ∷ forall w i. HH.HTML w i → HH.HTML w i
 contentWithIcon content =
   HH.span
-    [ HP.classes [ Css.c "flex", Css.c "items-center" ] ]
+    [ Css.classes [ "flex", "items-center" ] ]
     [ content
     , Icon.tooltip
     ]
@@ -53,27 +53,27 @@ render ::
   HH.HTML slot action
 render input content =
   HH.div
-    [ HP.classes
-        [ Css.c "sofa-tooltip-group"
-        , Css.c "inline-block"
-        , Css.c "relative"
-        , Css.c "w-fit"
+    [ Css.classes
+        [ "sofa-tooltip-group"
+        , "inline-block"
+        , "relative"
+        , "w-fit"
         ]
     ]
     [ content
     , HH.div
-        [ HP.classes
-            [ Css.c "opacity-0"
-            , Css.c "sofa-tooltip-group-hover:opacity-100"
-            , Css.c "absolute"
-            , Css.c "inset-0"
-            , Css.c "pointer-events-none"
-            , Css.c "transition-opacity"
-            , Css.c "motion-reduce:transition-none"
+        [ Css.classes
+            [ "opacity-0"
+            , "sofa-tooltip-group-hover:opacity-100"
+            , "absolute"
+            , "inset-0"
+            , "pointer-events-none"
+            , "transition-opacity"
+            , "motion-reduce:transition-none"
             ]
         ]
         [ HH.div
-            [ HP.classes
+            [ Css.classes
                 $ case input.orientation of
                     Top -> textTopClasses
                     Left -> textLeftClasses
@@ -82,7 +82,7 @@ render input content =
             ]
             [ HH.text input.text
             , HH.div
-                [ HP.classes
+                [ Css.classes
                     $ case input.orientation of
                         Top -> arrowTopClasses
                         Left -> arrowLeftClasses
@@ -94,60 +94,60 @@ render input content =
     ]
   where
   arrowBaseClasses =
-    [ Css.c "sofa-tooltip-arrow"
+    [ "sofa-tooltip-arrow"
     ]
 
   arrowTopClasses =
     arrowBaseClasses
-      <> [ Css.c "left-1/2"
-        , Css.c "top-full"
-        , Css.c "-translate-x-[5px]"
-        , Css.c $ if input.inverted then "border-t-stormy-500" else "border-t-snow-600"
+      <> [ "left-1/2"
+        , "top-full"
+        , "-translate-x-[5px]"
+        , if input.inverted then "border-t-stormy-500" else "border-t-snow-600"
         ]
 
   arrowLeftClasses =
     arrowBaseClasses
-      <> [ Css.c "-right-[10px]"
-        , Css.c "top-1/2"
-        , Css.c "-translate-y-[5px]"
-        , Css.c $ if input.inverted then "border-l-stormy-500" else "border-l-snow-600"
+      <> [ "-right-[10px]"
+        , "top-1/2"
+        , "-translate-y-[5px]"
+        , if input.inverted then "border-l-stormy-500" else "border-l-snow-600"
         ]
 
   arrowRightClasses =
     arrowBaseClasses
-      <> [ Css.c "-left-[10px]"
-        , Css.c "top-1/2"
-        , Css.c "-translate-y-[5px]"
-        , Css.c $ if input.inverted then "border-r-stormy-500" else "border-r-snow-600"
+      <> [ "-left-[10px]"
+        , "top-1/2"
+        , "-translate-y-[5px]"
+        , if input.inverted then "border-r-stormy-500" else "border-r-snow-600"
         ]
 
   textBaseClasses =
-    [ Css.c "sofa-tooltip-text"
-    , Css.c "font-normal"
-    , Css.c $ if input.inverted then "bg-stormy-500" else "bg-snow-600"
-    , Css.c $ if input.inverted then "text-snow-400" else "text-stormy-500"
+    [ "sofa-tooltip-text"
+    , "font-normal"
+    , if input.inverted then "bg-stormy-500" else "bg-snow-600"
+    , if input.inverted then "text-snow-400" else "text-stormy-500"
     ]
 
   textTopClasses =
     textBaseClasses
-      <> [ Css.c "left-1/2"
-        , Css.c "-top-2"
-        , Css.c "-translate-x-1/2"
-        , Css.c "-translate-y-full"
+      <> [ "left-1/2"
+        , "-top-2"
+        , "-translate-x-1/2"
+        , "-translate-y-full"
         ]
 
   textLeftClasses =
     textBaseClasses
-      <> [ Css.c "right-full"
-        , Css.c "top-1/2"
-        , Css.c "-translate-x-4"
-        , Css.c "-translate-y-1/2"
+      <> [ "right-full"
+        , "top-1/2"
+        , "-translate-x-4"
+        , "-translate-y-1/2"
         ]
 
   textRightClasses =
     textBaseClasses
-      <> [ Css.c "left-full"
-        , Css.c "top-1/2"
-        , Css.c "translate-x-4"
-        , Css.c "-translate-y-1/2"
+      <> [ "left-full"
+        , "top-1/2"
+        , "translate-x-4"
+        , "-translate-y-1/2"
         ]

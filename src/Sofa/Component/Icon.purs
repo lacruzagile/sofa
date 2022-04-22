@@ -31,7 +31,6 @@ module Sofa.Component.Icon
 import Prelude
 import Data.String (joinWith)
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Safe.Coerce (coerce)
 import Sofa.Css as Css
 
@@ -64,7 +63,7 @@ info attrs =
 textWithTooltip :: forall w i. String -> HH.HTML w i
 textWithTooltip text =
   HH.span
-    [ HP.classes [ Css.c "flex", Css.c "items-center" ] ]
+    [ Css.classes [ "flex", "items-center" ] ]
     [ HH.text text, tooltip ]
 
 -- | A tooltip indication icon. Rendered as a question mark inside a circle.
@@ -74,12 +73,13 @@ tooltip =
     [ viewBox "0 0 16 16"
     , role "img"
     , classes
-        [ Css.c "inline-block"
-        , Css.c "fill-current"
-        , Css.c "ml-1"
-        , Css.c "w-4"
-        , Css.c "h-4"
-        ]
+        $ Css.cs
+            [ "inline-block"
+            , "fill-current"
+            , "ml-1"
+            , "w-4"
+            , "h-4"
+            ]
     ]
     [ path [ d "M7.25 12.5h1.5V11h-1.5v1.5ZM8 .5C3.86.5.5 3.86.5 8c0 4.14 3.36 7.5 7.5 7.5 4.14 0 7.5-3.36 7.5-7.5C15.5 3.86 12.14.5 8 .5ZM8 14c-3.308 0-6-2.693-6-6 0-3.308 2.692-6 6-6 3.307 0 6 2.692 6 6 0 3.307-2.693 6-6 6ZM8 3.5a3 3 0 0 0-3 3h1.5C6.5 5.675 7.175 5 8 5s1.5.675 1.5 1.5c0 1.5-2.25 1.313-2.25 3.75h1.5C8.75 8.562 11 8.375 11 6.5a3 3 0 0 0-3-3Z" ]
     ]
@@ -105,7 +105,7 @@ checkCircle attrs =
     ]
 
 close6 :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
-close6 attrs = close ([ classes [ Css.c "w-6", Css.c "h-6" ] ] <> attrs)
+close6 attrs = close ([ classes (Css.cs [ "w-6", "h-6" ]) ] <> attrs)
 
 close :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
 close attrs =

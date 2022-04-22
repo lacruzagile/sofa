@@ -196,7 +196,7 @@ render { unitMap
         [ HH.table_
             [ HH.thead_ [ HH.tr [ HP.classes borderedBelow ] (thUnitLabel unit) ]
             , HH.tbody_
-                [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
+                [ HH.tr [ Css.classes [ "h-16", "bg-honey-100" ] ]
                     [ td_ [ renderEditablePrice pIdx price charge.currency ]
                     , td_ [ renderChargeUnit' kind qIdx nullDim ]
                     ]
@@ -260,9 +260,9 @@ render { unitMap
 
         renderChargeRow (SS.ChargeUnit u) dimIdx (SS.PricePerDim p) =
           HH.tr
-            [ HP.classes
-                [ Css.c "h-16"
-                , Css.c $ if even dimIdx then "bg-honey-100" else ""
+            [ Css.classes
+                [ "h-16"
+                , if even dimIdx then "bg-honey-100" else ""
                 ]
             ]
             $ map tdOne_ (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
@@ -292,7 +292,7 @@ render { unitMap
                   $ ( if priceOnly then
                         [ HH.text "" ]
                       else
-                        [ HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
+                        [ HH.tr [ Css.classes [ "h-16", "bg-honey-100" ] ]
                             [ td_ [ renderChargeUnit { unitId: c.unit, dim: Nothing } nullDim ]
                             , td_ []
                             , td_ []
@@ -317,7 +317,7 @@ render { unitMap
           c.currency
 
       renderChargeSegRow seg@(SS.Segment { minimum }) =
-        HH.tr [ HP.classes [ Css.c "h-16", Css.c "bg-honey-100" ] ]
+        HH.tr [ Css.classes [ "h-16", "bg-honey-100" ] ]
           [ if priceOnly then HH.text "" else td_ []
           , td_
               [ fromMaybe (HH.text "N/A")
@@ -413,9 +413,9 @@ render { unitMap
             <> A.mapWithIndex (renderPriceBySegmentPerUnit p.dim dimIdx) p.priceBySegmentByUnit
         SS.PricePerDimUnitOptNoSeg (SS.PricePerDimUnit p) ->
           HH.tr
-            [ HP.classes
-                [ Css.c "h-16"
-                , Css.c $ if even dimIdx then "bg-honey-100" else ""
+            [ Css.classes
+                [ "h-16"
+                , if even dimIdx then "bg-honey-100" else ""
                 ]
             ]
             $ map tdOne_
@@ -440,7 +440,7 @@ render { unitMap
     HH.section_
       $ [ case Charge.description charge of
             Nothing -> HH.text ""
-            Just d -> HH.p [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text d ]
+            Just d -> HH.p [ Css.class_ "text-stormy-300" ] [ HH.text d ]
         ]
       <> renderChargeInner chargeIdx charge
 
@@ -462,7 +462,7 @@ render { unitMap
         )
         $ Tooltip.contentWithIcon
         $ HH.span
-            [ HP.class_ (Css.c "text-raspberry-500") ]
+            [ Css.class_ "text-raspberry-500" ]
             [ HH.text "Error" ]
 
   -- | Renders the charge unit for the given charge kind and quantity index.
@@ -486,10 +486,10 @@ renderEditableUsage readOnly quantityIdx qty
   | otherwise =
     HH.input
       [ HP.type_ HP.InputText
-      , HP.classes
-          [ Css.c "nectary-input"
-          , Css.c "px-2"
-          , Css.c "w-24"
+      , Css.classes
+          [ "nectary-input"
+          , "px-2"
+          , "w-24"
           ]
       , HP.value (maybe "0" (numberFormatter <<< Int.toNumber) qty)
       , HE.onValueChange
@@ -563,16 +563,17 @@ unitDimKeys = case _ of
   _ -> []
 
 tfoot :: forall w i. Array (HH.HTML w i) -> HH.HTML w i
-tfoot = HH.thead [ HP.classes [ Css.c "border-t", Css.c "border-stormy-200" ] ]
+tfoot = HH.thead [ Css.classes [ "border-t", "border-stormy-200" ] ]
 
 thBaseClasses ∷ Array HH.ClassName
 thBaseClasses =
-  [ Css.c "py-3"
-  , Css.c "px-3"
-  , Css.c "box-content"
-  , Css.c "font-semibold"
-  , Css.c "text-stormy-200"
-  ]
+  Css.cs
+    [ "py-3"
+    , "px-3"
+    , "box-content"
+    , "font-semibold"
+    , "text-stormy-200"
+    ]
 
 th :: forall w i. Array HH.ClassName -> HH.Node HTML.HTMLth w i
 th classes props = HH.th $ [ HP.classes (thBaseClasses <> classes) ] <> props

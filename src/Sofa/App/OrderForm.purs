@@ -262,11 +262,11 @@ render ::
   MonadAlert m =>
   State -> H.ComponentHTML Action Slots m
 render state =
-  HH.section (if inQuoteContext then [ HP.class_ (Css.c "mx-5") ] else [])
+  HH.section (if inQuoteContext then [ Css.class_ "mx-5" ] else [])
     [ if inQuoteContext then
         -- Temporarily show login button if running in a quote context.
         HH.header
-          [ HP.classes [ Css.c "float-right" ] ]
+          [ Css.class_ "float-right" ]
           [ HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd ]
       else
         HH.text ""
@@ -280,7 +280,7 @@ render state =
     Initialized (Loaded { orderForm: { crmQuoteId: Just _ } }) -> true
     _ -> false
 
-  renderSmallTitle t = HH.div [ HP.class_ (Css.c "sofa-small-title") ] [ HH.text t ]
+  renderSmallTitle t = HH.div [ Css.class_ "sofa-small-title" ] [ HH.text t ]
 
   renderCharges ::
     OrderLineIndex ->
@@ -319,9 +319,9 @@ render state =
     withCharges = case _ of
       [] -> []
       charges ->
-        [ HH.details [ HP.class_ (Css.c "mt-5") ]
+        [ HH.details [ Css.class_ "mt-5" ]
             [ HH.summary
-                [ HP.classes [ Css.c "text-lg", Css.c "cursor-pointer" ] ]
+                [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                 [ HH.text "Charges" ]
             , renderCharges olIdx unitMap defaultCurrency estimatedUsage charges
             ]
@@ -358,21 +358,21 @@ render state =
           Just t ->
             HH.div_
               [ HH.span
-                  [ HP.classes [ Css.c "text-lg", Css.c "font-semibold" ] ]
+                  [ Css.classes [ "text-lg", "font-semibold" ] ]
                   [ HH.text t ]
               , HH.br_
               , HH.span
-                  [ HP.classes [ Css.c "text-xs", Css.c "text-stormy-300" ] ]
+                  [ Css.classes [ "text-xs", "text-stormy-300" ] ]
                   [ HH.text (show product.sku) ]
               ]
       in
         body
-          $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
-                $ [ HH.div [ HP.class_ (Css.c "w-3/5") ]
+          $ [ HH.div [ Css.class_ "flex" ]
+                $ [ HH.div [ Css.class_ "w-3/5" ]
                       [ renderSmallTitle "Product"
                       , renderProductTitle
                       ]
-                  , HH.div [ HP.class_ (Css.c "w-1/5") ]
+                  , HH.div [ Css.class_ "w-1/5" ]
                       [ renderSmallTitle "Status"
                       , let
                           wrap content
@@ -383,15 +383,15 @@ render state =
                                 (Icon.textWithTooltip content)
                         in
                           HH.span
-                            [ HP.class_ (Css.c "font-semibold") ]
+                            [ Css.class_ "font-semibold" ]
                             [ wrap (SS.prettyOrderLineStatus ol.status) ]
                       ]
                   ]
                 <> ( if isJust product.orderConfigSchema then
-                      [ HH.div [ HP.class_ (Css.c "w-1/5") ]
+                      [ HH.div [ Css.class_ "w-1/5" ]
                           [ renderSmallTitle "Total Quantity"
                           , HH.span
-                              [ HP.class_ (Css.c "font-semibold") ]
+                              [ Css.class_ "font-semibold" ]
                               [ HH.text
                                   $ show
                                   $ sum
@@ -401,7 +401,7 @@ render state =
                           ]
                       ]
                     else
-                      [ HH.label [ HP.class_ (Css.c "w-1/5") ]
+                      [ HH.label [ Css.class_ "w-1/5" ]
                           [ renderSmallTitle "Quantity"
                           , renderQuantityInput 0
                               $ fromMaybe
@@ -420,9 +420,9 @@ render state =
           <> ( if isNothing product.orderConfigSchema then
                 []
               else
-                [ HH.details [ HP.class_ (Css.c "mt-5") ]
+                [ HH.details [ Css.class_ "mt-5" ]
                     $ [ HH.summary
-                          [ HP.classes [ Css.c "text-lg", Css.c "cursor-pointer" ] ]
+                          [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                           [ HH.text "Configurations" ]
                       ]
                     <> renderProductConfigs product ol.orderLineId ol.configs
@@ -434,11 +434,11 @@ render state =
       | not isInDraft = []
       | otherwise =
         [ HH.button
-            [ HP.classes
-                [ Css.c "relative"
-                , Css.c "float-right"
-                , Css.c "p-2"
-                , Css.c "cursor-pointer"
+            [ Css.classes
+                [ "relative"
+                , "float-right"
+                , "p-2"
+                , "cursor-pointer"
                 ]
             , HE.onClick \_ -> RemoveOrderLine olIdx
             ]
@@ -447,16 +447,16 @@ render state =
 
     body subBody =
       HH.div
-        [ HP.classes [ Css.c "m-5", Css.c "border-t" ] ]
+        [ Css.classes [ "m-5", "border-t" ] ]
         (removeBtn <> subBody)
 
     renderQuantityInput cfgIdx (SS.OrderLineConfig olc) =
       HH.input
-        [ HP.classes
-            [ Css.c "nectary-input"
-            , Css.c "nectary-input-number"
-            , Css.c "w-full"
-            , Css.c "max-w-96"
+        [ Css.classes
+            [ "nectary-input"
+            , "nectary-input-number"
+            , "w-full"
+            , "max-w-96"
             ]
         , HP.type_ HP.InputNumber
         , HP.min 1.0
@@ -479,22 +479,22 @@ render state =
           $ A.mapWithIndex (renderProductConfig allowRemove product orderLineId) configs
 
     renderProductConfig allowRemove product orderLineId cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
-      [ HH.div [ HP.classes [ Css.c "my-5", Css.c "p-5", Css.c "border-l-8", Css.c "border-gray-100" ] ]
+      [ HH.div [ Css.classes [ "my-5", "p-5", "border-l-8", "border-gray-100" ] ]
           [ HH.label_
               [ HH.div
-                  [ HP.classes [ Css.c "sofa-small-title" ] ]
+                  [ Css.classes [ "sofa-small-title" ] ]
                   [ HH.text "Quantity" ]
               , renderQuantityInput cfgIdx olc
               ]
           , if allowRemove then
               HH.button
-                [ HP.classes
-                    [ Css.c "relative"
-                    , Css.c "float-right"
-                    , Css.c "nectary-btn-destructive"
-                    , Css.c "h-auto"
-                    , Css.c "ml-2"
-                    , Css.c "py-0"
+                [ Css.classes
+                    [ "relative"
+                    , "float-right"
+                    , "nectary-btn-destructive"
+                    , "h-auto"
+                    , "ml-2"
+                    , "py-0"
                     ]
                 , HE.onClick \_ ->
                     OrderLineRemoveConfig
@@ -512,11 +512,11 @@ render state =
                 -- Show the order line configuration ID to help use of asset
                 -- configuration links.
                 HH.div
-                  [ HP.classes
-                      [ Css.c "relative"
-                      , Css.c "float-right"
-                      , Css.c "ml-2"
-                      , Css.c "text-stormy-300"
+                  [ Css.classes
+                      [ "relative"
+                      , "float-right"
+                      , "ml-2"
+                      , "text-stormy-300"
                       ]
                   ]
                   [ Tooltip.render
@@ -528,7 +528,7 @@ render state =
                       )
                       (HH.text "#")
                   ]
-          , HH.hr [ HP.class_ (Css.c "my-2") ]
+          , HH.hr [ Css.class_ "my-2" ]
           , case config of
               Nothing -> HH.text ""
               Just c ->
@@ -556,14 +556,14 @@ render state =
     renderAddProductConfig
       | not isInDraft = []
       | otherwise =
-        [ HH.div [ HP.classes [ Css.c "flex", Css.c "w-full" ] ]
-            [ HH.div [ HP.class_ (Css.c "grow") ] []
+        [ HH.div [ Css.classes [ "flex", "w-full" ] ]
+            [ HH.div [ Css.class_ "grow" ] []
             , HH.button
-                [ HP.classes
-                    [ Css.c "nectary-btn-secondary"
-                    , Css.c "h-8"
-                    , Css.c "px-6"
-                    , Css.c "gap-x-4"
+                [ Css.classes
+                    [ "nectary-btn-secondary"
+                    , "h-8"
+                    , "px-6"
+                    , "gap-x-4"
                     ]
                 , HE.onClick \_ -> OrderLineAddConfig olIdx
                 ]
@@ -614,7 +614,7 @@ render state =
           renderCheckbox fallbackTitle schemaEntry
             $ HH.input
                 [ HP.type_ HP.InputCheckbox
-                , HP.classes [ Css.c "nectary-input-checkbox", Css.c "mr-5" ]
+                , Css.classes [ "nectary-input-checkbox", "mr-5" ]
                 , HP.checked checked
                 , HE.onChecked (act <<< const <<< SS.CvBoolean)
                 ]
@@ -633,7 +633,7 @@ render state =
       SS.CseInteger c ->
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
-          $ [ HP.classes [ Css.c "nectary-input", Css.c "nectary-input-number", Css.c "w-96" ]
+          $ [ Css.classes [ "nectary-input", "nectary-input-number", "w-96" ]
             , HP.type_ HP.InputNumber
             , HP.placeholder "Integer"
             , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
@@ -679,7 +679,7 @@ render state =
             in
               HH.input
                 $ [ HP.type_ HP.InputText
-                  , HP.classes [ Css.c "nectary-input", Css.c "w-96" ]
+                  , Css.classes [ "nectary-input", "w-96" ]
                   , HP.placeholder placeholder
                   , HE.onValueChange (act <<< const <<< SS.CvString)
                   ]
@@ -690,7 +690,7 @@ render state =
         renderEntry' fallbackTitle schemaEntry
           $ HH.input
           $ [ HP.type_ HP.InputText
-            , HP.classes [ Css.c "nectary-input", Css.c "w-96" ]
+            , Css.classes [ "nectary-input", "w-96" ]
             , HP.placeholder $ "String matching " <> c.pattern
             , HP.pattern c.pattern
             , HE.onValueChange (act <<< const <<< SS.CvString)
@@ -717,12 +717,12 @@ render state =
           mkElement content =
             if S.null fallbackTitle then
               HH.div
-                [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-4" ] ]
+                [ Css.classes [ "flex", "flex-col", "space-y-4" ] ]
                 (content <> [ renderAddListEntry c.items act ])
             else
-              HH.fieldset [ HP.classes [ Css.c "my-2", Css.c "flex", Css.c "flex-col", Css.c "border" ] ]
+              HH.fieldset [ Css.classes [ "my-2", "flex", "flex-col", "border" ] ]
                 ( [ HH.legend
-                      [ HP.classes [ Css.c "ml-2", Css.c "px-3" ] ]
+                      [ Css.classes [ "ml-2", "px-3" ] ]
                       [ withDescription fallbackTitle schemaEntry ]
                   ]
                     <> content
@@ -753,16 +753,16 @@ render state =
         in
           if S.null fallbackTitle then
             HH.div
-              [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-4" ] ]
+              [ Css.classes [ "flex", "flex-col", "space-y-4" ] ]
               renderFields
           else
             HH.fieldset
-              [ HP.classes
-                  [ Css.c "my-2"
-                  , Css.c "p-3"
-                  , Css.c "flex"
-                  , Css.c "flex-col"
-                  , Css.c "border"
+              [ Css.classes
+                  [ "my-2"
+                  , "p-3"
+                  , "flex"
+                  , "flex-col"
+                  , "border"
                   ]
               ]
               ( [ HH.legend_ [ withDescription fallbackTitle schemaEntry ] ]
@@ -823,7 +823,7 @@ render state =
     pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
 
     renderCheckbox fallbackTitle schemaEntry inner =
-      HH.label [ HP.classes [ Css.c "flex" ] ]
+      HH.label [ Css.class_ "flex" ]
         [ inner
         , withDescription fallbackTitle schemaEntry
         ]
@@ -940,15 +940,16 @@ render state =
       where
       insufficientDataError =
         HH.span
-          [ HP.class_ (Css.c "text-raspberry-500") ]
+          [ Css.class_ "text-raspberry-500" ]
           [ HH.text "Insufficient data…" ]
 
       mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe String -> m DataSourceEnumResult
       mkGetEnumData dataSource =
         let
-          getCommercial = pure case state of
-            Initialized (Loaded { orderForm: { commercial } }) -> commercial
-            _ -> Nothing
+          getCommercial =
+            pure case state of
+              Initialized (Loaded { orderForm: { commercial } }) -> commercial
+              _ -> Nothing
         in
           getDataSourceEnum { getCommercial } dataSource
 
@@ -982,7 +983,7 @@ render state =
       if S.null fallbackTitle then
         inner
       else
-        HH.label [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
+        HH.label [ Css.classes [ "flex", "flex-col" ] ]
           [ withDescription fallbackTitle schemaEntry
           , inner
           ]
@@ -1028,11 +1029,7 @@ render state =
       where
       body tt =
         HH.div
-          [ HP.classes
-              [ Css.c "sofa-small-title"
-              , Css.c "flex"
-              , Css.c "items-center"
-              ]
+          [ Css.classes [ "sofa-small-title", "flex", "items-center" ]
           ]
           [ HH.text $ fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
           , if tt then Icon.tooltip else HH.text ""
@@ -1046,7 +1043,7 @@ render state =
       SS.ConfigValue ->
       H.ComponentHTML Action Slots m
     renderListEntry entryIdx act removeAct entry value =
-      HH.div [ HP.classes [ Css.c "p-3", Css.c "border-b", Css.c "group" ] ]
+      HH.div [ Css.classes [ "p-3", "border-b", "group" ] ]
         [ renderRemoveListEntry removeAct
         , renderEntry entryIdx act "" (Just value) entry
         ]
@@ -1056,14 +1053,14 @@ render state =
       | not isInDraft = HH.text ""
       | otherwise =
         HH.button
-          [ HP.classes
-              [ Css.c "nectary-btn-destructive"
-              , Css.c "h-auto"
-              , Css.c "relative"
-              , Css.c "float-right"
-              , Css.c "py-0"
-              , Css.c "invisible"
-              , Css.c "group-hover:visible"
+          [ Css.classes
+              [ "nectary-btn-destructive"
+              , "h-auto"
+              , "relative"
+              , "float-right"
+              , "py-0"
+              , "invisible"
+              , "group-hover:visible"
               ]
           , HE.onClick \_ -> removeAct unit
           ]
@@ -1074,11 +1071,11 @@ render state =
       | otherwise =
         HH.div_
           [ HH.button
-              [ HP.classes
-                  [ Css.c "nectary-btn-secondary"
-                  , Css.c "h-8"
-                  , Css.c "m-5"
-                  , Css.c "py-0"
+              [ Css.classes
+                  [ "nectary-btn-secondary"
+                  , "h-8"
+                  , "m-5"
+                  , "py-0"
                   ]
               , HE.onClick \_ ->
                   let
@@ -1154,17 +1151,17 @@ render state =
         isAddingOrderLine = A.any isNothing sec.orderLines
       in
         body
-          $ [ HH.div [ HP.classes [ Css.c "flex" ] ]
-                [ HH.div [ HP.class_ (Css.c "w-1/2") ]
+          $ [ HH.div [ Css.class_ "flex" ]
+                [ HH.div [ Css.class_ "w-1/2" ]
                     [ renderSmallTitle "Solution"
                     , HH.span
-                        [ HP.classes [ Css.c "text-lg", Css.c "font-semibold" ] ]
+                        [ Css.classes [ "text-lg", "font-semibold" ] ]
                         [ HH.text $ solutionLabel sec.solution ]
                     ]
                 , if A.null priceBookOpts then
                     HH.text ""
                   else
-                    HH.label [ HP.class_ (Css.c "w-1/2") ]
+                    HH.label [ Css.class_ "w-1/2" ]
                       [ renderSmallTitle "Price Book"
                       , HH.slot
                           (Proxy :: Proxy "selectPriceBook")
@@ -1186,26 +1183,26 @@ render state =
                 ]
             , renderOrderLines sec.solution sec.orderLines
             , HH.div
-                [ HP.classes
-                    [ Css.c "flex"
-                    , Css.c "items-center"
-                    , Css.c "space-x-4"
-                    , Css.c "m-5"
-                    , Css.c "mb-0"
-                    , Css.c "pt-3"
-                    , Css.c "border-t"
+                [ Css.classes
+                    [ "flex"
+                    , "items-center"
+                    , "space-x-4"
+                    , "m-5"
+                    , "mb-0"
+                    , "pt-3"
+                    , "border-t"
                     ]
                 ]
                 [ renderOrderSectionSummary sec.summary
-                , HH.div [ HP.class_ (Css.c "grow") ] []
+                , HH.div [ Css.class_ "grow" ] []
                 , if not isInDraft || isAddingOrderLine then
                     HH.text ""
                   else
                     HH.button
-                      [ HP.classes
-                          [ Css.c "nectary-btn-secondary"
-                          , Css.c "px-6"
-                          , Css.c "gap-x-4"
+                      [ Css.classes
+                          [ "nectary-btn-secondary"
+                          , "px-6"
+                          , "gap-x-4"
                           ]
                       , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
                       ]
@@ -1231,12 +1228,12 @@ render state =
           | not isInDraft = []
           | otherwise =
             [ HH.button
-                [ HP.classes
-                    [ Css.c "relative"
-                    , Css.c "float-right"
-                    , Css.c "p-2"
-                    , Css.c "-m-3"
-                    , Css.c "cursor-pointer"
+                [ Css.classes
+                    [ "relative"
+                    , "float-right"
+                    , "p-2"
+                    , "-m-3"
+                    , "cursor-pointer"
                     ]
                 , HE.onClick \_ -> RemoveSection { sectionIndex: secIdx }
                 ]
@@ -1244,10 +1241,10 @@ render state =
             ]
       in
         HH.div
-          [ HP.classes
-              [ Css.c "p-3"
-              , Css.c "rounded-md"
-              , Css.c "bg-snow-100"
+          [ Css.classes
+              [ "p-3"
+              , "rounded-md"
+              , "bg-snow-100"
               ]
           ]
           (removeBtn <> subBody)
@@ -1278,25 +1275,25 @@ render state =
     Array (Maybe OrderSection) ->
     H.ComponentHTML Action Slots m
   renderSections sof secs =
-    HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-5" ] ]
+    HH.div [ Css.classes [ "flex", "flex-col", "space-y-5" ] ]
       $ A.mapWithIndex (renderSection sof) secs
       <> if not isInDraft then
           []
         else
           [ HH.div
-              [ HP.classes
-                  [ Css.c "flex"
-                  , Css.c "p-3"
-                  , Css.c "rounded-md"
-                  , Css.c "bg-snow-100"
+              [ Css.classes
+                  [ "flex"
+                  , "p-3"
+                  , "rounded-md"
+                  , "bg-snow-100"
                   ]
               ]
-              [ HH.div [ HP.class_ (Css.c "grow") ] []
+              [ HH.div [ Css.class_ "grow" ] []
               , HH.button
-                  [ HP.classes
-                      [ Css.c "nectary-btn-secondary"
-                      , Css.c "px-6"
-                      , Css.c "gap-x-4"
+                  [ Css.classes
+                      [ "nectary-btn-secondary"
+                      , "px-6"
+                      , "gap-x-4"
                       ]
                   , HE.onClick \_ -> AddSection
                   ]
@@ -1316,11 +1313,11 @@ render state =
     | mempty == subTotal = HH.text ""
     | otherwise =
       HH.div
-        [ HP.classes
-            [ Css.c "p-3"
-            , Css.c "space-x-4"
-            , Css.c "rounded-md"
-            , Css.c "bg-snow-100"
+        [ Css.classes
+            [ "p-3"
+            , "space-x-4"
+            , "rounded-md"
+            , "bg-snow-100"
             ]
         ]
         [ Widgets.subTotalTable "Total " subTotal ]
@@ -1328,18 +1325,18 @@ render state =
   renderHeaderAndInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderHeaderAndInfo orderForm =
     HH.div
-      [ HP.classes
-          [ Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "space-y-6"
-          , Css.c "p-8"
-          , Css.c "rounded-md"
-          , Css.c "bg-snow-100"
+      [ Css.classes
+          [ "flex"
+          , "flex-col"
+          , "space-y-6"
+          , "p-8"
+          , "rounded-md"
+          , "bg-snow-100"
           ]
       ]
-      [ renderOrderDisplayName orderForm.displayName --HH.h2 [ HP.class_ (Css.c "my-0") ] [ HH.text "Untitled order" ]
+      [ renderOrderDisplayName orderForm.displayName
       , HH.p
-          [ HP.classes [ Css.c "my-0", Css.c "text-stormy-300" ] ]
+          [ Css.classes [ "my-0", "text-stormy-300" ] ]
           [ HH.text "Below you can see the details of the order." ]
       , renderOrderHeader orderForm
       , renderOrderInfo orderForm
@@ -1348,24 +1345,24 @@ render state =
   renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo orderForm =
     HH.div
-      [ HP.classes
-          [ Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "w-full"
-          , Css.c "gap-y-4"
-          , Css.c "p-8"
-          , Css.c "rounded-md"
-          , Css.c "border"
-          , Css.c "border-snow-600"
-          , Css.c "shadow-md"
+      [ Css.classes
+          [ "flex"
+          , "flex-col"
+          , "w-full"
+          , "gap-y-4"
+          , "p-8"
+          , "rounded-md"
+          , "border"
+          , "border-snow-600"
+          , "shadow-md"
           ]
       ]
       [ HH.div
-          [ HP.classes
-              [ Css.c "mb-6"
-              , Css.c "flex"
-              , Css.c "items-center"
-              , Css.c "gap-x-6"
+          [ Css.classes
+              [ "mb-6"
+              , "flex"
+              , "items-center"
+              , "gap-x-6"
               ]
           ]
           [ HH.h3_ [ HH.text "Order information" ]
@@ -1414,9 +1411,9 @@ render state =
           ]
       ]
     where
-    entry = HH.div [ HP.classes [ Css.c "flex" ] ]
+    entry = HH.div [ Css.classes [ "flex" ] ]
 
-    title t = HH.h4 [ HP.classes [ Css.c "w-40" ] ] [ HH.text t ]
+    title t = HH.h4 [ Css.classes [ "w-40" ] ] [ HH.text t ]
 
     value = HH.div_
 
@@ -1474,34 +1471,34 @@ render state =
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
     HH.div
-      [ HP.classes
-          [ Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "w-full"
-          , Css.c "gap-y-4"
-          , Css.c "p-8"
-          , Css.c "rounded-md"
-          , Css.c "border"
-          , Css.c "border-snow-600"
-          , Css.c "shadow-md"
+      [ Css.classes
+          [ "flex"
+          , "flex-col"
+          , "w-full"
+          , "gap-y-4"
+          , "p-8"
+          , "rounded-md"
+          , "border"
+          , "border-snow-600"
+          , "shadow-md"
           ]
       ]
-      [ HH.h3 [ HP.class_ (Css.c "mb-6") ] [ HH.text "Order details" ]
-      , HH.div [ HP.classes [ Css.c "flex" ] ]
+      [ HH.h3 [ Css.class_ "mb-6" ] [ HH.text "Order details" ]
+      , HH.div [ Css.class_ "flex" ]
           [ title "Legal entity"
           , renderSeller
           ]
-      , HH.div [ HP.classes [ Css.c "flex" ] ]
+      , HH.div [ Css.class_ "flex" ]
           [ title "Customer"
           , renderBuyer
           ]
-      , HH.div [ HP.classes [ Css.c "flex" ] ]
+      , HH.div [ Css.class_ "flex" ]
           [ title "Commercial"
           , renderCommercial
           ]
       ]
     where
-    title t = HH.h4 [ HP.classes [ Css.c "w-40" ] ] [ HH.text t ]
+    title t = HH.h4 [ Css.classes [ "w-40" ] ] [ HH.text t ]
 
     renderSeller =
       HH.slot Seller.proxy unit Seller.component
@@ -1525,18 +1522,18 @@ render state =
 
   renderOrderFooter sof =
     HH.div
-      [ HP.classes
-          [ Css.c "flex"
-          , Css.c "flex-wrap-reverse"
-          , Css.c "items-center"
-          , Css.c "space-x-4"
+      [ Css.classes
+          [ "flex"
+          , "flex-wrap-reverse"
+          , "items-center"
+          , "space-x-4"
           ]
       ]
       [ renderOrderSummary sof.orderForm.summary
-      , HH.div [ HP.class_ (Css.c "grow") ] []
+      , HH.div [ Css.class_ "grow" ] []
       , if isFreshOrder then
           HH.button
-            [ HP.class_ (Css.c "nectary-btn-destructive")
+            [ Css.class_ "nectary-btn-destructive"
             , HP.disabled
                 $ let
                     changed = sof.orderForm.changed
@@ -1551,7 +1548,7 @@ render state =
             [ HH.text "Discard order" ]
         else
           HH.button
-            [ HP.class_ (Css.c "nectary-btn-primary")
+            [ Css.class_ "nectary-btn-primary"
             , HP.disabled preventFulfill
             , HE.onClick $ \_ -> FulfillOrder
             ]
@@ -1562,7 +1559,7 @@ render state =
                 HH.text ""
             ]
       , HH.button
-          [ HP.class_ (Css.c "nectary-btn-primary")
+          [ Css.class_ "nectary-btn-primary"
           , HP.disabled preventCreate
           , HE.onClick $ \_ -> CreateUpdateOrder
           ]
@@ -1601,14 +1598,14 @@ render state =
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
-    [ HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "space-y-5" ] ]
+    [ HH.div [ Css.classes [ "flex", "flex-col", "space-y-5" ] ]
         [ renderHeaderAndInfo sof.orderForm
         , renderSections sof sof.orderForm.sections
         , renderOrderFooter sof
         , HH.hr_
         , HH.details_
             [ HH.summary
-                [ HP.class_ (Css.c "cursor-pointer") ]
+                [ Css.class_ "cursor-pointer" ]
                 [ HH.text "Order Form JSON" ]
             , HH.pre_
                 [ HH.code_
@@ -1623,15 +1620,15 @@ render state =
 
   error err =
     [ HH.div
-        [ HP.classes
-            [ Css.c "p-5"
-            , Css.c "bg-red-100"
-            , Css.c "border"
-            , Css.c "border-red-400"
-            , Css.c "text-raspberry-500"
+        [ Css.classes
+            [ "p-5"
+            , "bg-red-100"
+            , "border"
+            , "border-red-400"
+            , "text-raspberry-500"
             ]
         ]
-        [ HH.h3 [ HP.classes [ Css.c "text-lg" ] ] [ HH.text "Error" ]
+        [ HH.h3 [ Css.classes [ "text-lg" ] ] [ HH.text "Error" ]
         , HH.p_ [ HH.text err ]
         ]
     ]
@@ -1640,7 +1637,7 @@ render state =
 
   loading =
     [ HH.p
-        [ HP.classes [ Css.c "animate-pulse", Css.c "text-2xl" ] ]
+        [ Css.classes [ "animate-pulse", "text-2xl" ] ]
         [ HH.text "Loading product catalog …" ]
     ]
 
@@ -2336,7 +2333,7 @@ handleAction = case _ of
               , content =
                 HH.div_
                   [ HH.p_ [ HH.text "Error deleting order line" ]
-                  , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
+                  , HH.p [ Css.classes [ "mt-1", "text-sm" ] ]
                       [ HH.strong_ [ HH.text "Error" ]
                       , HH.text ": "
                       , HH.text errMsg

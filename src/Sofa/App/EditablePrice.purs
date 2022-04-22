@@ -80,10 +80,10 @@ render state
   | otherwise = case state.editState of
     Viewing ->
       HH.button
-        [ HP.classes
-            [ Css.c "nectary-btn-secondary"
-            , Css.c "w-full"
-            , Css.c "text-stormy-500"
+        [ Css.classes
+            [ "nectary-btn-secondary"
+            , "w-full"
+            , "text-stormy-500"
             ]
         , HE.onClick \_ -> SetEditing
         ]
@@ -92,54 +92,54 @@ render state
       let
         inputTag tag =
           HH.div
-            [ HP.classes
-                [ Css.c "absolute"
-                , Css.c "top-0"
-                , Css.c "right-0"
-                , Css.c "h-12"
-                , Css.c "w-12"
-                , Css.c "my-0.5"
-                , Css.c "flex"
-                , Css.c "items-center"
-                , Css.c "justify-center"
-                , Css.c "pointer-events-none"
+            [ Css.classes
+                [ "absolute"
+                , "top-0"
+                , "right-0"
+                , "h-12"
+                , "w-12"
+                , "my-0.5"
+                , "flex"
+                , "items-center"
+                , "justify-center"
+                , "pointer-events-none"
                 ]
             ]
             [ HH.div
-                [ HP.classes
-                    [ Css.c "p-1"
-                    , Css.c "px-1.5"
-                    , Css.c "text-sm"
-                    , Css.c "bg-snow-600"
-                    , Css.c "rounded"
-                    , Css.c "shadow-sm"
+                [ Css.classes
+                    [ "p-1"
+                    , "px-1.5"
+                    , "text-sm"
+                    , "bg-snow-600"
+                    , "rounded"
+                    , "shadow-sm"
                     ]
                 ]
                 [ HH.text tag ]
             ]
 
         renderContent =
-          HH.div [ HP.classes [ Css.c "max-w-128" ] ]
+          HH.div [ Css.class_ "max-w-128" ]
             [ HH.p
-                [ HP.class_ (Css.c "my-4") ]
+                [ Css.class_ "my-4" ]
                 [ HH.text "Here you can modify the existing price." ]
             , HH.p
-                [ HP.class_ (Css.c "my-4") ]
+                [ Css.class_ "my-4" ]
                 [ HH.text "You may add a discount percentage as 10% or 5% OR change the price directly!" ]
             , HH.form
-                [ HP.classes [ Css.c "grid", Css.c "grid-cols-2", Css.c "gap-2", Css.c "mt-10" ]
+                [ Css.classes [ "grid", "grid-cols-2", "gap-2", "mt-10" ]
                 , HE.onSubmit SetViewing
                 ]
                 [ HH.h4_ [ HH.text "New price" ]
                 , HH.h4_ [ HH.text "Discount percentage" ]
-                , HH.div [ HP.classes [ Css.c "relative" ] ]
+                , HH.div [ Css.class_ "relative" ]
                     [ HH.input
                         [ HP.type_ HP.InputNumber
-                        , HP.classes
-                            [ Css.c "nectary-input"
-                            , Css.c "nectary-input-number"
-                            , Css.c "w-full"
-                            , Css.c "pr-12"
+                        , Css.classes
+                            [ "nectary-input"
+                            , "nectary-input-number"
+                            , "w-full"
+                            , "pr-12"
                             ]
                         , HP.placeholder "1.25"
                         , HP.step HP.Any
@@ -150,14 +150,14 @@ render state
                         ]
                     , inputTag (show state.currency)
                     ]
-                , HH.div [ HP.class_ (Css.c "relative") ]
+                , HH.div [ Css.class_ "relative" ]
                     [ HH.input
                         [ HP.type_ HP.InputNumber
-                        , HP.classes
-                            [ Css.c "nectary-input"
-                            , Css.c "nectary-input-number"
-                            , Css.c "w-full"
-                            , Css.c "pr-12"
+                        , Css.classes
+                            [ "nectary-input"
+                            , "nectary-input-number"
+                            , "w-full"
+                            , "pr-12"
                             ]
                         , HP.placeholder "10"
                         , HP.min 0.0
@@ -170,17 +170,17 @@ render state
                     , inputTag "%"
                     ]
                 , HH.div
-                    [ HP.classes
-                        [ Css.c "col-span-2"
-                        , Css.c "flex"
-                        , Css.c "gap-x-4"
-                        , Css.c "justify-end"
-                        , Css.c "mt-10"
+                    [ Css.classes
+                        [ "col-span-2"
+                        , "flex"
+                        , "gap-x-4"
+                        , "justify-end"
+                        , "mt-10"
                         ]
                     ]
                     [ HH.button
                         [ HP.type_ HP.ButtonButton
-                        , HP.class_ (Css.c "nectary-btn-destructive")
+                        , Css.class_ "nectary-btn-destructive"
                         , HP.enabled
                             let
                               SS.Price { discount } = state.price
@@ -189,16 +189,16 @@ render state
                         , HE.onClick \_ -> RemoveDiscount
                         ]
                         [ HH.text "Remove" ]
-                    , HH.div [ HP.class_ (Css.c "grow") ] []
+                    , HH.div [ Css.class_ "grow" ] []
                     , HH.button
                         [ HP.type_ HP.ButtonButton
-                        , HP.class_ (Css.c "nectary-btn-secondary")
+                        , Css.class_ "nectary-btn-secondary"
                         , HE.onClick \_ -> CloseEditing
                         ]
                         [ HH.text "Cancel" ]
                     , HH.button
                         [ HP.type_ HP.ButtonSubmit
-                        , HP.class_ (Css.c "nectary-btn-primary")
+                        , Css.class_ "nectary-btn-primary"
                         , HP.enabled (value /= "")
                         ]
                         [ HH.text "Save new price" ]
@@ -231,7 +231,7 @@ renderPrice (SS.Price p) (SS.ChargeCurrency currency) = price
                   <> Currency.formatter currency p.listPrice
               }
           )
-          $ HH.span [ HP.class_ (Css.c "text-raspberry-500") ]
+          $ HH.span [ Css.class_ "text-raspberry-500" ]
               (showPrice p.price)
       ]
 

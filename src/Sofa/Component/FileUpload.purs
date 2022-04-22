@@ -110,16 +110,17 @@ render ::
 render state =
   HH.div
     [ HP.classes
-        ( [ Css.c "w-[32rem]"
-          , Css.c "py-10"
-          , Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "space-y-6"
-          , Css.c "bg-snow-500"
-          , Css.c "border"
-          , Css.c "border-stormy-300"
-          , Css.c "rounded-sm"
-          ]
+        ( Css.cs
+            [ "w-[32rem]"
+            , "py-10"
+            , "flex"
+            , "flex-col"
+            , "space-y-6"
+            , "bg-snow-500"
+            , "border"
+            , "border-stormy-300"
+            , "rounded-sm"
+            ]
             <> state.wrapperClasses
         )
     , HE.onDrag PreventDefault
@@ -139,17 +140,17 @@ render state =
 
   renderText class_ text =
     HH.div
-      [ HP.class_ (Css.c class_) ]
+      [ Css.class_ class_ ]
       [ HH.text text ]
 
   renderBodySkeleton icon text bottom =
     [ HH.div
-        [ HP.classes
-            [ Css.c "w-max"
-            , Css.c "mx-auto"
-            , Css.c "flex"
-            , Css.c "items-center"
-            , Css.c "gap-x-2"
+        [ Css.classes
+            [ "w-max"
+            , "mx-auto"
+            , "flex"
+            , "items-center"
+            , "gap-x-2"
             ]
         ]
         [ icon
@@ -160,29 +161,30 @@ render state =
 
   renderBodyUpload =
     renderBodySkeleton
-      $ Icon.upload [ Icon.classes [ Css.c "h-4", Css.c "fill-stormy-300" ] ]
+      $ Icon.upload [ Icon.classes $ Css.cs [ "h-4", "fill-stormy-300" ] ]
 
   renderBodySuccess =
     renderBodySkeleton
       $ Icon.done
           [ Icon.classes
-              [ Css.c "h-8"
-              , Css.c "fill-success-500"
-              , Css.c "nectary-short-bounce"
-              ]
+              $ Css.cs
+                  [ "h-8"
+                  , "fill-success-500"
+                  , "nectary-short-bounce"
+                  ]
           ]
 
   renderBody = case state.status of
     Loading ->
       renderBodyUpload (renderText_ "Attaching …")
-        $ Widgets.spinner [ Css.c "w-8", Css.c "h-8", Css.c "mx-auto" ]
+        $ Widgets.spinner (Css.cs [ "w-8", "h-8", "mx-auto" ])
     Loaded msg ->
       renderBodySuccess (renderText_ msg)
         $ HH.button
-            [ HP.classes
-                [ Css.c "nectary-btn-destructive"
-                , Css.c "h-8"
-                , Css.c "mx-auto"
+            [ Css.classes
+                [ "nectary-btn-destructive"
+                , "h-8"
+                , "mx-auto"
                 ]
             , HE.onClick \_ -> ResetStatus
             ]
@@ -190,10 +192,10 @@ render state =
     Error msg ->
       renderBodyUpload (renderText "text-raspberry-500" msg)
         $ HH.button
-            [ HP.classes
-                [ Css.c "nectary-btn-secondary"
-                , Css.c "h-8"
-                , Css.c "mx-auto"
+            [ Css.classes
+                [ "nectary-btn-secondary"
+                , "h-8"
+                , "mx-auto"
                 ]
             , HE.onClick \_ -> ResetStatus
             ]
@@ -205,18 +207,18 @@ render state =
 
             inputAttrs =
               [ HP.type_ HP.InputFile
-              , HP.classes [ Css.c "sr-only" ]
+              , Css.class_ "sr-only"
               , HP.multiple false
               , HE.onFileUpload UploadFile
               ]
                 <> accept
           in
             HH.label
-              [ HP.classes
-                  [ Css.c "nectary-btn-secondary"
-                  , Css.c "h-8"
-                  , Css.c "text-sm"
-                  , Css.c "mx-auto"
+              [ Css.classes
+                  [ "nectary-btn-secondary"
+                  , "h-8"
+                  , "text-sm"
+                  , "mx-auto"
                   ]
               ]
               [ HH.text "Browse"

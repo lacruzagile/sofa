@@ -145,7 +145,7 @@ render :: forall act m. RenderState -> H.ComponentHTML (Sel.Action act) () m
 render st =
   HH.div
     [ HP.classes st.wrapperClasses ]
-    [ HH.div [ HP.class_ (Css.c "relative") ] [ renderInput, renderResults ]
+    [ HH.div [ Css.class_ "relative" ] [ renderInput, renderResults ]
     ]
   where
   selected = do
@@ -155,35 +155,35 @@ render st =
   renderInput :: H.ComponentHTML _ () m
   renderInput =
     HH.button
-      (SelSet.setToggleProps [ HP.classes btnClasses ])
+      (SelSet.setToggleProps [ Css.classes btnClasses ])
       [ maybe
-          (HH.span [ HP.class_ (Css.c "text-stormy-300") ] [ HH.text st.noSelectionText ])
+          (HH.span [ Css.class_ "text-stormy-300" ] [ HH.text st.noSelectionText ])
           HH.fromPlainHTML
           selected
       ]
 
   btnClasses =
-    [ Css.c "nectary-input"
-    , Css.c "nectary-dropdown-icon"
-    , Css.c "w-full"
-    , Css.c "text-left"
-    , Css.c "truncate"
+    [ "nectary-input"
+    , "nectary-dropdown-icon"
+    , "w-full"
+    , "text-left"
+    , "truncate"
     ]
-      <> (if st.visibility == Sel.Off then [] else [ Css.c "rounded-b-none" ])
+      <> (if st.visibility == Sel.Off then [] else [ "rounded-b-none" ])
 
   containerClasses =
-    [ Css.c "absolute"
-    , Css.c "bg-white"
-    , Css.c "-mt-0.5"
-    , Css.c "w-full"
-    , Css.c "max-h-72"
-    , Css.c "overflow-auto"
-    , Css.c "border"
-    , Css.c "border-t-0"
-    , Css.c "border-stormy-500"
-    , Css.c "rounded-b-sm"
-    , Css.c "shadow-md"
-    , Css.c "z-10"
+    [ "absolute"
+    , "bg-white"
+    , "-mt-0.5"
+    , "w-full"
+    , "max-h-72"
+    , "overflow-auto"
+    , "border"
+    , "border-t-0"
+    , "border-stormy-500"
+    , "rounded-b-sm"
+    , "shadow-md"
+    , "z-10"
     ]
 
   renderResults :: H.ComponentHTML _ () m
@@ -192,7 +192,7 @@ render st =
     | otherwise =
       HH.ul
         ( SelSet.setContainerProps
-            [ HP.classes containerClasses
+            [ Css.classes containerClasses
             , HP.tabIndex (-1)
             ]
         )
@@ -202,24 +202,24 @@ render st =
   renderItem idx item =
     HH.li
       ( SelSet.setItemProps idx
-          [ HP.classes $ itemClasses <> selectedClasses <> highlightClasses
+          [ Css.classes $ itemClasses <> selectedClasses <> highlightClasses
           ]
       )
       $ if st.selectedIndex == Just idx then
           [ HH.div
-              [ HP.classes [ Css.c "truncate", Css.c "grow" ] ]
+              [ Css.classes [ "truncate", "grow" ] ]
               [ HH.fromPlainHTML item ]
           , Icon.done [ Icon.classes [ Css.c "w-6" ] ]
           ]
         else
           [ HH.fromPlainHTML item ]
     where
-    itemClasses = [ Css.c "relative", Css.c "p-2", Css.c "truncate" ]
+    itemClasses = [ "relative", "p-2", "truncate" ]
 
     highlightClasses
-      | st.highlightedIndex == Just idx = [ Css.c "bg-snow-500" ]
+      | st.highlightedIndex == Just idx = [ "bg-snow-500" ]
       | otherwise = []
 
     selectedClasses
-      | st.selectedIndex == Just idx = [ Css.c "flex", Css.c "gap-x-2" ]
+      | st.selectedIndex == Just idx = [ "flex", "gap-x-2" ]
       | otherwise = []

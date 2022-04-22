@@ -51,7 +51,7 @@ errorAlert message reason =
     , content =
       HH.div_
         [ HH.p_ [ HH.text message ]
-        , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
+        , HH.p [ Css.classes [ "mt-1", "text-sm" ] ]
             [ HH.strong_ [ HH.text "Error" ]
             , HH.text ": "
             , HH.text reason
@@ -89,11 +89,11 @@ renderIcon =
 closeBtn :: forall w i. (Unit -> i) -> HH.HTML w i
 closeBtn closeAction =
   HH.button
-    [ HP.classes
-        [ Css.c "float-right"
-        , Css.c "p-3"
-        , Css.c "-m-3"
-        , Css.c "ml-0"
+    [ Css.classes
+        [ "float-right"
+        , "p-3"
+        , "-m-3"
+        , "ml-0"
         ]
     , HE.onClick $ \_ -> closeAction unit
     ]
@@ -117,6 +117,6 @@ render alert =
     ]
     [ HH.fromPlainHTML (renderIcon alert.type_)
     , HH.div
-        [ HP.classes [ Css.c "grow" ] ]
+        [ Css.class_ "grow" ]
         [ alert.content ]
     ]

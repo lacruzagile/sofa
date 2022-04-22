@@ -64,47 +64,46 @@ render state =
     ]
   where
   tabsWrapperClasses =
-    HP.classes
-      $ Css.c
-      <$> [ "flex"
-        , "space-x-3"
-        , "w-full"
-        , "mb-3"
-        , "border-b"
-        , "border-stormy-100"
-        , "overflow-x-auto"
-        ]
+    Css.classes
+      [ "flex"
+      , "space-x-3"
+      , "w-full"
+      , "mb-3"
+      , "border-b"
+      , "border-stormy-100"
+      , "overflow-x-auto"
+      ]
 
   tabWrapperClasses =
-    HP.classes $ Css.c
-      <$> [ "flex"
-        , "relative"
-        , "h-11"
-        , "px-5"
-        , "py-2"
-        ]
+    Css.classes
+      [ "flex"
+      , "relative"
+      , "h-11"
+      , "px-5"
+      , "py-2"
+      ]
 
   contentClasses =
-    HP.classes $ Css.c
-      <$> [ "mx-auto"
-        , "my-auto"
-        , "shrink"
-        , "overflow-hidden"
-        , "whitespace-nowrap"
-        , "text-ellipsis"
-        , "peer-checked:font-semibold"
-        ]
+    Css.classes
+      [ "mx-auto"
+      , "my-auto"
+      , "shrink"
+      , "overflow-hidden"
+      , "whitespace-nowrap"
+      , "text-ellipsis"
+      , "peer-checked:font-semibold"
+      ]
 
   inputClasses =
-    HP.classes $ Css.c
-      <$> [ "peer"
-        , "appearance-none"
-        , "absolute"
-        , "inset-0"
-        , "cursor-pointer"
-        , "checked:border-b-2"
-        , "checked:border-stormy-500"
-        ]
+    Css.classes
+      [ "peer"
+      , "appearance-none"
+      , "absolute"
+      , "inset-0"
+      , "cursor-pointer"
+      , "checked:border-b-2"
+      , "checked:border-stormy-500"
+      ]
 
   renderTab idx c =
     HH.div

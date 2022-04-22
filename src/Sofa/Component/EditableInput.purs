@@ -84,30 +84,31 @@ render state = case state.editState of
   Viewing ->
     HH.div
       [ HP.classes
-          ( [ Css.c "flex", Css.c "items-center", Css.c "gap-x-3" ]
+          ( Css.cs [ "flex", "items-center", "gap-x-3" ]
               <> state.classes
           )
       ]
       [ if state.value == "" then
           HH.div
-            [ HP.classes [ Css.c "truncate", Css.c "text-stormy-300" ] ]
+            [ Css.classes [ "truncate", "text-stormy-300" ] ]
             [ HH.text state.placeholder ]
         else
           HH.div
-            [ HP.class_ (Css.c "truncate") ]
+            [ Css.class_ "truncate" ]
             [ HH.text state.value ]
       , HH.button
           ([ HE.onClick \_ -> SetEditing ] <> state.editButtonProps)
           [ Icon.editorMode
               [ Icon.classes
-                  [ Css.c "w-[1em]"
-                  , Css.c "p-[0.2em]"
-                  , Css.c "rounded-full"
-                  , Css.c "bg-snow-500"
-                  , Css.c "fill-stormy-500"
-                  , Css.c "active:bg-stormy-500"
-                  , Css.c "active:fill-snow-500"
-                  ]
+                  $ Css.cs
+                      [ "w-[1em]"
+                      , "p-[0.2em]"
+                      , "rounded-full"
+                      , "bg-snow-500"
+                      , "fill-stormy-500"
+                      , "active:bg-stormy-500"
+                      , "active:fill-snow-500"
+                      ]
               , Icon.ariaHidden true
               ]
           ]
@@ -115,7 +116,7 @@ render state = case state.editState of
   Editing value ->
     HH.form
       [ HP.classes
-          ( [ Css.c "nectary-input", Css.c "flex", Css.c "items-center", Css.c "gap-x-3" ]
+          ( Css.cs [ "nectary-input", "flex", "items-center", "gap-x-3" ]
               <> state.classes
           )
       , HE.onSubmit SetViewing
@@ -123,7 +124,7 @@ render state = case state.editState of
       [ HH.input
           ( [ HP.ref inputRef
             , HP.type_ HP.InputText
-            , HP.classes [ Css.c "grow", Css.c "outline-none" ]
+            , Css.classes [ "grow", "outline-none" ]
             , HP.value value
             , HP.placeholder state.placeholder
             , HE.onValueInput UpdateValue

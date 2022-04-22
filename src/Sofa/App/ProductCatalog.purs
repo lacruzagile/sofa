@@ -11,7 +11,6 @@ import Effect.Aff.Class (class MonadAff)
 import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Sofa.App.Charge (Slot, component, proxy) as Charge
 import Sofa.App.Requests (getProductCatalog)
 import Sofa.Css as Css
@@ -245,15 +244,15 @@ render state = HH.section_ [ HH.article_ content ]
 
   error err =
     [ HH.div
-        [ HP.classes
-            [ Css.c "p-5"
-            , Css.c "bg-red-100"
-            , Css.c "border"
-            , Css.c "border-red-400"
-            , Css.c "text-raspberry-500"
+        [ Css.classes
+            [ "p-5"
+            , "bg-red-100"
+            , "border"
+            , "border-red-400"
+            , "text-raspberry-500"
             ]
         ]
-        [ HH.h3 [ HP.classes [ Css.c "text-lg" ] ] [ HH.text "Error" ]
+        [ HH.h3 [ Css.class_ "text-lg" ] [ HH.text "Error" ]
         , HH.p_ [ HH.text err ]
         ]
     ]
@@ -262,7 +261,7 @@ render state = HH.section_ [ HH.article_ content ]
 
   loading =
     [ HH.p
-        [ HP.classes [ Css.c "animate-pulse", Css.c "text-2xl" ] ]
+        [ Css.classes [ "animate-pulse", "text-2xl" ] ]
         [ HH.text "Loading product catalog …" ]
     ]
 

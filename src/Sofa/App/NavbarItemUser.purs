@@ -73,13 +73,13 @@ render = case _ of
   where
   renderUserBtn text attrs =
     HH.button
-      ( [ HP.classes
-            [ Css.c "flex"
-            , Css.c "flex-col"
-            , Css.c "place-content-center"
-            , Css.c "items-center"
-            , Css.c "h-full"
-            , Css.c "px-5"
+      ( [ Css.classes
+            [ "flex"
+            , "flex-col"
+            , "place-content-center"
+            , "items-center"
+            , "h-full"
+            , "px-5"
             ]
         ]
           <> attrs
@@ -88,7 +88,7 @@ render = case _ of
           [ Icon.classes [ Css.c "w-8", Css.c "h-8" ]
           , Icon.ariaHidden true
           ]
-      , HH.span [ HP.class_ (Css.c "text-sm") ] [ HH.text text ]
+      , HH.span [ Css.class_ "text-sm" ] [ HH.text text ]
       ]
 
   renderLoggedOut =
@@ -114,23 +114,23 @@ render = case _ of
           }
     where
     textInputClasses =
-      [ Css.c "nectary-input"
-      , Css.c "invalid:border-stormy-200"
-      , Css.c "w-full"
+      [ "nectary-input"
+      , "invalid:border-stormy-200"
+      , "w-full"
       ]
 
     errorClasses =
-      [ Css.c "p-2"
-      , Css.c "my-2"
-      , Css.c "bg-red-100"
-      , Css.c "border"
-      , Css.c "border-red-400"
-      , Css.c "text-raspberry-500"
+      [ "p-2"
+      , "my-2"
+      , "bg-red-100"
+      , "border"
+      , "border-red-400"
+      , "text-raspberry-500"
       ]
 
     renderContent =
       HH.form
-        [ HP.classes [ Css.c "w-96", Css.c "flex", Css.c "flex-col", Css.c "gap-y-3" ]
+        [ Css.classes [ "w-96", "flex", "flex-col", "gap-y-3" ]
         , HE.onSubmit Login
         ]
         [ HH.input
@@ -138,7 +138,7 @@ render = case _ of
             , HP.id "auth-user"
             , HP.required true
             , HP.placeholder "Username"
-            , HP.classes textInputClasses
+            , Css.classes textInputClasses
             , HP.value $ fromMaybe "" st.user
             , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { user = Just v }
             ]
@@ -147,24 +147,24 @@ render = case _ of
             , HP.id "auth-pass"
             , HP.required true
             , HP.placeholder "Password"
-            , HP.classes textInputClasses
+            , Css.classes textInputClasses
             , HP.value $ fromMaybe "" st.pass
             , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { pass = Just v }
             ]
         , case st.error of
             Nothing -> HH.text ""
-            Just msg -> HH.div [ HP.classes errorClasses ] [ HH.text msg ]
-        , HH.div [ HP.classes [ Css.c "flex", Css.c "gap-x-4" ] ]
-            [ HH.div [ HP.class_ (Css.c "grow") ] []
+            Just msg -> HH.div [ Css.classes errorClasses ] [ HH.text msg ]
+        , HH.div [ Css.classes [ "flex", "gap-x-4" ] ]
+            [ HH.div [ Css.class_ "grow" ] []
             , HH.button
-                [ HP.class_ (Css.c "nectary-btn-secondary")
+                [ Css.class_ "nectary-btn-secondary"
                 , HP.type_ HP.ButtonButton
                 , HE.onClick \_ -> SetState LoggedOut
                 ]
                 [ HH.text "Cancel" ]
             , HH.button
                 [ HP.type_ HP.ButtonSubmit
-                , HP.classes [ Css.c "nectary-btn-primary" ]
+                , Css.class_ "nectary-btn-primary"
                 ]
                 [ HH.text "Login" ]
             ]

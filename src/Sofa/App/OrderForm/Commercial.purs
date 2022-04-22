@@ -133,7 +133,7 @@ renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
 renderSummary st
   | not st.enabled =
     HH.div
-      [ HP.classes [ Css.c "text-gray-400" ] ]
+      [ Css.class_ "text-gray-400" ]
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedCommercial of
     Loaded c ->
@@ -148,23 +148,25 @@ renderSummary st
     where
     btn classes = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
 
-    subtleSlash = HH.span [ HP.class_ (Css.c "text-gray-400") ] [ HH.text " / " ]
+    subtleSlash = HH.span [ Css.class_ "text-gray-400" ] [ HH.text " / " ]
 
     okClasses =
-      [ Css.c "block"
-      , Css.c "text-left"
-      , Css.c "underline"
-      , Css.c "underline-offset-4"
-      , Css.c "decoration-honey-500"
-      ]
+      Css.cs
+        [ "block"
+        , "text-left"
+        , "underline"
+        , "underline-offset-4"
+        , "decoration-honey-500"
+        ]
 
     badClasses =
-      [ Css.c "block"
-      , Css.c "text-left"
-      , Css.c "underline"
-      , Css.c "underline-offset-4"
-      , Css.c "decoration-honey-500"
-      ]
+      Css.cs
+        [ "block"
+        , "text-left"
+        , "underline"
+        , "underline-offset-4"
+        , "decoration-honey-500"
+        ]
 
 renderDetails ::
   forall m.
@@ -183,7 +185,7 @@ renderDetails st =
     ]
   where
   renderContent commercialLoadable =
-    HH.div [ HP.classes [ Css.c "flex", Css.c "flex-col", Css.c "gap-y-4" ] ]
+    HH.div [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
       [ case st.crmAccountId of
           Just crmAccountId
             | not st.readOnly ->
@@ -197,26 +199,26 @@ renderDetails st =
       , case commercialLoadable of
           Error err ->
             HH.p
-              [ HP.classes
-                  [ Css.c "p-3"
-                  , Css.c "bg-red-100"
-                  , Css.c "border"
-                  , Css.c "border-red-400"
-                  , Css.c "text-raspberry-500"
+              [ Css.classes
+                  [ "p-3"
+                  , "bg-red-100"
+                  , "border"
+                  , "border-red-400"
+                  , "text-raspberry-500"
                   ]
               ]
               [ HH.text err ]
           _ -> HH.text ""
       , HH.div
-          [ HP.classes
-              [ Css.c "w-full"
-              , Css.c "min-w-96"
-              , Css.c "p-8"
-              , Css.c "grid"
-              , Css.c "grid-cols-[12rem_auto]"
-              , Css.c "gap-4"
-              , Css.c "rounded"
-              , Css.c "bg-snow-500"
+          [ Css.classes
+              [ "w-full"
+              , "min-w-96"
+              , "p-8"
+              , "grid"
+              , "grid-cols-[12rem_auto]"
+              , "gap-4"
+              , "rounded"
+              , "bg-snow-500"
               ]
           ]
           $ [ renderSmallTitle "Billing Option"
@@ -228,7 +230,7 @@ renderDetails st =
             , renderSmallTitle "Billing Currency"
             , HH.div_ [ maybe empty renderBillingCurrency mCommercial ]
             ]
-      , HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-5" ] ] bottomButtons
+      , HH.div [ Css.classes [ "flex", "space-x-5" ] ] bottomButtons
       ]
     where
     mCommercial = Loadable.toMaybe commercialLoadable
@@ -237,23 +239,23 @@ renderDetails st =
 
     bottomButtons
       | st.readOnly =
-        [ HH.div [ HP.class_ (Css.c "grow") ] []
+        [ HH.div [ Css.class_ "grow" ] []
         , HH.button
-            [ HP.class_ (Css.c "nectary-btn-primary")
+            [ Css.class_ "nectary-btn-primary"
             , HE.onClick \_ -> CancelAndCloseDetails
             ]
             [ HH.text "Close" ]
         ]
       | otherwise =
-        [ HH.div [ HP.class_ (Css.c "grow") ] []
+        [ HH.div [ Css.class_ "grow" ] []
         , HH.button
-            [ HP.class_ (Css.c "nectary-btn-secondary")
+            [ Css.class_ "nectary-btn-secondary"
             , HE.onClick \_ -> CancelAndCloseDetails
             ]
             [ HH.text "Cancel" ]
         , HH.button
             [ HP.ref okBtnLabel
-            , HP.class_ (Css.c "nectary-btn-primary")
+            , Css.class_ "nectary-btn-primary"
             , HP.enabled (isLoaded st.commercial)
             , HE.onClick \_ -> AcceptAndCloseDetails
             ]

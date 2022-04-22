@@ -112,7 +112,7 @@ render state
 renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
 renderSummary st = btn
   where
-  btn = HH.button [ HP.classes btnClasses, HE.onClick $ \_ -> OpenDetails ] label
+  btn = HH.button [ Css.classes btnClasses, HE.onClick $ \_ -> OpenDetails ] label
 
   label = case A.length st.notes of
     0 -> [ HH.text "No order notes" ]
@@ -120,11 +120,11 @@ renderSummary st = btn
     n -> [ HH.text (show n), HH.text " order notes" ]
 
   btnClasses =
-    [ Css.c "block"
-    , Css.c "text-left"
-    , Css.c "underline"
-    , Css.c "underline-offset-4"
-    , Css.c "decoration-honey-500"
+    [ "block"
+    , "text-left"
+    , "underline"
+    , "underline-offset-4"
+    , "decoration-honey-500"
     ]
 
 renderDetails ::
@@ -143,27 +143,27 @@ renderDetails st =
   where
   renderContent =
     HH.div
-      [ HP.classes
-          [ Css.c "w-full"
-          , Css.c "min-w-96"
-          , Css.c "max-w-128"
-          , Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "space-y-4"
+      [ Css.classes
+          [ "w-full"
+          , "min-w-96"
+          , "max-w-128"
+          , "flex"
+          , "flex-col"
+          , "space-y-4"
           ]
       ]
       [ if A.null st.notes then
           HH.div
-            [ HP.classes [ Css.c "text-lg", Css.c "text-gray-600" ] ]
+            [ Css.classes [ "text-lg", "text-gray-600" ] ]
             [ HH.text "No notes available" ]
         else
           HH.div
-            [ HP.classes
-                [ Css.c "flex"
-                , Css.c "flex-col"
-                , Css.c "space-y-4"
-                , Css.c "max-h-128"
-                , Css.c "overflow-auto"
+            [ Css.classes
+                [ "flex"
+                , "flex-col"
+                , "space-y-4"
+                , "max-h-128"
+                , "overflow-auto"
                 ]
             ]
             (A.mapWithIndex renderNote st.notes)
@@ -178,16 +178,16 @@ renderDetails st =
     _
       | isJust st.editNote -> HH.text "" -- Skip footer when editing.
     Nothing ->
-      HH.div [ HP.classes [ Css.c "flex", Css.c "space-x-4" ] ]
-        [ HH.div [ HP.class_ (Css.c "grow") ] []
+      HH.div [ Css.classes [ "flex", "space-x-4" ] ]
+        [ HH.div [ Css.class_ "grow" ] []
         , HH.button
-            [ HP.classes [ Css.c "nectary-btn-secondary" ]
+            [ Css.class_ "nectary-btn-secondary"
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> CloseDetails
             ]
             [ HH.text "Close" ]
         , HH.button
-            [ HP.classes [ Css.c "nectary-btn-primary" ]
+            [ Css.class_ "nectary-btn-primary"
             , HP.enabled actionsAllowed
             , HE.onClick \_ -> StartNewNote
             ]
@@ -196,32 +196,32 @@ renderDetails st =
     Just text ->
       HH.form [ HE.onSubmit StopNewNote ]
         [ HH.textarea
-            [ HP.classes [ Css.c "nectary-input", Css.c "h-36", Css.c "w-full" ]
+            [ Css.classes [ "nectary-input", "h-36", "w-full" ]
             , HP.placeholder "Note text."
             , HP.value text
             , HE.onValueChange SetNewText
             ]
-        , HH.div [ HP.class_ (Css.c "text-raspberry-500") ]
+        , HH.div [ Css.class_ "text-raspberry-500" ]
             $ maybe [] (\msg -> [ HH.text msg ])
             $ createError
         , HH.div
-            [ HP.classes
-                [ Css.c "flex"
-                , Css.c "space-x-4"
-                , Css.c "mt-3"
-                , Css.c "mb-0.5" -- Avoid clipping of buttons.
+            [ Css.classes
+                [ "flex"
+                , "space-x-4"
+                , "mt-3"
+                , "mb-0.5" -- Avoid clipping of buttons.
                 ]
             ]
-            [ HH.div [ HP.class_ (Css.c "grow") ] []
+            [ HH.div [ Css.class_ "grow" ] []
             , HH.button
-                [ HP.class_ (Css.c "nectary-btn-secondary")
+                [ Css.class_ "nectary-btn-secondary"
                 , HP.enabled actionsAllowed
                 , HE.onClick \_ -> CancelNewNote
                 ]
                 [ HH.text "Cancel" ]
             , HH.button
                 [ HP.type_ HP.ButtonSubmit
-                , HP.class_ (Css.c "nectary-btn-primary")
+                , Css.class_ "nectary-btn-primary"
                 , HP.enabled actionsAllowed
                 ]
                 [ HH.text "Save"
@@ -247,15 +247,15 @@ renderDetails st =
     _ -> renderShowNote idx n
 
   renderShowNote idx (SS.OrderNote n) =
-    HH.div [ HP.classes [ Css.c "group", Css.c "py-3" ] ]
+    HH.div [ Css.classes [ "group", "py-3" ] ]
       [ HH.text n.note
       , HH.div
-          [ HP.classes
-              [ Css.c "text-sm"
-              , Css.c "text-gray-600"
-              , Css.c "flex"
-              , Css.c "space-x-2"
-              , Css.c "mr-0.5" -- Avoid clipping of buttons.
+          [ Css.classes
+              [ "text-sm"
+              , "text-gray-600"
+              , "flex"
+              , "space-x-2"
+              , "mr-0.5" -- Avoid clipping of buttons.
               ]
           ]
           [ HH.div_
@@ -264,13 +264,14 @@ renderDetails st =
                   Widgets.dateWithTimeTooltipRight
                   n.createTime
               ]
-          , HH.div [ HP.class_ (Css.c "grow") ] []
+          , HH.div [ Css.class_ "grow" ] []
           , HH.button
               [ HP.classes
-                  $ [ Css.c "nectary-btn-destructive"
-                    , Css.c "h-auto"
-                    , Css.c "py-0"
-                    ]
+                  $ Css.cs
+                      [ "nectary-btn-destructive"
+                      , "h-auto"
+                      , "py-0"
+                      ]
                   <> hideable isDeleting
               , HP.enabled actionsAllowed
               , HE.onClick $ \_ -> RemoveNote idx
@@ -280,10 +281,11 @@ renderDetails st =
               ]
           , HH.button
               [ HP.classes
-                  $ [ Css.c "nectary-btn-primary"
-                    , Css.c "h-auto"
-                    , Css.c "py-0"
-                    ]
+                  $ Css.cs
+                      [ "nectary-btn-primary"
+                      , "h-auto"
+                      , "py-0"
+                      ]
                   <> hideable false
               , HP.enabled actionsAllowed
               , HE.onClick $ \_ -> StartEditNote idx
@@ -291,7 +293,7 @@ renderDetails st =
               [ HH.text "Edit" ]
           ]
       , maybe (HH.text "")
-          (\msg -> HH.div [ HP.class_ (Css.c "text-raspberry-500") ] [ HH.text msg ])
+          (\msg -> HH.div [ Css.class_ "text-raspberry-500" ] [ HH.text msg ])
           $ deleteError
       ]
     where
@@ -320,33 +322,33 @@ renderDetails st =
   renderEditNote idx note =
     HH.form [ HE.onSubmit (StopEditNote idx) ]
       [ HH.textarea
-          [ HP.classes [ Css.c "nectary-input", Css.c "h-36", Css.c "w-full" ]
+          [ Css.classes [ "nectary-input", "h-36", "w-full" ]
           , HP.placeholder "Note text."
           , HP.value note
           , HE.onValueChange SetEditText
           ]
-      , HH.div [ HP.classes [ Css.c "text-raspberry-500", Css.c "w-full" ] ]
+      , HH.div [ Css.classes [ "text-raspberry-500", "w-full" ] ]
           $ maybe [] (\msg -> [ HH.text msg ])
           $ updateError
       , HH.div
-          [ HP.classes
-              [ Css.c "flex"
-              , Css.c "space-x-4"
-              , Css.c "mt-2"
-              , Css.c "mr-0.5" -- Avoid clipping of buttons.
-              , Css.c "mb-0.5" -- Avoid clipping of buttons.
+          [ Css.classes
+              [ "flex"
+              , "space-x-4"
+              , "mt-2"
+              , "mr-0.5" -- Avoid clipping of buttons.
+              , "mb-0.5" -- Avoid clipping of buttons.
               ]
           ]
-          [ HH.div [ HP.class_ (Css.c "grow") ] []
+          [ HH.div [ Css.class_ "grow" ] []
           , HH.button
-              [ HP.class_ (Css.c "nectary-btn-secondary")
+              [ Css.class_ "nectary-btn-secondary"
               , HP.type_ HP.ButtonButton
               , HP.enabled actionsAllowed
               , HE.onClick \_ -> CancelEditNote
               ]
               [ HH.text "Cancel" ]
           , HH.button
-              [ HP.class_ (Css.c "nectary-btn-primary")
+              [ Css.class_ "nectary-btn-primary"
               , HP.type_ HP.ButtonSubmit
               , HP.enabled actionsAllowed
               ]

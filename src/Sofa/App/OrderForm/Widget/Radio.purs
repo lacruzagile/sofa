@@ -79,12 +79,10 @@ render st = case st.available of
   Error msg -> HH.div [ HP.classes infoClasses ] [ HH.text "Error: ", HH.text msg ]
   Loaded [] -> HH.div [ HP.classes infoClasses ] [ HH.text "No data available …" ]
   Loaded available ->
-    HH.fieldset [ HP.classes [ Css.c "flex", Css.c "flex-col" ] ]
+    HH.fieldset [ Css.classes [ "flex", "flex-col" ] ]
       $ map renderItem available
   where
-  containerClasses = []
-
-  infoClasses = containerClasses <> [ Css.c "p-2" ]
+  infoClasses = [ Css.c "p-2" ]
 
   loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
@@ -92,11 +90,11 @@ render st = case st.available of
     HH.label_
       [ HH.input
           [ HP.type_ InputRadio
-          , HP.class_ (Css.c "nectary-input-radio")
+          , Css.class_ "nectary-input-radio"
           , HP.checked $ st.selected == Just v
           , HE.onChange \_ -> Select v
           ]
-      , HH.span [ HP.class_ (Css.c "ml-2") ] [ HH.text key ]
+      , HH.span [ Css.class_ "ml-2" ] [ HH.text key ]
       ]
 
 handleAction ::

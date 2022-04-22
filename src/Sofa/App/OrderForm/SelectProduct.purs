@@ -125,6 +125,6 @@ selectComponent =
         [ HH.text t
         , HH.br_
         , HH.span
-            [ HP.classes [ Css.c "text-xs", Css.c "text-stormy-300" ] ]
+            [ Css.classes [ "text-xs", "text-stormy-300" ] ]
             [ HH.text (show sku) ]
         ]

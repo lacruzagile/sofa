@@ -101,14 +101,14 @@ monetaryAmount currency amount = format <$> Currency.formatToParts currency amou
   format = case _ of
     { "type": "currency", value } ->
       HH.span
-        [ HP.classes [ Css.c "text-sm", Css.c "text-gray-600" ] ]
+        [ Css.classes [ "text-sm", "text-gray-600" ] ]
         [ HH.text value ]
     { value } -> HH.text value
 
 -- | Render a sub-total using a simple table.
 subTotalTable :: forall w i. String -> SubTotal -> HH.HTML w i
 subTotalTable title (SubTotal summary) =
-  HH.table [ HP.classes [ Css.c "p-5", Css.c "table-auto" ] ]
+  HH.table [ Css.classes [ "p-5", "table-auto" ] ]
     $ A.mapMaybe renderRow
         [ Tuple "Usage" summary.usage
         , Tuple "Monthly" summary.monthly
@@ -140,15 +140,12 @@ subTotalTable title (SubTotal summary) =
 
   th label =
     HH.th
-      [ HP.classes
-          [ Css.c "text-right", Css.c "font-semibold"
-          ]
-      ]
+      [ Css.classes [ "text-right", "font-semibold" ] ]
       [ HH.text label ]
 
   td currency s =
     HH.td
-      [ HP.classes [ Css.c "text-right", Css.c "text-lg" ] ]
+      [ Css.classes [ "text-right", "text-lg" ] ]
       [ renderSubTotalEntry currency s ]
 
   -- | Render a sub-total entry.
@@ -164,13 +161,13 @@ subTotalTable title (SubTotal summary) =
         )
         $ renderPrice discountPriceClasses amount.price
     where
-    listPriceClasses = [ Css.c "pl-5" ]
+    listPriceClasses = [ "pl-5" ]
 
-    discountPriceClasses = [ Css.c "pl-5", Css.c "text-raspberry-500" ]
+    discountPriceClasses = [ "pl-5", "text-raspberry-500" ]
 
     renderPrice classes (Additive n) =
       HH.span
-        [ HP.classes classes ]
+        [ Css.classes classes ]
         (monetaryAmount currency (BN.toNumber n))
 
     showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)
@@ -182,7 +179,7 @@ spinner classes =
     []
   where
   spinnerClasses =
-    map Css.c
+    Css.cs
       [ "inline-block"
       , "border-4"
       , "border-snow-700"

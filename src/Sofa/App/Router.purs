@@ -8,7 +8,6 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Routing.Hash (matches)
 import Sofa.App.Home as Home
 import Sofa.App.NavbarItemUser as NavbarItemUser
@@ -86,12 +85,12 @@ render state =
   HH.div_
     [ renderNavbar
     , HH.div
-        [ HP.classes
-            [ Css.c "flex"
-            , Css.c "flex-no-wrap"
-            , Css.c "items-stretch"
-            , Css.c "min-h-screen"
-            , Css.c "pt-16"
+        [ Css.classes
+            [ "flex"
+            , "flex-no-wrap"
+            , "items-stretch"
+            , "min-h-screen"
+            , "pt-16"
             ]
         ]
         [ renderSideMenu state.route
@@ -107,8 +106,8 @@ renderSideMenu ::
   Route ->
   H.ComponentHTML Action Slots m
 renderSideMenu currentRoute =
-  HH.nav [ HP.classes navbarClasses ]
-    [ HH.ul [ HP.classes [ Css.c "space-y-4" ] ]
+  HH.nav [ Css.classes navbarClasses ]
+    [ HH.ul [ Css.class_ "space-y-4" ]
         [ navbarItem Icon.package "Solutions  ⃰"
             [ navbarSubItem Route.ProductCatalog "Product catalog"
             ]
@@ -123,10 +122,10 @@ renderSideMenu currentRoute =
             $ let
                 btn typ =
                   HH.li
-                    [ HP.classes [ Css.c "w-full", Css.c "pl-4", Css.c "py-2" ]
+                    [ Css.classes [ "w-full", "pl-4", "py-2" ]
                     ]
                     [ HH.button
-                        [ HP.classes [ Css.c "nectary-btn-secondary", Css.c "h-6", Css.c "text-sm" ]
+                        [ Css.classes [ "nectary-btn-secondary", "h-6", "text-sm" ]
                         , HE.onClick \_ -> DoAlert typ
                         ]
                         [ HH.text (show typ) ]
@@ -138,20 +137,20 @@ renderSideMenu currentRoute =
                 , btn Alert.Error
                 ]
         , HH.div
-            [ HP.classes [ Css.c "pt-10", Css.c "text-stormy-300" ] ]
+            [ Css.classes [ "pt-10", "text-stormy-300" ] ]
             [ HH.text "  ⃰ TODO" ]
         , HH.div
-            [ HP.classes [ Css.c "text-stormy-300" ] ]
+            [ Css.classes [ "text-stormy-300" ] ]
             [ HH.text "  ⃰  ⃰ Ignore this" ]
         ]
     ]
   where
   navbarClasses =
-    [ Css.c "w-64"
-    , Css.c "pt-2"
-    , Css.c "pl-4"
-    , Css.c "flex-none"
-    , Css.c "bg-snow-100"
+    [ "w-64"
+    , "pt-2"
+    , "pl-4"
+    , "flex-none"
+    , "bg-snow-100"
     ]
 
   -- Whether the given route is conceptually the same route as the current
@@ -163,10 +162,10 @@ renderSideMenu currentRoute =
   navbarItem icon text children =
     HH.li_
       [ HH.div
-          [ HP.classes
-              [ Css.c "flex"
-              , Css.c "items-center"
-              , Css.c "font-semibold"
+          [ Css.classes
+              [ "flex"
+              , "items-center"
+              , "font-semibold"
               ]
           ]
           [ icon
@@ -180,38 +179,38 @@ renderSideMenu currentRoute =
           ]
       , case children of
           [] -> HH.text ""
-          _ -> HH.ul [ HP.classes [ Css.c "pt-4", Css.c "ml-6" ] ] children
+          _ -> HH.ul [ Css.classes [ "pt-4", "ml-6" ] ] children
       ]
 
   navbarSubItemClasses route =
-    [ Css.c "inline-flex"
-    , Css.c "items-center"
-    , Css.c "w-full"
-    , Css.c "pl-4"
-    , Css.c "py-2"
-    , Css.c "ring-0"
-    , Css.c "ring-tropical-700"
-    , Css.c "focus:ring-1"
-    , Css.c "outline-none"
+    [ "inline-flex"
+    , "items-center"
+    , "w-full"
+    , "pl-4"
+    , "py-2"
+    , "ring-0"
+    , "ring-tropical-700"
+    , "focus:ring-1"
+    , "outline-none"
     ]
       <> if isCurrentRoute route then
-          [ Css.c "border-l-2"
-          , Css.c "border-tropical-500"
-          , Css.c "text-tropical-500"
-          , Css.c "font-semibold"
+          [ "border-l-2"
+          , "border-tropical-500"
+          , "text-tropical-500"
+          , "font-semibold"
           ]
         else
-          [ Css.c "border-l"
-          , Css.c "border-stormy-300"
-          , Css.c "outline-none"
-          , Css.c "text-stormy-300"
-          , Css.c "hover:text-tropical-500"
+          [ "border-l"
+          , "border-stormy-300"
+          , "outline-none"
+          , "text-stormy-300"
+          , "hover:text-tropical-500"
           ]
 
   navbarSubItem route text =
     HH.li_
       [ HH.a
-          [ Route.href route, HP.classes (navbarSubItemClasses route) ]
+          [ Route.href route, Css.classes (navbarSubItemClasses route) ]
           [ HH.text text ]
       ]
 
@@ -221,8 +220,8 @@ renderNavbar ::
   CredentialStore m =>
   H.ComponentHTML Action Slots m
 renderNavbar =
-  HH.nav [ HP.classes navbarClasses ]
-    [ HH.div [ HP.classes navbarWrapperClasses ]
+  HH.nav [ Css.classes navbarClasses ]
+    [ HH.div [ Css.classes navbarWrapperClasses ]
         [ primaryItem Route.Home
         , expander
         , navbarSubItemUser
@@ -230,24 +229,24 @@ renderNavbar =
     ]
   where
   navbarClasses =
-    [ Css.c "absolute"
-    , Css.c "inset-x-0"
-    , Css.c "top-0"
-    , Css.c "h-16"
-    , Css.c "bg-white"
+    [ "absolute"
+    , "inset-x-0"
+    , "top-0"
+    , "h-16"
+    , "bg-white"
     ]
 
   navbarWrapperClasses =
-    [ Css.c "h-full"
-    , Css.c "flex"
-    , Css.c "justify-between"
-    , Css.c "items-center"
+    [ "h-full"
+    , "flex"
+    , "justify-between"
+    , "items-center"
     ]
 
   primaryItem route =
     HH.a
       [ Route.href route
-      , HP.classes [ Css.c "flex", Css.c "w-64", Css.c "h-full" ]
+      , Css.classes [ "flex", "w-64", "h-full" ]
       ]
       [ Icon.sinchLogo
           [ Icon.classes [ Css.c "ml-6", Css.c "my-auto", Css.c "h-6" ]
@@ -257,7 +256,7 @@ renderNavbar =
 
   navbarSubItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
 
-  expander = HH.div [ HP.class_ (Css.c "grow") ] []
+  expander = HH.div [ Css.class_ "grow" ] []
 
 renderBody ::
   forall m.
@@ -267,7 +266,7 @@ renderBody ::
   State ->
   H.ComponentHTML Action Slots m
 renderBody state =
-  HH.main [ HP.classes [ Css.c "w-11/12", Css.c "mx-5" ] ]
+  HH.main [ Css.classes [ "w-11/12", "mx-5" ] ]
     [ case state.route of
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm

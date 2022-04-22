@@ -8,7 +8,6 @@ import Prelude
 import Data.Maybe (Maybe(..))
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
@@ -32,9 +31,9 @@ render :: forall w i. Input w i -> HH.HTML w i
 render input =
   faded
     [ wrapper
-        $ [ HH.div [ HP.classes [ Css.c "mb-4", Css.c "flex" ] ]
+        $ [ HH.div [ Css.classes [ "mb-4", "flex" ] ]
               [ HH.h3
-                  [ HP.class_ (Css.c "grow") ]
+                  [ Css.class_ "grow" ]
                   [ HH.fromPlainHTML input.title ]
               , case input.closeAction of
                   Nothing -> HH.text ""
@@ -46,27 +45,27 @@ render input =
   where
   faded =
     HH.div
-      [ HP.classes
-          [ Css.c "fixed"
-          , Css.c "inset-0"
-          , Css.c "w-full"
-          , Css.c "h-full"
-          , Css.c "overflow-y-auto"
-          , Css.c "z-10"
-          , Css.c "bg-black/60"
-          , Css.c "flex"
+      [ Css.classes
+          [ "fixed"
+          , "inset-0"
+          , "w-full"
+          , "h-full"
+          , "overflow-y-auto"
+          , "z-10"
+          , "bg-black/60"
+          , "flex"
           ]
       ]
 
   wrapper =
     HH.div
-      [ HP.classes
-          [ Css.c "mx-auto"
-          , Css.c "my-auto"
-          , Css.c "p-8"
-          , Css.c "bg-white"
-          , Css.c "shadow-md"
-          , Css.c "rounded-md"
+      [ Css.classes
+          [ "mx-auto"
+          , "my-auto"
+          , "p-8"
+          , "bg-white"
+          , "shadow-md"
+          , "rounded-md"
           ]
       , HPAria.role "dialog"
       , HPAria.modal "true"
@@ -74,11 +73,11 @@ render input =
 
   renderCloseButton act =
     HH.button
-      [ HP.classes
-          [ Css.c "cursor-pointer"
-          , Css.c "flex"
-          , Css.c "items-center"
-          , Css.c "justify-center"
+      [ Css.classes
+          [ "cursor-pointer"
+          , "flex"
+          , "items-center"
+          , "justify-center"
           ]
       , HE.onClick $ \_ -> act unit
       ]

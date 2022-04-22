@@ -11,7 +11,6 @@ import Data.Traversable (for_)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Select as Sel
 import Sofa.App.Requests (getBuyer, getBuyers)
 import Sofa.Component.Typeahead as Typeahead
@@ -131,15 +130,15 @@ selectComponent =
   render st = case st.selectedFull of
     Loading ->
       HH.div
-        [ HP.classes
-            [ Css.c "nectary-input"
-            , Css.c "w-full"
-            , Css.c "flex"
-            , Css.c "items-center"
-            , Css.c "space-x-3"
+        [ Css.classes
+            [ "nectary-input"
+            , "w-full"
+            , "flex"
+            , "items-center"
+            , "space-x-3"
             ]
         ]
-        [ HH.div [ HP.class_ (Css.c "grow") ] [ HH.text "Loading buyer …" ]
+        [ HH.div [ Css.class_ "grow" ] [ HH.text "Loading buyer …" ]
         , Widgets.spinner [ Css.c "my-4" ]
         ]
     _ ->
@@ -160,7 +159,7 @@ selectComponent =
                         [ HH.text buyer.corporateName
                         , HH.text " "
                         , HH.span
-                            [ HP.class_ (Css.c "text-gray-400") ]
+                            [ Css.class_ "text-gray-400" ]
                             [ HH.text $ maybe "(No CRM account ID)" unwrap buyer.crmAccountId ]
                         ]
                   in

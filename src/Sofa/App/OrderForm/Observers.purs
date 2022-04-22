@@ -101,19 +101,19 @@ render state = case state.newObserver of
 renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
 renderSummary st =
   HH.div
-    [ HP.classes
-        [ Css.c "flex"
-        , Css.c "flex-wrap"
-        , Css.c "justify-start"
-        , Css.c "gap-x-4"
-        , Css.c "gap-y-2"
+    [ Css.classes
+        [ "flex"
+        , "flex-wrap"
+        , "justify-start"
+        , "gap-x-4"
+        , "gap-y-2"
         ]
     ]
     (A.mapWithIndex (renderShowObserver st) st.observers <> [ btn ])
   where
   btn =
     HH.button
-      [ HP.classes [ Css.c "nectary-tag" ]
+      [ Css.class_ "nectary-tag"
       , HE.onClick $ \_ -> StartNewObserver
       , HPAria.label "Add observer"
       ]
@@ -146,45 +146,45 @@ renderModal state observer =
 
   renderContent =
     HH.div
-      [ HP.classes
-          [ Css.c "w-full"
-          , Css.c "min-w-96"
-          , Css.c "max-w-128"
-          , Css.c "flex"
-          , Css.c "flex-col"
-          , Css.c "gap-y-4"
+      [ Css.classes
+          [ "w-full"
+          , "min-w-96"
+          , "max-w-128"
+          , "flex"
+          , "flex-col"
+          , "gap-y-4"
           ]
       ]
       [ HH.form [ HE.onSubmit StopNewObserver ]
           [ HH.input
               [ HP.ref refEmailInput
               , HP.type_ HP.InputEmail
-              , HP.classes [ Css.c "nectary-input", Css.c "w-full" ]
+              , Css.classes [ "nectary-input", "w-full" ]
               , HP.placeholder "Observer email address"
               , HP.value observer
               , HE.onValueChange SetNewEmail
               ]
-          , HH.div [ HP.class_ (Css.c "text-raspberry-500") ]
+          , HH.div [ Css.class_ "text-raspberry-500" ]
               $ maybe [] (\msg -> [ HH.text msg ])
               $ createError
           , HH.div
-              [ HP.classes
-                  [ Css.c "flex"
-                  , Css.c "gap-x-4"
-                  , Css.c "mt-3"
-                  , Css.c "mb-0.5" -- Avoid clipping of buttons.
+              [ Css.classes
+                  [ "flex"
+                  , "gap-x-4"
+                  , "mt-3"
+                  , "mb-0.5" -- Avoid clipping of buttons.
                   ]
               ]
-              [ HH.div [ HP.class_ (Css.c "grow") ] []
+              [ HH.div [ Css.class_ "grow" ] []
               , HH.button
-                  [ HP.class_ (Css.c "nectary-btn-secondary")
+                  [ Css.class_ "nectary-btn-secondary"
                   , HP.type_ HP.ButtonButton
                   , HP.enabled actionsAllowed
                   , HE.onClick \_ -> CancelNewObserver
                   ]
                   [ HH.text "Cancel" ]
               , HH.button
-                  [ HP.class_ (Css.c "nectary-btn-primary")
+                  [ Css.class_ "nectary-btn-primary"
                   , HP.type_ HP.ButtonSubmit
                   , HP.enabled actionsAllowed
                   ]
@@ -208,18 +208,18 @@ renderModal state observer =
 
 renderShowObserver ∷ forall w. State → Int → SS.OrderObserver → HH.HTML w Action
 renderShowObserver state idx (SS.OrderObserver o) =
-  HH.div [ HP.classes [ Css.c "nectary-tag", Css.c "pl-3", Css.c "pr-0" ] ]
+  HH.div [ Css.classes [ "nectary-tag", "pl-3", "pr-0" ] ]
     [ HH.div_ [ HH.text o.observerEmail ]
     , let
-        wrapperClasses = [ Css.c "flex", Css.c "w-7", Css.c "h-full", Css.c "pr-1" ]
+        wrapperClasses = [ "flex", "w-7", "h-full", "pr-1" ]
       in
         if isDeleting then
-          HH.div [ HP.classes wrapperClasses ]
+          HH.div [ Css.classes wrapperClasses ]
             [ Widgets.spinner [ Css.c "w-3", Css.c "h-3", Css.c "m-auto" ]
             ]
         else
           HH.button
-            [ HP.classes wrapperClasses
+            [ Css.classes wrapperClasses
             , HP.enabled actionsAllowed
             , HE.onClick $ \_ -> RemoveObserver idx
             ]
@@ -312,7 +312,7 @@ maybeReportError msg = case _ of
           , content =
             HH.div_
               [ HH.p_ [ HH.text msg ]
-              , HH.p [ HP.classes [ Css.c "mt-1", Css.c "text-sm" ] ]
+              , HH.p [ Css.classes [ "mt-1", "text-sm" ] ]
                   [ HH.strong_ [ HH.text "Error" ]
                   , HH.text ": "
                   , HH.text errMsg
