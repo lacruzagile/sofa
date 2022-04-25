@@ -1328,19 +1328,43 @@ render state =
       [ Css.classes
           [ "flex"
           , "flex-col"
-          , "space-y-6"
+          , "gap-y-10"
           , "p-8"
           , "rounded-md"
           , "bg-snow-100"
           ]
       ]
-      [ renderOrderDisplayName orderForm.displayName
-      , HH.p
-          [ Css.classes [ "my-0", "text-stormy-300" ] ]
-          [ HH.text "Below you can see the details of the order." ]
-      , renderOrderHeader orderForm
+      [ renderOrderTitle orderForm
       , renderOrderInfo orderForm
+      , renderOrderHeader orderForm
       ]
+
+  renderOrderTitle :: OrderForm -> H.ComponentHTML Action Slots m
+  renderOrderTitle orderForm =
+    HH.div
+      [ Css.classes [ "flex", "flex-wrap", "items-center", "gap-x-8", "gap-y-4" ] ]
+      [ HH.div
+          [ Css.class_ "grow" ]
+          [ renderOrderDisplayName orderForm.displayName ]
+      , withOriginal \{ createTime } ->
+          HH.div
+            [ Css.classes [ "flex", "gap-4" ] ]
+            [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Created" ]
+            , maybe'
+                (\_ -> HH.text "Not Available")
+                Widgets.dateWithTimeTooltip
+                createTime
+            ]
+      , HH.div
+          [ Css.classes [ "flex", "gap-4" ] ]
+          [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Status" ]
+          , renderOrderStatus orderForm.status
+          ]
+      ]
+    where
+    withOriginal renderEntry = case orderForm.original of
+      Nothing -> HH.text ""
+      Just (SS.OrderForm o) -> renderEntry o
 
   renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo orderForm =
@@ -1348,27 +1372,11 @@ render state =
       [ Css.classes
           [ "flex"
           , "flex-col"
-          , "w-full"
           , "gap-y-4"
-          , "p-8"
-          , "rounded-md"
-          , "border"
-          , "border-snow-600"
-          , "shadow-md"
+          , "pl-8"
           ]
       ]
-      [ HH.div
-          [ Css.classes
-              [ "mb-6"
-              , "flex"
-              , "items-center"
-              , "gap-x-6"
-              ]
-          ]
-          [ HH.h3_ [ HH.text "Order information" ]
-          , renderOrderStatus orderForm.status
-          ]
-      , withOriginal
+      [ withOriginal
           ( \o ->
               entry
                 [ title "Order ID"
@@ -1382,18 +1390,6 @@ render state =
               [ title "Quote ID"
               , value [ HH.text id ]
               ]
-      , withOriginal
-          ( \o ->
-              entry
-                [ title "Created"
-                , value
-                    [ maybe
-                        (HH.text "Not Available")
-                        Widgets.dateWithTimeTooltip
-                        o.createTime
-                    ]
-                ]
-          )
       , withOriginal
           ( \o ->
               entry
