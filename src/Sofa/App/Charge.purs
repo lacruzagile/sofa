@@ -6,7 +6,7 @@ import DOM.HTML.Indexed as HTML
 import Data.Array as A
 import Data.Either (Either(..))
 import Data.FoldableWithIndex (findMapWithIndex)
-import Data.Int (even)
+import Data.Int (odd)
 import Data.Int as Int
 import Data.List (List)
 import Data.List as List
@@ -131,7 +131,7 @@ render { unitMap
 , priceOnly
 , readOnly
 } =
-  HH.ul_
+  HH.ul [ Css.classes [ "flex", "flex-wrap", "gap-4" ] ]
     $ A.mapWithIndex (\i r -> HH.li_ [ renderCharge i r ]) charges
   where
   renderEditablePrice :: PriceIndex -> SS.Price -> Maybe SS.ChargeCurrency -> H.ComponentHTML Action Slots m
@@ -196,7 +196,7 @@ render { unitMap
         [ HH.table_
             [ HH.thead_ [ HH.tr [ HP.classes borderedBelow ] (thUnitLabel unit) ]
             , HH.tbody_
-                [ HH.tr [ Css.classes [ "h-16", "bg-honey-100" ] ]
+                [ HH.tr [ Css.class_ "h-16" ]
                     [ td_ [ renderEditablePrice pIdx price charge.currency ]
                     , td_ [ renderChargeUnit' kind qIdx nullDim ]
                     ]
@@ -262,7 +262,7 @@ render { unitMap
           HH.tr
             [ Css.classes
                 [ "h-16"
-                , if even dimIdx then "bg-honey-100" else ""
+                , if odd dimIdx then "bg-honey-100" else ""
                 ]
             ]
             $ map tdOne_ (if A.null dimKeys then [] else renderDimVals dimKeys p.dim)
@@ -292,7 +292,7 @@ render { unitMap
                   $ ( if priceOnly then
                         [ HH.text "" ]
                       else
-                        [ HH.tr [ Css.classes [ "h-16", "bg-honey-100" ] ]
+                        [ HH.tr [ Css.class_ "h-16" ]
                             [ td_ [ renderChargeUnit { unitId: c.unit, dim: Nothing } nullDim ]
                             , td_ []
                             , td_ []
@@ -317,7 +317,7 @@ render { unitMap
           c.currency
 
       renderChargeSegRow seg@(SS.Segment { minimum }) =
-        HH.tr [ Css.classes [ "h-16", "bg-honey-100" ] ]
+        HH.tr [ Css.class_ "h-16" ]
           [ if priceOnly then HH.text "" else td_ []
           , td_
               [ fromMaybe (HH.text "N/A")
@@ -415,7 +415,7 @@ render { unitMap
           HH.tr
             [ Css.classes
                 [ "h-16"
-                , if even dimIdx then "bg-honey-100" else ""
+                , if odd dimIdx then "bg-honey-100" else ""
                 ]
             ]
             $ map tdOne_
