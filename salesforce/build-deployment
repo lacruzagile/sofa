@@ -25,10 +25,6 @@ while (( $# > 0 )); do
     shift
 
     case "$opt" in
-        --token-base-url)
-            tokenBaseUrl="$1"
-            shift
-            ;;
         --ordering-base-url)
             orderingBaseUrl="$1"
             shift
@@ -62,7 +58,6 @@ mkdir -p "$resourcePath" "$pagePath"
 
 sed -e "s!@css@!${css[0]}!" \
     -e "s!@js@!${js[0]}!" \
-    -e "s!@tokenBaseUrl@!$tokenBaseUrl!" \
     -e "s!@orderingBaseUrl@!$orderingBaseUrl!" \
     -e "s!@smartSpecBaseUrl@!$smartSpecBaseUrl!" \
     -e "s!@deploymentEnv@!$deploymentEnv!" \

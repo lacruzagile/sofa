@@ -20,7 +20,6 @@
     const __ACCOUNT_SFID__ = '{!Quote.Account}';
     const __QUOTE_SFID__ = '{!Quote.ID}';
     const __DEPLOYMENT_ENV__ = '@deploymentEnv@';
-    const __TOKEN_BASE_URL__ = '@tokenBaseUrl@';
     const __ORDERING_BASE_URL__ = '@orderingBaseUrl@';
     const __SMART_SPEC_BASE_URL__ = '@smartSpecBaseUrl@';
   </script>

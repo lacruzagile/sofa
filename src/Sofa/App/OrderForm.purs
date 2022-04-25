@@ -32,7 +32,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.App.Charge (Slot, component, proxy) as Charge
-import Sofa.App.NavbarItemUser as NavbarItemUser
 import Sofa.App.OrderForm.Buyer as Buyer
 import Sofa.App.OrderForm.Commercial as Commercial
 import Sofa.App.OrderForm.Notes as Notes
@@ -98,8 +97,6 @@ type Slots
     , widgetTypeahead :: WTypeahead.Slot ConfigEntryIndex
     , nectaryTabs :: Tabs.Slot ConfigEntryIndex
     , orderName :: EditableInput.Slot Unit
-    , navbarItemUser :: NavbarItemUser.Slot Unit
-    -- ^ Temporary until we have working Salesforce login.
     )
 
 data Input
@@ -260,25 +257,8 @@ render ::
   CredentialStore m =>
   MonadAlert m =>
   State -> H.ComponentHTML Action Slots m
-render state =
-  HH.section (if inQuoteContext then [ Css.class_ "mx-5" ] else [])
-    [ if inQuoteContext then
-        -- Temporarily show login button if running in a quote context.
-        HH.header
-          [ Css.class_ "float-right" ]
-          [ HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd ]
-      else
-        HH.text ""
-    , HH.article_ renderContent
-    ]
+render state = HH.section_ [ HH.article_ renderContent ]
   where
-  -- An order is in a quote context when it has a CRM quote ID. In practice this
-  -- means that SOFA is running as an app inside a Salesforce quote.
-  inQuoteContext :: Boolean
-  inQuoteContext = case state of
-    Initialized (Loaded { orderForm: { crmQuoteId: Just _ } }) -> true
-    _ -> false
-
   renderSmallTitle t = HH.div [ Css.class_ "sofa-small-title" ] [ HH.text t ]
 
   renderCharges ::

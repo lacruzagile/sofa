@@ -143,15 +143,13 @@ deploy-salesforce-staging:
   image: salesforce/salesforcedx:7.136.1-slim
   stage: deploy
   only: [ master ]
-  needs: [ test ]
   when: manual
   environment:
     name: sf-staging
   script:
     - >-
       ./salesforce/build-deployment
-      --token-base-url https://sofa.eu1tst.bpa.unauth.int.staging.sinch.com
-      --ordering-base-url https://sofa.eu1tst.bpa.unauth.int.staging.sinch.com
+      --ordering-base-url https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com
       --smart-spec-base-url https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com
       --deployment-env staging
   artifacts:

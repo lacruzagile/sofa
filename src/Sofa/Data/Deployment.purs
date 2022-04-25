@@ -6,7 +6,7 @@ module Sofa.Data.Deployment
   ) where
 
 import Prelude
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Effect (Effect)
 import Sofa.Data.SmartSpec as SS
 
@@ -31,10 +31,7 @@ foreign import sfData ::
 -- | Figures out which type of deployment we're running.
 detectDeployment :: Effect Deployment
 detectDeployment = do
-  -- Commented out to force use of standard login even in Salesforce
-  -- deployments:
-  -- maybe Standard Salesforce <$> sfData Just Nothing
-  pure Standard
+  maybe Standard Salesforce <$> sfData Just Nothing
 
 foreign import _getCrmQuoteId ::
   (forall x. x -> Maybe x) ->

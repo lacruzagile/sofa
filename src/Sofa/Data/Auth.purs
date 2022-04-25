@@ -102,7 +102,8 @@ instance decodeJsonTokenResponse :: DecodeJson TokenResponse where
     pure $ TokenResponse { accessToken, expiresIn, scope, tokenType }
 
 -- | Base URL to use for the token service.
-foreign import tokenBaseUrl :: String
+tokenBaseUrl :: String
+tokenBaseUrl = ""
 
 tokenUrl :: String
 tokenUrl = tokenBaseUrl <> "/oauth2/token"
