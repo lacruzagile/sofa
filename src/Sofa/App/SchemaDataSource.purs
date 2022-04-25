@@ -1,5 +1,6 @@
 module Sofa.App.SchemaDataSource
   ( DataSourceEnumResult
+  , DataSourceVars
   , getDataSourceEnum
   ) where
 
@@ -7,9 +8,7 @@ import Prelude
 import Data.Map as Map
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Tuple (Tuple)
-import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (liftEffect)
 import JSURI (encodeURIComponent)
 import Sofa.App.Requests as Requests
 import Sofa.Data.Auth (class CredentialStore)
@@ -17,7 +16,10 @@ import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.SmartSpec (BillingAccountId(..), Commercial(..), ConfigValue, SchemaDataSourceEnum(..))
 
 -- | The 'replaceAll' method taking an effect as replacer.
-foreign import replaceAllFun :: String -> Effect String -> String -> Effect String
+foreign import replaceAllFun :: String -> (Unit -> String) -> String -> String
+
+type DataSourceVars
+  = { getCommercial :: Unit -> Maybe Commercial }
 
 type DataSourceEnumResult
   = Loadable (Array (Tuple String ConfigValue))
@@ -32,7 +34,7 @@ getDataSourceEnum ::
   forall m.
   MonadAff m =>
   CredentialStore m =>
-  { getCommercial :: Effect (Maybe Commercial) } ->
+  DataSourceVars ->
   SchemaDataSourceEnum ->
   Maybe String ->
   m (Loadable (Array (Tuple String ConfigValue)))
@@ -56,8 +58,8 @@ getDataSourceEnum vars dataSource input = case dataSource of
 
       applyVars =
         replaceAllFun "${input}" varInput
-          <=< replaceAllFun "${commercial.billingAccountId}" varCommercial
+          <<< replaceAllFun "${commercial.billingAccountId}" varCommercial
+
+      url = applyVars urlTemplate
     in
-      do
-        url <- liftEffect $ applyVars urlTemplate
-        Requests.getDataSourceEnum url authenticate
+      Requests.getDataSourceEnum url authenticate
