@@ -218,7 +218,7 @@ postRJson_ url =
           , responseFormat = ResponseFormat.json
           }
 
--- | Submit a DELETE request and parse the response.
+-- | Submit a DELETE request.
 deleteR_ ::
   forall m.
   MonadAff m =>
