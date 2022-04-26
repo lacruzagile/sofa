@@ -138,7 +138,7 @@ selectComponent =
             , "space-x-3"
             ]
         ]
-        [ HH.div [ Css.class_ "grow" ] [ HH.text "Loading buyer …" ]
+        [ HH.div [ Css.class_ "grow" ] [ HH.text "Loading customer …" ]
         , Widgets.spinner [ Css.c "my-4" ]
         ]
     _ ->
@@ -165,6 +165,6 @@ selectComponent =
                   in
                     renderItem <$> available
                 _ -> []
-            , noSelectionText = "Type to search buyer  …"
+            , noSelectionText = "Type to search customer  …"
             , loading = Loadable.isLoading st.available
             }
