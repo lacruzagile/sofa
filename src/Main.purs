@@ -17,6 +17,10 @@ import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
 
+-- | SOFA application entry point. This will attach the application to an
+-- | element with the ID `sofa-app`, for example,
+-- |
+-- |     <div id="sofa-app"></div>
 main :: Effect Unit
 main = do
   deployment <- detectDeployment

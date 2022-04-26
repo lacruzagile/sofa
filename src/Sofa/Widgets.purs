@@ -29,7 +29,6 @@ import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal(..))
 import Sofa.Data.SubTotal as SubTotal
 
--- Other stuff.
 type Tab slot action
   = { label :: HH.HTML slot action
     , content :: HH.HTML slot action
@@ -95,6 +94,8 @@ address (SS.Address addr) =
               pure country.name
           )
 
+-- | Render a monetary amount. The rendering will follow the US locale style
+-- | with the actual currency shown using a smaller font in a subdued color.
 monetaryAmount :: forall slot action. Currency -> Number -> Array (HH.HTML slot action)
 monetaryAmount currency amount = format <$> Currency.formatToParts currency amount
   where
@@ -172,6 +173,7 @@ subTotalTable title (SubTotal summary) =
 
     showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)
 
+-- | Render a Nectary spinner.
 spinner :: forall w i. Array HH.ClassName -> HH.HTML w i
 spinner classes =
   HH.div

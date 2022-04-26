@@ -14,8 +14,10 @@ import Halogen as H
 import Web.HTML.HTMLElement as HtmlElement
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
+-- | Move current scroll position to the bottom of the page.
 foreign import scrollToBottom :: Effect Unit
 
+-- | Places the focus on the element having the given label.
 focusElementByRef ::
   forall state action slots output m.
   MonadEffect m =>
@@ -26,6 +28,7 @@ focusElementByRef ref = do
   for_ element \el ->
     H.liftEffect $ HtmlElement.focus el
 
+-- | Select all text in the input field having the given label.
 selectInputText ∷
   forall state action slots output m.
   MonadEffect m =>
@@ -36,6 +39,7 @@ selectInputText refLabel = do
     $ maybe (pure unit) (H.liftEffect <<< HTMLInputElement.select)
     <<< HTMLInputElement.fromHTMLElement
 
+-- | Set the text in the input field having the given label.
 setInputText ∷
   forall state action slots output m.
   MonadEffect m =>

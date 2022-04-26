@@ -20,11 +20,17 @@ import Web.HTML as Html
 import Web.HTML.Window as HtmlWindow
 import Web.Storage.Storage as LS
 
+-- | The SOFA runtime environment.
+-- |
+-- | - `deployment` – indicates the current deployment environment
+-- | - `alertSink` – the sink for global alerts
 type Env
   = { deployment :: Deployment
     , alertSink :: AlertSink
     }
 
+-- | The SOFA application base monad, it is essentially the `Aff` monad combined
+-- | with a reader of `Env`.
 newtype AppM a
   = AppM (ReaderT Env Aff a)
 
@@ -113,6 +119,6 @@ instance credentialStoreAppM :: CredentialStore AppM where
             s <- HtmlWindow.sessionStorage w
             LS.removeItem "sofa-cred" s
 
--- | Runs the `AppM` monad, takes the initial credentials as input.
+-- | Runs the `AppM` monad, takes an environment as input.
 runAppM :: forall a. Env -> AppM a -> Aff a
 runAppM env (AppM m) = runReaderT m env

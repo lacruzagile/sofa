@@ -17,8 +17,9 @@ c = ClassName
 -- | class names.
 -- |
 -- | Note, the implementation relies on `ClassName` being a newtype over
--- | `String`. So an array of class names has the same runtime representation as
--- | an array of class names and we can safely use unsafe coerce.
+-- | `String`. Specifically, the array of class name strings has the same
+-- | runtime representation as an array of class names and we can safely use
+-- | unsafe coerce.
 cs :: Array String -> Array ClassName
 cs = unsafeCoerce
 
