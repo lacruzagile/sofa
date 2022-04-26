@@ -51,7 +51,7 @@ dependencies.
 
    in a terminal.
 
-2. Start serving the application by running
+1. Start serving the application by running
 
     ``` sh-session
     $ yarn start
