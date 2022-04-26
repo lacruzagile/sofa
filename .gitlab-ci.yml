@@ -82,6 +82,7 @@ pages:
   extends: .yarn-job
   stage: deploy
   only: [ master ]
+  needs: [ test ]
   cache:
     policy: pull
   script:
