@@ -86,7 +86,8 @@ render st =
     , "truncate"
     , "pl-11"
     ]
-      <> (if st.loading then [ "pr-8" ] else [ "nectary-dropdown-icon" ])
+      <> (if st.loading then [ "pr-8" ] else [])
+      <> (if st.loading || A.null st.values then [] else [ "nectary-dropdown-icon" ])
       <> (if st.visibility == Sel.Off then [] else [ "rounded-b-none" ])
 
   containerClasses =
