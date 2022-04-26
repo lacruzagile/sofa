@@ -194,7 +194,11 @@ renderDetails st =
                   [ HH.text err ]
               _ -> HH.text ""
           , if buyer.corporateName == "" then
-              HH.text ""
+              HH.p
+                [ Css.class_ "max-w-96" ]
+                [ HH.text "Here you can search for a customer by name."
+                , HH.text " The search is case insensitive."
+                ]
             else
               HH.div
                 [ Css.classes
