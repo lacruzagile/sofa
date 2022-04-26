@@ -23,6 +23,7 @@ import Data.Either (Either(..))
 import Data.HTTP.Method as HTTP
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
+import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 
@@ -109,12 +110,12 @@ withAuthorizationHeader ::
   forall m a.
   MonadAff m =>
   CredentialStore m =>
-  (RequestHeader -> m (Loadable a)) -> m (Loadable a)
+  (RequestHeader -> Aff (Loadable a)) -> m (Loadable a)
 withAuthorizationHeader fetcher = do
   creds <- getAuthorizationHeader
   case creds of
     Left err -> pure $ Error err
-    Right authHdr -> fetcher authHdr
+    Right authHdr -> liftAff $ fetcher authHdr
 
 -- | Fetch JSON from an URL.
 getJson :: forall a m. DecodeJson a => MonadAff m => String -> m (Loadable a)
@@ -137,9 +138,8 @@ getRJson ::
   CredentialStore m =>
   String -> m (Loadable a)
 getRJson url =
-  withAuthorizationHeader \authHdr -> do
-    liftAff
-      $ map handleJsonResponse
+  withAuthorizationHeader \authHdr ->
+    map handleJsonResponse
       $ AX.request
       $ AX.defaultRequest
           { url = url
@@ -161,8 +161,7 @@ patchRJson ::
   m (Loadable b)
 patchRJson url body =
   withAuthorizationHeader \authHdr ->
-    liftAff
-      $ map handleJsonResponse
+    map handleJsonResponse
       $ AX.request
       $ AX.defaultRequest
           { url = url
@@ -185,8 +184,7 @@ postRJson ::
   m (Loadable b)
 postRJson url body =
   withAuthorizationHeader \authHdr ->
-    liftAff
-      $ map handleJsonResponse
+    map handleJsonResponse
       $ AX.request
       $ AX.defaultRequest
           { url = url
@@ -207,8 +205,7 @@ postRJson_ ::
   m (Loadable a)
 postRJson_ url =
   withAuthorizationHeader \authHdr ->
-    liftAff
-      $ map handleJsonResponse
+    map handleJsonResponse
       $ AX.request
       $ AX.defaultRequest
           { url = url
@@ -227,8 +224,7 @@ deleteR_ ::
   m (Loadable Unit)
 deleteR_ url =
   withAuthorizationHeader \authHdr ->
-    liftAff
-      $ map handleEmptyResponse
+    map handleEmptyResponse
       $ AX.request
       $ AX.defaultRequest
           { url = url
