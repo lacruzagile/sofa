@@ -13,6 +13,7 @@ import Halogen.HTML as HH
 import Select as Sel
 import Sofa.App.Requests (getLegalEntities)
 import Sofa.Component.Typeahead as Typeahead
+import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Loadable as Loadable
@@ -81,34 +82,23 @@ selectComponent =
     Initialize -> do
       -- Focus the search box to allow immediate typing.
       focusElementByRef (H.RefLabel "select-input")
+      H.modify_ _ { selected = Nothing, available = Loading, filtered = Loading }
+      result <- H.lift $ getLegalEntities
+      H.modify_ _ { available = result, filtered = result }
 
   handleEvent :: Sel.Event -> H.HalogenM (Sel.State State) (Sel.Action Action) () Output m Unit
   handleEvent = case _ of
-    Sel.Searched _ -> do
-      state <- H.get
-      mAvailable <- case state.available of
-        Loaded _ -> pure $ Just state.available
-        Loading -> pure $ Nothing
-        _ -> do
-          H.modify_ $ \st -> st { available = Loading, filtered = Loading }
-          H.lift $ Just <$> getLegalEntities
-      case mAvailable of
-        Nothing -> pure unit
-        Just available ->
-          H.modify_ \st ->
-            st
-              { available = available
-              -- Update the array of filtered matches. Note, we don't filter
-              -- using the string passed in `Sel.Searched` since it may be out
-              -- of date at the time `getLegalEntities` finishes.
-              , filtered =
-                let
-                  pat = S.Pattern $ S.toLower st.search
+    Sel.Searched str -> do
+      H.modify_ \st ->
+        st
+          { filtered =
+            let
+              pat = S.Pattern $ S.toLower str
 
-                  match (SS.LegalEntity le) = S.contains pat (S.toLower le.registeredName)
-                in
-                  A.filter match <$> available
-              }
+              match (SS.LegalEntity le) = S.contains pat (S.toLower le.registeredName)
+            in
+              A.filter match <$> st.available
+          }
     Sel.Selected idx -> do
       st' <-
         H.modify \st ->
@@ -148,6 +138,7 @@ selectComponent =
                 in
                   renderItem <$> filtered
               _ -> []
+          , wrapperClasses = [ Css.c "min-w-96" ]
           , noSelectionText = "Type to search legal entity  …"
           , loading = Loadable.isLoading st.filtered
           }

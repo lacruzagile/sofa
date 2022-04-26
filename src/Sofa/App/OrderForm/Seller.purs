@@ -178,11 +178,7 @@ renderDetails st =
             else
               HH.slot SelectLegalEntity.proxy unit SelectLegalEntity.component absurd ChooseLegalEntity
           , if seller.registeredName == "" then
-              HH.p
-                [ Css.class_ "max-w-96" ]
-                [ HH.text "Here you can search for a legal entity by name."
-                , HH.text " The search is case insensitive."
-                ]
+              HH.text ""
             else
               HH.div
                 [ Css.classes
