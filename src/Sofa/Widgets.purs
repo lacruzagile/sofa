@@ -1,6 +1,5 @@
 module Sofa.Widgets
-  ( Tab(..)
-  , address
+  ( address
   , dateWithTimeTooltip
   , dateWithTimeTooltipRight
   , monetaryAmount
@@ -28,11 +27,6 @@ import Sofa.Data.Iso3166 (countryForCode, subdivisionForCode)
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal(..))
 import Sofa.Data.SubTotal as SubTotal
-
-type Tab slot action
-  = { label :: HH.HTML slot action
-    , content :: HH.HTML slot action
-    }
 
 dateWithTimeTooltip :: forall slot action. DateTime -> HH.HTML slot action
 dateWithTimeTooltip t =
