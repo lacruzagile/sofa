@@ -10,7 +10,6 @@ import Data.Traversable (for_)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Select as Sel
 import Sofa.Component.Typeahead as Typeahead
 import Sofa.Css as Css
