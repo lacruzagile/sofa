@@ -8,7 +8,7 @@ trap 'rm -rf "$tmpPath"' EXIT
 
 css=(dist/sofa.*.css)
 if (( ${#css[@]} != 1 )); then
-    echo "Expected two CSS files, got ${#css[@]}"
+    echo "Expected one CSS files, got ${#css[@]}"
     exit 1
 fi
 
