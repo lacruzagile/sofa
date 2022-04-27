@@ -82,6 +82,10 @@ render state
       HH.button
         [ Css.classes
             [ "nectary-btn-secondary"
+            , "ring-0"
+            , "hover:bg-snow-100"
+            , "focus:bg-snow-100"
+            , "active:bg-snow-100"
             , "w-full"
             , "text-stormy-500"
             ]
