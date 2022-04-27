@@ -4,6 +4,7 @@
   "description": "SOFA",
   "repository": "https://git.clxnetworks.net/dev/business-process-automation/sofa",
   "license": "UNLICENSED",
+  "browserslist": "defaults and supports es6-module",
   "private": true,
   "scripts": {
     "//": "Note, the sed calls in 'build' and 'start' are to work around https://github.com/purescript-contrib/purescript-affjax/issues/161",
@@ -16,16 +17,15 @@
     "format": "find src -name '*.purs' -exec purty format --write '{}' ';'"
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.0",
-    "parcel": "^2.0.0",
-    "postcss": "^8.4.5",
-    "purescript": "^0.14.7",
+    "parcel": "^2.5.0",
+    "postcss": "^8.4.12",
+    "purescript": "=0.14.7",
     "purty": "^7.0.0",
-    "spago": "^0.20.7",
-    "tailwindcss": "^3.0.7"
+    "spago": "=0.20.7",
+    "tailwindcss": "^3.0.24"
   },
   "dependencies": {
-    "bignumber.js": "^9.0.1",
+    "bignumber.js": "^9.0.2",
     "buffer": "^6.0.3",
     "iso-3166": "^4.0.1",
     "uuid": "^8.3.2",
