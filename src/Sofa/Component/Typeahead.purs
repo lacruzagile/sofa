@@ -57,11 +57,15 @@ render st =
             Widgets.spinner [ Css.c "absolute", Css.c "right-2.5", Css.c "top-4" ]
           else
             HH.text ""
-        , HH.div [ Css.classes [ "absolute", "left-2.5", "top-3.5" ] ]
-            [ Icon.search
-                [ Icon.classes [ Css.c "w-6", Css.c "h-6" ]
-                , Icon.ariaHidden true
+        , Icon.search
+            [ Icon.classes
+                [ Css.c "absolute"
+                , Css.c "inset-y-0"
+                , Css.c "left-2.5"
+                , Css.c "w-6"
+                , Css.c "h-full"
                 ]
+            , Icon.ariaHidden true
             ]
         , renderInput
         , renderResults
