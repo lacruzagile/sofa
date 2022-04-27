@@ -196,7 +196,13 @@ render st =
             , HP.tabIndex (-1)
             ]
         )
-        $ A.mapWithIndex renderItem st.values
+        $ if A.null st.values then
+            [ HH.div
+                [ Css.classes [ "p-2", "text-stormy-300" ] ]
+                [ HH.text "Sorry, no option is available" ]
+            ]
+          else
+            A.mapWithIndex renderItem st.values
 
   renderItem :: Int -> HH.PlainHTML -> H.ComponentHTML _ () m
   renderItem idx item =
