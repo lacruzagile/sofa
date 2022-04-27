@@ -11,6 +11,9 @@ import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.OrderForm.SelectOrderStatus (statusColorClass)
 import Sofa.App.Requests (getOrders)
+import Sofa.Component.Alert as Alert
+import Sofa.Component.Alerts (class MonadAlert)
+import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -33,7 +36,6 @@ type Slots
 
 type State
   = { orders :: Array SS.OrderForm -- ^ All loaded orders.
-    , error :: Maybe String
     , nextPageToken :: Loadable (Maybe String)
     }
 
@@ -45,6 +47,7 @@ component ::
   forall query input output m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   H.Component query input output m
 component =
   H.mkComponent
@@ -61,7 +64,6 @@ component =
 initialState :: forall input. input -> State
 initialState _ =
   { orders: []
-  , error: Nothing
   , nextPageToken: Idle
   }
 
@@ -75,20 +77,6 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
-  renderError err =
-    HH.div
-      [ Css.classes
-          [ "p-5"
-          , "bg-red-100"
-          , "border"
-          , "border-red-400"
-          , "text-raspberry-500"
-          ]
-      ]
-      [ HH.h3 [ Css.classes [ "text-lg" ] ] [ HH.text "Error" ]
-      , HH.p_ [ HH.text err ]
-      ]
-
   renderOrder :: SS.OrderForm -> H.ComponentHTML Action Slots m
   renderOrder (SS.OrderForm o) =
     trow
@@ -185,13 +173,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , HP.disabled true
         ]
         [ Widgets.spinner [] ]
-    Loaded (Just tok) ->
+    Loaded mTok ->
       HH.button
         ( [ Css.classes [ "nectary-btn-secondary", "w-full", "mb-3" ]
-          , HE.onClick \_ -> LoadNext (Just tok)
+          , HE.onClick \_ -> LoadNext mTok
           ]
         )
-        [ HH.text "Load more" ]
+        [ HH.text $ maybe "Load orders" (const "Load more") mTok ]
     _ -> HH.text ""
 
   renderSearchForm =
@@ -235,13 +223,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , renderNewOrderLink
         ]
     , renderOrders
-    , maybe (HH.text "") renderError state.error
     ]
 
 handleAction ::
   forall slots output m.
   MonadAff m =>
   CredentialStore m =>
+  MonadAlert m =>
   Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   NoOp -> pure unit
@@ -256,12 +244,10 @@ handleAction = case _ of
             , nextPageToken = Loaded nextPageToken'
             }
         H.liftEffect scrollToBottom
-      _ ->
-        H.modify_ \st ->
-          st
-            { nextPageToken = Loaded nextPageToken
-            , error =
-              case result of
-                Error err -> Just err
-                _ -> Nothing
-            }
+      Error msg -> do
+        H.modify_ _ { nextPageToken = Loaded nextPageToken }
+        H.lift
+          $ Alerts.push
+          $ Alert.errorAlert "Failed to load orders" msg
+      _ -> do
+        H.modify_ _ { nextPageToken = Loaded nextPageToken }
