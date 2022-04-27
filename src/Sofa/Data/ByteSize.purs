@@ -1,4 +1,7 @@
-module Sofa.Data.Bytes where
+module Sofa.Data.ByteSize
+  ( ByteSize
+  , showPretty
+  ) where
 
 import Prelude
 import Data.Foldable (findMap)
@@ -6,12 +9,12 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Number.Format (toStringWith)
 import Data.Number.Format as Format
 
-type Bytes
+type ByteSize
   = Number
 
 -- | Shows a pretty string for the given bytes. Allows a non-exact
 -- | representation rounded to one decimal.
-showPretty :: Bytes -> String
+showPretty :: ByteSize -> String
 showPretty bytes =
   fromMaybe ""
     $ findMap (\f -> f bytes)

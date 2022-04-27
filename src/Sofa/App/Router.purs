@@ -1,4 +1,10 @@
-module Sofa.App.Router where
+-- | Provides the main Sofa page component, including navigation bars and
+-- | routing.
+module Sofa.App.Router
+  ( Query(..)
+  , component
+  , startRouting
+  ) where
 
 import Prelude
 import Data.Maybe (Maybe(..))

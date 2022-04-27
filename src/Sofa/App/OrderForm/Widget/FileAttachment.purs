@@ -20,7 +20,7 @@ import Sofa.Component.Alerts as Alerts
 import Sofa.Component.FileUpload (readAsBase64)
 import Sofa.Component.FileUpload as FileUpload
 import Sofa.Data.Auth (class CredentialStore)
-import Sofa.Data.Bytes as Bytes
+import Sofa.Data.ByteSize as ByteSize
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
@@ -191,7 +191,7 @@ handleAction = case _ of
       Just n
         | File.size file > n ->
           H.tell FileUpload.proxy unit
-            (FileUpload.SetStatus (Error $ "File must be smaller than " <> Bytes.showPretty n))
+            (FileUpload.SetStatus (Error $ "File must be smaller than " <> ByteSize.showPretty n))
       _ -> do
         b64 <- H.liftAff $ readAsBase64 (File.toBlob file)
         H.liftEffect $ log $ "Content (first 50): " <> show (S.take 50 b64)
@@ -228,4 +228,4 @@ handleAction = case _ of
               $ unsafeCoerce result -- Safe since we've handled the Loaded case.
 
 showFile :: String -> Number -> String
-showFile name size = "Attached " <> name <> " (" <> Bytes.showPretty size <> ")"
+showFile name size = "Attached " <> name <> " (" <> ByteSize.showPretty size <> ")"

@@ -1,3 +1,4 @@
+-- | Provides an order list component. Fetches orders from the Ordering backend.
 module Sofa.App.Orders (Slot, proxy, component) where
 
 import Prelude
