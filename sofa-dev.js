@@ -1,3 +1,6 @@
+// This is the main Javascript file used for dev builds. E.g., when using
+// `yarn watch` and `yarn start`.
+
 var Main = require('./output/Main');
 
 // See https://parceljs.org/features/development#hot-reloading.
