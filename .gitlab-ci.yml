@@ -143,6 +143,7 @@ deploy-salesforce-staging:
   image: salesforce/salesforcedx:7.136.1-slim
   stage: deploy
   only: [ master ]
+  needs: [ test ]
   when: manual
   environment:
     name: sf-staging
