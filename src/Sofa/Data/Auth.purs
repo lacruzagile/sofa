@@ -114,11 +114,16 @@ basicAuth user pass =
   in
     RequestHeader "Authorization" $ "Basic " <> encoded
 
-login :: forall m. MonadAff m => String -> String -> CredentialStore m => m (Either Error Credentials)
+login ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m =>
+  String -> String -> m (Either Error Credentials)
 login user pass =
   runExceptT do
-    result <-
-      liftAff $ AX.request
+    mresponse <-
+      liftAff
+        $ AX.request
         $ AX.defaultRequest
             { url = tokenUrl
             , method = Left POST
@@ -126,21 +131,19 @@ login user pass =
             , content = Just $ formURLEncoded $ FormURLEncoded [ Tuple "grant_type" (Just "client_credentials") ]
             , responseFormat = ResponseFormat.json
             }
-    case result of
-      Left err -> throwError $ AX.printError err
-      Right response -> do
-        TokenResponse tokenResp <- withExceptT printJsonDecodeError $ except $ decodeJson response.body
-        now <- liftEffect nowDateTime
-        let
-          -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
-          -- one claimed to allow for clock mismatches.
-          offset = Seconds $ Int.toNumber tokenResp.expiresIn - 30.0
+    response <- withExceptT AX.printError $ except mresponse
+    TokenResponse tokenResp <- withExceptT printJsonDecodeError $ except $ decodeJson response.body
+    now <- liftEffect nowDateTime
+    let
+      -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
+      -- one claimed to allow for clock mismatches.
+      offset = Seconds $ Int.toNumber tokenResp.expiresIn - 30.0
 
-          expiry = fromMaybe now $ DateTime.adjust offset now
+      expiry = fromMaybe now $ DateTime.adjust offset now
 
-          creds = Credentials { token: tokenResp.accessToken, expiry, user, pass }
-        lift $ setCredentials creds
-        pure creds
+      creds = Credentials { token: tokenResp.accessToken, expiry, user, pass }
+    lift $ setCredentials creds
+    pure creds
 
 logout :: forall m. CredentialStore m => m Unit
 logout = clearCredentials
