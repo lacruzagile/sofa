@@ -167,21 +167,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
 
   renderLoadMore :: H.ComponentHTML Action Slots m
-  renderLoadMore = case state.nextPageToken of
-    Loading ->
-      HH.button
-        [ Css.classes [ "nectary-btn-secondary", "w-full", "mb-3" ]
-        , HP.disabled true
-        ]
-        [ Widgets.spinner [] ]
-    Loaded mTok ->
-      HH.button
-        ( [ Css.classes [ "nectary-btn-secondary", "w-full", "mb-3" ]
-          , HE.onClick \_ -> LoadNext mTok
-          ]
-        )
-        [ HH.text $ maybe "Load orders" (const "Load more") mTok ]
-    _ -> HH.text ""
+  renderLoadMore =
+    let
+      btnClasses = [ "nectary-btn-secondary", "ring-0", "w-full", "mb-3", "rounded-t-none" ]
+    in
+      case state.nextPageToken of
+        Loading ->
+          HH.button
+            [ Css.classes btnClasses, HP.disabled true ]
+            [ Widgets.spinner [] ]
+        Loaded mTok ->
+          HH.button
+            [ Css.classes btnClasses, HE.onClick \_ -> LoadNext mTok ]
+            [ HH.text $ maybe "Load orders" (const "Load more") mTok ]
+        _ -> HH.text ""
 
   renderSearchForm =
     HH.form [ Css.class_ "relative" ]
