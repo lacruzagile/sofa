@@ -15,16 +15,13 @@
     "watch": "spago build --watch --clear-screen",
     "format": "find src -name '*.purs' -exec purty format --write '{}' ';'"
   },
-  "resolutions": {
-    "lmdb": "2.1.7"
-  },
   "devDependencies": {
     "autoprefixer": "^10.4.0",
     "parcel": "^2.0.0",
     "postcss": "^8.4.5",
-    "purescript": "^0.14.5",
+    "purescript": "^0.14.7",
     "purty": "^7.0.0",
-    "spago": "^0.20.5",
+    "spago": "^0.20.7",
     "tailwindcss": "^3.0.7"
   },
   "dependencies": {

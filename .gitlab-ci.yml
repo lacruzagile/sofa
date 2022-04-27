@@ -14,7 +14,7 @@ variables:
   NO_COLOR: 1
 
 .yarn-job:
-  image: node:17
+  image: node:18
   cache:
     key:
       files:
@@ -25,6 +25,8 @@ variables:
       - node_modules
       - output
   before_script:
+    - apt-get update
+    - apt-get install libtinfo5 # Needed by PureScript 0.14.7
     - yarn install
 
 build:
