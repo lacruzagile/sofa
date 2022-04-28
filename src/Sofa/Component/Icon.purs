@@ -76,7 +76,7 @@ tooltip =
         $ Css.cs
             [ "inline-block"
             , "fill-current"
-            , "ml-1"
+            , "ml-2"
             , "w-4"
             , "h-4"
             ]
