@@ -423,7 +423,7 @@ render state =
                 [ HH.details [ Css.class_ "mt-5" ]
                     $ [ HH.summary
                           [ Css.classes [ "text-lg", "cursor-pointer" ] ]
-                          [ HH.text "Configurations" ]
+                          [ HH.text "Configuration" ]
                       ]
                     <> renderProductConfigs product ol.orderLineId ol.configs
                     <> renderAddProductConfig
@@ -479,7 +479,7 @@ render state =
           $ A.mapWithIndex (renderProductConfig allowRemove product orderLineId) configs
 
     renderProductConfig allowRemove product orderLineId cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
-      [ HH.div [ Css.classes [ "my-5", "p-5", "border-l-8", "border-gray-100" ] ]
+      [ HH.div [ Css.classes [ "my-5", "p-5", "bg-snow-500", "rounded-lg" ] ]
           [ HH.label_
               [ HH.div
                   [ Css.classes [ "sofa-small-title" ] ]
@@ -554,6 +554,7 @@ render state =
       ]
 
     renderAddProductConfig
+      | true = [] -- Disable multiple configurations for now.
       | not isInDraft = []
       | otherwise =
         [ HH.div [ Css.classes [ "flex", "w-full" ] ]
