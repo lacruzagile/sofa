@@ -189,6 +189,7 @@ renderDetails st =
                       , "border"
                       , "border-red-400"
                       , "text-raspberry-500"
+                      , "max-w-96"
                       ]
                   ]
                   [ HH.text err ]
