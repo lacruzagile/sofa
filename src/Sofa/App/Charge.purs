@@ -131,9 +131,30 @@ render { unitMap
 , priceOnly
 , readOnly
 } =
-  HH.ul [ Css.classes [ "flex", "flex-wrap", "gap-4" ] ]
-    $ A.mapWithIndex (\i r -> HH.li_ [ renderCharge i r ]) charges
+  HH.ul [ Css.classes [ "grid", "lg:grid-cols-2", "gap-8" ] ]
+    $ A.mapWithIndex (\i r -> chargeLi r [ renderCharge i r ]) charges
   where
+  -- Create a list item for the given charge. A "complicated" charge is allowed
+  -- two columns, while a "simple" charge is limited to a single column. By
+  -- complicated we here mean a charge that will require multiple table columns
+  -- and/or rows.
+  chargeLi charge =
+    let
+      span1 = []
+
+      span2 = [ Css.class_ "lg:col-span-2" ]
+    in
+      HH.li
+        ( case charge of
+            SS.ChargeSingleUnit c -> case c of
+              SS.ChargeSimple _ -> span1
+              SS.ChargeDim _ -> span2
+              SS.ChargeSeg _ -> span1
+              SS.ChargeDimSeg _ -> span2
+            SS.ChargeList _ -> span2
+            SS.ChargeDimUnitOptSeg _ -> span2
+        )
+
   renderEditablePrice :: PriceIndex -> SS.Price -> Maybe SS.ChargeCurrency -> H.ComponentHTML Action Slots m
   renderEditablePrice priceIdx price currency =
     HH.slot EditablePrice.proxy priceIdx EditablePrice.component input
