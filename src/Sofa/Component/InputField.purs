@@ -1,6 +1,7 @@
 -- | A component providing rendering of Nectary style input fields.
 module Sofa.Component.InputField
-  ( defaultInput
+  ( Input
+  , defaultInput
   , render
   ) where
 
