@@ -9,7 +9,6 @@ import Data.Array as A
 import Data.Date (Date, Month(..), canonicalDate)
 import Data.Either (Either(..), either, note)
 import Data.Enum (toEnum)
-import Data.Foldable (sum)
 import Data.Int as Int
 import Data.List as SList
 import Data.List.Lazy (List)
@@ -368,53 +367,37 @@ render state =
       in
         body
           $ [ HH.div [ Css.class_ "flex" ]
-                $ [ HH.div [ Css.class_ "w-3/5" ]
-                      [ renderSmallTitle "Product"
-                      , renderProductTitle
-                      ]
-                  , HH.div [ Css.class_ "w-1/5" ]
-                      [ renderSmallTitle "Status"
-                      , let
-                          wrap content
-                            | ol.statusReason == "" = HH.text content
-                            | otherwise =
-                              Tooltip.render
-                                (Tooltip.defaultInput { text = ol.statusReason })
-                                (Icon.textWithTooltip content)
-                        in
-                          HH.span
-                            [ Css.class_ "font-semibold" ]
-                            [ wrap (SS.prettyOrderLineStatus ol.status) ]
-                      ]
-                  ]
-                <> ( if isJust product.orderConfigSchema then
-                      [ HH.div [ Css.class_ "w-1/5" ]
-                          [ renderSmallTitle "Total Quantity"
-                          , HH.span
-                              [ Css.class_ "font-semibold" ]
-                              [ HH.text
-                                  $ show
-                                  $ sum
-                                  $ (\(SS.OrderLineConfig { quantity }) -> quantity)
-                                  <$> ol.configs
-                              ]
-                          ]
-                      ]
-                    else
-                      [ HH.label [ Css.class_ "w-1/5" ]
-                          [ renderSmallTitle "Quantity"
-                          , renderQuantityInput 0
-                              $ fromMaybe
-                                  ( SS.OrderLineConfig
-                                      { id: Nothing
-                                      , quantity: 0
-                                      , config: Nothing
-                                      }
-                                  )
-                              $ head ol.configs
-                          ]
-                      ]
-                  )
+                [ HH.div [ Css.class_ "w-3/5" ]
+                    [ renderSmallTitle "Product"
+                    , renderProductTitle
+                    ]
+                , HH.div [ Css.class_ "w-1/5" ]
+                    [ renderSmallTitle "Status"
+                    , let
+                        wrap content
+                          | ol.statusReason == "" = HH.text content
+                          | otherwise =
+                            Tooltip.render
+                              (Tooltip.defaultInput { text = ol.statusReason })
+                              (Icon.textWithTooltip content)
+                      in
+                        HH.span
+                          [ Css.class_ "font-semibold" ]
+                          [ wrap (SS.prettyOrderLineStatus ol.status) ]
+                    ]
+                , HH.label [ Css.class_ "w-1/5" ]
+                    [ renderSmallTitle "Quantity"
+                    , renderQuantityInput 0
+                        $ fromMaybe
+                            ( SS.OrderLineConfig
+                                { id: Nothing
+                                , quantity: 0
+                                , config: Nothing
+                                }
+                            )
+                        $ head ol.configs
+                    ]
+                ]
             ]
           <> renderChargeDetails olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
           <> ( if isNothing product.orderConfigSchema then
@@ -426,7 +409,6 @@ render state =
                           [ HH.text "Configuration" ]
                       ]
                     <> renderProductConfigs product ol.orderLineId ol.configs
-                    <> renderAddProductConfig
                 ]
             )
     where
@@ -478,15 +460,9 @@ render state =
         A.concat
           $ A.mapWithIndex (renderProductConfig allowRemove product orderLineId) configs
 
-    renderProductConfig allowRemove product orderLineId cfgIdx olc@(SS.OrderLineConfig { id: configId, config }) =
+    renderProductConfig allowRemove product orderLineId cfgIdx (SS.OrderLineConfig { id: configId, config }) =
       [ HH.div [ Css.classes [ "my-5", "p-5", "bg-snow-500", "rounded-lg" ] ]
-          [ HH.label_
-              [ HH.div
-                  [ Css.classes [ "sofa-small-title" ] ]
-                  [ HH.text "Quantity" ]
-              , renderQuantityInput cfgIdx olc
-              ]
-          , if allowRemove then
+          [ if allowRemove then
               HH.button
                 [ Css.classes
                     [ "relative"
@@ -528,7 +504,6 @@ render state =
                       )
                       (HH.text "#")
                   ]
-          , HH.hr [ Css.class_ "my-2" ]
           , case config of
               Nothing -> HH.text ""
               Just c ->
@@ -552,29 +527,6 @@ render state =
                   product.orderConfigSchema
           ]
       ]
-
-    renderAddProductConfig
-      | true = [] -- Disable multiple configurations for now.
-      | not isInDraft = []
-      | otherwise =
-        [ HH.div [ Css.classes [ "flex", "w-full" ] ]
-            [ HH.div [ Css.class_ "grow" ] []
-            , HH.button
-                [ Css.classes
-                    [ "nectary-btn-secondary"
-                    , "h-8"
-                    , "px-6"
-                    , "gap-x-4"
-                    ]
-                , HE.onClick \_ -> OrderLineAddConfig olIdx
-                ]
-                [ Icon.add
-                    [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
-                    ]
-                , HH.text "Add configuration"
-                ]
-            ]
-        ]
 
   renderConfigSchema ::
     Maybe SS.OrderLineId ->
