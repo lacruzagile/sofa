@@ -42,7 +42,10 @@ type State
 
 data Action
   = NoOp
-  | LoadNext (Maybe String)
+  | LoadNext String
+
+firstPageToken :: String
+firstPageToken = ""
 
 component ::
   forall query input output m.
@@ -69,7 +72,7 @@ initialState _ =
   }
 
 initialize :: Maybe Action
-initialize = Just (LoadNext Nothing)
+initialize = Just (LoadNext firstPageToken)
 
 render ::
   forall m.
@@ -179,10 +182,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
           HH.button
             [ Css.classes btnClasses, HP.disabled true ]
             [ Widgets.spinner [] ]
-        Loaded mTok ->
+        Loaded (Just tok) ->
           HH.button
-            [ Css.classes btnClasses, HE.onClick \_ -> LoadNext mTok ]
-            [ HH.text $ maybe "Load orders" (const "Load more") mTok ]
+            [ Css.classes btnClasses, HE.onClick \_ -> LoadNext tok ]
+            [ HH.text
+                $ if tok == firstPageToken then
+                    "Load orders"
+                  else
+                    "Load more orders"
+            ]
         _ -> HH.text ""
 
   renderSearchForm =
@@ -243,7 +251,11 @@ handleAction = case _ of
   NoOp -> pure unit
   LoadNext nextPageToken -> do
     H.modify_ \st -> st { nextPageToken = Loading }
-    result <- H.lift $ getOrders nextPageToken
+    let
+      token
+        | nextPageToken == firstPageToken = Nothing
+        | otherwise = Just nextPageToken
+    result <- H.lift $ getOrders token
     case result of
       Loaded { orders, nextPageToken: nextPageToken' } -> do
         H.modify_ \st ->
@@ -253,9 +265,9 @@ handleAction = case _ of
             }
         H.liftEffect scrollToBottom
       Error msg -> do
-        H.modify_ _ { nextPageToken = Loaded nextPageToken }
+        H.modify_ _ { nextPageToken = Loaded (Just nextPageToken) }
         H.lift
           $ Alerts.push
           $ Alert.errorAlert "Failed to load orders" msg
       _ -> do
-        H.modify_ _ { nextPageToken = Loaded nextPageToken }
+        H.modify_ _ { nextPageToken = Loaded (Just nextPageToken) }
