@@ -71,19 +71,17 @@ render = case _ of
   LoggingIn s -> renderLoggingIn s
   LoggedIn s -> renderLoggedIn s
   where
-  renderUserBtn text attrs =
-    HH.button
-      ( [ Css.classes
-            [ "flex"
-            , "flex-col"
-            , "place-content-center"
-            , "items-center"
-            , "h-full"
-            , "px-5"
-            ]
-        ]
-          <> attrs
-      )
+  renderUser text =
+    HH.div
+      [ Css.classes
+          [ "flex"
+          , "flex-col"
+          , "place-content-center"
+          , "items-center"
+          , "h-full"
+          , "px-5"
+          ]
+      ]
       [ Icon.user
           [ Icon.classes [ Css.c "w-8", Css.c "h-8" ]
           , Icon.ariaHidden true
@@ -92,19 +90,18 @@ render = case _ of
       ]
 
   renderLoggedOut =
-    renderUserBtn
-      "Login"
+    HH.button
       [ HE.onClick \_ -> SetState $ LoggingIn mempty ]
+      [ renderUser "Login" ]
 
-  renderLoggedIn { readOnly, user } =
-    if readOnly then
-      HH.text user
-    else
-      renderUserBtn
-        "Logout"
+  renderLoggedIn { readOnly, user }
+    | readOnly = renderUser user
+    | otherwise =
+      HH.button
         [ HP.title $ "Logged in as " <> user
         , HE.onClick $ \_ -> Logout
         ]
+        [ renderUser "Logout" ]
 
   renderLoggingIn st =
     Modal.render
