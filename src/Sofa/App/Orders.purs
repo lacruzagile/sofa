@@ -97,13 +97,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       ]
     where
-    rowClasses = [ "table-row", "hover:bg-gray-100" ]
+    rowClasses = [ "table-row", "hover:bg-gray-100", "odd:bg-snow-200" ]
 
     trow = case o.id of
       Nothing -> HH.div [ Css.classes rowClasses ]
       Just id -> HH.a [ Route.href (Route.Order id), Css.classes rowClasses ]
 
-    tcell = HH.div [ Css.classes [ "table-cell", "p-5" ] ]
+    tcell =
+      HH.div
+        [ Css.classes [ "table-cell", "p-5", "border-b", "border-snow-600" ]
+        ]
 
     Tuple buyer seller =
       let
@@ -147,7 +150,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ "table-header-group"
             , "font-semibold"
             , "text-left"
-            , "text-sm"
             , "text-stormy-200"
             ]
         ]
@@ -163,6 +165,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , "px-5"
             , "py-3"
             , "border-b"
+            , "border-stormy-200"
             ]
         ]
 
