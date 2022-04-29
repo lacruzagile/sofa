@@ -17,7 +17,7 @@ exports.sfData = just => nothing => () => {
 }
 
 exports._getCrmQuoteId = just => nothing => () => {
-  if (typeof __QUOTE_SFID__ === "undefined") {
+  if (typeof __QUOTE_SFID__ === "undefined" || __QUOTE_SFID__ == "") {
     return nothing;
   } else {
     return just(__QUOTE_SFID__);
