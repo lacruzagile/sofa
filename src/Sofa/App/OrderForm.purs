@@ -383,7 +383,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> ( if isNothing product.orderConfigSchema then
                 []
               else
-                [ HH.details [ Css.class_ "mt-5" ]
+                [ HH.details [ Css.classes [ "mt-5", "p-5", "bg-snow-500", "rounded-lg" ] ]
                     $ [ HH.summary
                           [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                           [ HH.text "Configuration" ]
@@ -441,7 +441,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           $ A.mapWithIndex (renderProductConfig allowRemove product orderLineId) configs
 
     renderProductConfig allowRemove product orderLineId cfgIdx (SS.OrderLineConfig { id: configId, config }) =
-      [ HH.div [ Css.classes [ "my-5", "p-5", "bg-snow-500", "rounded-lg" ] ]
+      [ HH.div [ Css.classes [ "mt-3" ] ]
           [ if allowRemove then
               HH.button
                 [ Css.classes
