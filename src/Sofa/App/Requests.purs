@@ -4,10 +4,10 @@ module Sofa.App.Requests
   , appendPathPiece
   , deleteFile
   , deleteOrder
+  , deleteOrderLine
   , deleteOrderNote
   , deleteOrderObserver
   , deleteOrderSection
-  , deleteOrderLine
   , getBillingAccount
   , getBillingAccounts
   , getBuyer
@@ -18,6 +18,7 @@ module Sofa.App.Requests
   , getFileMetadata
   , getLegalEntities
   , getOrder
+  , getOrderForQuote
   , getOrders
   , getProductCatalog
   , patchOrder
@@ -41,7 +42,7 @@ import Foreign.Object as FO
 import JSURI (encodeURIComponent)
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..), deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
-import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
 
 -- | Base URL to use for the ordering service.
 foreign import orderingBaseUrl :: String
@@ -57,6 +58,9 @@ filesUrl = orderingBaseUrl </> "v1alpha1" </> "files"
 
 ordersUrl :: String
 ordersUrl = orderingBaseUrl </> "v1alpha1" </> "orders"
+
+crmQuoteOrdersUrl :: String
+crmQuoteOrdersUrl = orderingBaseUrl </> "v1alpha1" </> "crm-quote-orders"
 
 buyersUrl :: String
 buyersUrl = orderingBaseUrl </> "v1alpha1" </> "buyers"
@@ -181,6 +185,14 @@ getOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable 
 getOrder orderId = getRJson url
   where
   url = ordersUrl </> show orderId
+
+getOrderForQuote ::
+  forall m.
+  MonadAff m =>
+  CredentialStore m => CrmQuoteId -> m (Loadable OrderForm)
+getOrderForQuote (CrmQuoteId quoteId) = getRJson url
+  where
+  url = crmQuoteOrdersUrl </> quoteId
 
 patchOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> OrderForm -> m (Loadable OrderForm)
 patchOrder orderId orderForm = patchRJson url orderForm

@@ -40,7 +40,7 @@ import Sofa.App.OrderForm.Observers as Observers
 import Sofa.App.OrderForm.SelectOrderStatus as SelectOrderStatus
 import Sofa.App.OrderForm.SelectProduct as SelectProduct
 import Sofa.App.OrderForm.Seller as Seller
-import Sofa.App.Requests (deleteFile, deleteOrder, deleteOrderLine, deleteOrderSection, getOrder, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
+import Sofa.App.Requests (deleteFile, deleteOrder, deleteOrderLine, deleteOrderSection, getOrder, getOrderForQuote, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Alerts as Alerts
@@ -1530,18 +1530,23 @@ handleAction = case _ of
   NoOp -> pure unit
   Initialize -> do
     st <- H.get
+    let
+      load = case _ of
+        Error err -> H.put $ Initialized (Error err)
+        Idle -> H.put $ Initialized Idle
+        Loaded order -> loadExisting order
+        Loading -> H.put $ Initialized Loading
     case st of
       Initializing NewOrder -> loadCatalog Nothing
       Initializing (ExistingOrder orderForm) -> loadExisting orderForm
       Initializing (ExistingOrderId id) -> do
         H.put $ Initialized Loading
         orderForm <- H.lift $ getOrder id
-        case orderForm of
-          Error err -> H.put $ Initialized (Error err)
-          Idle -> H.put $ Initialized Idle
-          Loaded order -> loadExisting order
-          Loading -> H.put $ Initialized Loading
-      Initializing (ExistingCrmQuoteId crmQuoteId) -> loadCatalog (Just crmQuoteId)
+        load orderForm
+      Initializing (ExistingCrmQuoteId crmQuoteId) -> do
+        H.put $ Initialized Loading
+        orderForm <- H.lift $ getOrderForQuote crmQuoteId
+        load orderForm
       _ -> pure unit
   SetOrderDisplayName name ->
     modifyInitialized
