@@ -66,7 +66,7 @@ render state =
   tabsWrapperClasses =
     Css.classes
       [ "flex"
-      , "space-x-3"
+      , "gap-x-3"
       , "w-full"
       , "mb-3"
       , "border-b"

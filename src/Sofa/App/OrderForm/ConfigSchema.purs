@@ -287,7 +287,7 @@ render state@{ orderLineId } =
         mkElement content =
           if S.null fallbackTitle then
             HH.div
-              [ Css.classes [ "flex", "flex-col", "space-y-4" ] ]
+              [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
               (content <> [ renderAddListEntry c.items act ])
           else
             HH.fieldset [ Css.classes [ "my-2", "flex", "flex-col", "border" ] ]
@@ -323,7 +323,7 @@ render state@{ orderLineId } =
       in
         if S.null fallbackTitle then
           HH.div
-            [ Css.classes [ "flex", "flex-col", "space-y-4" ] ]
+            [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
             renderFields
         else
           HH.fieldset
