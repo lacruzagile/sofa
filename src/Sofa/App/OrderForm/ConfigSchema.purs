@@ -395,7 +395,7 @@ render state@{ orderLineId } =
         -- Just show the first tab.
         firstValue = renderEntry entryIdx act "" value <$> A.head c.oneOf
       in
-        renderEntry' fallbackTitle schemaEntry
+        renderEntryUnlabelled "" schemaEntry
           $ maybe (HH.text $ "No oneOf schema matches the value: " <> show value) withTabs
           $ selectedTab
           <|> matchingValue
