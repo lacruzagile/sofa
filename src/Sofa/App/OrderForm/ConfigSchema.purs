@@ -693,6 +693,6 @@ handleAction = case _ of
   SetConfigTab entryIdx tabIdx ->
     H.modify_ \st ->
       st { configTabs = Map.insert entryIdx tabIdx st.configTabs }
-  UpdateValue update ->
-    H.modify_ \st ->
-      st { configValue = update (Just st.configValue) }
+  UpdateValue update -> do
+    state <- H.modify \st -> st { configValue = update (Just st.configValue) }
+    H.raise state.configValue
