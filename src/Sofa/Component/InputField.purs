@@ -31,6 +31,8 @@ import Unsafe.Coerce (unsafeCoerce)
 -- |     given
 -- |
 -- | - `tooltipText` – optional tooltip text to show when label is hovered
+-- |
+-- | - `wrapperClasses` – additional classes to add to the wrapper element
 type Input i
   = { props :: Array (HP.IProp HTMLinput i)
     , label :: String
@@ -38,6 +40,7 @@ type Input i
     , errorText :: Maybe String
     , additionalText :: Maybe String
     , tooltipText :: Maybe String
+    , wrapperClasses :: Array HH.ClassName
     }
 
 defaultInput :: forall i. Input i
@@ -48,12 +51,13 @@ defaultInput =
   , optionalText: Nothing
   , additionalText: Nothing
   , tooltipText: Nothing
+  , wrapperClasses: []
   }
 
 -- | Render a Nectary styled input field.
 render :: forall w i. Input i -> HH.HTML w i
 render input =
-  HH.div [ Css.class_ "w-full" ]
+  HH.div [ HP.classes $ [ Css.c "w-full" ] <> input.wrapperClasses ]
     [ HH.label_
         [ renderTop
         , HH.input ([ Css.classes [ "nectary-input", "w-full" ] ] <> input.props)

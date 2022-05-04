@@ -34,6 +34,7 @@ import Sofa.App.OrderForm.Widget.Typeahead as WTypeahead
 import Sofa.App.SchemaDataSource (DataSourceEnumResult, DataSourceVars, getDataSourceEnum)
 import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Icon as Icon
+import Sofa.Component.InputField as InputField
 import Sofa.Component.Select as Select
 import Sofa.Component.Tabs as Tabs
 import Sofa.Component.Tooltip as Tooltip
@@ -182,12 +183,9 @@ render state@{ orderLineId } =
           _ -> false
       in
         renderCheckbox fallbackTitle schemaEntry
-          $ HH.input
-              [ HP.type_ HP.InputCheckbox
-              , Css.classes [ "nectary-input-checkbox", "mr-5" ]
-              , HP.checked checked
-              , HE.onChecked (act <<< const <<< SS.CvBoolean)
-              ]
+          [ HP.checked checked
+          , HE.onChecked (act <<< const <<< SS.CvBoolean)
+          ]
     SS.CseInteger { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
     SS.CseInteger c
       | not (A.null c.enum) ->
@@ -201,16 +199,21 @@ render state@{ orderLineId } =
           SS.CvInteger
           show
     SS.CseInteger c ->
-      renderEntry' fallbackTitle schemaEntry
-        $ HH.input
-        $ [ Css.classes [ "nectary-input", "nectary-input-number", "w-96" ]
-          , HP.type_ HP.InputNumber
-          , HP.placeholder "Integer"
-          , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
-          ]
-        <> opt (HP.value <<< show) value
-        <> opt (HP.min <<< Int.toNumber) c.minimum
-        <> opt (HP.max <<< Int.toNumber) c.maximum
+      InputField.render
+        $ InputField.defaultInput
+            { props =
+              [ Css.classes [ "nectary-input", "nectary-input-number", "w-full" ]
+              , HP.type_ HP.InputNumber
+              , HP.placeholder "Integer"
+              , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
+              ]
+                <> opt (HP.value <<< show) value
+                <> opt (HP.min <<< Int.toNumber) c.minimum
+                <> opt (HP.max <<< Int.toNumber) c.maximum
+            , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , tooltipText = SS.configSchemaEntryDescription schemaEntry
+            , wrapperClasses = [ Css.c "w-96" ]
+            }
     SS.CseString { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
     SS.CseString c
       | not (A.null c.enum) ->
@@ -224,48 +227,58 @@ render state@{ orderLineId } =
           SS.CvString
           identity
     SS.CseString c ->
-      renderEntry' fallbackTitle schemaEntry
-        $ let
-            mi = maybe "0" show c.minLength
+      InputField.render
+        $ InputField.defaultInput
+            { props =
+              let
+                mi = maybe "0" show c.minLength
 
-            ma = maybe "" show c.maxLength
+                ma = maybe "" show c.maxLength
 
-            pat = case c.pattern of
-              Just pattern -> [ HP.pattern pattern ]
-              Nothing ->
-                if mi == "0" && ma == "" then
-                  []
-                else
-                  [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
+                pat = case c.pattern of
+                  Just pattern -> [ HP.pattern pattern ]
+                  Nothing ->
+                    if mi == "0" && ma == "" then
+                      []
+                    else
+                      [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
 
-            placeholder = case c.pattern of
-              Just pattern -> "String matching " <> pattern
-              Nothing -> case Tuple mi ma of
-                Tuple "0" "" -> "String"
-                Tuple "0" ma' -> "String of max " <> ma' <> " characters"
-                Tuple mi' ma'
-                  | mi' == ma' -> "String of " <> mi' <> " characters"
-                  | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
-          in
-            HH.input
-              $ [ HP.type_ HP.InputText
-                , Css.classes [ "nectary-input", "w-96" ]
+                placeholder = case c.pattern of
+                  Just pattern -> "String matching " <> pattern
+                  Nothing -> case Tuple mi ma of
+                    Tuple "0" "" -> "String"
+                    Tuple "0" ma' -> "String of max " <> ma' <> " characters"
+                    Tuple mi' ma'
+                      | mi' == ma' -> "String of " <> mi' <> " characters"
+                      | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
+              in
+                [ HP.type_ HP.InputText
+                , Css.classes [ "nectary-input", "w-full" ]
                 , HP.placeholder placeholder
                 , HE.onValueChange (act <<< const <<< SS.CvString)
                 ]
-              <> opt HP.value (maybe c.default (Just <<< show) value)
-              <> pat
+                  <> opt HP.value (maybe c.default (Just <<< show) value)
+                  <> pat
+            , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , tooltipText = SS.configSchemaEntryDescription schemaEntry
+            , wrapperClasses = [ Css.c "w-96" ]
+            }
     SS.CseRegex { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
     SS.CseRegex c ->
-      renderEntry' fallbackTitle schemaEntry
-        $ HH.input
-        $ [ HP.type_ HP.InputText
-          , Css.classes [ "nectary-input", "w-96" ]
-          , HP.placeholder $ "String matching " <> c.pattern
-          , HP.pattern c.pattern
-          , HE.onValueChange (act <<< const <<< SS.CvString)
-          ]
-        <> opt HP.value (maybe c.default (Just <<< show) value)
+      InputField.render
+        $ InputField.defaultInput
+            { props =
+              [ HP.type_ HP.InputText
+              , Css.classes [ "nectary-input", "w-full" ]
+              , HP.placeholder $ "String matching " <> c.pattern
+              , HP.pattern c.pattern
+              , HE.onValueChange (act <<< const <<< SS.CvString)
+              ]
+                <> opt HP.value (maybe c.default (Just <<< show) value)
+            , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , tooltipText = SS.configSchemaEntryDescription schemaEntry
+            , wrapperClasses = [ Css.c "w-96" ]
+            }
     SS.CseConst _c ->
       renderEntry' fallbackTitle schemaEntry
         $ HH.input [ HP.type_ HP.InputText, HP.value "const", HP.disabled true ]
@@ -287,7 +300,7 @@ render state@{ orderLineId } =
         mkElement content =
           if S.null fallbackTitle then
             HH.div
-              [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
+              [ Css.classes [ "flex", "flex-col" ] ]
               (content <> [ renderAddListEntry c.items act ])
           else
             HH.fieldset [ Css.classes [ "my-2", "flex", "flex-col", "border" ] ]
@@ -332,6 +345,7 @@ render state@{ orderLineId } =
                 , "p-3"
                 , "flex"
                 , "flex-col"
+                , "gap-y-4"
                 , "border"
                 ]
             ]
@@ -390,94 +404,104 @@ render state@{ orderLineId } =
   pushEntryIndex :: ConfigEntryIndex -> Int -> ConfigEntryIndex
   pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
 
-  renderCheckbox fallbackTitle schemaEntry inner =
-    HH.label [ Css.class_ "flex" ]
-      [ inner
+  renderCheckbox fallbackTitle schemaEntry props =
+    HH.label [ Css.classes [ "flex", "items-center", "mb-4" ] ]
+      [ HH.input
+          $ [ HP.type_ HP.InputCheckbox
+            , Css.classes [ "nectary-input-checkbox", "mr-5" ]
+            ]
+          <> props
       , withDescription fallbackTitle schemaEntry
       ]
 
-  renderWidget entryIdx fallbackTitle value schemaEntry act widget =
-    renderEntry' fallbackTitle schemaEntry
-      $ case widget of
-          SS.SwTextarea ->
-            HH.slot
-              WTextarea.proxy
-              entryIdx
-              WTextarea.component
-              { value:
-                  case value of
-                    Just (SS.CvString string) -> Just string
-                    _ -> Nothing
-              }
-              (mact (act <<< const <<< SS.CvString))
-          SS.SwCheckbox { dataSource } ->
-            maybe
-              insufficientDataError
-              ( \getEnumData ->
-                  HH.slot
-                    WCheckbox.proxy
-                    entryIdx
-                    WCheckbox.component
-                    { value:
-                        case value of
-                          Just (SS.CvArray vs) -> vs
-                          _ -> []
-                    , getEnumData: getEnumData
-                    }
-                    (mact (act <<< const <<< SS.CvArray) <<< Just)
-              )
-              (mkGetEnumData <$> dataSourceWithFallback dataSource)
-          SS.SwDropdown { dataSource } ->
-            maybe
-              insufficientDataError
-              ( \getEnumData ->
-                  HH.slot
-                    WDropdown.proxy
-                    entryIdx
-                    WDropdown.component
-                    { value, getEnumData: getEnumData }
-                    (mact (act <<< const))
-              )
-              (mkGetEnumData <$> dataSourceWithFallback dataSource)
-          SS.SwRadio { dataSource } ->
-            maybe
-              insufficientDataError
-              ( \getEnumData ->
-                  HH.slot
-                    WRadio.proxy
-                    entryIdx
-                    WRadio.component
-                    { value, getEnumData: getEnumData }
-                    (mact (act <<< const))
-              )
-              (mkGetEnumData <$> dataSourceWithFallback dataSource)
-          SS.SwTypeahead { minInputLength, debounceMs, dataSource } ->
-            maybe
-              insufficientDataError
-              ( \getEnumData ->
-                  HH.slot
-                    WTypeahead.proxy
-                    entryIdx
-                    WTypeahead.component
-                    { value
-                    , minInputLength
-                    , debounceMs
-                    , getEnumData: getEnumData
-                    }
-                    (mact (act <<< const))
-              )
-              (mkGetEnumData <$> dataSourceWithFallback dataSource)
-          SS.SwAssetConfigLink { sku } ->
-            HH.slot
-              WAssetConfigLink.proxy
-              entryIdx
-              WAssetConfigLink.component
-              { value: maybe' (\_ -> mkDefaultConfig schemaEntry) Just value
-              , skuPattern: sku
-              , configs: state.getConfigs unit
-              }
-              (mact (act <<< const))
-          SS.SwFileAttachment { maxSize, mediaTypes } -> case orderLineId of
+  renderWidget entryIdx fallbackTitle value schemaEntry act = case _ of
+    SS.SwTextarea ->
+      labelled
+        $ HH.slot
+            WTextarea.proxy
+            entryIdx
+            WTextarea.component
+            { value:
+                case value of
+                  Just (SS.CvString string) -> Just string
+                  _ -> Nothing
+            }
+            (mact (act <<< const <<< SS.CvString))
+    SS.SwCheckbox { dataSource } ->
+      unlabelled
+        $ maybe
+            insufficientDataError
+            ( \getEnumData ->
+                HH.slot
+                  WCheckbox.proxy
+                  entryIdx
+                  WCheckbox.component
+                  { value:
+                      case value of
+                        Just (SS.CvArray vs) -> vs
+                        _ -> []
+                  , getEnumData: getEnumData
+                  }
+                  (mact (act <<< const <<< SS.CvArray) <<< Just)
+            )
+            (mkGetEnumData <$> dataSourceWithFallback dataSource)
+    SS.SwDropdown { dataSource } ->
+      labelled
+        $ maybe
+            insufficientDataError
+            ( \getEnumData ->
+                HH.slot
+                  WDropdown.proxy
+                  entryIdx
+                  WDropdown.component
+                  { value, getEnumData: getEnumData }
+                  (mact (act <<< const))
+            )
+            (mkGetEnumData <$> dataSourceWithFallback dataSource)
+    SS.SwRadio { dataSource } ->
+      unlabelled
+        $ maybe
+            insufficientDataError
+            ( \getEnumData ->
+                HH.slot
+                  WRadio.proxy
+                  entryIdx
+                  WRadio.component
+                  { value, getEnumData: getEnumData }
+                  (mact (act <<< const))
+            )
+            (mkGetEnumData <$> dataSourceWithFallback dataSource)
+    SS.SwTypeahead { minInputLength, debounceMs, dataSource } ->
+      labelled
+        $ maybe
+            insufficientDataError
+            ( \getEnumData ->
+                HH.slot
+                  WTypeahead.proxy
+                  entryIdx
+                  WTypeahead.component
+                  { value
+                  , minInputLength
+                  , debounceMs
+                  , getEnumData: getEnumData
+                  }
+                  (mact (act <<< const))
+            )
+            (mkGetEnumData <$> dataSourceWithFallback dataSource)
+    SS.SwAssetConfigLink { sku } ->
+      labelled
+        $ HH.slot
+            WAssetConfigLink.proxy
+            entryIdx
+            WAssetConfigLink.component
+            { value: maybe' (\_ -> mkDefaultConfig schemaEntry) Just value
+            , skuPattern: sku
+            , configs: state.getConfigs unit
+            }
+            (mact (act <<< const))
+    SS.SwFileAttachment { maxSize, mediaTypes } ->
+      unlabelled
+        $ case orderLineId of
             Nothing -> HH.text "Please save the order first."
             Just olid ->
               HH.slot
@@ -495,6 +519,10 @@ render state@{ orderLineId } =
       HH.span
         [ Css.class_ "text-raspberry-500" ]
         [ HH.text "Insufficient data…" ]
+
+    labelled = renderEntry' fallbackTitle schemaEntry
+
+    unlabelled = renderEntryUnlabelled fallbackTitle schemaEntry
 
     mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe String -> m DataSourceEnumResult
     mkGetEnumData dataSource = getDataSourceEnum state.dataSourceVars dataSource
@@ -529,7 +557,16 @@ render state@{ orderLineId } =
     if S.null fallbackTitle then
       inner
     else
-      HH.label [ Css.classes [ "flex", "flex-col" ] ]
+      HH.label [ Css.classes [ "flex", "flex-col", "mb-4" ] ]
+        [ withDescription fallbackTitle schemaEntry
+        , inner
+        ]
+
+  renderEntryUnlabelled fallbackTitle schemaEntry inner =
+    if S.null fallbackTitle then
+      inner
+    else
+      HH.div [ Css.classes [ "flex", "flex-col" ] ]
         [ withDescription fallbackTitle schemaEntry
         , inner
         ]
@@ -576,7 +613,7 @@ render state@{ orderLineId } =
     body tt =
       HH.div
         [ Css.classes
-            [ "sofa-small-title"
+            [ "font-semibold"
             , "flex"
             , "items-center"
             ]
