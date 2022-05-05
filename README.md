@@ -51,6 +51,9 @@ dependencies.
 
    in a terminal.
 
+1. Add the SOFA authentication client credentials to `.proxyrc`. These
+   can be found in 1password.
+
 1. Start serving the application by running
 
     ``` sh-session

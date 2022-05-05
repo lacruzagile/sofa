@@ -85,10 +85,10 @@ instance credentialStoreAppM :: CredentialStore AppM where
     handleSalesforce sf =
       pure $ Just
         $ Credentials
-            { token: sf.accessToken
+            { accessToken: sf.accessToken
+            , refreshToken: ""
             , expiry: top -- Never expire token.
             , user: sf.userEmail
-            , pass: ""
             }
   setCredentials creds =
     AppM

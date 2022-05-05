@@ -17,7 +17,6 @@ to generate this file without the comments in this block.
   , "argonaut"
   , "arrays"
   , "avar"
-  , "b64"
   , "console"
   , "control"
   , "datetime"

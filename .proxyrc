@@ -1,10 +1,13 @@
 {
-  "/oauth2": {
-    "target": "https://public.token-service.common-auth.staging.sinch.com",
-    "changeOrigin": true
+  "/oauth": {
+    "target": "https://sso.admin-portal.int.staging.sinch.com",
+    "changeOrigin": true,
+    "headers": {
+      "Authorization": "Basic ADD CREDENTIALS HERE"
+    }
   },
   "/v1alpha1/buyers": {
-    "target": "https://ordering.eu1tst.bpa.staging.sinch.com",
+    "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },
   "/v1alpha1/examples": {
@@ -15,15 +18,15 @@
     }
   },
   "/v1alpha1/files": {
-    "target": "https://ordering.eu1tst.bpa.staging.sinch.com",
+    "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },
   "/v1alpha1/orders": {
-    "target": "https://ordering.eu1tst.bpa.staging.sinch.com",
+    "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },
   "/v1alpha1/sofa-util": {
-    "target": "https://ordering.eu1tst.bpa.staging.sinch.com",
+    "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   }
 }
