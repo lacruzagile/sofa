@@ -123,10 +123,10 @@ renderSideMenu currentRoute =
         , navbarItem Icon.piggybank "Billing  ⃰" []
         , navbarItem Icon.puzzle "Assets  ⃰" []
         , navbarItem Icon.settings "Project settings  ⃰" []
-        , HH.div
-            [ Css.classes [ "pt-10", "text-stormy-300" ] ]
-            [ HH.text "  ⃰ TODO" ]
         ]
+    , HH.div
+        [ Css.classes [ "pt-10", "text-stormy-300" ] ]
+        [ HH.text "  ⃰ TODO" ]
     ]
   where
   navbarClasses =
