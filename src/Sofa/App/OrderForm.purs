@@ -559,18 +559,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
         isAddingOrderLine = A.any isNothing sec.orderLines
       in
         body
-          $ [ HH.div [ Css.class_ "flex" ]
-                [ HH.div [ Css.class_ "w-1/2" ]
-                    [ renderSmallTitle "Solution"
-                    , HH.span
-                        [ Css.classes [ "text-lg", "font-semibold" ] ]
-                        [ HH.text $ solutionLabel sec.solution ]
+          $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-4", "items-start" ] ]
+                [ HH.div [ Css.classes [ "grow", "font-semibold", "text-lg" ] ]
+                    [ HH.text "Solution – "
+                    , HH.text $ solutionLabel sec.solution
                     ]
                 , if A.null priceBookOpts then
                     HH.text ""
                   else
-                    HH.label [ Css.class_ "w-1/2" ]
-                      [ renderSmallTitle "Price Book"
+                    HH.label [ Css.class_ "mr-5" ]
+                      [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Price book" ]
                       , HH.slot
                           (Proxy :: Proxy "selectPriceBook")
                           secIdx
@@ -650,7 +648,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         HH.div
           [ Css.classes
-              [ "p-3"
+              [ "p-6"
               , "rounded-md"
               , "bg-snow-100"
               ]
@@ -678,6 +676,119 @@ render state = HH.section_ [ HH.article_ renderContent ]
       where
       renderOrderLine' olIdx = renderOrderLine sol defaultCurrency { sectionIndex: secIdx, orderLineIndex: olIdx }
 
+  renderSectionSummary ::
+    StateOrderForm ->
+    H.ComponentHTML Action Slots m
+  renderSectionSummary sof =
+    HH.div
+      [ Css.classes
+          [ "p-6"
+          , "rounded-md"
+          , "bg-snow-100"
+          ]
+      ]
+      [ HH.div [ Css.classes [ "flex", "items-center", "mb-6" ] ]
+          [ HH.h2 [ Css.classes [ "grow", "m-0" ] ] [ HH.text "Section summary" ]
+          , HH.button
+              [ Css.classes [ "nectary-btn-primary", "h-8" ]
+              , HE.onClick \_ -> AddSection
+              ]
+              [ HH.text "Add section"
+              ]
+          ]
+      , HH.table [ Css.classes [ "table-auto", "w-full" ] ]
+          [ HH.thead_
+              [ HH.tr [ Css.classes [ "border-b", "border-stormy-500" ] ]
+                  [ th [ HH.text "Name" ]
+                  , th [ HH.text "Status" ]
+                  , th [ HH.text "Quantity" ]
+                  , th [ HH.text "Edit" ]
+                  ]
+              ]
+          , HH.tbody_
+              $ if A.null sof.orderForm.sections then
+                  [ HH.tr_
+                      [ HH.td
+                          [ HP.colSpan 4
+                          , Css.classes [ "p-2", "text-stormy-300", "text-center" ]
+                          ]
+                          [ HH.text "No sections added" ]
+                      ]
+                  ]
+                else
+                  A.concat $ A.mapWithIndex sectionRow sof.orderForm.sections
+          ]
+      ]
+    where
+    th = HH.th [ Css.classes [ "p-2", "font-semibold", "text-left" ] ]
+
+    tdMore inner =
+      HH.td [ Css.classes [ "group", "p-2", "relative" ] ]
+        [ Icon.moreVert [ Icon.classes [ Css.c "w-4" ] ]
+        , HH.div
+            [ Css.classes
+                [ "absolute"
+                , "top-1/2"
+                , "right-0"
+                , "hidden"
+                , "group-hover:block"
+                , "bg-snow-100"
+                , "border"
+                , "rounded"
+                , "flex"
+                , "flex-col"
+                ]
+            ]
+            inner
+        ]
+
+    sectionRow _ Nothing = [ HH.text "" ]
+
+    sectionRow sectionIndex (Just { solution: SS.Solution sol, orderLines }) =
+      [ HH.tr_
+          [ HH.td
+              [ HP.colSpan 3, Css.class_ "p-2" ]
+              [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Solution" ]
+              , HH.br_
+              , HH.text $ fromMaybe (show sol.id) sol.title
+              ]
+          , tdMore
+              [ HH.button
+                  [ Css.classes [ "p-2", "hover:bg-snow-500" ]
+                  , HE.onClick \_ -> RemoveSection { sectionIndex }
+                  ]
+                  [ HH.text "Delete" ]
+              ]
+          ]
+      ]
+        <> A.mapWithIndex (orderRow sectionIndex) orderLines
+
+    orderRow _ _ Nothing = HH.text ""
+
+    orderRow sectionIndex orderLineIndex (Just ol@{ product: SS.Product prod, status }) =
+      HH.tr_
+        [ HH.td [ Css.classes [ "p-2", "pl-12" ] ]
+            [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Product" ]
+            , HH.br_
+            , HH.text $ fromMaybe (show prod.sku) prod.title
+            ]
+        , HH.td [ Css.class_ "p-2" ]
+            [ HH.span
+                [ Css.classes [ "nectary-tag", "w-fit" ] ]
+                [ HH.text $ SS.prettyOrderLineStatus status ]
+            ]
+        , HH.td
+            [ Css.class_ "p-2" ]
+            [ HH.text $ show $ orderLineQuantity ol ]
+        , tdMore
+            [ HH.button
+                [ Css.classes [ "p-2", "hover:bg-snow-500" ]
+                , HE.onClick \_ -> RemoveOrderLine { sectionIndex, orderLineIndex }
+                ]
+                [ HH.text "Delete" ]
+            ]
+        ]
+
   renderSections ::
     StateOrderForm ->
     Array (Maybe OrderSection) ->
@@ -685,33 +796,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderSections sof secs =
     HH.div [ Css.classes [ "flex", "flex-col", "space-y-5" ] ]
       $ A.mapWithIndex (renderSection sof) secs
-      <> if not isInDraft then
-          []
-        else
-          [ HH.div
-              [ Css.classes
-                  [ "flex"
-                  , "p-3"
-                  , "rounded-md"
-                  , "bg-snow-100"
-                  ]
-              ]
-              [ HH.div [ Css.class_ "grow" ] []
-              , HH.button
-                  [ Css.classes
-                      [ "nectary-btn-secondary"
-                      , "px-6"
-                      , "gap-x-4"
-                      ]
-                  , HE.onClick \_ -> AddSection
-                  ]
-                  [ Icon.add
-                      [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
-                      ]
-                  , HH.text "Add section"
-                  ]
-              ]
-          ]
 
   renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSectionSummary = Widgets.subTotalTable ""
@@ -1004,6 +1088,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderForm sof =
     [ HH.div [ Css.classes [ "flex", "flex-col", "space-y-5" ] ]
         [ renderHeaderAndInfo sof.orderForm
+        , renderSectionSummary sof
         , renderSections sof sof.orderForm.sections
         , renderOrderFooter sof
         , HH.hr_
