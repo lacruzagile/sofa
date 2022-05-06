@@ -123,6 +123,7 @@ fetchToken user formFields =
         $ AX.defaultRequest
             { url = tokenUrl
             , method = Left POST
+            , timeout = Just (Milliseconds 10_000.0)
             , content = Just $ formURLEncoded $ FormURLEncoded formFields
             , responseFormat = ResponseFormat.json
             }
