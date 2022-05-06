@@ -362,7 +362,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> ( if isNothing product.orderConfigSchema then
                 []
               else
-                [ HH.details [ Css.classes [ "mt-5", "p-5", "bg-snow-500", "rounded-lg" ] ]
+                [ HH.details [ Css.classes [ "mt-5" ] ]
                     $ [ HH.summary
                           [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                           [ HH.text "Configuration" ]
@@ -371,25 +371,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 ]
             )
     where
-    removeBtn
-      | not isInDraft = []
-      | otherwise =
-        [ HH.button
-            [ Css.classes
-                [ "relative"
-                , "float-right"
-                , "p-2"
-                , "cursor-pointer"
-                ]
-            , HE.onClick \_ -> RemoveOrderLine olIdx
-            ]
-            [ Icon.close6 [ Icon.ariaLabel "Remove order line" ] ]
-        ]
-
-    body subBody =
-      HH.div
-        [ Css.classes [ "m-5", "border-t" ] ]
-        (removeBtn <> subBody)
+    body subBody = HH.div [ Css.classes [ "m-5", "mr-0", "border-t" ] ] subBody
 
     renderQuantityInput cfgIdx (SS.OrderLineConfig olc) =
       HH.input
@@ -420,7 +402,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           $ A.mapWithIndex (renderProductConfig allowRemove product orderLineId) configs
 
     renderProductConfig allowRemove product orderLineId cfgIdx (SS.OrderLineConfig { id: configId, config }) =
-      [ HH.div [ Css.classes [ "mt-3" ] ]
+      [ HH.div [ Css.classes [ "mt-3", "p-5", "bg-snow-500", "rounded-lg" ] ]
           [ if allowRemove then
               HH.button
                 [ Css.classes
@@ -559,15 +541,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
         isAddingOrderLine = A.any isNothing sec.orderLines
       in
         body
-          $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-4", "items-start" ] ]
-                [ HH.div [ Css.classes [ "grow", "font-semibold", "text-lg" ] ]
-                    [ HH.text "Solution – "
-                    , HH.text $ solutionLabel sec.solution
+          $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-4", "items-end" ] ]
+                [ HH.div [ Css.class_ "grow" ]
+                    [ HH.h2 [ Css.class_ "mt-0" ] [ HH.text "Section" ]
+                    , HH.div
+                        [ Css.classes [ "font-semibold", "text-lg" ] ]
+                        [ HH.text "Solution – "
+                        , HH.text $ solutionLabel sec.solution
+                        ]
                     ]
                 , if A.null priceBookOpts then
                     HH.text ""
                   else
-                    HH.label [ Css.class_ "mr-5" ]
+                    HH.label_
                       [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Price book" ]
                       , HH.slot
                           (Proxy :: Proxy "selectPriceBook")
@@ -629,31 +615,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
         sof.currency
 
     body subBody =
-      let
-        removeBtn
-          | not isInDraft = []
-          | otherwise =
-            [ HH.button
-                [ Css.classes
-                    [ "relative"
-                    , "float-right"
-                    , "p-2"
-                    , "-m-3"
-                    , "cursor-pointer"
-                    ]
-                , HE.onClick \_ -> RemoveSection { sectionIndex: secIdx }
-                ]
-                [ Icon.close6 [ Icon.ariaLabel "Remove order section" ] ]
-            ]
-      in
-        HH.div
-          [ Css.classes
-              [ "p-6"
-              , "rounded-md"
-              , "bg-snow-100"
-              ]
-          ]
-          (removeBtn <> subBody)
+      HH.div
+        [ Css.classes [ "p-6", "rounded-md", "bg-snow-100" ] ]
+        subBody
 
     solutionLabel (SS.Solution s) = fromMaybe s.id s.title
 
@@ -702,7 +666,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   [ th [ HH.text "Name" ]
                   , th [ HH.text "Status" ]
                   , th [ HH.text "Quantity" ]
-                  , th [ HH.text "Edit" ]
+                  , th [ HH.text "" ]
                   ]
               ]
           , HH.tbody_
@@ -722,24 +686,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
     where
     th = HH.th [ Css.classes [ "p-2", "font-semibold", "text-left" ] ]
 
-    tdMore inner =
-      HH.td [ Css.classes [ "group", "p-2", "relative" ] ]
-        [ Icon.moreVert [ Icon.classes [ Css.c "w-4" ] ]
-        , HH.div
-            [ Css.classes
-                [ "absolute"
-                , "top-1/2"
-                , "right-0"
-                , "hidden"
-                , "group-hover:block"
-                , "bg-snow-100"
-                , "border"
-                , "rounded"
-                , "flex"
-                , "flex-col"
+    tdDelete onClick =
+      HH.td_
+        [ HH.button
+            [ Css.classes [ "p-2", "fill-error-500", "hover:fill-error-800" ]
+            , HE.onClick onClick
+            ]
+            [ Icon.delete
+                [ Icon.classes [ Css.c "w-5" ]
+                , Icon.ariaLabel "Delete"
                 ]
             ]
-            inner
         ]
 
     sectionRow _ Nothing = [ HH.text "" ]
@@ -752,13 +709,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               , HH.br_
               , HH.text $ fromMaybe (show sol.id) sol.title
               ]
-          , tdMore
-              [ HH.button
-                  [ Css.classes [ "p-2", "hover:bg-snow-500" ]
-                  , HE.onClick \_ -> RemoveSection { sectionIndex }
-                  ]
-                  [ HH.text "Delete" ]
-              ]
+          , tdDelete \_ -> RemoveSection { sectionIndex }
           ]
       ]
         <> A.mapWithIndex (orderRow sectionIndex) orderLines
@@ -780,13 +731,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , HH.td
             [ Css.class_ "p-2" ]
             [ HH.text $ show $ orderLineQuantity ol ]
-        , tdMore
-            [ HH.button
-                [ Css.classes [ "p-2", "hover:bg-snow-500" ]
-                , HE.onClick \_ -> RemoveOrderLine { sectionIndex, orderLineIndex }
-                ]
-                [ HH.text "Delete" ]
-            ]
+        , tdDelete \_ -> RemoveOrderLine { sectionIndex, orderLineIndex }
         ]
 
   renderSections ::
