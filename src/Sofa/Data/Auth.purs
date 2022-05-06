@@ -16,6 +16,7 @@ import Affjax as AX
 import Affjax.RequestBody (formURLEncoded)
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as ResponseFormat
+import Affjax.StatusCode (StatusCode(..))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (ExceptT(..), except, runExceptT, withExceptT)
 import Control.Monad.Except.Trans (lift)
@@ -123,15 +124,11 @@ fetchToken user formFields =
         $ AX.defaultRequest
             { url = tokenUrl
             , method = Left POST
-            , timeout = Just (Milliseconds 10_000.0)
+            , timeout = Just (Milliseconds 20_000.0)
             , content = Just $ formURLEncoded $ FormURLEncoded formFields
             , responseFormat = ResponseFormat.json
             }
-    response <- withExceptT AX.printError $ except mresponse
-    TokenResponse tokenResp <-
-      withExceptT printJsonDecodeError
-        $ except
-        $ decodeJson response.body
+    TokenResponse tokenResp <- handleResponse mresponse
     now <- liftEffect nowDateTime
     let
       -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
@@ -149,6 +146,20 @@ fetchToken user formFields =
           }
     lift $ setCredentials creds
     pure creds
+  where
+  handleResponse = case _ of
+    Left err -> throwError $ AX.printError err
+    Right resp
+      | statusOk resp.status ->
+        withExceptT printJsonDecodeError
+          $ except
+          $ decodeJson resp.body
+      | statusBadRequest resp.status -> throwError "Bad username or password, try again."
+      | otherwise -> throwError "Generic error"
+    where
+    statusOk (StatusCode n) = 200 <= n && n < 300
+
+    statusBadRequest (StatusCode n) = 400 == n
 
 login ::
   forall m.
