@@ -271,19 +271,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
     SS.ChargeCurrency ->
     QuantityMap ->
     Maybe (Array SS.Charge) ->
-    Array (H.ComponentHTML Action Slots m)
-  renderChargeDetails olIdx unitMap defaultCurrency estimatedUsage = maybe [] withCharges
+    H.ComponentHTML Action Slots m
+  renderChargeDetails olIdx unitMap defaultCurrency estimatedUsage = maybe empty withCharges
     where
+    empty = HH.text ""
+
     withCharges = case _ of
-      [] -> []
+      [] -> empty
       charges ->
-        [ HH.details [ Css.class_ "mt-5" ]
-            [ HH.summary
-                [ Css.classes [ "text-lg", "cursor-pointer" ] ]
-                [ HH.text "Charges" ]
-            , renderCharges olIdx unitMap defaultCurrency estimatedUsage charges
-            ]
-        ]
+        HH.details [ Css.class_ "mt-5" ]
+          [ HH.summary
+              [ Css.classes [ "text-lg", "cursor-pointer" ] ]
+              [ HH.text "Charges" ]
+          , renderCharges olIdx unitMap defaultCurrency estimatedUsage charges
+          ]
 
   renderOrderLine ::
     SS.Solution ->
@@ -357,8 +358,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         $ head ol.configs
                     ]
                 ]
+            , renderChargeDetails olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
             ]
-          <> renderChargeDetails olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
           <> ( if isNothing product.orderConfigSchema then
                 []
               else
