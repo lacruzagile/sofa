@@ -15,6 +15,8 @@ import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore, Credentials(..), credentialsAreReadOnly, getCredentials, login, logout)
+import Sofa.Data.Loadable (Loadable(..), isLoading)
+import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 
@@ -29,7 +31,7 @@ data State
   | LoggingIn
     { user :: Maybe String
     , pass :: Maybe String
-    , error :: Maybe String
+    , result :: Loadable Unit
     }
   | LoggedIn
     { readOnly :: Boolean
@@ -91,7 +93,14 @@ render = case _ of
 
   renderLoggedOut =
     HH.button
-      [ HE.onClick \_ -> SetState $ LoggingIn mempty ]
+      [ HE.onClick \_ ->
+          SetState
+            $ LoggingIn
+                { user: Nothing
+                , pass: Nothing
+                , result: Idle
+                }
+      ]
       [ renderUser "Login" ]
 
   renderLoggedIn { readOnly, user }
@@ -152,22 +161,29 @@ render = case _ of
             , HP.value $ fromMaybe "" st.pass
             , HE.onValueChange $ \v -> SetState $ LoggingIn $ st { pass = Just v }
             ]
-        , case st.error of
-            Nothing -> HH.text ""
-            Just msg -> HH.div [ Css.classes errorClasses ] [ HH.text msg ]
+        , case st.result of
+            Error msg -> HH.div [ Css.classes errorClasses ] [ HH.text msg ]
+            _ -> HH.text ""
         , HH.div [ Css.classes [ "flex", "gap-x-4" ] ]
             [ HH.div [ Css.class_ "grow" ] []
             , HH.button
                 [ Css.class_ "nectary-btn-secondary"
                 , HP.type_ HP.ButtonButton
+                , HP.disabled $ isLoading st.result
                 , HE.onClick \_ -> SetState LoggedOut
                 ]
                 [ HH.text "Cancel" ]
             , HH.button
                 [ HP.type_ HP.ButtonSubmit
+                , HP.disabled $ isLoading st.result
                 , Css.class_ "nectary-btn-primary"
                 ]
-                [ HH.text "Login" ]
+                [ HH.text "Login"
+                , if isLoading st.result then
+                    Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                  else
+                    HH.text ""
+                ]
             ]
         ]
 
@@ -194,11 +210,15 @@ handleAction = case _ of
     case st of
       LoggedOut -> H.put LoggedOut
       LoggingIn s@{ user: Just user, pass: Just pass } -> do
+        H.put $ LoggingIn $ s { result = Loading }
         result <- H.lift $ login user pass
         case result of
-          Left msg -> H.put $ LoggingIn $ s { error = Just msg }
+          Left msg -> H.put $ LoggingIn $ s { result = Error msg }
           Right _ -> H.put $ LoggedIn { readOnly: false, user }
-      LoggingIn s -> H.put $ LoggingIn $ s { error = Just "Need to enter username and password" }
+      LoggingIn s ->
+        H.put
+          $ LoggingIn
+          $ s { result = Error "Need to enter username and password" }
       LoggedIn _ -> H.put LoggedOut
   Logout -> do
     H.lift logout
