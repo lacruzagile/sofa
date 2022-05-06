@@ -130,7 +130,11 @@ render = case _ of
         [ Css.classes [ "w-96", "flex", "flex-col", "gap-y-3" ]
         , HE.onSubmit Login
         ]
-        [ HH.input
+        [ HH.p_
+            [ HH.text "Login using your LDAP credentials. "
+            , HH.text "Note, you need to have an Admin Portal account."
+            ]
+        , HH.input
             [ HP.type_ HP.InputText
             , HP.id "auth-user"
             , HP.required true
