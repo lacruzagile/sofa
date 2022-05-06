@@ -1,6 +1,7 @@
 module Sofa.HtmlUtils
   ( focusElementByRef
   , scrollToBottom
+  , scrollToElement
   , selectInputText
   , setInputText
   ) where
@@ -11,11 +12,25 @@ import Data.Traversable (for_)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
+import Web.DOM.Element as DomElement
 import Web.HTML.HTMLElement as HtmlElement
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
 -- | Move current scroll position to the bottom of the page.
 foreign import scrollToBottom :: Effect Unit
+
+foreign import scrollIntoView :: DomElement.Element -> Effect Unit
+
+-- | Smoothly scroll to the top of the referenced element.
+scrollToElement ::
+  forall state action slots output m.
+  MonadEffect m =>
+  H.RefLabel -> H.HalogenM state action slots output m Unit
+scrollToElement ref = do
+  element <- H.getHTMLElementRef ref
+  for_ element \el ->
+    H.liftEffect do
+      scrollIntoView (HtmlElement.toElement el)
 
 -- | Places the focus on the element having the given label.
 focusElementByRef ::

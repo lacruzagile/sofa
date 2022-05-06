@@ -57,6 +57,7 @@ import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmart
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal)
 import Sofa.Data.SubTotal as SubTotal
+import Sofa.HtmlUtils (scrollToElement)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 
@@ -169,6 +170,8 @@ data Action
   | SetObservers (Array SS.OrderObserver)
   | SetNotes (Array SS.OrderNote)
   | SetOrderStatus SS.OrderStatus
+  | GotoSection { sectionIndex :: Int }
+  | GotoOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
   | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
@@ -372,7 +375,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 ]
             )
     where
-    body subBody = HH.div [ Css.classes [ "m-5", "mr-0", "border-t" ] ] subBody
+    body subBody =
+      HH.div
+        [ Css.classes [ "m-5", "mr-0", "border-t" ]
+        , HP.ref $ orderLineRefLabel olIdx.sectionIndex olIdx.orderLineIndex
+        ]
+        subBody
 
     renderQuantityInput cfgIdx (SS.OrderLineConfig olc) =
       HH.input
@@ -617,7 +625,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     body subBody =
       HH.div
-        [ Css.classes [ "p-6", "rounded-md", "bg-snow-100" ] ]
+        [ Css.classes [ "p-6", "rounded-md", "bg-snow-100" ]
+        , HP.ref $ sectionRefLabel secIdx
+        ]
         subBody
 
     solutionLabel (SS.Solution s) = fromMaybe s.id s.title
@@ -704,12 +714,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     sectionRow sectionIndex (Just { solution: SS.Solution sol, orderLines }) =
       [ HH.tr_
-          [ HH.td
-              [ HP.colSpan 3, Css.class_ "p-2" ]
-              [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Solution" ]
-              , HH.br_
-              , HH.text $ fromMaybe (show sol.id) sol.title
+          [ HH.td_
+              [ HH.button
+                  [ Css.classes [ "p-2", "w-full", "text-left", "hover:bg-snow-500" ]
+                  , HE.onClick \_ -> GotoSection { sectionIndex }
+                  ]
+                  [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Solution" ]
+                  , HH.br_
+                  , HH.text $ fromMaybe (show sol.id) sol.title
+                  ]
               ]
+          , HH.td [ HP.colSpan 2 ] []
           , tdDelete \_ -> RemoveSection { sectionIndex }
           ]
       ]
@@ -719,10 +734,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     orderRow sectionIndex orderLineIndex (Just ol@{ product: SS.Product prod, status }) =
       HH.tr_
-        [ HH.td [ Css.classes [ "p-2", "pl-12" ] ]
-            [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Product" ]
-            , HH.br_
-            , HH.text $ fromMaybe (show prod.sku) prod.title
+        [ HH.td_
+            [ HH.button
+                [ Css.classes [ "p-2", "pl-12", "w-full", "text-left", "hover:bg-snow-500" ]
+                , HE.onClick \_ -> GotoOrderLine { sectionIndex, orderLineIndex }
+                ]
+                [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Product" ]
+                , HH.br_
+                , HH.text $ fromMaybe (show prod.sku) prod.title
+                ]
             ]
         , HH.td [ Css.class_ "p-2" ]
             [ HH.span
@@ -1551,6 +1571,17 @@ mkNilPriceBook solution = do
     , rateCards: Nothing
     }
 
+sectionRefLabel :: Int -> H.RefLabel
+sectionRefLabel sectionIndex = H.RefLabel $ "section-" <> show sectionIndex
+
+orderLineRefLabel :: Int -> Int -> H.RefLabel
+orderLineRefLabel sectionIndex orderLineIndex =
+  H.RefLabel
+    $ "orderline-"
+    <> show sectionIndex
+    <> "-"
+    <> show orderLineIndex
+
 handleAction ::
   forall output m.
   MonadAff m =>
@@ -1671,6 +1702,10 @@ handleAction = case _ of
   SetOrderStatus status ->
     modifyInitialized
       $ modifyOrderForm _ { status = status }
+  GotoSection { sectionIndex } -> scrollToElement $ sectionRefLabel sectionIndex
+  GotoOrderLine { sectionIndex, orderLineIndex } ->
+    scrollToElement
+      $ orderLineRefLabel sectionIndex orderLineIndex
   AddSection ->
     modifyInitialized
       $ modifyOrderForm \order -> order { sections = snoc order.sections Nothing }
