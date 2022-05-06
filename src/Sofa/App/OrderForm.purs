@@ -666,7 +666,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   [ th [ HH.text "Name" ]
                   , th [ HH.text "Status" ]
                   , th [ HH.text "Quantity" ]
-                  , th [ HH.text "" ]
+                  , th [ HH.text "Edit" ]
                   ]
               ]
           , HH.tbody_
