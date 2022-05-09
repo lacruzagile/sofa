@@ -52,7 +52,7 @@ dependencies.
    in a terminal.
 
 1. Add the SOFA authentication client credentials to `.proxyrc`. These
-   can be found in 1password.
+   can be found in [Vault](https://vault.int.staging.sinch.com/ui/vault/secrets/secret/show/org_engineering_self_serve_and_common_services/bpa/sofa-oauth-client-creds).
 
 1. Start serving the application by running
 
