@@ -118,9 +118,9 @@ mkDefaultConfig = case _ of
     Nothing -> Nothing
 
 component ::
-  forall query m.
+  forall query f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   H.Component query Input Output m
 component =
@@ -147,9 +147,9 @@ initialState input =
   }
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   State -> H.ComponentHTML Action Slots m
 render state@{ orderLineId } =

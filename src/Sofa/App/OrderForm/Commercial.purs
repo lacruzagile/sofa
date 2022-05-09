@@ -62,9 +62,9 @@ data Query a
     a
 
 component ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.Component Query Input Output m
 component =
   H.mkComponent
@@ -101,9 +101,9 @@ okBtnLabel :: H.RefLabel
 okBtnLabel = H.RefLabel "ok-btn"
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 render state
   | state.open = renderDetails state
@@ -169,9 +169,9 @@ renderSummary st
         ]
 
 renderDetails ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 renderDetails st =
   HH.div_
@@ -265,9 +265,9 @@ renderDetails st =
   renderSmallTitle t = HH.h4_ [ HH.text t ]
 
 handleAction ::
-  forall slots m.
+  forall slots f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   NoOp -> pure unit

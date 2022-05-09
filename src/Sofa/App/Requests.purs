@@ -71,7 +71,11 @@ appendPathPiece a b = a <> "/" <> b
 infixr 5 appendPathPiece as </>
 
 -- | Fetches buyers that match the given query string.
-getBuyers :: forall m. MonadAff m => CredentialStore m => String -> m (Loadable (Array Buyer))
+getBuyers ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  String -> m (Loadable (Array Buyer))
 getBuyers query =
   map (map conv) $ getRJson
     $ buyersUrl
@@ -84,15 +88,19 @@ getBuyers query =
   conv { buyers } = buyers
 
 -- | Fetches a specific buyer that match the given CRM account ID.
-getBuyer :: forall m. MonadAff m => CredentialStore m => CrmAccountId -> m (Loadable Buyer)
+getBuyer ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  CrmAccountId -> m (Loadable Buyer)
 getBuyer (CrmAccountId id) = getRJson $ buyersUrl </> idEncoded
   where
   idEncoded = fromMaybe "" $ encodeURIComponent id
 
 getBillingAccounts ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   CrmAccountId ->
   m (Loadable (Array BillingAccount))
 getBillingAccounts (CrmAccountId id) =
@@ -108,9 +116,9 @@ getBillingAccounts (CrmAccountId id) =
   conv { billingAccount } = billingAccount
 
 getBillingAccount ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   CrmAccountId ->
   BillingAccountId ->
   m (Loadable BillingAccount)
@@ -126,9 +134,9 @@ getBillingAccount (CrmAccountId aId) (BillingAccountId bId) =
   bIdEncoded = fromMaybe "" $ encodeURIComponent bId
 
 getBuyerContacts ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   CrmAccountId ->
   m (Loadable (Array Contact))
 getBuyerContacts (CrmAccountId id) =
@@ -152,9 +160,9 @@ getLegalEntities = map (map conv) $ getJson url
   conv { legalEntities } = legalEntities
 
 getOrders ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Maybe String ->
   m (Loadable { orders :: Array OrderForm, nextPageToken :: Maybe String })
 getOrders nextPageToken = filterNextPageToken <$> getRJson url
@@ -181,36 +189,52 @@ getOrders nextPageToken = filterNextPageToken <$> getRJson url
             }
     r -> r
 
-getOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
+getOrder ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  OrderId -> m (Loadable OrderForm)
 getOrder orderId = getRJson url
   where
   url = ordersUrl </> show orderId
 
 getOrderForQuote ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m => CrmQuoteId -> m (Loadable OrderForm)
+  CredentialStore f m => CrmQuoteId -> m (Loadable OrderForm)
 getOrderForQuote (CrmQuoteId quoteId) = getRJson url
   where
   url = crmQuoteOrdersUrl </> quoteId
 
-patchOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> OrderForm -> m (Loadable OrderForm)
+patchOrder ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  OrderId -> OrderForm -> m (Loadable OrderForm)
 patchOrder orderId orderForm = patchRJson url orderForm
   where
   url = ordersUrl </> show orderId
 
-postOrder :: forall m. MonadAff m => CredentialStore m => OrderForm -> m (Loadable OrderForm)
+postOrder ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  OrderForm -> m (Loadable OrderForm)
 postOrder orderForm = postRJson ordersUrl orderForm
 
-deleteOrder :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable Unit)
+deleteOrder ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  OrderId -> m (Loadable Unit)
 deleteOrder orderId = deleteR_ url
   where
   url = ordersUrl </> show orderId
 
 deleteOrderSection ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderSectionId ->
   m (Loadable Unit)
@@ -219,9 +243,9 @@ deleteOrderSection orderId sectionId = deleteR_ url
   url = ordersUrl </> show orderId </> "order-sections" </> show sectionId
 
 deleteOrderLine ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderSectionId ->
   OrderLineId ->
@@ -236,16 +260,16 @@ deleteOrderLine orderId sectionId lineId = deleteR_ url
       </> "order-lines"
       </> show lineId
 
-postOrderFulfillment :: forall m. MonadAff m => CredentialStore m => OrderId -> m (Loadable OrderForm)
+postOrderFulfillment :: forall f m. MonadAff m => CredentialStore f m => OrderId -> m (Loadable OrderForm)
 postOrderFulfillment orderId = postRJson_ url
   where
   url = ordersUrl </> show orderId <> ":fulfillment"
 
 -- | Creates a new order note.
 postOrderNote ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderNote ->
   m (Loadable OrderNote)
@@ -255,9 +279,9 @@ postOrderNote orderId = postRJson url
 
 -- | Deletes an existing order note.
 deleteOrderNote ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderNoteId ->
   m (Loadable Unit)
@@ -267,9 +291,9 @@ deleteOrderNote orderId noteId = deleteR_ url
 
 -- | Updates an existing order.
 patchOrderNote ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderNoteId ->
   OrderNote ->
@@ -280,9 +304,9 @@ patchOrderNote orderId noteId = patchRJson url
 
 -- | Creates a new order observer.
 postOrderObserver ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderObserver ->
   m (Loadable OrderObserver)
@@ -292,9 +316,9 @@ postOrderObserver orderId = postRJson url
 
 -- | Deletes an existing order observer.
 deleteOrderObserver ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderObserverId ->
   m (Loadable Unit)
@@ -304,9 +328,9 @@ deleteOrderObserver orderId observerId = deleteR_ url
 
 -- | Updates an existing order.
 patchOrderObserver ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   OrderId ->
   OrderObserverId ->
   OrderObserver ->
@@ -341,9 +365,9 @@ instance decodeJsonDataSourceResponse :: DecodeJson DataSourceResponse where
 
 -- | Fetches data source key/value pairs from the given URL.
 getDataSourceEnum ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Uri ->
   Boolean ->
   m (Loadable (Array (Tuple String ConfigValue)))
@@ -401,9 +425,9 @@ type FileRsp
     }
 
 getFileContent ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   FileId ->
   m (Loadable String)
 getFileContent fileId = map conv <$> getRJson url
@@ -414,9 +438,9 @@ getFileContent fileId = map conv <$> getRJson url
   conv { file } = file
 
 getFileMetadata ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   FileId ->
   m (Loadable FileRsp)
 getFileMetadata fileId = getRJson url
@@ -424,9 +448,9 @@ getFileMetadata fileId = getRJson url
   url = filesUrl </> fileId </> "metadata"
 
 postFile ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   FileBody ->
   m (Loadable FileRsp)
 postFile = postRJson url
@@ -434,9 +458,9 @@ postFile = postRJson url
   url = filesUrl </> "upload"
 
 deleteFile ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   FileId ->
   m (Loadable Unit)
 deleteFile fileId = deleteR_ url

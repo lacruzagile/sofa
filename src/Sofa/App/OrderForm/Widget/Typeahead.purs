@@ -54,8 +54,10 @@ type Action'
   = Sel.Action Action
 
 component ::
-  forall query m.
-  MonadAff m => CredentialStore m => H.Component query (Input m) Output m
+  forall query f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  H.Component query (Input m) Output m
 component =
   H.mkComponent
     { initialState: identity

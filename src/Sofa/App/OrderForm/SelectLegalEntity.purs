@@ -41,8 +41,10 @@ data Action
   = Initialize
 
 component ::
-  forall query input m.
-  MonadAff m => CredentialStore m => H.Component query input Output m
+  forall query input f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  H.Component query input Output m
 component =
   H.mkComponent
     { initialState: identity
@@ -53,9 +55,9 @@ component =
   selectLabel = Proxy :: Proxy "select"
 
 selectComponent ::
-  forall query input m.
+  forall query input f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.Component (Sel.Query query ()) input Output m
 selectComponent =
   Sel.component (const input)

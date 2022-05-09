@@ -20,6 +20,7 @@ import Affjax.StatusCode (StatusCode(..))
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (ExceptT(..), except, runExceptT, withExceptT)
 import Control.Monad.Except.Trans (lift)
+import Control.Monad.Fork.Class (class MonadFork, fork)
 import Data.Argonaut (class DecodeJson, class EncodeJson, JsonDecodeError(..), decodeJson, jsonEmptyObject, printJsonDecodeError, (.:), (:=), (~>))
 import Data.DateTime (DateTime)
 import Data.DateTime as DateTime
@@ -32,8 +33,10 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.Time.Duration (Milliseconds(..), Seconds(..))
 import Data.Tuple (Tuple(..))
+import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
+import Effect.Console as Console
 import Effect.Now (nowDateTime)
 
 type Error
@@ -71,7 +74,7 @@ instance encodeCredentials :: EncodeJson Credentials where
       ~> jsonEmptyObject
 
 class
-  Monad m <= CredentialStore m where
+  (Monad m, Functor f, MonadFork f m) <= CredentialStore f m | m -> f where
   -- | Whether this credential store supports the set and clear operations.
   credentialsAreReadOnly :: m Boolean
   getCredentials :: m (Maybe Credentials)
@@ -112,9 +115,9 @@ tokenUrl :: String
 tokenUrl = tokenBaseUrl <> "/oauth/token"
 
 fetchToken ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String -> Array (Tuple String (Maybe String)) -> m (Either String Credentials)
 fetchToken user formFields =
   runExceptT do
@@ -145,6 +148,7 @@ fetchToken user formFields =
           , user
           }
     lift $ setCredentials creds
+    lift $ scheduleRefresh (Int.toNumber tokenResp.expiresIn - 30.0)
     pure creds
   where
   handleResponse = case _ of
@@ -162,9 +166,9 @@ fetchToken user formFields =
     statusBadRequest (StatusCode n) = 400 == n
 
 login ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String -> String -> m (Either Error Credentials)
 login user pass =
   fetchToken user
@@ -174,9 +178,9 @@ login user pass =
     ]
 
 refresh ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String -> String -> m (Either Error Credentials)
 refresh user refreshToken =
   fetchToken user
@@ -184,14 +188,14 @@ refresh user refreshToken =
     , Tuple "refresh_token" (Just refreshToken)
     ]
 
-logout :: forall m. CredentialStore m => m Unit
+logout :: forall f m. CredentialStore f m => m Unit
 logout = clearCredentials
 
 -- | Gets the credentials, renewing if expired.
 getActiveCredentials ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   m (Either Error Credentials)
 getActiveCredentials =
   runExceptT do
@@ -204,11 +208,32 @@ getActiveCredentials =
       _ -> throwError "Not logged in"
 
 getAuthorizationHeader ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   m (Either Error RequestHeader)
 getAuthorizationHeader =
   runExceptT do
     Credentials creds <- ExceptT getActiveCredentials
     pure $ RequestHeader "Authorization" ("Bearer " <> creds.accessToken)
+
+scheduleRefresh ::
+  forall f m. MonadAff m ⇒ CredentialStore f m ⇒ Number → m Unit
+scheduleRefresh expiresIn = do
+  _ <- fork go
+  pure unit
+  where
+  go :: MonadAff m => CredentialStore f m => m Unit
+  go = do
+    liftAff $ delay $ Milliseconds (expiresIn * 1000.0)
+    mcreds <- getCredentials
+    pure unit
+    case mcreds of
+      Nothing -> pure unit
+      Just (Credentials { user, refreshToken }) -> do
+        refreshResult <- refresh user refreshToken
+        liftEffect
+          $ Console.log
+          $ case refreshResult of
+              Left err -> "Error refreshing access token: " <> err
+              Right _ -> "Access token refreshed"

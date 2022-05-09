@@ -71,9 +71,9 @@ data Action
   | StopEditNote Int Event -- ^ Stop and save current note edit with the given index.
 
 component ::
-  forall query m.
+  forall query f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.Component query Input Output m
 component =
   H.mkComponent
@@ -372,9 +372,9 @@ renderDetails st =
       _ -> Nothing
 
 handleAction ::
-  forall slots m.
+  forall slots f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   OpenDetails -> H.modify_ $ \st -> st { open = true }

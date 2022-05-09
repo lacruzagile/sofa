@@ -60,9 +60,9 @@ data Action
   | UploadedFile (Maybe File)
 
 component ::
-  forall query m.
+  forall query f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   H.Component query Input Output m
 component =
@@ -95,9 +95,9 @@ initialState input =
   }
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 render st =
   HH.slot
@@ -133,9 +133,9 @@ fileAlert successMsg errorMsg = case _ of
 
 -- | Deletes the current file from the backend, if any such file exists.
 resetFile ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.HalogenM State Action Slots Output m (Loadable String)
 resetFile = do
   mFileId <- H.gets (_.fileId)
@@ -154,9 +154,9 @@ resetFile = do
       pure res
 
 handleAction ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of

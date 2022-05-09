@@ -52,8 +52,10 @@ statusColorClass status =
     SS.OsCancelled -> "bg-warning-200"
 
 component ::
-  forall query m.
-  MonadAff m => CredentialStore m => H.Component query Input Output m
+  forall query f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  H.Component query Input Output m
 component =
   H.mkComponent
     { initialState: identity

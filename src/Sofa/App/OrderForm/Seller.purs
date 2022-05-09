@@ -59,9 +59,9 @@ data Query a
   = SetSeller (Maybe SS.Seller) a
 
 component ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.Component Query Input Output m
 component =
   H.mkComponent
@@ -99,9 +99,9 @@ okBtnLabel :: H.RefLabel
 okBtnLabel = H.RefLabel "ok-btn"
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 render state
   | state.open = renderDetails state
@@ -136,9 +136,9 @@ renderSummary st = case st.acceptedSeller of
       ]
 
 renderDetails ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 renderDetails st =
   HH.div_

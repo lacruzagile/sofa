@@ -48,8 +48,10 @@ data Action
   | Select String -- ^ Selecting an configuration ID.
 
 component ::
-  forall query m.
-  MonadAff m => CredentialStore m => H.Component query Input Output m
+  forall query f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
@@ -82,9 +84,9 @@ initialState input =
   }
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 render st =
   HH.slot
@@ -100,9 +102,9 @@ render st =
     Select
 
 handleAction ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Receive input -> do

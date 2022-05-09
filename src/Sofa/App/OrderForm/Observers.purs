@@ -64,10 +64,10 @@ data Action
   | RemoveObserver Int -- ^ Remove the observer with the given index.
 
 component ::
-  forall query m.
+  forall query f m.
   MonadAff m =>
   MonadAlert m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.Component query Input Output m
 component =
   H.mkComponent
@@ -248,9 +248,9 @@ refEmailInput :: H.RefLabel
 refEmailInput = H.RefLabel "email"
 
 handleAction ::
-  forall slots m.
+  forall slots f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of

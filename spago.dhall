@@ -27,6 +27,7 @@ to generate this file without the comments in this block.
   , "enums"
   , "foldable-traversable"
   , "foreign-object"
+  , "fork"
   , "form-urlencoded"
   , "formatters"
   , "halogen"

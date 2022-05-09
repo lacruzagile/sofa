@@ -210,9 +210,9 @@ data Action
   | FulfillOrder -- ^ Trigger order fulfillment.
 
 component ::
-  forall query output m.
+  forall query output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   H.Component query Input output m
 component =
@@ -234,9 +234,9 @@ initialize :: Maybe Action
 initialize = Just Initialize
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
@@ -1510,9 +1510,9 @@ findLineFileIds orderLine = do
 -- | Deletes all given file attachments in parallel. Note, we ignore the result
 -- | of these calls, i.e., fatalistically assume that they will succeed.
 deleteFileAttachments ::
-  forall slots output m.
+  forall slots output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Array String ->
   H.HalogenM State Action slots output m Unit
 deleteFileAttachments fileIds =
@@ -1583,9 +1583,9 @@ orderLineRefLabel sectionIndex orderLineIndex =
     <> show orderLineIndex
 
 handleAction ::
-  forall output m.
+  forall output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   Action -> H.HalogenM State Action Slots output m Unit
 handleAction = case _ of

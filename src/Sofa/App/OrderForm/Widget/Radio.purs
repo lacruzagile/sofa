@@ -43,8 +43,10 @@ data Action
   | Select SS.ConfigValue
 
 component ::
-  forall query m.
-  MonadAff m => CredentialStore m => H.Component query (Input m) Output m
+  forall query f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  H.Component query (Input m) Output m
 component =
   H.mkComponent
     { initialState
@@ -58,9 +60,9 @@ component =
     }
 
 initialState ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Input m -> State m
 initialState input =
   { selected: input.value
@@ -69,9 +71,9 @@ initialState input =
   }
 
 render ::
-  forall slots m.
+  forall slots f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State m -> H.ComponentHTML Action slots m
 render st = case st.available of
   Idle -> HH.div [ HP.classes infoClasses ] [ HH.text "Data not loaded …" ]
@@ -98,9 +100,9 @@ render st = case st.available of
       ]
 
 handleAction ::
-  forall slots m.
+  forall slots f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Action -> H.HalogenM (State m) Action slots Output m Unit
 handleAction = case _ of
   Initialize -> do

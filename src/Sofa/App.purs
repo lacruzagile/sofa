@@ -5,11 +5,12 @@ module Sofa.App
   ) where
 
 import Prelude
+import Control.Monad.Fork.Class (class MonadFork)
 import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser, stringify)
 import Data.Either (hush)
 import Data.Maybe (Maybe(..))
-import Effect.Aff (Aff)
+import Effect.Aff (Aff, Fiber)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Sofa.Component.Alerts (class MonadAlert, AlertSink)
@@ -48,13 +49,15 @@ derive newtype instance monadAffAppM :: MonadAff AppM
 
 derive newtype instance monadEffectAppM :: MonadEffect AppM
 
+derive newtype instance monadForkAppM :: MonadFork Fiber AppM
+
 instance monadAlertAppM :: MonadAlert AppM where
   getAlertSink = do
     AppM
       $ ReaderT
       $ \{ alertSink } -> pure alertSink
 
-instance credentialStoreAppM :: CredentialStore AppM where
+instance credentialStoreAppM :: CredentialStore Fiber AppM where
   credentialsAreReadOnly =
     AppM
       $ ReaderT

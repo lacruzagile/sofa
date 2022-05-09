@@ -31,9 +31,9 @@ encUri = encodeURIComponent
 -- | source. This function is intended to be given to the different schema
 -- | widgets in a partially applied format.
 getDataSourceEnum ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   DataSourceVars ->
   SchemaDataSourceEnum ->
   Maybe String ->

@@ -13,6 +13,7 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Routing.Hash (matches)
 import Sofa.App.Home as Home
 import Sofa.App.NavbarItemUser as NavbarItemUser
@@ -60,9 +61,9 @@ data Action
   = DoAlert AlertType
 
 component ::
-  forall input output m.
+  forall input output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   H.Component Query input output m
 component =
@@ -81,9 +82,9 @@ initialState :: forall input. input -> State
 initialState _ = { route: Route.Home }
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   State -> H.ComponentHTML Action Slots m
 render state =
@@ -105,9 +106,9 @@ render state =
     ]
 
 renderSideMenu ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Route ->
   H.ComponentHTML Action Slots m
 renderSideMenu currentRoute =
@@ -199,9 +200,9 @@ renderSideMenu currentRoute =
       ]
 
 renderNavbar ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.ComponentHTML Action Slots m
 renderNavbar =
   HH.nav [ Css.classes navbarClasses ]
@@ -243,9 +244,9 @@ renderNavbar =
   expander = HH.div [ Css.class_ "grow" ] []
 
 renderBody ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   State ->
   H.ComponentHTML Action Slots m

@@ -45,9 +45,9 @@ data Action
   | Logout
 
 component ::
-  forall query input output m.
+  forall query input output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   H.Component query input output m
 component =
   H.mkComponent
@@ -188,9 +188,9 @@ render = case _ of
         ]
 
 handleAction ::
-  forall output m.
+  forall output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Action -> H.HalogenM State Action () output m Unit
 handleAction = case _ of
   LoadCredentials -> do

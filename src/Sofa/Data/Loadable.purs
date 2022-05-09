@@ -107,9 +107,9 @@ handleJsonResponse =
     Right value -> Loaded value
 
 withAuthorizationHeader ::
-  forall m a.
+  forall f m a.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   (RequestHeader -> Aff (Loadable a)) -> m (Loadable a)
 withAuthorizationHeader fetcher = do
   creds <- getAuthorizationHeader
@@ -132,10 +132,10 @@ getJson url =
 
 -- | Fetch JSON from an URL.
 getRJson ::
-  forall a m.
+  forall a f m.
   DecodeJson a =>
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String -> m (Loadable a)
 getRJson url =
   withAuthorizationHeader \authHdr ->
@@ -151,11 +151,11 @@ getRJson url =
 
 -- | Submit JSON using a PATCH request and parse the response.
 patchRJson ::
-  forall a b m.
+  forall a b f m.
   EncodeJson a =>
   DecodeJson b =>
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String ->
   a ->
   m (Loadable b)
@@ -174,11 +174,11 @@ patchRJson url body =
 
 -- | Submit JSON using a POST request and parse the response.
 postRJson ::
-  forall a b m.
+  forall a b f m.
   EncodeJson a =>
   DecodeJson b =>
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String ->
   a ->
   m (Loadable b)
@@ -197,10 +197,10 @@ postRJson url body =
 
 -- | Submit an empty POST request and parse the response.
 postRJson_ ::
-  forall a m.
+  forall a f m.
   DecodeJson a =>
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String ->
   m (Loadable a)
 postRJson_ url =
@@ -217,9 +217,9 @@ postRJson_ url =
 
 -- | Submit a DELETE request.
 deleteR_ ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   String ->
   m (Loadable Unit)
 deleteR_ url =

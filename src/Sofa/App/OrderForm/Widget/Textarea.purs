@@ -31,8 +31,10 @@ data Action
   = SetValue String
 
 component ::
-  forall query m.
-  MonadAff m => CredentialStore m => H.Component query Input Output m
+  forall query f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
@@ -44,9 +46,9 @@ initialState :: Input -> State
 initialState = identity
 
 render ::
-  forall slots m.
+  forall slots f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action slots m
 render st =
   HH.textarea
@@ -56,9 +58,9 @@ render st =
     ]
 
 handleAction ::
-  forall slots m.
+  forall slots f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   SetValue text -> do

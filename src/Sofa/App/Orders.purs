@@ -48,9 +48,9 @@ firstPageToken :: String
 firstPageToken = ""
 
 component ::
-  forall query input output m.
+  forall query input output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   H.Component query input output m
 component =
@@ -75,9 +75,9 @@ initialize :: Maybe Action
 initialize = Just (LoadNext firstPageToken)
 
 render ::
-  forall m.
+  forall f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
@@ -242,9 +242,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
     ]
 
 handleAction ::
-  forall slots output m.
+  forall slots output f m.
   MonadAff m =>
-  CredentialStore m =>
+  CredentialStore f m =>
   MonadAlert m =>
   Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
