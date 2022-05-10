@@ -60,6 +60,8 @@ import Sofa.Data.SubTotal as SubTotal
 import Sofa.HtmlUtils (scrollToElement)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
+import Web.HTML as Html
+import Web.HTML.Window as HtmlWindow
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -1740,100 +1742,114 @@ handleAction = case _ of
       $ modifyOrderForm
       $ modifyOrderSection sectionIndex _ { priceBook = priceBook }
   RemoveSection { sectionIndex } -> do
-    state <- H.get
-    maybe' pure deleteFileAttachments
-      $ case state of
-          Initialized (Loaded { orderForm: { sections } }) -> do
-            section <- join $ A.index sections sectionIndex
-            pure $ findSectionFileIds section
-          _ -> Nothing
-    deleteResult <-
-      H.lift
-        $ maybe' (pure <<< Loaded) (uncurry deleteOrderSection)
+    confirm <-
+      H.liftEffect do
+        window <- Html.window
+        HtmlWindow.confirm "Really remove order section? This cannot be undone." window
+    if not confirm then
+      pure unit
+    else do
+      state <- H.get
+      maybe' pure deleteFileAttachments
         $ case state of
-            Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
+            Initialized (Loaded { orderForm: { sections } }) -> do
               section <- join $ A.index sections sectionIndex
-              sectionId <- section.orderSectionId
-              pure (Tuple orderId sectionId)
+              pure $ findSectionFileIds section
             _ -> Nothing
-    case deleteResult of
-      Loading -> pure unit
-      Idle -> pure unit
-      Loaded _ -> do
-        modifyInitialized
-          $ modifyOrderForm \order ->
-              order
-                { sections =
-                  fromMaybe order.sections $ A.deleteAt sectionIndex order.sections
+      deleteResult <-
+        H.lift
+          $ maybe' (pure <<< Loaded) (uncurry deleteOrderSection)
+          $ case state of
+              Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
+                section <- join $ A.index sections sectionIndex
+                sectionId <- section.orderSectionId
+                pure (Tuple orderId sectionId)
+              _ -> Nothing
+      case deleteResult of
+        Loading -> pure unit
+        Idle -> pure unit
+        Loaded _ -> do
+          modifyInitialized
+            $ modifyOrderForm \order ->
+                order
+                  { sections =
+                    fromMaybe order.sections $ A.deleteAt sectionIndex order.sections
+                  }
+          H.lift
+            $ Alerts.push
+            $ Alert.defaultAlert
+                { type_ = Alert.Success
+                , content = HH.text "Deleted order section"
                 }
-        H.lift
-          $ Alerts.push
-          $ Alert.defaultAlert
-              { type_ = Alert.Success
-              , content = HH.text "Deleted order section"
-              }
-      Error errMsg ->
-        H.lift
-          $ Alerts.push
-          $ Alert.errorAlert "Error deleting order section" errMsg
+        Error errMsg ->
+          H.lift
+            $ Alerts.push
+            $ Alert.errorAlert "Error deleting order section" errMsg
   AddOrderLine { sectionIndex } -> do
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderSection sectionIndex \section ->
           section { orderLines = snoc section.orderLines Nothing }
   RemoveOrderLine { sectionIndex, orderLineIndex } -> do
-    state <- H.get
-    maybe' pure deleteFileAttachments
-      $ case state of
-          Initialized (Loaded { orderForm: { sections } }) -> do
-            { orderLines } <- join $ A.index sections sectionIndex
-            orderLine <- join $ A.index orderLines orderLineIndex
-            pure $ findLineFileIds orderLine
-          _ -> Nothing
-    deleteResult <-
-      H.lift
-        $ maybe' (pure <<< Loaded) (uncurry3 deleteOrderLine)
+    confirm <-
+      H.liftEffect do
+        window <- Html.window
+        HtmlWindow.confirm "Really remove order line? This cannot be undone." window
+    if not confirm then
+      pure unit
+    else do
+      state <- H.get
+      maybe' pure deleteFileAttachments
         $ case state of
-            Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
-              section <- join $ A.index sections sectionIndex
-              orderLine <- join $ A.index section.orderLines orderLineIndex
-              sectionId <- section.orderSectionId
-              lineId <- orderLine.orderLineId
-              pure (tuple3 orderId sectionId lineId)
+            Initialized (Loaded { orderForm: { sections } }) -> do
+              { orderLines } <- join $ A.index sections sectionIndex
+              orderLine <- join $ A.index orderLines orderLineIndex
+              pure $ findLineFileIds orderLine
             _ -> Nothing
-    case deleteResult of
-      Loading -> pure unit
-      Idle -> pure unit
-      Loaded _ -> do
-        modifyInitialized
-          $ modifyOrderForm
-          $ modifyOrderSection sectionIndex \section ->
-              section
-                { orderLines =
-                  fromMaybe section.orderLines
-                    $ A.deleteAt orderLineIndex section.orderLines
+      deleteResult <-
+        H.lift
+          $ maybe' (pure <<< Loaded) (uncurry3 deleteOrderLine)
+          $ case state of
+              Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
+                section <- join $ A.index sections sectionIndex
+                orderLine <- join $ A.index section.orderLines orderLineIndex
+                sectionId <- section.orderSectionId
+                lineId <- orderLine.orderLineId
+                pure (tuple3 orderId sectionId lineId)
+              _ -> Nothing
+      case deleteResult of
+        Loading -> pure unit
+        Idle -> pure unit
+        Loaded _ -> do
+          modifyInitialized
+            $ modifyOrderForm
+            $ modifyOrderSection sectionIndex \section ->
+                section
+                  { orderLines =
+                    fromMaybe section.orderLines
+                      $ A.deleteAt orderLineIndex section.orderLines
+                  }
+          H.lift
+            $ Alerts.push
+            $ Alert.defaultAlert
+                { type_ = Alert.Success
+                , content = HH.text "Deleted order line"
                 }
-        H.lift
-          $ Alerts.push
-          $ Alert.defaultAlert
-              { type_ = Alert.Success
-              , content = HH.text "Deleted order line"
-              }
-      Error errMsg ->
-        H.lift
-          $ Alerts.push
-          $ Alert.defaultAlert
-              { type_ = Alert.Error
-              , content =
-                HH.div_
-                  [ HH.p_ [ HH.text "Error deleting order line" ]
-                  , HH.p [ Css.classes [ "mt-1", "text-sm" ] ]
-                      [ HH.strong_ [ HH.text "Error" ]
-                      , HH.text ": "
-                      , HH.text errMsg
-                      ]
-                  ]
-              }
+        Error errMsg ->
+          H.lift
+            $ Alerts.push
+            $ Alert.defaultAlert
+                { type_ = Alert.Error
+                , content =
+                  HH.div_
+                    [ HH.p_ [ HH.text "Error deleting order line" ]
+                    , HH.p [ Css.classes [ "mt-1", "text-sm" ] ]
+                        [ HH.strong_ [ HH.text "Error" ]
+                        , HH.text ": "
+                        , HH.text errMsg
+                        ]
+                    ]
+                }
   OrderLineSetProduct { sectionIndex, orderLineIndex, product } ->
     let
       mkOrderLine :: UUID -> SS.Product -> OrderLine
