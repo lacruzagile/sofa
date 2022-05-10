@@ -42,9 +42,6 @@ import Effect.Now (nowDateTime)
 type Error
   = String
 
-type AuthConfig
-  = { tokenUrl :: String }
-
 newtype Credentials
   = Credentials
   { accessToken :: String
