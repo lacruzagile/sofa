@@ -14,7 +14,7 @@ import Effect.Aff (Aff, Fiber)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Sofa.Component.Alerts (class MonadAlert, AlertSink)
-import Sofa.Data.Auth (class CredentialStore, Credentials(..))
+import Sofa.Data.Auth (class CredentialStore, AuthEventEmitter, Credentials(..))
 import Sofa.Data.Deployment (Deployment)
 import Sofa.Data.Deployment as Deployment
 import Web.HTML as Html
@@ -28,6 +28,7 @@ import Web.Storage.Storage as LS
 type Env
   = { deployment :: Deployment
     , alertSink :: AlertSink
+    , authEventEmitter :: AuthEventEmitter
     }
 
 -- | The SOFA application base monad, it is essentially the `Aff` monad combined
@@ -121,6 +122,7 @@ instance credentialStoreAppM :: CredentialStore Fiber AppM where
             w <- Html.window
             s <- HtmlWindow.sessionStorage w
             LS.removeItem "sofa-cred" s
+  getAuthEventEmitter = AppM $ ReaderT \env -> pure env.authEventEmitter
 
 -- | Runs the `AppM` monad, takes an environment as input.
 runAppM :: forall a. Env -> AppM a -> Aff a

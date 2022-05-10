@@ -202,6 +202,7 @@ renderSideMenu currentRoute =
 renderNavbar ::
   forall f m.
   MonadAff m =>
+  MonadAlert m =>
   CredentialStore f m =>
   H.ComponentHTML Action Slots m
 renderNavbar =

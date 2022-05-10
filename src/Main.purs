@@ -12,6 +12,7 @@ import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Router as Router
 import Sofa.Component.Alerts as Alert
+import Sofa.Data.Auth (mkAuthEventEmitter)
 import Sofa.Data.Deployment (detectDeployment, getCrmQuoteId)
 import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
@@ -25,10 +26,11 @@ main :: Effect Unit
 main = do
   deployment <- detectDeployment
   mCrmQuoteId <- getCrmQuoteId
+  authEventEmitter <- mkAuthEventEmitter
   HA.runHalogenAff do
     alertSink <- Alert.mkAlertSink
     let
-      env = { deployment, alertSink }
+      env = { deployment, alertSink, authEventEmitter }
     awaitLoad
     mBody <- HA.selectElement (QuerySelector "#sofa-app")
     case mBody of

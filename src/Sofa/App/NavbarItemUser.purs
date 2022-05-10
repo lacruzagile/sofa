@@ -11,10 +11,13 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Sofa.Component.Alert as Alert
+import Sofa.Component.Alerts (class MonadAlert)
+import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
-import Sofa.Data.Auth (class CredentialStore, Credentials(..), credentialsAreReadOnly, getCredentials, login, logout)
+import Sofa.Data.Auth (class CredentialStore, AuthEvent(..), Credentials(..), credentialsAreReadOnly, getAuthEventEmitter, getCredentials, login, logout, toEmitter)
 import Sofa.Data.Loadable (Loadable(..), isLoading)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
@@ -39,14 +42,16 @@ data State
     }
 
 data Action
-  = LoadCredentials -- ^ Load credentials from the credential store.
+  = Initialize
   | SetState State
   | Login Event.Event
   | Logout
+  | AuthEv AuthEvent
 
 component ::
   forall query input output f m.
   MonadAff m =>
+  MonadAlert m =>
   CredentialStore f m =>
   H.Component query input output m
 component =
@@ -65,7 +70,7 @@ initialState :: forall input. input -> State
 initialState = const LoggedOut
 
 initialize :: Maybe Action
-initialize = Just LoadCredentials
+initialize = Just Initialize
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
 render = case _ of
@@ -190,10 +195,15 @@ render = case _ of
 handleAction ::
   forall output f m.
   MonadAff m =>
+  MonadAlert m =>
   CredentialStore f m =>
   Action -> H.HalogenM State Action () output m Unit
 handleAction = case _ of
-  LoadCredentials -> do
+  Initialize -> do
+    -- Start listening to authentication events.
+    authEventEmitter <- toEmitter <$> H.lift getAuthEventEmitter
+    _ <- H.subscribe (AuthEv <$> authEventEmitter)
+    -- Load credentials from the credential store.
     readOnly <- H.lift credentialsAreReadOnly
     credentials <- H.lift getCredentials
     let
@@ -223,3 +233,14 @@ handleAction = case _ of
   Logout -> do
     H.lift logout
     H.put LoggedOut
+  AuthEv EvLogin -> pure unit
+  AuthEv EvLogout -> do
+    H.lift
+      $ Alerts.push
+      $ Alert.defaultAlert
+          { content = HH.text "You were logged out."
+          }
+    st <- H.get
+    case st of
+      LoggedOut -> pure unit
+      _ -> H.put LoggedOut

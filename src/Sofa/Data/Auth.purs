@@ -1,14 +1,19 @@
 -- | Types and functions useful for authentication.
 module Sofa.Data.Auth
-  ( class CredentialStore
+  ( AuthEvent(..)
+  , AuthEventEmitter
   , Credentials(..)
+  , class CredentialStore
   , clearCredentials
+  , credentialsAreReadOnly
+  , getAuthEventEmitter
   , getAuthorizationHeader
   , getCredentials
   , login
   , logout
+  , mkAuthEventEmitter
   , setCredentials
-  , credentialsAreReadOnly
+  , toEmitter
   ) where
 
 import Prelude
@@ -33,11 +38,13 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
 import Data.Time.Duration (Milliseconds(..), Seconds(..))
 import Data.Tuple (Tuple(..))
+import Effect (Effect)
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff, liftAff)
-import Effect.Class (liftEffect)
+import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console as Console
 import Effect.Now (nowDateTime)
+import Halogen.Subscription as HS
 
 type Error
   = String
@@ -49,6 +56,13 @@ newtype Credentials
   , expiry :: DateTime
   , user :: String
   }
+
+newtype AuthEventEmitter
+  = AuthEventEmitter (HS.SubscribeIO AuthEvent)
+
+data AuthEvent
+  = EvLogin
+  | EvLogout
 
 instance decodeCredentials :: DecodeJson Credentials where
   decodeJson json = do
@@ -71,12 +85,14 @@ instance encodeCredentials :: EncodeJson Credentials where
       ~> jsonEmptyObject
 
 class
-  (Monad m, Functor f, MonadFork f m) <= CredentialStore f m | m -> f where
+  (MonadEffect m, Functor f, MonadFork f m) <= CredentialStore f m | m -> f where
   -- | Whether this credential store supports the set and clear operations.
   credentialsAreReadOnly :: m Boolean
   getCredentials :: m (Maybe Credentials)
   setCredentials :: Credentials -> m Unit
   clearCredentials :: m Unit
+  -- | Authentication event emitter.
+  getAuthEventEmitter :: m AuthEventEmitter
 
 newtype TokenResponse
   = TokenResponse
@@ -103,6 +119,20 @@ instance decodeJsonTokenResponse :: DecodeJson TokenResponse where
           , scope
           , tokenType
           }
+
+mkAuthEventEmitter :: Effect AuthEventEmitter
+mkAuthEventEmitter = AuthEventEmitter <$> HS.create
+
+toEmitter :: AuthEventEmitter -> HS.Emitter AuthEvent
+toEmitter (AuthEventEmitter s) = s.emitter
+
+notifyEvent ::
+  forall f m.
+  CredentialStore f m =>
+  AuthEvent -> m Unit
+notifyEvent event = do
+  AuthEventEmitter { listener } <- getAuthEventEmitter
+  liftEffect $ HS.notify listener event
 
 -- | Base URL to use for the token service.
 tokenBaseUrl :: String
@@ -167,26 +197,38 @@ login ::
   MonadAff m =>
   CredentialStore f m =>
   String -> String -> m (Either Error Credentials)
-login user pass =
-  fetchToken user
-    [ Tuple "grant_type" (Just "password")
-    , Tuple "username" (Just user)
-    , Tuple "password" (Just pass)
-    ]
+login user pass = do
+  result <-
+    fetchToken user
+      [ Tuple "grant_type" (Just "password")
+      , Tuple "username" (Just user)
+      , Tuple "password" (Just pass)
+      ]
+  case result of
+    Left _ -> pure unit
+    Right _ -> notifyEvent EvLogin
+  pure result
 
 refresh ::
   forall f m.
   MonadAff m =>
   CredentialStore f m =>
   String -> String -> m (Either Error Credentials)
-refresh user refreshToken =
-  fetchToken user
-    [ Tuple "grant_type" (Just "refresh_token")
-    , Tuple "refresh_token" (Just refreshToken)
-    ]
+refresh user refreshToken = do
+  result <-
+    fetchToken user
+      [ Tuple "grant_type" (Just "refresh_token")
+      , Tuple "refresh_token" (Just refreshToken)
+      ]
+  case result of
+    Left _ -> logout
+    Right _ -> pure unit
+  pure result
 
 logout :: forall f m. CredentialStore f m => m Unit
-logout = clearCredentials
+logout = do
+  clearCredentials
+  notifyEvent EvLogout
 
 -- | Gets the credentials, renewing if expired.
 getActiveCredentials ::
@@ -222,9 +264,9 @@ scheduleRefresh expiresIn = do
   where
   go :: MonadAff m => CredentialStore f m => m Unit
   go = do
-    liftAff $ delay $ Milliseconds (expiresIn * 1000.0)
+    when (expiresIn > 0.0) do
+      liftAff $ delay $ Milliseconds (expiresIn * 1000.0)
     mcreds <- getCredentials
-    pure unit
     case mcreds of
       Nothing -> pure unit
       Just (Credentials { user, refreshToken }) -> do
