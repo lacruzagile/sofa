@@ -303,7 +303,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HH.label_
             [ renderSmallTitle "Product"
             , HH.slot SelectProduct.proxy olIdx SelectProduct.component
-                sol.products
+                { selected: Nothing
+                , available: sol.products
+                }
                 ( \product ->
                     OrderLineSetProduct
                       { sectionIndex: olIdx.sectionIndex

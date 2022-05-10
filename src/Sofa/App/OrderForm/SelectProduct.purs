@@ -25,7 +25,9 @@ proxy :: Proxy "selectProduct"
 proxy = Proxy
 
 type Input
-  = Array SS.Product
+  = { selected :: Maybe SS.Product
+    , available :: Array SS.Product
+    }
 
 type Output
   = SS.Product
@@ -52,21 +54,21 @@ component =
 
 selectComponent :: forall query m. MonadAff m => H.Component (Sel.Query query ()) Input Output m
 selectComponent =
-  Sel.component input
+  Sel.component mkInput
     $ Sel.defaultSpec
         { handleEvent = handleEvent
         , render = render
         }
   where
-  input :: Input -> Sel.Input State
-  input products =
+  mkInput :: Input -> Sel.Input State
+  mkInput input =
     { inputType: Sel.Text
     , debounceTime: Just (Milliseconds 50.0)
     , search: Nothing
     , getItemCount: A.length <<< _.filtered
-    , selected: Nothing
-    , filtered: products
-    , available: products
+    , selected: input.selected
+    , filtered: input.available
+    , available: input.available
     }
 
   handleEvent :: Sel.Event -> H.HalogenM (Sel.State State) _ () Output m Unit
