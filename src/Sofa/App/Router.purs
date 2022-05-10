@@ -13,7 +13,6 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Routing.Hash (matches)
 import Sofa.App.Home as Home
 import Sofa.App.NavbarItemUser as NavbarItemUser
