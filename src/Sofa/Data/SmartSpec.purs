@@ -1875,7 +1875,7 @@ newtype ProductFeature
   = ProductFeature
   { title :: Maybe String
   , description :: Maybe String
-  , options :: Maybe (Array Json)
+  , options :: Array SkuCode
   }
 
 derive newtype instance decodeJsonProductFeature :: DecodeJson ProductFeature
