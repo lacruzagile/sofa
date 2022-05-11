@@ -60,8 +60,10 @@ import Sofa.Data.SubTotal as SubTotal
 import Sofa.HtmlUtils (scrollToElement)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
+import Web.Event.Event (stopPropagation) as Event
 import Web.HTML as Html
 import Web.HTML.Window as HtmlWindow
+import Web.UIEvent.MouseEvent (MouseEvent, toEvent) as Event
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -177,7 +179,7 @@ data Action
   | AddSection
   | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
   | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
-  | RemoveSection { sectionIndex :: Int }
+  | RemoveSection { sectionIndex :: Int } Event.MouseEvent
   | AddOrderLine { sectionIndex :: Int }
   | OrderLineSetProduct
     { sectionIndex :: Int, orderLineIndex :: Int, product :: SS.Product
@@ -206,7 +208,9 @@ data Action
     , charges :: Array SS.Charge
     , estimatedUsage :: QuantityMap
     }
-  | RemoveOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
+  | RemoveOrderLine
+    { sectionIndex :: Int, orderLineIndex :: Int }
+    Event.MouseEvent
   | DiscardOrder -- ^ Discard the currently loaded order.
   | CreateUpdateOrder -- ^ Create or update the current order.
   | FulfillOrder -- ^ Trigger order fulfillment.
@@ -677,11 +681,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       , HH.table [ Css.classes [ "table-auto", "w-full" ] ]
           [ HH.thead_
-              [ HH.tr [ Css.classes [ "border-b", "border-stormy-500" ] ]
-                  [ th [ HH.text "Name" ]
-                  , th [ HH.text "Status" ]
-                  , th [ HH.text "Quantity" ]
-                  , th [ HH.text "Edit" ]
+              [ HH.tr [ Css.classes [ "border-b-2", "border-stormy-500" ] ]
+                  [ th [ "w-full" ] [ HH.text "Name" ]
+                  , th [ "px-5" ] [ HH.text "Status" ]
+                  , th [ "px-5" ] [ HH.text "Quantity" ]
+                  , th [] [ HH.text "Remove" ]
                   ]
               ]
           , HH.tbody_
@@ -699,10 +703,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       ]
     where
-    th = HH.th [ Css.classes [ "p-2", "font-semibold", "text-left" ] ]
+    th cls =
+      HH.th
+        [ Css.classes $ [ "p-2", "font-semibold", "text-left" ] <> cls
+        ]
 
     tdDelete onClick =
-      HH.td_
+      HH.td [ Css.class_ "text-center" ]
         [ HH.button
             [ Css.classes [ "p-2", "fill-error-500", "hover:fill-error-800" ]
             , HE.onClick onClick
@@ -717,19 +724,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
     sectionRow _ Nothing = [ HH.text "" ]
 
     sectionRow sectionIndex (Just { solution: SS.Solution sol, orderLines }) =
-      [ HH.tr_
-          [ HH.td_
-              [ HH.button
-                  [ Css.classes [ "p-2", "w-full", "text-left", "hover:bg-snow-500" ]
-                  , HE.onClick \_ -> GotoSection { sectionIndex }
-                  ]
-                  [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Solution" ]
-                  , HH.br_
-                  , HH.text $ fromMaybe (show sol.id) sol.title
-                  ]
+      [ HH.tr
+          [ Css.classes [ "border-b", "border-stormy-100", "hover:bg-snow-500", "cursor-pointer" ]
+          , HE.onClick \_ -> GotoSection { sectionIndex }
+          ]
+          [ HH.td [ HP.colSpan 3, Css.class_ "p-2" ]
+              [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Solution" ]
+              , HH.br_
+              , HH.text $ fromMaybe (show sol.id) sol.title
               ]
-          , HH.td [ HP.colSpan 2 ] []
-          , tdDelete \_ -> RemoveSection { sectionIndex }
+          , tdDelete $ RemoveSection { sectionIndex }
           ]
       ]
         <> A.mapWithIndex (orderRow sectionIndex) orderLines
@@ -737,26 +741,24 @@ render state = HH.section_ [ HH.article_ renderContent ]
     orderRow _ _ Nothing = HH.text ""
 
     orderRow sectionIndex orderLineIndex (Just ol@{ product: SS.Product prod, status }) =
-      HH.tr_
-        [ HH.td_
-            [ HH.button
-                [ Css.classes [ "p-2", "pl-12", "w-full", "text-left", "hover:bg-snow-500" ]
-                , HE.onClick \_ -> GotoOrderLine { sectionIndex, orderLineIndex }
-                ]
-                [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Product" ]
-                , HH.br_
-                , HH.text $ fromMaybe (show prod.sku) prod.title
-                ]
+      HH.tr
+        [ Css.classes [ "border-b", "border-stormy-100", "hover:bg-snow-500", "cursor-pointer" ]
+        , HE.onClick \_ -> GotoOrderLine { sectionIndex, orderLineIndex }
+        ]
+        [ HH.td [ Css.classes [ "p-2", "pl-12" ] ]
+            [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Product" ]
+            , HH.br_
+            , HH.text $ fromMaybe (show prod.sku) prod.title
             ]
-        , HH.td [ Css.class_ "p-2" ]
+        , HH.td [ Css.classes [ "p-2", "px-5" ] ]
             [ HH.span
                 [ Css.classes [ "nectary-tag", "w-fit" ] ]
                 [ HH.text $ SS.prettyOrderLineStatus status ]
             ]
         , HH.td
-            [ Css.class_ "p-2" ]
+            [ Css.classes [ "p-2", "px-5" ] ]
             [ HH.text $ show $ orderLineQuantity ol ]
-        , tdDelete \_ -> RemoveOrderLine { sectionIndex, orderLineIndex }
+        , tdDelete $ RemoveOrderLine { sectionIndex, orderLineIndex }
         ]
 
   renderSections ::
@@ -1743,7 +1745,10 @@ handleAction = case _ of
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderSection sectionIndex _ { priceBook = priceBook }
-  RemoveSection { sectionIndex } -> do
+  RemoveSection { sectionIndex } event -> do
+    -- Don't propagate the click to the underlying table row.
+    H.liftEffect $ Event.stopPropagation $ Event.toEvent event
+    -- Verify that user really wants to delete the section.
     confirm <-
       H.liftEffect do
         window <- Html.window
@@ -1792,7 +1797,10 @@ handleAction = case _ of
       $ modifyOrderForm
       $ modifyOrderSection sectionIndex \section ->
           section { orderLines = snoc section.orderLines Nothing }
-  RemoveOrderLine { sectionIndex, orderLineIndex } -> do
+  RemoveOrderLine { sectionIndex, orderLineIndex } event -> do
+    -- Don't propagate the click to the underlying table row.
+    H.liftEffect $ Event.stopPropagation $ Event.toEvent event
+    -- Verify that user really wants to delete the order line.
     confirm <-
       H.liftEffect do
         window <- Html.window
