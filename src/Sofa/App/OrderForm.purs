@@ -247,8 +247,6 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
-  renderSmallTitle t = HH.div [ Css.class_ "sofa-small-title" ] [ HH.text t ]
-
   renderCharges ::
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
