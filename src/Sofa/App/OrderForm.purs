@@ -305,7 +305,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Nothing ->
       body
         [ HH.label_
-            [ renderSmallTitle "Product"
+            [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Product" ]
             , HH.slot SelectProduct.proxy olIdx SelectProduct.component
                 { selected: Nothing
                 , available: sol.products
@@ -326,24 +326,24 @@ render state = HH.section_ [ HH.article_ renderContent ]
         renderProductTitle = case product.title of
           Nothing -> HH.text (show product.sku)
           Just t ->
-            HH.div_
-              [ HH.span
-                  [ Css.classes [ "text-lg", "font-semibold" ] ]
-                  [ HH.text t ]
-              , HH.br_
-              , HH.span
-                  [ Css.classes [ "text-xs", "text-stormy-300" ] ]
-                  [ HH.text (show product.sku) ]
-              ]
+            Tooltip.render
+              ( Tooltip.defaultInput
+                  { text = show (product.sku)
+                  , width = Just "20rem"
+                  }
+              )
+              (Tooltip.contentWithIcon (HH.text t))
       in
         body
-          $ [ HH.div [ Css.class_ "flex" ]
-                [ HH.div [ Css.class_ "w-3/5" ]
-                    [ renderSmallTitle "Product"
+          $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-8", "items-center" ] ]
+                [ HH.div [ Css.classes [ "grow", "text-lg", "font-semibold" ] ]
+                    [ HH.text "Product "
+                    , HH.text $ show $ olIdx.orderLineIndex + 1
+                    , HH.text " – "
                     , renderProductTitle
                     ]
-                , HH.div [ Css.class_ "w-1/5" ]
-                    [ renderSmallTitle "Status"
+                , HH.div [ Css.classes [ "flex", "gap-4", "items-center" ] ]
+                    [ HH.span [ Css.class_ "font-semibold" ] [ HH.text "Status" ]
                     , let
                         wrap content
                           | ol.statusReason == "" = HH.text content
@@ -353,11 +353,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
                               (Icon.textWithTooltip content)
                       in
                         HH.span
-                          [ Css.class_ "font-semibold" ]
+                          [ Css.class_ "nectary-tag" ]
                           [ wrap (SS.prettyOrderLineStatus ol.status) ]
                     ]
-                , HH.label [ Css.class_ "w-1/5" ]
-                    [ renderSmallTitle "Quantity"
+                , HH.label [ Css.classes [ "flex", "gap-4", "items-center" ] ]
+                    [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Quantity" ]
                     , renderQuantityInput 0
                         $ fromMaybe
                             ( SS.OrderLineConfig
@@ -385,7 +385,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     where
     body subBody =
       HH.div
-        [ Css.classes [ "m-5", "mr-0", "border-t" ]
+        [ Css.classes [ "p-6", "border", "border-snow-800", "rounded-lg" ]
         , HP.ref $ orderLineRefLabel olIdx.sectionIndex olIdx.orderLineIndex
         ]
         subBody
@@ -395,8 +395,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ Css.classes
             [ "nectary-input"
             , "nectary-input-number"
-            , "w-full"
-            , "max-w-96"
+            , "w-24"
             ]
         , HP.type_ HP.InputNumber
         , HP.min 1.0
@@ -508,7 +507,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Nothing ->
       body
         [ HH.label_
-            [ renderSmallTitle "Solution"
+            [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Solution" ]
             , HH.slot
                 (Proxy :: Proxy "selectSolution")
                 secIdx
@@ -532,7 +531,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           $ Map.toUnfoldable
                           $ filterAvailableSolutions pc.solutions
                     , noSelectionText = "Please choose a solution"
-                    , wrapperClasses = [ Css.c "w-96" ]
                     }
                 )
                 actionSetSolution
@@ -560,10 +558,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
         body
           $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-4", "items-end" ] ]
                 [ HH.div [ Css.class_ "grow" ]
-                    [ HH.h2 [ Css.class_ "mt-0" ] [ HH.text "Section" ]
-                    , HH.div
-                        [ Css.classes [ "font-semibold", "text-lg" ] ]
-                        [ HH.text "Solution – "
+                    [ HH.h2
+                        [ Css.class_ "mt-0" ]
+                        [ HH.text "Solution "
+                        , HH.text $ show $ secIdx + 1
+                        , HH.text " – "
                         , HH.text $ solutionLabel sec.solution
                         ]
                     ]
@@ -595,10 +594,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ Css.classes
                     [ "flex"
                     , "items-center"
-                    , "space-x-4"
-                    , "m-5"
-                    , "mb-0"
-                    , "pt-3"
+                    , "gap-4"
+                    , "pt-6"
                     , "border-t"
                     ]
                 ]
@@ -633,7 +630,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     body subBody =
       HH.div
-        [ Css.classes [ "p-6", "rounded-md", "bg-snow-100" ]
+        [ Css.classes [ "flex", "flex-col", "gap-6", "p-6", "rounded-md", "bg-snow-100" ]
         , HP.ref $ sectionRefLabel secIdx
         ]
         subBody
@@ -655,7 +652,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
       )
         $ A.index priceBooks i
 
-    renderOrderLines sol orderLines = HH.div_ $ A.mapWithIndex renderOrderLine' orderLines
+    renderOrderLines sol orderLines =
+      HH.div
+        [ Css.classes [ "flex", "flex-col", "gap-6" ] ]
+        (A.mapWithIndex renderOrderLine' orderLines)
       where
       renderOrderLine' olIdx = renderOrderLine sol defaultCurrency { sectionIndex: secIdx, orderLineIndex: olIdx }
 
@@ -671,7 +671,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       ]
       [ HH.div [ Css.classes [ "flex", "items-center", "mb-6" ] ]
-          [ HH.h2 [ Css.classes [ "grow", "m-0" ] ] [ HH.text "Section summary" ]
+          [ HH.h2 [ Css.classes [ "grow", "m-0" ] ] [ HH.text "Solution summary" ]
           , HH.button
               [ Css.classes [ "nectary-btn-primary", "h-8" ]
               , HE.onClick \_ -> AddSection
@@ -729,7 +729,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , HE.onClick \_ -> GotoSection { sectionIndex }
           ]
           [ HH.td [ HP.colSpan 3, Css.class_ "p-2" ]
-              [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Solution" ]
+              [ HH.span
+                  [ Css.class_ "text-tropical-500" ]
+                  [ HH.text "Solution ", HH.text $ show $ sectionIndex + 1 ]
               , HH.br_
               , HH.text $ fromMaybe (show sol.id) sol.title
               ]
@@ -746,7 +748,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , HE.onClick \_ -> GotoOrderLine { sectionIndex, orderLineIndex }
         ]
         [ HH.td [ Css.classes [ "p-2", "pl-12" ] ]
-            [ HH.span [ Css.class_ "text-tropical-500" ] [ HH.text "Product" ]
+            [ HH.span
+                [ Css.class_ "text-tropical-500" ]
+                [ HH.text "Product ", HH.text $ show $ orderLineIndex + 1 ]
             , HH.br_
             , HH.text $ fromMaybe (show prod.sku) prod.title
             ]
@@ -766,7 +770,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Array (Maybe OrderSection) ->
     H.ComponentHTML Action Slots m
   renderSections sof secs =
-    HH.div [ Css.classes [ "flex", "flex-col", "space-y-5" ] ]
+    HH.div [ Css.classes [ "flex", "flex-col", "gap-5" ] ]
       $ A.mapWithIndex (renderSection sof) secs
 
   renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m

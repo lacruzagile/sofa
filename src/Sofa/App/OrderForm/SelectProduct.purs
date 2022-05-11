@@ -117,7 +117,6 @@ selectComponent =
               A.findIndex (\(SS.Product { sku }) -> sku == selSku) st.filtered
           , values = renderItem <$> st.filtered
           , noSelectionText = "Type to search product …"
-          , wrapperClasses = [ Css.c "w-96" ]
           }
 
   renderItem :: SS.Product -> HH.PlainHTML
