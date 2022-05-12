@@ -3,7 +3,7 @@ module Sofa.App.OrderForm.SelectCommercial (Slot, Query(..), Output(..), proxy, 
 import Prelude
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
 import Data.Traversable (for_)
@@ -31,7 +31,10 @@ proxy :: Proxy "selectCommercial"
 proxy = Proxy
 
 type Input
-  = SS.CrmAccountId
+  = { crmAccountId :: SS.CrmAccountId
+    , billingAccountId :: Maybe SS.BillingAccountId
+    -- ^ The selected billing account, if available.
+    }
 
 type Output
   = Loadable SS.Commercial
@@ -41,7 +44,7 @@ data Query a
 
 type State
   = ( crmAccountId :: SS.CrmAccountId
-    , selected :: Maybe SS.BillingAccount
+    , selected :: Maybe SS.BillingAccountId
     , selectedFull :: Loadable SS.BillingAccount
     , filtered :: Loadable (Array SS.BillingAccount)
     , available :: Loadable (Array SS.BillingAccount)
@@ -78,7 +81,7 @@ component =
 
   selectComponent :: H.Component (Sel.Query Query ()) Input Output m
   selectComponent =
-    Sel.component input
+    Sel.component handleInput
       $ Sel.defaultSpec
           { initialize = Just Initialize
           , handleAction = handleAction
@@ -87,14 +90,14 @@ component =
           , render = render
           }
 
-  input :: SS.CrmAccountId -> Sel.Input State
-  input crmAccountId =
+  handleInput :: Input -> Sel.Input State
+  handleInput input =
     { inputType: Sel.Text
     , debounceTime: Just (Milliseconds 50.0)
     , search: Nothing
     , getItemCount: maybe 0 A.length <<< Loadable.toMaybe <<< _.filtered
-    , crmAccountId: crmAccountId
-    , selected: Nothing
+    , crmAccountId: input.crmAccountId
+    , selected: input.billingAccountId
     , selectedFull: Idle
     , filtered: Idle
     , available: Idle
@@ -102,7 +105,17 @@ component =
 
   handleAction :: Action -> H.HalogenM _ _ _ _ _ Unit
   handleAction = case _ of
-    Initialize -> focusElementByRef (H.RefLabel "select-input")
+    Initialize -> do
+      state <- H.modify _ { available = Loading, filtered = Loading }
+      result <- H.lift $ getBillingAccounts state.crmAccountId
+      H.modify_ _ { available = result, filtered = result }
+      -- If the result is an error then we also propagate this to the parent.
+      case result of
+        Error msg -> H.raise $ Error msg
+        _ -> pure unit
+      -- Focus the input if we don't have any selection.
+      when (isNothing state.selected)
+        $ focusElementByRef (H.RefLabel "select-input")
 
   handleQuery :: forall a. Query a -> H.HalogenM _ _ _ _ _ (Maybe a)
   handleQuery = case _ of
@@ -119,30 +132,8 @@ component =
 
   handleEvent :: Sel.Event -> H.HalogenM _ _ _ _ _ Unit
   handleEvent = case _ of
-    Sel.Searched _ -> do
-      state <- H.get
-      mAvailable <- case state.available of
-        Loaded _ -> pure $ Just state.available
-        Loading -> pure $ Nothing
-        _ -> do
-          H.modify_ $ \st -> st { available = Loading, filtered = Loading }
-          H.lift $ Just <$> getBillingAccounts state.crmAccountId
-      case mAvailable of
-        Nothing -> pure unit
-        Just available -> do
-          H.modify_ \st ->
-            st
-              { available = available
-              -- Update the array of filtered matches. Note, we don't filter
-              -- using the string passed in `Sel.Searched` since it may be out
-              -- of date at the time `getBillingAccounts` finishes.
-              , filtered = filterAvailable st.search available
-              }
-          -- If the result is an error then we also propagate this to the
-          -- parent.
-          case available of
-            Error msg -> H.raise $ Error msg
-            _ -> pure unit
+    Sel.Searched str -> do
+      H.modify_ \st -> st { filtered = filterAvailable str st.available }
     Sel.Selected idx -> do
       st' <-
         H.modify \st ->
@@ -151,7 +142,8 @@ component =
             , selected =
               do
                 filtered <- Loadable.toMaybe st.filtered
-                filtered !! idx
+                SS.BillingAccount { billingAccountId } <- filtered !! idx
+                pure billingAccountId
             , selectedFull = Loading
             , filtered = st.available
             , visibility = Sel.Off
@@ -164,9 +156,9 @@ component =
       -- Fetch the full representation of the selected billing account, if
       -- possible.
       selectedFull <- case st'.selected of
-        Just (SS.BillingAccount ba) ->
+        Just billingAccountId ->
           H.lift
-            $ getBillingAccount st'.crmAccountId ba.billingAccountId
+            $ getBillingAccount st'.crmAccountId billingAccountId
         _ -> pure Idle
       case selectedFull of
         Error err -> H.liftEffect $ Console.error $ "When fetching commercial data: " <> err
@@ -194,30 +186,37 @@ component =
         , Widgets.spinner [ Css.c "my-4" ]
         ]
     _ ->
-      Typeahead.render
-        $ (Typeahead.initRenderState st)
-            { selected = map (\(SS.BillingAccount { displayName }) -> displayName) st.selected
-            , selectedIndex =
-              do
-                SS.BillingAccount { displayName: selName } <- st.selected
-                vals <- Loadable.toMaybe st.available
-                A.findIndex (\(SS.BillingAccount { displayName: name }) -> name == selName) vals
-            , values =
-              case st.filtered of
-                Loaded filtered ->
-                  let
-                    renderItem (SS.BillingAccount ba) =
-                      HH.span_
-                        [ HH.text ba.displayName
-                        , HH.text " "
-                        , HH.span [ Css.class_ "text-stormy-300" ] [ HH.text ba.shortId ]
-                        ]
-                  in
-                    renderItem <$> filtered
-                _ -> []
-            , noSelectionText = "Type to search billing account  …"
-            , loading = Loadable.isLoading st.available
-            }
+      let
+        selected = do
+          selectedId <- st.selected
+          vals <- Loadable.toMaybe st.available
+          index <- A.findIndex (\(SS.BillingAccount ba) -> ba.billingAccountId == selectedId) vals
+          value <- A.index vals index
+          pure $ { index, value }
+      in
+        Typeahead.render
+          $ (Typeahead.initRenderState st)
+              { selected =
+                do
+                  SS.BillingAccount { displayName } <- _.value <$> selected
+                  pure displayName
+              , selectedIndex = _.index <$> selected
+              , values =
+                case st.filtered of
+                  Loaded filtered ->
+                    let
+                      renderItem (SS.BillingAccount ba) =
+                        HH.span_
+                          [ HH.text ba.displayName
+                          , HH.text " "
+                          , HH.span [ Css.class_ "text-stormy-300" ] [ HH.text ba.shortId ]
+                          ]
+                    in
+                      renderItem <$> filtered
+                  _ -> []
+              , noSelectionText = "Type to search billing account  …"
+              , loading = Loadable.isLoading st.available
+              }
 
 filterAvailable ::
   forall f.

@@ -193,7 +193,12 @@ renderDetails st =
                 SelectCommercial.proxy
                 unit
                 SelectCommercial.component
-                crmAccountId
+                { crmAccountId
+                , billingAccountId:
+                    do
+                      SS.Commercial { billingAccountId } <- Loadable.toMaybe st.commercial
+                      billingAccountId
+                }
                 ChooseCommercial
           _ -> HH.text ""
       , case commercialLoadable of
