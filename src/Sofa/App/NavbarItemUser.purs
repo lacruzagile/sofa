@@ -18,6 +18,7 @@ import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore, AuthEvent(..), Credentials(..), credentialsAreReadOnly, getAuthEventEmitter, getCredentials, login, logout, toEmitter)
+import Sofa.Data.Auth as Auth
 import Sofa.Data.Loadable (Loadable(..), isLoading)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
@@ -200,6 +201,8 @@ handleAction ::
   Action -> H.HalogenM State Action () output m Unit
 handleAction = case _ of
   Initialize -> do
+    -- Initialize the authentication module.
+    H.lift Auth.initialize
     -- Start listening to authentication events.
     authEventEmitter <- toEmitter <$> H.lift getAuthEventEmitter
     _ <- H.subscribe (AuthEv <$> authEventEmitter)

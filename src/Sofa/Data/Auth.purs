@@ -2,16 +2,20 @@
 module Sofa.Data.Auth
   ( AuthEvent(..)
   , AuthEventEmitter
+  , AuthInstance
   , Credentials(..)
   , class CredentialStore
   , clearCredentials
   , credentialsAreReadOnly
   , getAuthEventEmitter
+  , getAuthInstance
   , getAuthorizationHeader
   , getCredentials
+  , initialize
   , login
   , logout
   , mkAuthEventEmitter
+  , mkAuthInstance
   , setCredentials
   , toEmitter
   ) where
@@ -39,7 +43,10 @@ import Data.Newtype (unwrap)
 import Data.Time.Duration (Milliseconds(..), Seconds(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
+import Effect.AVar as AVarEff
 import Effect.Aff (delay)
+import Effect.Aff.AVar (AVar)
+import Effect.Aff.AVar as AVar
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console as Console
@@ -59,6 +66,11 @@ newtype Credentials
 
 newtype AuthEventEmitter
   = AuthEventEmitter (HS.SubscribeIO AuthEvent)
+
+-- | The authentication instance, containing the fetch lock variable that
+-- | ensures that we have at most one token fetch in flight.
+newtype AuthInstance
+  = AuthInstance { fetchLock :: AVar Unit }
 
 data AuthEvent
   = EvLogin
@@ -93,6 +105,8 @@ class
   clearCredentials :: m Unit
   -- | Authentication event emitter.
   getAuthEventEmitter :: m AuthEventEmitter
+  --  | Returns the unique authenticator instance. This function is idempotent.
+  getAuthInstance :: m AuthInstance
 
 newtype TokenResponse
   = TokenResponse
@@ -134,6 +148,12 @@ notifyEvent event = do
   AuthEventEmitter { listener } <- getAuthEventEmitter
   liftEffect $ HS.notify listener event
 
+-- | Creates an authentication instance.
+mkAuthInstance ∷ Effect AuthInstance
+mkAuthInstance = do
+  fetchLock <- AVarEff.new unit
+  pure $ AuthInstance { fetchLock }
+
 -- | Base URL to use for the token service.
 tokenBaseUrl :: String
 tokenBaseUrl = ""
@@ -146,37 +166,51 @@ fetchToken ::
   MonadAff m =>
   CredentialStore f m =>
   String -> Array (Tuple String (Maybe String)) -> m (Either String Credentials)
-fetchToken user formFields =
-  runExceptT do
-    mresponse <-
-      liftAff
-        $ AX.request
-        $ AX.defaultRequest
-            { url = tokenUrl
-            , method = Left POST
-            , timeout = Just (Milliseconds 60_000.0)
-            , content = Just $ formURLEncoded $ FormURLEncoded formFields
-            , responseFormat = ResponseFormat.json
-            }
-    TokenResponse tokenResp <- handleResponse mresponse
-    now <- liftEffect nowDateTime
-    let
-      -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
-      -- one claimed to allow for clock mismatches.
-      offset = Seconds $ Int.toNumber tokenResp.expiresIn - 30.0
+fetchToken user formFields = do
+  AuthInstance authInstance <- getAuthInstance
+  -- Try to take the lock, leaving the avar empty. Any fetch that occurs while
+  -- the avar is empty will block until the winning fetch completes, then we can
+  -- retrieve the credentials from the environment.
+  mLock <- liftAff $ AVar.tryTake authInstance.fetchLock
+  case mLock of
+    Nothing -> do
+      -- Wait for lock to release.
+      liftAff $ AVar.read authInstance.fetchLock
+      -- Read the credentials from the environment.
+      maybe (Left "Credentials gone") Right <$> getCredentials
+    Just _ -> do
+      runExceptT do
+        mresponse <-
+          liftAff
+            $ AX.request
+            $ AX.defaultRequest
+                { url = tokenUrl
+                , method = Left POST
+                , timeout = Just (Milliseconds 60_000.0)
+                , content = Just $ formURLEncoded $ FormURLEncoded formFields
+                , responseFormat = ResponseFormat.json
+                }
+        TokenResponse tokenResp <- handleResponse mresponse
+        now <- liftEffect nowDateTime
+        let
+          -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
+          -- one claimed to allow for clock mismatches.
+          offset = Seconds $ Int.toNumber tokenResp.expiresIn - 30.0
 
-      expiry = fromMaybe now $ DateTime.adjust offset now
+          expiry = fromMaybe now $ DateTime.adjust offset now
 
-      creds =
-        Credentials
-          { accessToken: tokenResp.accessToken
-          , refreshToken: tokenResp.refreshToken
-          , expiry
-          , user
-          }
-    lift $ setCredentials creds
-    lift $ scheduleRefresh (Int.toNumber tokenResp.expiresIn - 30.0)
-    pure creds
+          creds =
+            Credentials
+              { accessToken: tokenResp.accessToken
+              , refreshToken: tokenResp.refreshToken
+              , expiry
+              , user
+              }
+        lift $ setCredentials creds
+        lift $ scheduleRefresh offset
+        -- Release the lock.
+        liftAff $ AVar.put unit authInstance.fetchLock
+        pure creds
   where
   handleResponse = case _ of
     Left err -> throwError $ AX.printError err
@@ -256,14 +290,18 @@ getAuthorizationHeader =
     Credentials creds <- ExceptT getActiveCredentials
     pure $ RequestHeader "Authorization" ("Bearer " <> creds.accessToken)
 
+-- Initializes the authentication mechanism. Intended to be called on
+-- application start. This will pick up any existing credentials and ensure they
+-- start getting refreshed.
+initialize :: forall f m. MonadAff m ⇒ CredentialStore f m ⇒ m Unit
+initialize = scheduleRefresh mempty
+
 scheduleRefresh ::
-  forall f m. MonadAff m ⇒ CredentialStore f m ⇒ Number → m Unit
-scheduleRefresh expiresIn = do
-  _ <- fork go
-  pure unit
+  forall f m. MonadAff m ⇒ CredentialStore f m ⇒ Seconds → m Unit
+scheduleRefresh (Seconds expiresIn) = void $ fork startRefreshJob
   where
-  go :: MonadAff m => CredentialStore f m => m Unit
-  go = do
+  startRefreshJob :: MonadAff m => CredentialStore f m => m Unit
+  startRefreshJob = do
     when (expiresIn > 0.0) do
       liftAff $ delay $ Milliseconds (expiresIn * 1000.0)
     mcreds <- getCredentials
