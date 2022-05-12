@@ -696,7 +696,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           [ HP.colSpan 4
                           , Css.classes [ "p-2", "text-stormy-300", "text-center" ]
                           ]
-                          [ HH.text "No sections added" ]
+                          [ HH.text "No solutions added" ]
                       ]
                   ]
                 else
