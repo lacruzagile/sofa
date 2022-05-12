@@ -306,7 +306,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Product" ]
             , HH.slot SelectProduct.proxy olIdx SelectProduct.component
                 { selected: Nothing
-                , available: sol.products
+                , available:
+                    A.filter
+                      (\(SS.Product { optionOnly }) -> not optionOnly)
+                      sol.products
                 }
                 ( \product ->
                     OrderLineSetProduct

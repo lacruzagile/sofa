@@ -1583,6 +1583,7 @@ newtype Product
   , attr :: Maybe (Map String ConfigValue)
   , orderConfigSchema :: Maybe ConfigSchemaEntry
   , assetConfigSchema :: Maybe ConfigSchemaEntry
+  , optionOnly :: Boolean
   , options :: Maybe (Array ProductOption)
   , features :: Maybe (Array ProductFeature)
   , chargeUnits :: Array ChargeUnit -- ^ Charge units ordered by unit ID.
@@ -1602,6 +1603,7 @@ instance decodeJsonProduct :: DecodeJson Product where
       attr = (\obj -> Map.fromFoldable (FO.toUnfoldable obj :: Array _)) <$> attrObj
     orderConfigSchema <- o .:? "orderConfigSchema"
     assetConfigSchema <- o .:? "assetConfigSchema"
+    optionOnly <- o .:? "optionOnly" .!= false
     options <- o .:? "options"
     features <- o .:? "features"
     chargeUnits <- A.sortBy (comparing (_.id <<< unwrap)) <$> o .: "chargeUnits"
@@ -1614,6 +1616,7 @@ instance decodeJsonProduct :: DecodeJson Product where
           , attr
           , orderConfigSchema
           , assetConfigSchema
+          , optionOnly
           , options
           , features
           , chargeUnits
