@@ -278,11 +278,7 @@ renderDetails st =
                 [ HH.text "Cancel" ]
             , HH.button
                 [ Css.class_ "nectary-btn-primary"
-                , HP.enabled
-                    ( Loadable.isLoaded st.buyer
-                        && (buyer.contacts.primary /= SS.emptyContact)
-                        && (buyer.contacts.finance /= SS.emptyContact)
-                    )
+                , HP.enabled $ Loadable.isLoaded st.buyer
                 , HE.onClick \_ -> AcceptAndCloseDetails
                 ]
                 [ HH.text "OK" ]
