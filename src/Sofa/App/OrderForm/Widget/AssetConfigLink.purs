@@ -1,4 +1,4 @@
-module Sofa.App.OrderForm.Widget.AssetConfigLink (Slot, Output(..), proxy, component) where
+module Sofa.App.OrderForm.Widget.AssetConfigLink (SkuConfigs, Slot, Output(..), proxy, component) where
 
 import Prelude
 import Control.Alternative (guard)
@@ -29,8 +29,17 @@ type Slots
 type Input
   = { value :: Maybe SS.ConfigValue
     , skuPattern :: String -- ^ Regex of eligible SKUs.
-    , configs :: Array (Tuple SS.SkuCode (Array SS.OrderLineConfig))
-    -- ^ Array of sku / config elements.
+    , configs :: Array SkuConfigs
+    -- ^ Array of configurations associated with different SKUs.
+    }
+
+type SkuConfigs
+  = { sku :: SS.SkuCode
+    , configs ::
+        Array
+          { label :: String
+          , config :: SS.OrderLineConfig
+          }
     }
 
 type Output
@@ -40,7 +49,7 @@ type State
   = { selectedId :: Maybe String
     , skuPattern :: String
     , value :: Maybe SS.ConfigValue
-    , configIds :: Array String
+    , options :: Array { configId :: String, label :: String }
     }
 
 data Action
@@ -74,13 +83,13 @@ initialState input =
         _ -> Nothing
   , skuPattern: input.skuPattern
   , value: input.value
-  , configIds:
+  , options:
       do
         re <- either (const []) A.singleton $ Re.regex input.skuPattern mempty
-        Tuple (SS.SkuCode sku) configs <- input.configs
-        guard $ Re.test re sku
-        SS.OrderLineConfig { id } <- configs
-        maybe [] pure id
+        configs <- input.configs
+        guard $ Re.test re (show configs.sku)
+        { label, config: SS.OrderLineConfig { id } } <- configs.configs
+        maybe [] (\configId -> [ { configId, label } ]) id
   }
 
 render ::
@@ -95,7 +104,7 @@ render st =
     Select.component
     ( Select.defaultInput
         { selected = st.selectedId
-        , values = map (\cid -> Tuple (HH.text cid) cid) st.configIds
+        , values = map (\o -> Tuple (HH.text o.label) o.configId) st.options
         , noSelectionText = "Please choose a configuration"
         }
     )
@@ -110,8 +119,8 @@ handleAction = case _ of
   Receive input -> do
     let
       newState = initialState input
-    oldConfigIds <- H.gets _.configIds
-    if newState.configIds == oldConfigIds then
+    oldOptions <- H.gets _.options
+    if newState.options == oldOptions then
       pure unit
     else
       H.put newState

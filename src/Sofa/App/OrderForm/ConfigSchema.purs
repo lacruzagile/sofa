@@ -24,6 +24,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Sofa.App.OrderForm.Widget.AssetConfigLink (SkuConfigs)
 import Sofa.App.OrderForm.Widget.AssetConfigLink as WAssetConfigLink
 import Sofa.App.OrderForm.Widget.Checkbox as WCheckbox
 import Sofa.App.OrderForm.Widget.Dropdown as WDropdown
@@ -69,7 +70,7 @@ type Input
     , schemaEntry :: SS.ConfigSchemaEntry
     , readOnly :: Boolean
     , dataSourceVars :: DataSourceVars
-    , getConfigs :: Unit -> Array (Tuple SS.SkuCode (Array SS.OrderLineConfig))
+    , getConfigs :: Unit -> Array SkuConfigs
     }
 
 type Output
@@ -83,7 +84,7 @@ type State
     , configTabs :: Map ConfigEntryIndex Int
     -- ^ The currently selected tab of a `oneOf` configuration entry.
     , dataSourceVars :: DataSourceVars
-    , getConfigs :: Unit -> Array (Tuple SS.SkuCode (Array SS.OrderLineConfig))
+    , getConfigs :: Unit -> Array SkuConfigs
     }
 
 type ConfigEntryIndex

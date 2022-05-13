@@ -40,6 +40,7 @@ import Sofa.App.OrderForm.Observers as Observers
 import Sofa.App.OrderForm.SelectOrderStatus as SelectOrderStatus
 import Sofa.App.OrderForm.SelectProduct as SelectProduct
 import Sofa.App.OrderForm.Seller as Seller
+import Sofa.App.OrderForm.Widget.AssetConfigLink (SkuConfigs)
 import Sofa.App.Requests (deleteFile, deleteOrder, deleteOrderLine, deleteOrderSection, getOrder, getOrderForQuote, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
@@ -1137,21 +1138,30 @@ orderSchemaGetConfigs ∷
   State ->
   OrderLineIndex ->
   Unit ->
-  Array (Tuple SS.SkuCode (Array SS.OrderLineConfig))
+  Array SkuConfigs
 orderSchemaGetConfigs state olIdx _ = case state of
   Initialized (Loaded { orderForm: { sections } }) -> do
     section <-
       maybe [] A.singleton
         $ join
         $ A.index sections olIdx.sectionIndex
-    mOrderLine <- section.orderLines
+    Tuple oIdx mOrderLine <- A.mapWithIndex Tuple section.orderLines
     case mOrderLine of
       Nothing -> []
       Just orderLine ->
         let
-          SS.Product { sku } = orderLine.product
+          SS.Product { sku, title } = orderLine.product
+
+          label =
+            "Product "
+              <> show (oIdx + 1)
+              <> " – "
+              <> fromMaybe (show sku) title
         in
-          [ Tuple sku orderLine.configs ]
+          [ { sku
+            , configs: map (\config -> { label, config }) orderLine.configs
+            }
+          ]
   _ -> []
 
 toJson :: OrderForm -> Either String SS.OrderForm
