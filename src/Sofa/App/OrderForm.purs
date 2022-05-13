@@ -247,6 +247,26 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
+  renderOrderLineStatus status reason =
+    let
+      wrap content
+        | reason == "" = HH.text content
+        | otherwise =
+          Tooltip.render
+            (Tooltip.defaultInput { text = reason })
+            (Icon.textWithTooltip content)
+
+      color = case status of
+        SS.OlsNew -> "bg-snow-600"
+        SS.OlsAccepted -> "bg-informative-200"
+        SS.OlsSucceeded -> "bg-success-200"
+        SS.OlsFailed -> "bg-warning-200"
+        SS.OlsCancelled -> "bg-informative-200"
+    in
+      HH.span
+        [ Css.classes [ "nectary-tag", "w-fit", color ] ]
+        [ wrap (SS.prettyOrderLineStatus status) ]
+
   renderCharges ::
     OrderLineIndex ->
     Charge.ChargeUnitMap ->
@@ -345,17 +365,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     ]
                 , HH.div [ Css.classes [ "flex", "gap-4", "items-center" ] ]
                     [ HH.span [ Css.class_ "font-semibold" ] [ HH.text "Status" ]
-                    , let
-                        wrap content
-                          | ol.statusReason == "" = HH.text content
-                          | otherwise =
-                            Tooltip.render
-                              (Tooltip.defaultInput { text = ol.statusReason })
-                              (Icon.textWithTooltip content)
-                      in
-                        HH.span
-                          [ Css.class_ "nectary-tag" ]
-                          [ wrap (SS.prettyOrderLineStatus ol.status) ]
+                    , renderOrderLineStatus ol.status ol.statusReason
                     ]
                 , HH.label [ Css.classes [ "flex", "gap-4", "items-center" ] ]
                     [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Quantity" ]
@@ -743,7 +753,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     orderRow _ _ Nothing = HH.text ""
 
-    orderRow sectionIndex orderLineIndex (Just ol@{ product: SS.Product prod, status }) =
+    orderRow sectionIndex orderLineIndex (Just ol@{ product: SS.Product prod }) =
       HH.tr
         [ Css.classes [ "border-b", "border-stormy-100", "hover:bg-snow-500", "cursor-pointer" ]
         , HE.onClick \_ -> GotoOrderLine { sectionIndex, orderLineIndex }
@@ -756,9 +766,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , HH.text $ fromMaybe (show prod.sku) prod.title
             ]
         , HH.td [ Css.classes [ "p-2", "px-5" ] ]
-            [ HH.span
-                [ Css.classes [ "nectary-tag", "w-fit" ] ]
-                [ HH.text $ SS.prettyOrderLineStatus status ]
+            [ renderOrderLineStatus ol.status ol.statusReason
             ]
         , HH.td
             [ Css.classes [ "p-2", "px-5" ] ]
