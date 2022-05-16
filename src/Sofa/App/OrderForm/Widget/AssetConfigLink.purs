@@ -26,6 +26,9 @@ type Slots
   = ( selectConfig :: Select.Slot Unit String -- Output is the selected configuration ID.
     )
 
+selectProxy :: Proxy "selectConfig"
+selectProxy = Proxy
+
 type Input
   = { value :: Maybe SS.ConfigValue
     , skuPattern :: String -- ^ Regex of eligible SKUs.
@@ -99,7 +102,7 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render st =
   HH.slot
-    (Proxy :: Proxy "selectConfig")
+    selectProxy
     unit
     Select.component
     ( Select.defaultInput
@@ -120,10 +123,13 @@ handleAction = case _ of
     let
       newState = initialState input
     oldOptions <- H.gets _.options
-    if newState.options == oldOptions then
-      pure unit
-    else
+    when (newState.options /= oldOptions) do
       H.put newState
+      -- Also inform the select component about the new options.
+      H.tell selectProxy unit
+        $ Select.SetValues
+        $ map (\o -> Tuple (HH.text o.label) o.configId)
+        $ newState.options
   Select selectedId -> do
     st' <- H.modify \st -> st { selectedId = Just selectedId }
     -- Let the parent component know about the new selection.

@@ -2,6 +2,7 @@
 module Sofa.Component.Select
   ( Slot
   , Output
+  , Query(..)
   , proxy
   , component
   , defaultInput
@@ -26,7 +27,7 @@ import Sofa.Css as Css
 import Type.Proxy (Proxy(..))
 
 type Slot id a
-  = forall query. H.Slot query (Output a) id
+  = H.Slot (Query a) (Output a) id
 
 proxy :: Proxy "nectaryDropdown"
 proxy = Proxy
@@ -49,6 +50,11 @@ defaultInput =
 type Output :: forall k. k -> k
 type Output a
   = a
+
+-- | Update the available selection options. When updated the current selection
+-- | will be reset.
+data Query a b
+  = SetValues (Array (Tuple HH.PlainHTML a)) b
 
 type State a
   = ( selectedIndex :: Maybe Int
@@ -85,22 +91,34 @@ initRenderState st =
   }
 
 component ::
-  forall query m a.
-  MonadAff m => Eq a => H.Component query (Input a) (Output a) m
+  forall m a.
+  MonadAff m => Eq a => H.Component (Query a) (Input a) (Output a) m
 component =
   H.mkComponent
     { initialState: identity
     , render: \st -> HH.slot selectLabel unit selectComponent st identity
-    , eval: H.mkEval H.defaultEval { handleAction = H.raise }
+    , eval:
+        H.mkEval
+          H.defaultEval
+            { handleAction = H.raise
+            , handleQuery = handleOuterQuery
+            }
     }
   where
   selectLabel = Proxy :: Proxy "select"
 
-  selectComponent :: H.Component (Sel.Query query ()) (Input a) (Output a) m
+  handleOuterQuery ::
+    forall b.
+    MonadAff m =>
+    Query a b -> H.HalogenM _ _ _ _ m (Maybe b)
+  handleOuterQuery = H.query selectLabel unit <<< Sel.Query
+
+  selectComponent :: H.Component (Sel.Query (Query a) ()) (Input a) (Output a) m
   selectComponent =
     Sel.component mapInput
       $ Sel.defaultSpec
-          { handleEvent = handleEvent
+          { handleEvent = handleInnerEvent
+          , handleQuery = handleInnerQuery
           , render = renderInner
           }
 
@@ -119,7 +137,7 @@ component =
     , wrapperClasses: input.wrapperClasses
     }
 
-  handleEvent = case _ of
+  handleInnerEvent = case _ of
     Sel.Selected idx -> do
       st' <-
         H.modify \st ->
@@ -130,6 +148,19 @@ component =
       -- Let the parent component know about the new selection.
       maybe (pure unit) (H.raise <<< snd) (st'.values !! idx)
     _ -> pure unit
+
+  handleInnerQuery ::
+    forall b.
+    MonadAff m =>
+    Query a b -> H.HalogenM (Sel.State (State a)) _ _ _ m (Maybe b)
+  handleInnerQuery = case _ of
+    SetValues values next -> do
+      H.modify_
+        _
+          { values = values
+          , selectedIndex = Nothing
+          }
+      pure $ Just next
 
   renderInner :: Sel.State (State a) -> H.ComponentHTML _ () m
   renderInner st =
