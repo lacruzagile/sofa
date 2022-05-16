@@ -14,7 +14,7 @@ import Effect.Aff (Aff, Fiber)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Sofa.Component.Alerts (class MonadAlert, AlertSink)
-import Sofa.Data.Auth (class CredentialStore, AuthEventEmitter, AuthInstance, Credentials(..))
+import Sofa.Data.Auth (class CredentialStore, AuthEventEmitter, AuthInstance, mkCredentials)
 import Sofa.Data.Deployment (Deployment)
 import Sofa.Data.Deployment as Deployment
 import Web.HTML as Html
@@ -87,14 +87,7 @@ instance credentialStoreAppM :: CredentialStore Fiber AppM where
                   json <- hush (jsonParser jsonStr)
                   hush (decodeJson json)
 
-    handleSalesforce sf =
-      pure $ Just
-        $ Credentials
-            { accessToken: sf.accessToken
-            , refreshToken: ""
-            , expiry: top -- Never expire token.
-            , user: sf.userEmail
-            }
+    handleSalesforce sf = pure $ Just $ mkCredentials sf.userEmail sf.accessToken
   setCredentials creds =
     AppM
       $ ReaderT

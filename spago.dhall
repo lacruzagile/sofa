@@ -65,6 +65,7 @@ to generate this file without the comments in this block.
   , "web-html"
   , "web-storage"
   , "web-uievents"
+  , "web-url"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

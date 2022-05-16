@@ -3,7 +3,7 @@ module Sofa.Data.Auth
   ( AuthEvent(..)
   , AuthEventEmitter
   , AuthInstance
-  , Credentials(..)
+  , Credentials
   , class CredentialStore
   , clearCredentials
   , credentialsAreReadOnly
@@ -11,11 +11,16 @@ module Sofa.Data.Auth
   , getAuthInstance
   , getAuthorizationHeader
   , getCredentials
+  , getUser
+  , handleSsoRedirect
   , initialize
   , login
   , logout
   , mkAuthEventEmitter
   , mkAuthInstance
+  , mkCredentials
+  , mkSsoAuthorizeUrl
+  , mkSsoRedirectUri
   , setCredentials
   , toEmitter
   ) where
@@ -40,8 +45,12 @@ import Data.HTTP.Method (Method(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Newtype (unwrap)
+import Data.String (Pattern(..))
+import Data.String as S
 import Data.Time.Duration (Milliseconds(..), Seconds(..))
 import Data.Tuple (Tuple(..))
+import Data.UUID (UUID, genUUID)
+import Data.UUID as UUID
 import Effect (Effect)
 import Effect.AVar as AVarEff
 import Effect.Aff (delay)
@@ -52,6 +61,15 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console as Console
 import Effect.Now (nowDateTime)
 import Halogen.Subscription as HS
+import Web.HTML as Html
+import Web.HTML.Location as HtmlLocation
+import Web.HTML.Window as HtmlWindow
+import Web.Storage.Storage as HtmlStorage
+import Web.URL as Url
+import Web.URL.URLSearchParams as UrlParams
+
+-- | Base URL for SSO authentication endpoints.
+foreign import ssoBaseUrl :: Effect String
 
 type Error
   = String
@@ -70,7 +88,10 @@ newtype AuthEventEmitter
 -- | The authentication instance, containing the fetch lock variable that
 -- | ensures that we have at most one token fetch in flight.
 newtype AuthInstance
-  = AuthInstance { fetchLock :: AVar Unit }
+  = AuthInstance
+  { id :: UUID
+  , fetchLock :: AVar Unit
+  }
 
 data AuthEvent
   = EvLogin
@@ -134,6 +155,19 @@ instance decodeJsonTokenResponse :: DecodeJson TokenResponse where
           , tokenType
           }
 
+-- | Make static credentials, for use when deployed in Salesforce.
+mkCredentials :: String -> String -> Credentials
+mkCredentials user accessToken =
+  Credentials
+    { accessToken
+    , refreshToken: ""
+    , expiry: top -- Never expire token.
+    , user
+    }
+
+getUser :: Credentials -> String
+getUser (Credentials { user }) = user
+
 mkAuthEventEmitter :: Effect AuthEventEmitter
 mkAuthEventEmitter = AuthEventEmitter <$> HS.create
 
@@ -151,8 +185,9 @@ notifyEvent event = do
 -- | Creates an authentication instance.
 mkAuthInstance ∷ Effect AuthInstance
 mkAuthInstance = do
+  id <- genUUID
   fetchLock <- AVarEff.new unit
-  pure $ AuthInstance { fetchLock }
+  pure $ AuthInstance { id, fetchLock }
 
 -- | Base URL to use for the token service.
 tokenBaseUrl :: String
@@ -161,12 +196,102 @@ tokenBaseUrl = ""
 tokenUrl :: String
 tokenUrl = tokenBaseUrl <> "/oauth/token"
 
+emptyUrlParams :: UrlParams.URLSearchParams
+emptyUrlParams = UrlParams.fromString ""
+
+mkSsoRedirectUri :: Effect String
+mkSsoRedirectUri = do
+  location <- Html.window >>= HtmlWindow.location
+  url <- Url.unsafeFromAbsolute <$> HtmlLocation.href location
+  let
+    -- The return path is the hash component of the URL.
+    path = fromMaybe "" $ S.stripPrefix (Pattern "#") $ Url.hash url
+  pure $ Url.toString
+    $ Url.setSearch
+        ( UrlParams.toString
+            $ UrlParams.set "path" path
+            $ emptyUrlParams
+        )
+    $ Url.setPathname "auth/sso"
+    $ url
+
+mkSsoAuthorizeUrl :: Effect String
+mkSsoAuthorizeUrl = do
+  redirectUri <- mkSsoRedirectUri
+  baseUrl <- ssoBaseUrl
+  pure
+    $ Url.toString
+    $ Url.setPathname "/oauth/authorize"
+    $ Url.setSearch
+        ( UrlParams.toString
+            $ UrlParams.set "response_type" "code"
+            $ UrlParams.set "client_id" "sofa"
+            $ UrlParams.set "redirect_uri" redirectUri
+            $ emptyUrlParams
+        )
+    $ Url.unsafeFromAbsolute baseUrl
+
+-- | Finishes up SSO process if the current window location matches.
+handleSsoRedirect ::
+  forall f m. MonadAff m => CredentialStore f m => m Unit
+handleSsoRedirect = do
+  result <-
+    liftEffect do
+      location <- Html.window >>= HtmlWindow.location
+      path <- HtmlLocation.pathname location
+      case path of
+        "/auth/sso" -> do
+          url <- Url.unsafeFromAbsolute <$> HtmlLocation.href location
+          let
+            params = Url.searchParams url
+
+            -- Also check for "state" parameter.
+            targetPath = fromMaybe "/" $ UrlParams.get "path" params
+
+            -- Recreate the exact redirect URL since it is needed when asking
+            -- for the tokens. Note, `Url.toString` URL encodes any `/` symbols
+            -- in the `path` parameter so we have to undo this.
+            redirectUrl =
+              Url.toString
+                $ Url.setSearch (UrlParams.toString $ UrlParams.delete "code" params)
+                $ url
+
+            targetUrl =
+              Url.toString
+                $ Url.setPathname ""
+                $ Url.setSearch ""
+                $ Url.setHash targetPath
+                $ url
+          -- Handle the code parameter. Specifically, if there is one, return
+          -- that for later fetch of authentication token.
+          pure case UrlParams.get "code" params of
+            Nothing -> Nothing
+            Just authCode ->
+              Just
+                { authCode
+                , location
+                , redirectUrl
+                , targetUrl
+                }
+        _ -> pure Nothing
+  case result of
+    Nothing -> pure unit
+    Just { authCode, location, redirectUrl, targetUrl } -> do
+      void
+        $ fetchToken "user" false
+            [ Tuple "grant_type" (Just "authorization_code")
+            , Tuple "code" (Just authCode)
+            , Tuple "redirect_uri" (Just redirectUrl)
+            ]
+      -- Change location to the desired target path.
+      liftEffect $ HtmlLocation.replace targetUrl location
+
 fetchToken ::
   forall f m.
   MonadAff m =>
   CredentialStore f m =>
-  String -> Array (Tuple String (Maybe String)) -> m (Either String Credentials)
-fetchToken user formFields = do
+  String -> Boolean -> Array (Tuple String (Maybe String)) -> m (Either String Credentials)
+fetchToken user schedule formFields = do
   AuthInstance authInstance <- getAuthInstance
   -- Try to take the lock, leaving the avar empty. Any fetch that occurs while
   -- the avar is empty will block until the winning fetch completes, then we can
@@ -175,42 +300,15 @@ fetchToken user formFields = do
   case mLock of
     Nothing -> do
       -- Wait for lock to release.
-      liftAff $ AVar.read authInstance.fetchLock
+      void $ liftAff $ AVar.read authInstance.fetchLock
+      liftEffect $ Console.log $ "Waited for lock"
       -- Read the credentials from the environment.
       maybe (Left "Credentials gone") Right <$> getCredentials
     Just _ -> do
-      runExceptT do
-        mresponse <-
-          liftAff
-            $ AX.request
-            $ AX.defaultRequest
-                { url = tokenUrl
-                , method = Left POST
-                , timeout = Just (Milliseconds 60_000.0)
-                , content = Just $ formURLEncoded $ FormURLEncoded formFields
-                , responseFormat = ResponseFormat.json
-                }
-        TokenResponse tokenResp <- handleResponse mresponse
-        now <- liftEffect nowDateTime
-        let
-          -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
-          -- one claimed to allow for clock mismatches.
-          offset = Seconds $ Int.toNumber tokenResp.expiresIn - 30.0
-
-          expiry = fromMaybe now $ DateTime.adjust offset now
-
-          creds =
-            Credentials
-              { accessToken: tokenResp.accessToken
-              , refreshToken: tokenResp.refreshToken
-              , expiry
-              , user
-              }
-        lift $ setCredentials creds
-        lift $ scheduleRefresh offset
-        -- Release the lock.
-        liftAff $ AVar.put unit authInstance.fetchLock
-        pure creds
+      result <- runFetch
+      -- Release the lock.
+      liftAff $ AVar.put unit authInstance.fetchLock
+      pure result
   where
   handleResponse = case _ of
     Left err -> throwError $ AX.printError err
@@ -226,6 +324,39 @@ fetchToken user formFields = do
 
     statusBadRequest (StatusCode n) = 400 == n
 
+  runFetch =
+    runExceptT do
+      mresponse <-
+        liftAff
+          $ AX.request
+          $ AX.defaultRequest
+              { url = tokenUrl
+              , method = Left POST
+              , timeout = Just (Milliseconds 60_000.0)
+              , content = Just $ formURLEncoded $ FormURLEncoded formFields
+              , responseFormat = ResponseFormat.json
+              }
+      TokenResponse tokenResp <- handleResponse mresponse
+      now <- liftEffect nowDateTime
+      let
+        -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
+        -- one claimed to allow for clock mismatches.
+        offset = Seconds $ Int.toNumber tokenResp.expiresIn - 30.0
+
+        expiry = fromMaybe now $ DateTime.adjust offset now
+
+        creds =
+          Credentials
+            { accessToken: tokenResp.accessToken
+            , refreshToken: tokenResp.refreshToken
+            , expiry
+            , user
+            }
+      lift do
+        setCredentials creds
+        when schedule $ scheduleRefresh
+      pure creds
+
 login ::
   forall f m.
   MonadAff m =>
@@ -233,7 +364,7 @@ login ::
   String -> String -> m (Either Error Credentials)
 login user pass = do
   result <-
-    fetchToken user
+    fetchToken user true
       [ Tuple "grant_type" (Just "password")
       , Tuple "username" (Just user)
       , Tuple "password" (Just pass)
@@ -250,7 +381,7 @@ refresh ::
   String -> String -> m (Either Error Credentials)
 refresh user refreshToken = do
   result <-
-    fetchToken user
+    fetchToken user true
       [ Tuple "grant_type" (Just "refresh_token")
       , Tuple "refresh_token" (Just refreshToken)
       ]
@@ -272,9 +403,9 @@ getActiveCredentials ::
   m (Either Error Credentials)
 getActiveCredentials =
   runExceptT do
-    mcreds <- lift getCredentials
+    mCreds <- lift getCredentials
     now <- liftEffect nowDateTime
-    case mcreds of
+    case mCreds of
       Just (Credentials creds)
         | creds.expiry > now -> pure (Credentials creds)
         | otherwise -> ExceptT $ refresh creds.user creds.refreshToken
@@ -290,27 +421,60 @@ getAuthorizationHeader =
     Credentials creds <- ExceptT getActiveCredentials
     pure $ RequestHeader "Authorization" ("Bearer " <> creds.accessToken)
 
+authInstanceStorageKey :: String
+authInstanceStorageKey = "auth-instance"
+
 -- Initializes the authentication mechanism. Intended to be called on
 -- application start. This will pick up any existing credentials and ensure they
 -- start getting refreshed.
 initialize :: forall f m. MonadAff m ⇒ CredentialStore f m ⇒ m Unit
-initialize = scheduleRefresh mempty
+initialize = do
+  whenM (not <$> credentialsAreReadOnly) do
+    -- Write the instance ID to session storage. This will help avoid duplicate
+    -- refreshes when doing hot-reloading.
+    AuthInstance { id } <- getAuthInstance
+    liftEffect
+      $ Html.window
+      >>= HtmlWindow.sessionStorage
+      >>= HtmlStorage.setItem authInstanceStorageKey (UUID.toString id)
+    -- Schedule an access token refresh.
+    scheduleRefresh
 
 scheduleRefresh ::
-  forall f m. MonadAff m ⇒ CredentialStore f m ⇒ Seconds → m Unit
-scheduleRefresh (Seconds expiresIn) = void $ fork startRefreshJob
+  forall f m. MonadAff m ⇒ CredentialStore f m ⇒ m Unit
+scheduleRefresh = do
+  mCreds <- getCredentials
+  case mCreds of
+    Nothing -> pure unit
+    Just (Credentials { expiry }) -> do
+      now <- liftEffect nowDateTime
+      let
+        expiresIn = DateTime.diff expiry now
+      void $ fork $ startRefreshJob expiresIn
   where
-  startRefreshJob :: MonadAff m => CredentialStore f m => m Unit
-  startRefreshJob = do
-    when (expiresIn > 0.0) do
-      liftAff $ delay $ Milliseconds (expiresIn * 1000.0)
-    mcreds <- getCredentials
-    case mcreds of
-      Nothing -> pure unit
-      Just (Credentials { user, refreshToken }) -> do
-        refreshResult <- refresh user refreshToken
-        liftEffect
-          $ Console.log
-          $ case refreshResult of
-              Left err -> "Error refreshing access token: " <> err
-              Right _ -> "Access token refreshed"
+  startRefreshJob :: MonadAff m => CredentialStore f m => Milliseconds -> m Unit
+  startRefreshJob expiresIn = do
+    liftAff $ delay $ expiresIn
+    -- If we are still the active instance then perform the actual refresh. We
+    -- may not be the active, e.g., due to hot-reloading substituting the SOFA
+    -- instance under our feet.
+    whenM isActiveInstance do
+      mCreds <- getCredentials
+      case mCreds of
+        Nothing -> pure unit
+        Just (Credentials { user, refreshToken }) -> do
+          refreshResult <- refresh user refreshToken
+          liftEffect
+            $ Console.log
+            $ case refreshResult of
+                Left err -> "Error refreshing access token: " <> err
+                Right _ -> "Access token refreshed"
+
+  isActiveInstance = do
+    storedId <-
+      liftEffect
+        $ Html.window
+        >>= HtmlWindow.sessionStorage
+        >>= HtmlStorage.getItem authInstanceStorageKey
+    AuthInstance { id: ourId } <- getAuthInstance
+    pure $ storedId == Just (UUID.toString ourId)

@@ -17,12 +17,15 @@ import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
-import Sofa.Data.Auth (class CredentialStore, AuthEvent(..), Credentials(..), credentialsAreReadOnly, getAuthEventEmitter, getCredentials, login, logout, toEmitter)
+import Sofa.Data.Auth (class CredentialStore, AuthEvent(..), credentialsAreReadOnly, getAuthEventEmitter, getCredentials, getUser, login, logout, mkSsoAuthorizeUrl, toEmitter)
 import Sofa.Data.Auth as Auth
 import Sofa.Data.Loadable (Loadable(..), isLoading)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
+import Web.HTML as Html
+import Web.HTML.Location as HtmlLocation
+import Web.HTML.Window as HtmlWindow
 
 type Slot id
   = forall query output. H.Slot query output id
@@ -213,9 +216,15 @@ handleAction = case _ of
       st =
         maybe
           LoggedOut
-          (\(Credentials { user }) -> LoggedIn { readOnly, user })
+          (\creds -> LoggedIn { readOnly, user: getUser creds })
           credentials
     H.put st
+  SetState (LoggingIn _) ->
+    H.liftEffect do
+      authorizeUrl <- mkSsoAuthorizeUrl
+      Html.window
+        >>= HtmlWindow.location
+        >>= HtmlLocation.assign authorizeUrl
   SetState st -> H.put st
   Login event -> do
     H.liftEffect $ Event.preventDefault event

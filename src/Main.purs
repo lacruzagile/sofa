@@ -12,7 +12,7 @@ import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Router as Router
 import Sofa.Component.Alerts as Alert
-import Sofa.Data.Auth (mkAuthEventEmitter, mkAuthInstance)
+import Sofa.Data.Auth (handleSsoRedirect, mkAuthEventEmitter, mkAuthInstance)
 import Sofa.Data.Deployment (detectDeployment, getCrmQuoteId)
 import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
@@ -32,6 +32,7 @@ main = do
     alertSink <- Alert.mkAlertSink
     let
       env = { deployment, alertSink, authEventEmitter, authInstance }
+    runAppM env handleSsoRedirect
     awaitLoad
     mBody <- HA.selectElement (QuerySelector "#sofa-app")
     case mBody of
