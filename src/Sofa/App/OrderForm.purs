@@ -520,32 +520,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       body
         [ HH.label_
             [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Solution" ]
-            , HH.slot
-                (Proxy :: Proxy "selectSolution")
-                secIdx
-                Select.component
-                ( Select.defaultInput
-                    { values =
-                      let
-                        notSameSolutionId id' =
-                          maybe
-                            true
-                            (\{ solution: SS.Solution { id } } -> id' /= id)
-
-                        isSolutionAvailable id = A.all (notSameSolutionId id) sof.orderForm.sections
-
-                        -- Filters out solutions that are already used for other
-                        -- order sections.
-                        filterAvailableSolutions = Map.filterKeys isSolutionAvailable
-                      in
-                        map
-                          (\(Tuple i s) -> Tuple (HH.text $ solutionLabel s) i)
-                          $ Map.toUnfoldable
-                          $ filterAvailableSolutions pc.solutions
-                    , noSelectionText = "Please choose a solution"
-                    }
-                )
-                actionSetSolution
+            , renderSelectSolution Nothing
             ]
         ]
     Just sec ->
@@ -599,6 +574,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           (actionSetPriceBook priceBooks)
                       ]
                 ]
+            , renderSelectSolution (Just sec.solution)
             , renderOrderLines sec.solution sec.orderLines
             , HH.div
                 [ Css.classes
@@ -661,6 +637,37 @@ render state = HH.section_ [ HH.article_ renderContent ]
             }
       )
         $ A.index priceBooks i
+
+    renderSelectSolution selectedSolution
+      | not isInDraft = HH.text ""
+      | otherwise =
+        HH.slot
+          (Proxy :: Proxy "selectSolution")
+          secIdx
+          Select.component
+          ( Select.defaultInput
+              { selected = (\(SS.Solution { id }) -> id) <$> selectedSolution
+              , values =
+                let
+                  notSameSolutionId id' =
+                    maybe
+                      true
+                      (\{ solution: SS.Solution { id } } -> id' /= id)
+
+                  isSolutionAvailable id = A.all (notSameSolutionId id) sof.orderForm.sections
+
+                  -- Filters out solutions that are already used for other
+                  -- order sections.
+                  filterAvailableSolutions = Map.filterKeys isSolutionAvailable
+                in
+                  map
+                    (\(Tuple i s) -> Tuple (HH.text $ solutionLabel s) i)
+                    $ Map.toUnfoldable
+                    $ filterAvailableSolutions pc.solutions
+              , noSelectionText = "Please choose a solution"
+              }
+          )
+          actionSetSolution
 
     renderOrderLines sol orderLines =
       HH.div
