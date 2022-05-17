@@ -572,9 +572,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ HH.div [ Css.class_ "grow" ]
                     [ HH.h2
                         [ Css.class_ "mt-0" ]
-                        [ HH.text "Solution "
-                        , HH.text $ show $ secIdx + 1
-                        , HH.text " – "
+                        [ HH.text "Solution – "
                         , HH.text $ solutionLabel sec.solution
                         ]
                     ]
@@ -743,7 +741,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ HH.td [ HP.colSpan 3, Css.class_ "p-2" ]
               [ HH.span
                   [ Css.class_ "text-tropical-500" ]
-                  [ HH.text "Solution ", HH.text $ show $ sectionIndex + 1 ]
+                  [ HH.text "Solution" ]
               , HH.br_
               , HH.text $ fromMaybe (show sol.id) sol.title
               ]
