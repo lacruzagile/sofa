@@ -265,7 +265,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         SS.OlsCancelled -> "bg-informative-200"
     in
       HH.span
-        [ Css.classes [ "nectary-tag", "w-fit", color ] ]
+        [ Css.classes [ "nectary-tag", "rounded-sm", "w-fit", color ] ]
         [ wrap (SS.prettyOrderLineStatus status) ]
 
   renderCharges ::
