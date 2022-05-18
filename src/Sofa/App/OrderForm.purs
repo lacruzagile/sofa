@@ -41,7 +41,6 @@ import Sofa.App.OrderForm.SelectOrderStatus as SelectOrderStatus
 import Sofa.App.OrderForm.SelectProduct as SelectProduct
 import Sofa.App.OrderForm.Seller as Seller
 import Sofa.App.OrderForm.Widget.AssetConfigLink (SkuConfigs)
-import Sofa.App.Requests (deleteFile, deleteOrder, getOrder, getOrderForQuote, getProductCatalog, patchOrder, postOrder, postOrderFulfillment)
 import Sofa.App.Requests as Requests
 import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
@@ -1277,7 +1276,7 @@ loadCatalog ::
   H.HalogenM State Action slots output m Unit
 loadCatalog crmQuoteId = do
   H.put $ Initialized Loading
-  productCatalog <- H.liftAff getProductCatalog
+  productCatalog <- H.liftAff Requests.getProductCatalog
   let
     res =
       ( \(pc :: SS.ProductCatalog) ->
@@ -1476,7 +1475,7 @@ loadExisting ::
   H.HalogenM State Action slots output m Unit
 loadExisting original@(SS.OrderForm orderForm) = do
   H.put $ Initialized Loading
-  productCatalog <- H.liftAff getProductCatalog
+  productCatalog <- H.liftAff Requests.getProductCatalog
   H.put $ Initialized $ convertOrderForm =<< productCatalog
   where
   convertOrderForm :: SS.ProductCatalog -> Loadable StateOrderForm
@@ -1624,7 +1623,7 @@ deleteFileAttachments ::
   H.HalogenM State Action slots output m Unit
 deleteFileAttachments fileIds =
   sequential
-    $ for_ fileIds (parallel <<< H.lift <<< deleteFile)
+    $ for_ fileIds (parallel <<< H.lift <<< Requests.deleteFile)
 
 toPricingCurrency :: SS.Commercial -> Maybe SS.PricingCurrency
 toPricingCurrency (SS.Commercial { billingCurrency }) = Just billingCurrency
@@ -1722,11 +1721,11 @@ handleAction = case _ of
       Initializing (ExistingOrder orderForm) -> loadExisting orderForm
       Initializing (ExistingOrderId id) -> do
         H.put $ Initialized Loading
-        orderForm <- H.lift $ getOrder id
+        orderForm <- H.lift $ Requests.getOrder id
         load orderForm
       Initializing (ExistingCrmQuoteId crmQuoteId) -> do
         H.put $ Initialized Loading
-        orderForm <- H.lift $ getOrderForQuote crmQuoteId
+        orderForm <- H.lift $ Requests.getOrderForQuote crmQuoteId
         load orderForm
       _ -> pure unit
   SetOrderDisplayName name ->
@@ -2146,7 +2145,7 @@ handleAction = case _ of
             }
         }
       ) -> do
-        result <- H.lift $ deleteOrder orderId
+        result <- H.lift $ Requests.deleteOrder orderId
         case result of
           Error msg -> H.liftEffect $ Console.error $ "Error deleting order: " <> msg
           Loaded _ -> H.liftEffect $ Console.log $ "Deleted order: " <> show orderId
@@ -2176,8 +2175,8 @@ handleAction = case _ of
 
       run json =
         maybe'
-          (\_ -> postOrder json)
-          (\id -> patchOrder id json)
+          (\_ -> Requests.postOrder json)
+          (\id -> Requests.patchOrder id json)
     case st of
       Initialized (Loaded st') -> case toJson st'.orderForm of
         Left msg -> do
@@ -2203,6 +2202,6 @@ handleAction = case _ of
         }
       ) -> do
         modifyInitialized $ _ { orderFulfillInFlight = true }
-        order <- H.lift $ postOrderFulfillment id
+        order <- H.lift $ Requests.postOrderFulfillment id
         ld order
       _ -> pure unit
