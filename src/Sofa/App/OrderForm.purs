@@ -19,6 +19,7 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.String as S
 import Data.Traversable (for_, sequence, traverse)
+import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Tuple.Nested (tuple3, uncurry3)
 import Data.UUID (UUID)
@@ -53,6 +54,7 @@ import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
 import Sofa.Data.Currency (mkCurrency, unsafeMkCurrency)
+import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Sofa.Data.SmartSpec as SS
@@ -78,8 +80,8 @@ type Slots
     , commercial :: Commercial.Slot Unit
     , notes :: Notes.Slot Unit
     , observers :: Observers.Slot Unit
-    , selectSolution :: Select.Slot Int String -- ID is section ID, output is solution ID.
-    , selectPriceBook :: Select.Slot Int Int -- ID is section index, output is price book index.
+    , selectSolution :: Select.Slot OrderSectionId String -- Output is solution ID.
+    , selectPriceBook :: Select.Slot OrderSectionId Int -- Output is price book index.
     , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineIndex
     , productConfig :: ConfigSchema.Slot ConfigIndex
@@ -120,12 +122,12 @@ type OrderForm
     , observers :: Array SS.OrderObserver
     , notes :: Array SS.OrderNote
     , summary :: SubTotal
-    , sections :: Array (Maybe OrderSection)
+    , sections :: Array OrderSection
     }
 
 type OrderSection
-  = { orderSectionId :: Maybe SS.OrderSectionId
-    , solution :: SS.Solution
+  = { orderSectionId :: OrderSectionId
+    , solution :: Maybe SS.Solution
     , priceBook :: Maybe PriceBook
     , orderLines :: Array (Maybe OrderLine)
     -- ^ Order lines of the product options.
@@ -151,11 +153,14 @@ type PriceBook
     , rateCards :: Maybe (Map SS.SkuCode SS.RateCard) -- ^ Maybe a map from SKU to rate cards.
     }
 
+type OrderSectionId
+  = IEId SS.OrderSectionId
+
 type OrderLineIndex
-  = { sectionIndex :: Int, orderLineIndex :: Int }
+  = { orderSectionId :: OrderSectionId, orderLineIndex :: Int }
 
 type ConfigIndex
-  = { sectionIndex :: Int
+  = { orderSectionId :: OrderSectionId
     , orderLineIndex :: Int
     , configIndex :: Int
     }
@@ -175,42 +180,56 @@ data Action
   | SetObservers (Array SS.OrderObserver)
   | SetNotes (Array SS.OrderNote)
   | SetOrderStatus SS.OrderStatus
-  | GotoSection { sectionIndex :: Int }
-  | GotoOrderLine { sectionIndex :: Int, orderLineIndex :: Int }
+  | GotoSection { orderSectionId :: OrderSectionId }
+  | GotoOrderLine
+    { orderSectionId :: OrderSectionId
+    , orderLineIndex :: Int
+    }
   | AddSection
-  | SectionSetSolution { sectionIndex :: Int, solutionId :: String }
-  | SectionSetPriceBook { sectionIndex :: Int, priceBook :: Maybe PriceBook }
-  | RemoveSection { sectionIndex :: Int } Event.MouseEvent
-  | AddOrderLine { sectionIndex :: Int }
+  | SectionSetSolution
+    { orderSectionId :: OrderSectionId
+    , solutionId :: String
+    }
+  | SectionSetPriceBook
+    { orderSectionId :: OrderSectionId
+    , priceBook :: Maybe PriceBook
+    }
+  | RemoveSection { orderSectionId :: OrderSectionId } Event.MouseEvent
+  | AddOrderLine { orderSectionId :: OrderSectionId }
   | OrderLineSetProduct
-    { sectionIndex :: Int, orderLineIndex :: Int, product :: SS.Product
+    { orderSectionId :: OrderSectionId
+    , orderLineIndex :: Int
+    , product :: SS.Product
     }
   | OrderLineSetQuantity
-    { sectionIndex :: Int
+    { orderSectionId :: OrderSectionId
     , orderLineIndex :: Int
     , configIndex :: Int
     , quantity :: Int
     }
-  | OrderLineAddConfig OrderLineIndex
+  | OrderLineAddConfig
+    { orderSectionId :: OrderSectionId
+    , orderLineIndex :: Int
+    }
   | OrderLineSetConfig
-    { sectionIndex :: Int
+    { orderSectionId :: OrderSectionId
     , orderLineIndex :: Int
     , configIndex :: Int
     , alter :: Maybe SS.ConfigValue -> SS.ConfigValue
     }
   | OrderLineRemoveConfig
-    { sectionIndex :: Int
+    { orderSectionId :: OrderSectionId
     , orderLineIndex :: Int
     , configIndex :: Int
     }
   | OrderLineSetCharges
-    { sectionIndex :: Int
+    { orderSectionId :: OrderSectionId
     , orderLineIndex :: Int
     , charges :: Array SS.Charge
     , estimatedUsage :: QuantityMap
     }
   | RemoveOrderLine
-    { sectionIndex :: Int, orderLineIndex :: Int }
+    { orderSectionId :: OrderSectionId, orderLineIndex :: Int }
     Event.MouseEvent
   | DiscardOrder -- ^ Discard the currently loaded order.
   | CreateUpdateOrder -- ^ Create or update the current order.
@@ -269,14 +288,18 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ wrap (SS.prettyOrderLineStatus status) ]
 
   renderCharges ::
-    OrderLineIndex ->
+    OrderSectionId ->
+    Int ->
     Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
     QuantityMap ->
     Array SS.Charge ->
     H.ComponentHTML Action Slots m
-  renderCharges olIdx unitMap defaultCurrency estimatedUsage charges =
-    HH.slot Charge.proxy olIdx Charge.component
+  renderCharges orderSectionId olIdx unitMap defaultCurrency estimatedUsage charges =
+    HH.slot
+      Charge.proxy
+      { orderSectionId, orderLineIndex: olIdx }
+      Charge.component
       { unitMap
       , defaultCurrency
       , charges
@@ -286,21 +309,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
       }
       ( \result ->
           OrderLineSetCharges
-            { sectionIndex: olIdx.sectionIndex
-            , orderLineIndex: olIdx.orderLineIndex
+            { orderSectionId
+            , orderLineIndex: olIdx
             , charges: result.charges
             , estimatedUsage: result.estimatedUsage
             }
       )
 
   renderChargeDetails ::
-    OrderLineIndex ->
+    OrderSectionId ->
+    Int ->
     Charge.ChargeUnitMap ->
     SS.ChargeCurrency ->
     QuantityMap ->
     Maybe (Array SS.Charge) ->
     H.ComponentHTML Action Slots m
-  renderChargeDetails olIdx unitMap defaultCurrency estimatedUsage = maybe empty withCharges
+  renderChargeDetails orderSectionId olIdx unitMap defaultCurrency estimatedUsage = maybe empty withCharges
     where
     empty = HH.text ""
 
@@ -311,21 +335,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ HH.summary
               [ Css.classes [ "text-lg", "cursor-pointer" ] ]
               [ HH.text "Charges" ]
-          , renderCharges olIdx unitMap defaultCurrency estimatedUsage charges
+          , renderCharges orderSectionId olIdx unitMap defaultCurrency estimatedUsage charges
           ]
 
   renderOrderLine ::
     SS.Solution ->
     SS.ChargeCurrency ->
-    OrderLineIndex ->
+    OrderSectionId ->
+    Int ->
     Maybe OrderLine ->
     H.ComponentHTML Action Slots m
-  renderOrderLine (SS.Solution sol) defaultCurrency olIdx = case _ of
+  renderOrderLine (SS.Solution sol) defaultCurrency orderSectionId olIdx = case _ of
     Nothing ->
       body
         [ HH.label_
             [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Product" ]
-            , HH.slot SelectProduct.proxy olIdx SelectProduct.component
+            , HH.slot
+                SelectProduct.proxy
+                { orderSectionId, orderLineIndex: olIdx }
+                SelectProduct.component
                 { selected: Nothing
                 , available:
                     A.filter
@@ -334,8 +362,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 }
                 ( \product ->
                     OrderLineSetProduct
-                      { sectionIndex: olIdx.sectionIndex
-                      , orderLineIndex: olIdx.orderLineIndex
+                      { orderSectionId
+                      , orderLineIndex: olIdx
                       , product
                       }
                 )
@@ -360,7 +388,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-8", "items-center" ] ]
                 [ HH.div [ Css.classes [ "grow", "text-lg", "font-semibold" ] ]
                     [ HH.text "Product "
-                    , HH.text $ show $ olIdx.orderLineIndex + 1
+                    , HH.text $ show $ olIdx + 1
                     , HH.text " – "
                     , renderProductTitle
                     ]
@@ -381,7 +409,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         $ head ol.configs
                     ]
                 ]
-            , renderChargeDetails olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
+            , renderChargeDetails orderSectionId olIdx ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
             ]
           <> ( if isNothing product.orderConfigSchema then
                 []
@@ -398,7 +426,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     body subBody =
       HH.div
         [ Css.classes [ "p-6", "border", "border-snow-800", "rounded-lg" ]
-        , HP.ref $ orderLineRefLabel olIdx.sectionIndex olIdx.orderLineIndex
+        , HP.ref $ orderLineRefLabel orderSectionId olIdx
         ]
         subBody
 
@@ -415,8 +443,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , HE.onValueChange
             $ \v ->
                 OrderLineSetQuantity
-                  { sectionIndex: olIdx.sectionIndex
-                  , orderLineIndex: olIdx.orderLineIndex
+                  { orderSectionId
+                  , orderLineIndex: olIdx
                   , configIndex: cfgIdx
                   , quantity: fromMaybe olc.quantity $ Int.fromString v
                   }
@@ -443,8 +471,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     ]
                 , HE.onClick \_ ->
                     OrderLineRemoveConfig
-                      { sectionIndex: olIdx.sectionIndex
-                      , orderLineIndex: olIdx.orderLineIndex
+                      { orderSectionId
+                      , orderLineIndex: olIdx
                       , configIndex: cfgIdx
                       }
                 ]
@@ -480,8 +508,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ( \schema ->
                       HH.slot
                         (Proxy :: Proxy "productConfig")
-                        { sectionIndex: olIdx.sectionIndex
-                        , orderLineIndex: olIdx.orderLineIndex
+                        { orderSectionId
+                        , orderLineIndex: olIdx
                         , configIndex: cfgIdx
                         }
                         ConfigSchema.component
@@ -495,12 +523,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                                   Initialized (Loaded { orderForm: { commercial } }) -> commercial
                                   _ -> Nothing
                             }
-                        , getConfigs: orderSchemaGetConfigs state olIdx
+                        , getConfigs: orderSchemaGetConfigs state orderSectionId
                         }
                         ( \value ->
                             OrderLineSetConfig
-                              { sectionIndex: olIdx.sectionIndex
-                              , orderLineIndex: olIdx.orderLineIndex
+                              { orderSectionId
+                              , orderLineIndex: olIdx
                               , configIndex: cfgIdx
                               , alter: const value
                               }
@@ -512,10 +540,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderSection ::
     StateOrderForm ->
-    Int ->
-    Maybe OrderSection ->
+    OrderSection ->
     H.ComponentHTML Action Slots m
-  renderSection sof secIdx = case _ of
+  renderSection sof sec = case sec.solution of
     Nothing ->
       body
         [ HH.label_
@@ -523,10 +550,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , renderSelectSolution Nothing
             ]
         ]
-    Just sec ->
+    Just solution@(SS.Solution sol) ->
       let
-        SS.Solution sol = sec.solution
-
         priceBooks = fromMaybe [] $ Map.lookup sol.id sof.priceBooks
 
         priceBookOpts =
@@ -548,7 +573,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     [ HH.h2
                         [ Css.class_ "mt-0" ]
                         [ HH.text "Solution – "
-                        , HH.text $ solutionLabel sec.solution
+                        , HH.text $ solutionLabel solution
                         ]
                     ]
                 , if A.null priceBookOpts then
@@ -558,7 +583,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Price book" ]
                       , HH.slot
                           (Proxy :: Proxy "selectPriceBook")
-                          secIdx
+                          sec.orderSectionId
                           Select.component
                           ( Select.defaultInput
                               { selected =
@@ -574,8 +599,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           (actionSetPriceBook priceBooks)
                       ]
                 ]
-            , renderSelectSolution (Just sec.solution)
-            , renderOrderLines sec.solution sec.orderLines
+            , renderSelectSolution (Just solution)
+            , renderOrderLines solution sec.orderLines
             , HH.div
                 [ Css.classes
                     [ "flex"
@@ -596,7 +621,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           , "px-6"
                           , "gap-x-4"
                           ]
-                      , HE.onClick \_ -> AddOrderLine { sectionIndex: secIdx }
+                      , HE.onClick \_ ->
+                          AddOrderLine
+                            { orderSectionId: sec.orderSectionId
+                            }
                       ]
                       [ Icon.add
                           [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
@@ -617,7 +645,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     body subBody =
       HH.div
         [ Css.classes [ "flex", "flex-col", "gap-6", "p-6", "rounded-md", "bg-snow-100" ]
-        , HP.ref $ sectionRefLabel secIdx
+        , HP.ref $ sectionRefLabel sec.orderSectionId
         ]
         subBody
 
@@ -625,14 +653,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     actionSetSolution solId =
       SectionSetSolution
-        { sectionIndex: secIdx
+        { orderSectionId: sec.orderSectionId
         , solutionId: solId
         }
 
     actionSetPriceBook priceBooks i =
       ( \pb ->
           SectionSetPriceBook
-            { sectionIndex: secIdx
+            { orderSectionId: sec.orderSectionId
             , priceBook: pb
             }
       )
@@ -643,16 +671,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | otherwise =
         HH.slot
           (Proxy :: Proxy "selectSolution")
-          secIdx
+          sec.orderSectionId
           Select.component
           ( Select.defaultInput
               { selected = (\(SS.Solution { id }) -> id) <$> selectedSolution
               , values =
                 let
-                  notSameSolutionId id' =
+                  notSameSolutionId id' { solution } =
                     maybe
                       true
-                      (\{ solution: SS.Solution { id } } -> id' /= id)
+                      (\(SS.Solution { id }) -> id' /= id)
+                      solution
 
                   isSolutionAvailable id = A.all (notSameSolutionId id) sof.orderForm.sections
 
@@ -674,7 +703,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ Css.classes [ "flex", "flex-col", "gap-6" ] ]
         (A.mapWithIndex renderOrderLine' orderLines)
       where
-      renderOrderLine' olIdx = renderOrderLine sol defaultCurrency { sectionIndex: secIdx, orderLineIndex: olIdx }
+      renderOrderLine' olIdx =
+        renderOrderLine
+          sol
+          defaultCurrency
+          sec.orderSectionId
+          olIdx
 
   renderSectionSummary ::
     StateOrderForm ->
@@ -716,7 +750,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       ]
                   ]
                 else
-                  A.concat $ A.mapWithIndex sectionRow sof.orderForm.sections
+                  A.concat $ sectionRow <$> sof.orderForm.sections
           ]
       ]
     where
@@ -738,31 +772,36 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
 
-    sectionRow _ Nothing = [ HH.text "" ]
-
-    sectionRow sectionIndex (Just { solution: SS.Solution sol, orderLines }) =
-      [ HH.tr
-          [ Css.classes [ "border-b", "border-stormy-100", "hover:bg-snow-500", "cursor-pointer" ]
-          , HE.onClick \_ -> GotoSection { sectionIndex }
-          ]
-          [ HH.td [ HP.colSpan 3, Css.class_ "p-2" ]
-              [ HH.span
-                  [ Css.class_ "text-tropical-500" ]
-                  [ HH.text "Solution" ]
-              , HH.br_
-              , HH.text $ fromMaybe (show sol.id) sol.title
-              ]
-          , tdDelete $ RemoveSection { sectionIndex }
-          ]
-      ]
-        <> A.mapWithIndex (orderRow sectionIndex) orderLines
+    sectionRow { orderSectionId, solution, orderLines } = case solution of
+      Nothing -> [ HH.text "" ]
+      Just (SS.Solution sol) ->
+        [ HH.tr
+            [ Css.classes
+                [ "border-b"
+                , "border-stormy-100"
+                , "hover:bg-snow-500"
+                , "cursor-pointer"
+                ]
+            , HE.onClick \_ -> GotoSection { orderSectionId }
+            ]
+            [ HH.td [ HP.colSpan 3, Css.class_ "p-2" ]
+                [ HH.span
+                    [ Css.class_ "text-tropical-500" ]
+                    [ HH.text "Solution" ]
+                , HH.br_
+                , HH.text $ fromMaybe (show sol.id) sol.title
+                ]
+            , tdDelete $ RemoveSection { orderSectionId }
+            ]
+        ]
+          <> A.mapWithIndex (orderRow orderSectionId) orderLines
 
     orderRow _ _ Nothing = HH.text ""
 
-    orderRow sectionIndex orderLineIndex (Just ol@{ product: SS.Product prod }) =
+    orderRow orderSectionId orderLineIndex (Just ol@{ product: SS.Product prod }) =
       HH.tr
         [ Css.classes [ "border-b", "border-stormy-100", "hover:bg-snow-500", "cursor-pointer" ]
-        , HE.onClick \_ -> GotoOrderLine { sectionIndex, orderLineIndex }
+        , HE.onClick \_ -> GotoOrderLine { orderSectionId, orderLineIndex }
         ]
         [ HH.td [ Css.classes [ "p-2", "pl-12" ] ]
             [ HH.span
@@ -777,16 +816,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , HH.td
             [ Css.classes [ "p-2", "px-5" ] ]
             [ HH.text $ show $ orderLineQuantity ol ]
-        , tdDelete $ RemoveOrderLine { sectionIndex, orderLineIndex }
+        , tdDelete $ RemoveOrderLine { orderSectionId, orderLineIndex }
         ]
 
   renderSections ::
     StateOrderForm ->
-    Array (Maybe OrderSection) ->
+    Array OrderSection ->
     H.ComponentHTML Action Slots m
   renderSections sof secs =
     HH.div [ Css.classes [ "flex", "flex-col", "gap-5" ] ]
-      $ A.mapWithIndex (renderSection sof) secs
+      $ renderSection sof
+      <$> secs
 
   renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
   renderOrderSectionSummary = Widgets.subTotalTable ""
@@ -1063,11 +1103,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
             _ <- sof.orderForm.seller
             _ <- sof.orderForm.buyer
             _ <- sof.orderForm.commercial
-            _ <- traverse checkOrderSection =<< sequence sof.orderForm.sections
+            _ <- traverse checkOrderSection sof.orderForm.sections
             pure false
       where
       checkOrderSection os = do
-        _ <- _.uri $ unwrap $ os.solution
+        SS.Solution solution <- os.solution
+        _ <- solution.uri
         _ <- os.priceBook
         pure unit
 
@@ -1139,17 +1180,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
 
+-- | Fetches all configurations within the given order section.
 orderSchemaGetConfigs ∷
   State ->
-  OrderLineIndex ->
+  OrderSectionId ->
   Unit ->
   Array SkuConfigs
-orderSchemaGetConfigs state olIdx _ = case state of
+orderSchemaGetConfigs state orderSectionId _ = case state of
   Initialized (Loaded { orderForm: { sections } }) -> do
-    section <-
-      maybe [] A.singleton
-        $ join
-        $ A.index sections olIdx.sectionIndex
+    section <- maybe [] A.singleton $ findSection orderSectionId sections
     Tuple oIdx mOrderLine <- A.mapWithIndex Tuple section.orderLines
     case mOrderLine of
       Nothing -> []
@@ -1174,9 +1213,7 @@ toJson orderForm = do
   commercial <- note "Missing commercial" $ orderForm.commercial
   buyer <- note "Missing buyer" $ orderForm.buyer
   seller <- note "Missing seller" $ orderForm.seller
-  sections <-
-    traverse toOrderSection
-      =<< note "Incomplete order section" (sequence orderForm.sections)
+  sections <- traverse toOrderSection orderForm.sections
   pure
     $ SS.OrderForm
         { id: (\(SS.OrderForm { id }) -> id) =<< orderForm.original
@@ -1214,12 +1251,16 @@ toJson orderForm = do
 
   toOrderSection :: OrderSection -> Either String SS.OrderSection
   toOrderSection os = do
-    solutionUri <- note "Missing solution URI" $ _.uri $ unwrap $ os.solution
+    solutionUri <-
+      note "Missing solution URI"
+        $ do
+            SS.Solution { uri } <- os.solution
+            uri
     basePriceBook <- note "Missing price book" $ toPriceBookRef solutionUri <$> os.priceBook
     orderLines <- sequence $ map (note "Incomplete order line" <<< map toOrderLine) os.orderLines
     pure
       $ SS.OrderSection
-          { orderSectionId: os.orderSectionId
+          { orderSectionId: toExternalId os.orderSectionId
           , basePriceBook
           , orderLines
           }
@@ -1388,27 +1429,34 @@ calcSubTotal os =
 calcTotal :: OrderForm -> OrderForm
 calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
   where
-  sumOrderSecs = A.foldl (\a b -> a <> conv b) mempty
-
-  conv = maybe mempty (\{ summary } -> summary)
+  sumOrderSecs = A.foldl (\acc { summary } -> acc <> summary) mempty
 
 orderLineQuantity :: OrderLine -> Quantity
 orderLineQuantity ol = foldl (\a (SS.OrderLineConfig b) -> a + b.quantity) 0 ol.configs
 
--- | Helper function to modify an indexed order section. The sub-total of the
+findSection :: OrderSectionId -> Array OrderSection -> Maybe OrderSection
+findSection secId = A.find (\{ orderSectionId } -> secId == orderSectionId)
+
+deleteSection :: OrderSectionId -> Array OrderSection -> Maybe (Array OrderSection)
+deleteSection secId sections = do
+  idx <- A.findIndex (\{ orderSectionId } -> secId == orderSectionId) sections
+  A.deleteAt idx sections
+
+-- | Helper function to modify an identified order section. The sub-total of the
 -- | modified section is updated.
-modifyOrderSection :: Int -> (OrderSection -> OrderSection) -> OrderForm -> OrderForm
-modifyOrderSection secIdx updateOrderSection order =
+modifyOrderSection :: OrderSectionId -> (OrderSection -> OrderSection) -> OrderForm -> OrderForm
+modifyOrderSection secId updateOrderSection order =
   order
     { sections =
-      fromMaybe order.sections
-        $ modifyAt secIdx (map (calcSubTotal <<< updateOrderSection)) order.sections
+      fromMaybe order.sections do
+        idx <- A.findIndex (\{ orderSectionId } -> secId == orderSectionId) order.sections
+        modifyAt idx (calcSubTotal <<< updateOrderSection) order.sections
     }
 
 -- | Helper function to modify an indexed order line.
-modifyOrderLine :: Int -> Int -> (OrderLine -> OrderLine) -> OrderForm -> OrderForm
-modifyOrderLine secIdx olIdx updateOrderLine =
-  modifyOrderSection secIdx \section ->
+modifyOrderLine :: OrderSectionId -> Int -> (OrderLine -> OrderLine) -> OrderForm -> OrderForm
+modifyOrderLine secId olIdx updateOrderLine =
+  modifyOrderSection secId \section ->
     section
       { orderLines =
         fromMaybe section.orderLines
@@ -1423,59 +1471,74 @@ loadExisting ::
 loadExisting original@(SS.OrderForm orderForm) = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff getProductCatalog
-  let
-    result = convertOrderForm <$> productCatalog
-  H.put $ Initialized result
+  H.put $ Initialized $ convertOrderForm =<< productCatalog
   where
-  convertOrderForm :: SS.ProductCatalog -> StateOrderForm
-  convertOrderForm productCatalog =
+  convertOrderForm :: SS.ProductCatalog -> Loadable StateOrderForm
+  convertOrderForm productCatalog = do
     let
+      -- The value to use as v5 UUID root namespace for generated internal IDs.
+      uuidRootNs = UUID.emptyUUID
+
       currency = toPricingCurrency orderForm.commercial
 
       priceBooks = mkPriceBooks productCatalog currency
-    in
-      { productCatalog
-      , currency
-      , priceBooks
-      , orderForm:
-          calcTotal
-            { original: Just original
-            , changed: false
-            , displayName: orderForm.displayName
-            , crmQuoteId: orderForm.crmQuoteId
-            , commercial: Just orderForm.commercial
-            , buyer: Just orderForm.buyer
-            , seller: Just orderForm.seller
-            , status: orderForm.status
-            , observers: orderForm.orderObservers
-            , notes: orderForm.orderNotes
-            , summary: mempty
-            , sections: map (convertOrderSection productCatalog priceBooks) orderForm.sections
-            }
-      , orderUpdateInFlight: false
-      , orderFulfillInFlight: false
-      }
+    sections <-
+      traverseWithIndex
+        (convertOrderSection productCatalog priceBooks uuidRootNs)
+        orderForm.sections
+    pure
+      $ { productCatalog
+        , currency
+        , priceBooks
+        , orderForm:
+            calcTotal
+              { original: Just original
+              , changed: false
+              , displayName: orderForm.displayName
+              , crmQuoteId: orderForm.crmQuoteId
+              , commercial: Just orderForm.commercial
+              , buyer: Just orderForm.buyer
+              , seller: Just orderForm.seller
+              , status: orderForm.status
+              , observers: orderForm.orderObservers
+              , notes: orderForm.orderNotes
+              , summary: mempty
+              , sections
+              }
+        , orderUpdateInFlight: false
+        , orderFulfillInFlight: false
+        }
 
-  convertOrderSection :: SS.ProductCatalog -> Map String (Array PriceBook) -> SS.OrderSection -> Maybe OrderSection
-  convertOrderSection (SS.ProductCatalog { solutions }) pbs (SS.OrderSection s) = do
+  convertOrderSection ::
+    SS.ProductCatalog ->
+    Map String (Array PriceBook) ->
+    UUID ->
+    Int ->
+    SS.OrderSection ->
+    Loadable OrderSection
+  convertOrderSection (SS.ProductCatalog { solutions }) pbs uuidNs idx (SS.OrderSection s) = do
     let
       SS.PriceBookRef pbRef = s.basePriceBook
-    solution <-
-      List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri)
+    solution@(SS.Solution { id: solId, priceBooks: solPbs }) <-
+      maybe' (\_ -> Error "No matching solution found") Loaded
+        $ List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri)
         $ Map.values solutions
-    let
-      SS.Solution sol = solution
-
-      priceBook =
-        if A.null sol.priceBooks then
-          mkNilPriceBook solution
-        else
-          A.find (\pb -> pb.id == pbRef.priceBookId) =<< Map.lookup sol.id pbs
+    priceBook <-
+      maybe' (\_ -> Error "No matching price book found") Loaded
+        $ if A.null solPbs then
+            mkNilPriceBook solution
+          else do
+            priceBooks <- Map.lookup solId pbs
+            A.find (\pb -> pb.id == pbRef.priceBookId) priceBooks
     pure
       $ calcSubTotal
-          { orderSectionId: s.orderSectionId
-          , solution
-          , priceBook
+          { orderSectionId:
+              maybe'
+                (\_ -> genInternalId' SS.OrderSectionId (show idx) uuidNs)
+                ExternalId
+                s.orderSectionId
+          , solution: Just solution
+          , priceBook: Just priceBook
           , orderLines: map (convertOrderLine solution) s.orderLines
           , summary: mempty
           }
@@ -1605,14 +1668,14 @@ mkNilPriceBook solution = do
     , rateCards: Nothing
     }
 
-sectionRefLabel :: Int -> H.RefLabel
-sectionRefLabel sectionIndex = H.RefLabel $ "section-" <> show sectionIndex
+sectionRefLabel :: OrderSectionId -> H.RefLabel
+sectionRefLabel sectionId = H.RefLabel $ "section-" <> show (toRawId sectionId)
 
-orderLineRefLabel :: Int -> Int -> H.RefLabel
-orderLineRefLabel sectionIndex orderLineIndex =
+orderLineRefLabel :: OrderSectionId -> Int -> H.RefLabel
+orderLineRefLabel orderSectionId orderLineIndex =
   H.RefLabel
     $ "orderline-"
-    <> show sectionIndex
+    <> show (toRawId orderSectionId)
     <> "-"
     <> show orderLineIndex
 
@@ -1696,11 +1759,10 @@ handleAction = case _ of
             resetSection sec =
               sec
                 { priceBook =
-                  let
-                    SS.Solution sol = sec.solution
-                  in
+                  do
+                    solution@(SS.Solution sol) <- sec.solution
                     if A.null sol.priceBooks then
-                      mkNilPriceBook sec.solution
+                      mkNilPriceBook solution
                     else
                       Nothing
                 , summary = mempty :: SubTotal
@@ -1724,7 +1786,7 @@ handleAction = case _ of
                     if st.currency == currency then
                       st.orderForm.sections
                     else
-                      map (map resetSection) st.orderForm.sections
+                      map resetSection st.orderForm.sections
                   }
               }
   SetObservers observers ->
@@ -1736,44 +1798,49 @@ handleAction = case _ of
   SetOrderStatus status ->
     modifyInitialized
       $ modifyOrderForm _ { status = status }
-  GotoSection { sectionIndex } -> scrollToElement $ sectionRefLabel sectionIndex
-  GotoOrderLine { sectionIndex, orderLineIndex } ->
+  GotoSection { orderSectionId } ->
     scrollToElement
-      $ orderLineRefLabel sectionIndex orderLineIndex
-  AddSection ->
+      $ sectionRefLabel orderSectionId
+  GotoOrderLine { orderSectionId, orderLineIndex } ->
+    scrollToElement
+      $ orderLineRefLabel orderSectionId orderLineIndex
+  AddSection -> do
+    sectionId <- H.liftEffect $ genInternalId SS.OrderSectionId
+    let
+      section =
+        { orderSectionId: sectionId
+        , solution: Nothing
+        , priceBook: Nothing
+        , orderLines: mempty
+        , summary: mempty
+        }
     modifyInitialized
-      $ modifyOrderForm \order -> order { sections = snoc order.sections Nothing }
-  SectionSetSolution { sectionIndex, solutionId } ->
-    modifyInitialized
-      $ \st ->
-          let
-            SS.ProductCatalog pc = st.productCatalog
-          in
-            st
-              { orderForm
-                { changed = true
-                , sections =
-                  fromMaybe st.orderForm.sections
-                    $ do
-                        solution <- Map.lookup solutionId pc.solutions
-                        modifyAt sectionIndex
-                          ( \sec ->
-                              Just
-                                { orderSectionId: _.orderSectionId =<< sec
-                                , solution: solution
-                                , priceBook: mkNilPriceBook solution
-                                , orderLines: [ Nothing ]
-                                , summary: mempty
-                                }
-                          )
-                          st.orderForm.sections
-                }
-              }
-  SectionSetPriceBook { sectionIndex, priceBook } ->
+      $ modifyOrderForm \order -> order { sections = snoc order.sections section }
+  SectionSetSolution { orderSectionId, solutionId } ->
+    modifyInitialized \state ->
+      let
+        SS.ProductCatalog pc = state.productCatalog
+
+        updateSection :: OrderSection -> OrderSection
+        updateSection section =
+          fromMaybe section do
+            solution <- Map.lookup solutionId pc.solutions
+            pure
+              $ section
+                  { solution = Just solution
+                  , priceBook = mkNilPriceBook solution
+                  , orderLines = [ Nothing ]
+                  , summary = (mempty :: SubTotal)
+                  }
+      in
+        modifyOrderForm
+          (modifyOrderSection orderSectionId updateSection)
+          state
+  SectionSetPriceBook { orderSectionId, priceBook } ->
     modifyInitialized
       $ modifyOrderForm
-      $ modifyOrderSection sectionIndex _ { priceBook = priceBook }
-  RemoveSection { sectionIndex } event -> do
+      $ modifyOrderSection orderSectionId _ { priceBook = priceBook }
+  RemoveSection { orderSectionId } event -> do
     -- Don't propagate the click to the underlying table row.
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     -- Verify that user really wants to delete the section.
@@ -1788,7 +1855,7 @@ handleAction = case _ of
       maybe' pure deleteFileAttachments
         $ case state of
             Initialized (Loaded { orderForm: { sections } }) -> do
-              section <- join $ A.index sections sectionIndex
+              section <- findSection orderSectionId sections
               pure $ findSectionFileIds section
             _ -> Nothing
       deleteResult <-
@@ -1796,8 +1863,8 @@ handleAction = case _ of
           $ maybe' (pure <<< Loaded) (uncurry deleteOrderSection)
           $ case state of
               Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
-                section <- join $ A.index sections sectionIndex
-                sectionId <- section.orderSectionId
+                section <- findSection orderSectionId sections
+                sectionId <- toExternalId section.orderSectionId
                 pure (Tuple orderId sectionId)
               _ -> Nothing
       case deleteResult of
@@ -1808,7 +1875,8 @@ handleAction = case _ of
             $ modifyOrderForm \order ->
                 order
                   { sections =
-                    fromMaybe order.sections $ A.deleteAt sectionIndex order.sections
+                    fromMaybe order.sections
+                      $ deleteSection orderSectionId order.sections
                   }
           H.lift
             $ Alerts.push
@@ -1820,12 +1888,12 @@ handleAction = case _ of
           H.lift
             $ Alerts.push
             $ Alert.errorAlert "Error deleting order section" errMsg
-  AddOrderLine { sectionIndex } -> do
+  AddOrderLine { orderSectionId } -> do
     modifyInitialized
       $ modifyOrderForm
-      $ modifyOrderSection sectionIndex \section ->
+      $ modifyOrderSection orderSectionId \section ->
           section { orderLines = snoc section.orderLines Nothing }
-  RemoveOrderLine { sectionIndex, orderLineIndex } event -> do
+  RemoveOrderLine { orderSectionId, orderLineIndex } event -> do
     -- Don't propagate the click to the underlying table row.
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     -- Verify that user really wants to delete the order line.
@@ -1840,7 +1908,7 @@ handleAction = case _ of
       maybe' pure deleteFileAttachments
         $ case state of
             Initialized (Loaded { orderForm: { sections } }) -> do
-              { orderLines } <- join $ A.index sections sectionIndex
+              { orderLines } <- findSection orderSectionId sections
               orderLine <- join $ A.index orderLines orderLineIndex
               pure $ findLineFileIds orderLine
             _ -> Nothing
@@ -1849,9 +1917,9 @@ handleAction = case _ of
           $ maybe' (pure <<< Loaded) (uncurry3 deleteOrderLine)
           $ case state of
               Initialized (Loaded { orderForm: { original: Just (SS.OrderForm { id: Just orderId }), sections } }) -> do
-                section <- join $ A.index sections sectionIndex
+                section <- findSection orderSectionId sections
                 orderLine <- join $ A.index section.orderLines orderLineIndex
-                sectionId <- section.orderSectionId
+                sectionId <- toExternalId section.orderSectionId
                 lineId <- orderLine.orderLineId
                 pure (tuple3 orderId sectionId lineId)
               _ -> Nothing
@@ -1861,7 +1929,7 @@ handleAction = case _ of
         Loaded _ -> do
           modifyInitialized
             $ modifyOrderForm
-            $ modifyOrderSection sectionIndex \section ->
+            $ modifyOrderSection orderSectionId \section ->
                 section
                   { orderLines =
                     fromMaybe section.orderLines
@@ -1888,7 +1956,7 @@ handleAction = case _ of
                         ]
                     ]
                 }
-  OrderLineSetProduct { sectionIndex, orderLineIndex, product } ->
+  OrderLineSetProduct { orderSectionId, orderLineIndex, product } ->
     let
       mkOrderLine :: UUID -> SS.Product -> OrderLine
       mkOrderLine configId prod =
@@ -1926,27 +1994,27 @@ handleAction = case _ of
 
       updateOrderSection :: UUID -> OrderSection -> OrderSection
       updateOrderSection configId section =
-        let
-          solProds = SS.solutionProducts section.solution
-        in
-          calcSubTotal
-            section
-              { orderLines =
-                maybe
-                  section.orderLines
-                  (\ls -> ls <> requiredOptions configId solProds)
-                  ( do
-                      ls <- modifyAt orderLineIndex (Just <<< updateOrderLine configId) section.orderLines
-                      pure ls
-                  )
-              }
+        fromMaybe section do
+          solProds <- SS.solutionProducts <$> section.solution
+          pure
+            $ calcSubTotal
+                section
+                  { orderLines =
+                    maybe
+                      section.orderLines
+                      (\ls -> ls <> requiredOptions configId solProds)
+                      ( do
+                          ls <- modifyAt orderLineIndex (Just <<< updateOrderLine configId) section.orderLines
+                          pure ls
+                      )
+                  }
     in
       do
         configId <- H.liftEffect $ UUID.genUUID
         modifyInitialized
           $ modifyOrderForm
-          $ modifyOrderSection sectionIndex (updateOrderSection configId)
-  OrderLineSetQuantity { sectionIndex, orderLineIndex, configIndex, quantity } ->
+          $ modifyOrderSection orderSectionId (updateOrderSection configId)
+  OrderLineSetQuantity { orderSectionId, orderLineIndex, configIndex, quantity } ->
     let
       updateOrderConfig :: SS.OrderLineConfig -> SS.OrderLineConfig
       updateOrderConfig (SS.OrderLineConfig olc) = SS.OrderLineConfig $ olc { quantity = quantity }
@@ -1972,14 +2040,14 @@ handleAction = case _ of
         configId <- H.liftEffect $ UUID.genUUID
         modifyInitialized
           $ modifyOrderForm
-          $ modifyOrderLine sectionIndex orderLineIndex (updateOrderLine configId)
-  OrderLineAddConfig { sectionIndex, orderLineIndex } -> do
+          $ modifyOrderLine orderSectionId orderLineIndex (updateOrderLine configId)
+  OrderLineAddConfig { orderSectionId, orderLineIndex } -> do
     configId <- H.liftEffect $ UUID.genUUID
     modifyInitialized
       $ modifyOrderForm
-      $ modifyOrderLine sectionIndex orderLineIndex \ol ->
+      $ modifyOrderLine orderSectionId orderLineIndex \ol ->
           ol { configs = ol.configs <> mkDefaultConfigs configId ol.product }
-  OrderLineRemoveConfig { sectionIndex, orderLineIndex, configIndex } -> do
+  OrderLineRemoveConfig { orderSectionId, orderLineIndex, configIndex } -> do
     let
       -- | Remove the configuration entry. If this is the last entry then we
       -- | ignore the request.
@@ -1993,8 +2061,8 @@ handleAction = case _ of
               fromMaybe ol.configs $ A.deleteAt configIndex ol.configs
           }
     modifyInitialized $ modifyOrderForm
-      $ modifyOrderLine sectionIndex orderLineIndex updateOrderLine
-  OrderLineSetConfig { sectionIndex, orderLineIndex, configIndex, alter } ->
+      $ modifyOrderLine orderSectionId orderLineIndex updateOrderLine
+  OrderLineSetConfig { orderSectionId, orderLineIndex, configIndex, alter } ->
     let
       alterConfig (SS.OrderLineConfig olc) =
         SS.OrderLineConfig
@@ -2018,11 +2086,11 @@ handleAction = case _ of
         configId <- H.liftEffect $ UUID.genUUID
         modifyInitialized
           $ modifyOrderForm
-          $ modifyOrderLine sectionIndex orderLineIndex (updateOrderLine configId)
-  OrderLineSetCharges { sectionIndex, orderLineIndex, charges, estimatedUsage } ->
+          $ modifyOrderLine orderSectionId orderLineIndex (updateOrderLine configId)
+  OrderLineSetCharges { orderSectionId, orderLineIndex, charges, estimatedUsage } ->
     modifyInitialized
       $ modifyOrderForm
-      $ modifyOrderLine sectionIndex orderLineIndex
+      $ modifyOrderLine orderSectionId orderLineIndex
           _
             { charges = Just charges
             , estimatedUsage = estimatedUsage
