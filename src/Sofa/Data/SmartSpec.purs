@@ -2617,6 +2617,10 @@ instance encodeJsonOrderLineConfig :: EncodeJson OrderLineConfig where
 newtype OrderLineId
   = OrderLineId String
 
+derive newtype instance eqOrderLineId :: Eq OrderLineId
+
+derive newtype instance ordOrderLineId :: Ord OrderLineId
+
 derive newtype instance decodeJsonOrderLineId :: DecodeJson OrderLineId
 
 derive newtype instance encodeJsonOrderLineId :: EncodeJson OrderLineId
