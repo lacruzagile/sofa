@@ -258,10 +258,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
             (Icon.textWithTooltip content)
 
       color = case status of
-        SS.OlsNew -> "bg-snow-600"
+        SS.OlsNew -> "bg-informative-200"
         SS.OlsAccepted -> "bg-informative-200"
         SS.OlsSucceeded -> "bg-success-200"
-        SS.OlsFailed -> "bg-warning-200"
+        SS.OlsFailed -> "bg-error-200"
         SS.OlsCancelled -> "bg-informative-200"
     in
       HH.span
