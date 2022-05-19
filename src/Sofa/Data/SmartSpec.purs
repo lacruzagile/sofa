@@ -43,6 +43,7 @@ module Sofa.Data.SmartSpec
   , OrderId(..)
   , OrderLine(..)
   , OrderLineConfig(..)
+  , OrderLineConfigId(..)
   , OrderLineId(..)
   , OrderLineStatus(..)
   , OrderNote(..)
@@ -2592,9 +2593,23 @@ instance encodeJsonEstimatedUsage :: EncodeJson EstimatedUsage where
     EstimatedUsagePerUnit x -> encodeJson x
     EstimatedUsageByDimPerUnit x -> encodeJson x
 
+newtype OrderLineConfigId
+  = OrderLineConfigId String
+
+derive newtype instance eqOrderLineConfigId :: Eq OrderLineConfigId
+
+derive newtype instance ordOrderLineConfigId :: Ord OrderLineConfigId
+
+derive newtype instance decodeJsonOrderLineConfigId :: DecodeJson OrderLineConfigId
+
+derive newtype instance encodeJsonOrderLineConfigId :: EncodeJson OrderLineConfigId
+
+instance showOrderLineConfigId :: Show OrderLineConfigId where
+  show (OrderLineConfigId id) = id
+
 newtype OrderLineConfig
   = OrderLineConfig
-  { id :: Maybe String -- ^ UUID identifying this configuration.
+  { id :: Maybe OrderLineConfigId
   , quantity :: Int
   , config :: Maybe ConfigValue
   }

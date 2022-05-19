@@ -23,7 +23,7 @@ proxy :: Proxy "widgetAssetConfigLink"
 proxy = Proxy
 
 type Slots
-  = ( selectConfig :: Select.Slot Unit String -- Output is the selected configuration ID.
+  = ( selectConfig :: Select.Slot Unit SS.OrderLineConfigId
     )
 
 selectProxy :: Proxy "selectConfig"
@@ -49,15 +49,15 @@ type Output
   = Maybe SS.ConfigValue
 
 type State
-  = { selectedId :: Maybe String
+  = { selectedId :: Maybe SS.OrderLineConfigId
     , skuPattern :: String
     , value :: Maybe SS.ConfigValue
-    , options :: Array { configId :: String, label :: String }
+    , options :: Array { configId :: SS.OrderLineConfigId, label :: String }
     }
 
 data Action
   = Receive Input
-  | Select String -- ^ Selecting an configuration ID.
+  | Select SS.OrderLineConfigId -- ^ When the users selects a configuration.
 
 component ::
   forall query f m.
@@ -81,7 +81,7 @@ initialState input =
   { selectedId:
       case input.value of
         Just (SS.CvObject v) -> case Map.lookup "configId" v of
-          Just (SS.CvString s) -> Just s
+          Just (SS.CvString s) -> Just $ SS.OrderLineConfigId s
           _ -> Nothing
         _ -> Nothing
   , skuPattern: input.skuPattern
@@ -134,7 +134,7 @@ handleAction = case _ of
     st' <- H.modify \st -> st { selectedId = Just selectedId }
     -- Let the parent component know about the new selection.
     H.raise do
-      configId <- st'.selectedId
+      SS.OrderLineConfigId configId <- st'.selectedId
       value <- st'.value
       case value of
         SS.CvObject x ->

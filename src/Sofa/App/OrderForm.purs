@@ -4,8 +4,10 @@ import Prelude
 import Control.Alternative (guard, (<|>))
 import Control.Parallel (parallel, sequential)
 import Data.Argonaut (encodeJson, stringifyWithIndent)
-import Data.Array (foldl, head, modifyAt, snoc)
+import Data.Array (foldl, modifyAt, snoc)
 import Data.Array as A
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NA
 import Data.Date (Date, Month(..), canonicalDate)
 import Data.Either (Either(..), either, note)
 import Data.Enum (toEnum)
@@ -14,16 +16,17 @@ import Data.List.Lazy (List)
 import Data.List.Lazy as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.String as S
 import Data.Traversable (for_, traverse)
 import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Tuple.Nested (tuple3, uncurry3)
-import Data.UUID (UUID, genv5UUID)
+import Data.UUID (UUID, emptyUUID, genv5UUID)
 import Data.UUID as UUID
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect)
 import Effect.Console as Console
 import Foreign.Object as FO
 import Halogen as H
@@ -83,7 +86,7 @@ type Slots
     , selectPriceBook :: Select.Slot OrderSectionId Int -- Output is price book index.
     , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineFullId
-    , productConfig :: ConfigSchema.Slot ConfigIndex
+    , productConfig :: ConfigSchema.Slot ConfigId
     , charge :: Charge.Slot OrderLineFullId
     , orderName :: EditableInput.Slot Unit
     )
@@ -140,7 +143,7 @@ type OrderLine
     , product :: Maybe SS.Product
     , charges :: Maybe (Array SS.Charge)
     , unitMap :: Charge.ChargeUnitMap
-    , configs :: Array SS.OrderLineConfig
+    , configs :: NonEmptyArray SS.OrderLineConfig
     , estimatedUsage :: QuantityMap
     }
 
@@ -163,10 +166,10 @@ type OrderLineFullId
     , orderLineId :: OrderLineId
     }
 
-type ConfigIndex
+type ConfigId
   = { orderSectionId :: OrderSectionId
     , orderLineId :: OrderLineId
-    , configIndex :: Int
+    , configId :: SS.OrderLineConfigId
     }
 
 data Action
@@ -203,7 +206,7 @@ data Action
   | OrderLineSetQuantity
     { orderSectionId :: OrderSectionId
     , orderLineId :: OrderLineId
-    , configIndex :: Int
+    , configId :: SS.OrderLineConfigId
     , quantity :: Int
     }
   | OrderLineAddConfig
@@ -213,13 +216,13 @@ data Action
   | OrderLineSetConfig
     { orderSectionId :: OrderSectionId
     , orderLineId :: OrderLineId
-    , configIndex :: Int
+    , configId :: SS.OrderLineConfigId
     , alter :: Maybe SS.ConfigValue -> SS.ConfigValue
     }
   | OrderLineRemoveConfig
     { orderSectionId :: OrderSectionId
     , orderLineId :: OrderLineId
-    , configIndex :: Int
+    , configId :: SS.OrderLineConfigId
     }
   | OrderLineSetCharges
     { orderSectionId :: OrderSectionId
@@ -396,15 +399,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     ]
                 , HH.label [ Css.classes [ "flex", "gap-4", "items-center" ] ]
                     [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Quantity" ]
-                    , renderQuantityInput 0
-                        $ fromMaybe
-                            ( SS.OrderLineConfig
-                                { id: Nothing
-                                , quantity: 0
-                                , config: Nothing
-                                }
-                            )
-                        $ head ol.configs
+                    , renderQuantityInput $ NA.head ol.configs
                     ]
                 ]
             , renderChargeDetails olId ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
@@ -428,7 +423,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
         subBody
 
-    renderQuantityInput cfgIdx (SS.OrderLineConfig olc) =
+    renderQuantityInput (SS.OrderLineConfig olc) =
       HH.input
         [ Css.classes
             [ "nectary-input"
@@ -443,19 +438,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 OrderLineSetQuantity
                   { orderSectionId
                   , orderLineId: ol.orderLineId
-                  , configIndex: cfgIdx
+                  , configId: fromMaybe (SS.OrderLineConfigId "") olc.id
                   , quantity: fromMaybe olc.quantity $ Int.fromString v
                   }
         ]
 
     renderProductConfigs product configs =
       let
-        allowRemove = A.length configs > 1 && isInDraft
+        allowRemove = NA.length configs > 1 && isInDraft
       in
         A.concat
-          $ A.mapWithIndex (renderProductConfig allowRemove product) configs
+          $ renderProductConfig allowRemove product
+          <$> NA.toArray configs
 
-    renderProductConfig allowRemove product cfgIdx (SS.OrderLineConfig { id: configId, config }) =
+    renderProductConfig allowRemove product (SS.OrderLineConfig { id: configId, config }) =
       [ HH.div [ Css.classes [ "mt-3", "p-5", "bg-snow-500", "rounded-lg" ] ]
           [ if allowRemove then
               HH.button
@@ -471,7 +467,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     OrderLineRemoveConfig
                       { orderSectionId
                       , orderLineId: ol.orderLineId
-                      , configIndex: cfgIdx
+                      , configId: fromMaybe (SS.OrderLineConfigId "") configId
                       }
                 ]
                 [ HH.text "Remove Configuration" ]
@@ -492,23 +488,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ]
                   [ Tooltip.render
                       ( Tooltip.defaultInput
-                          { text = "Configuration ID: " <> id
+                          { text = "Configuration ID: " <> show id
                           , orientation = Tooltip.Left
                           , width = Just "20rem"
                           }
                       )
                       (HH.text "#")
                   ]
-          , case config of
-              Nothing -> HH.text ""
-              Just c ->
+          , case Tuple config configId of
+              Tuple (Just c) (Just cId) ->
                 maybe (HH.text "")
                   ( \schema ->
                       HH.slot
                         (Proxy :: Proxy "productConfig")
                         { orderSectionId
                         , orderLineId: ol.orderLineId
-                        , configIndex: cfgIdx
+                        , configId: cId
                         }
                         ConfigSchema.component
                         { orderLineId: toExternalId ol.orderLineId
@@ -527,12 +522,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
                             OrderLineSetConfig
                               { orderSectionId
                               , orderLineId: ol.orderLineId
-                              , configIndex: cfgIdx
+                              , configId: cId
                               , alter: const value
                               }
                         )
                   )
                   product.orderConfigSchema
+              _ -> HH.text ""
           ]
       ]
 
@@ -1198,7 +1194,9 @@ orderSchemaGetConfigs state orderSectionId _ = case state of
             <> fromMaybe (show sku) title
       pure
         [ { sku
-          , configs: map (\config -> { label, config }) orderLine.configs
+          , configs:
+              map (\config -> { label, config })
+                $ NA.toArray orderLine.configs
           }
         ]
   _ -> []
@@ -1239,7 +1237,7 @@ toJson orderForm = do
           , statusReason: ol.statusReason
           , sku
           , charges: fromMaybe [] ol.charges
-          , configs: ol.configs
+          , configs: NA.toArray ol.configs
           , estimatedUsage: toSmartSpecQuantity ol.estimatedUsage
           }
 
@@ -1325,25 +1323,20 @@ mkDefaultConfig = case _ of
     Just x -> mkDefaultConfig x
     Nothing -> Nothing
 
-mkDefaultConfigs :: UUID -> SS.Product -> Array SS.OrderLineConfig
+mkDefaultConfigs :: SS.OrderLineConfigId -> SS.Product -> NonEmptyArray SS.OrderLineConfig
 mkDefaultConfigs id (SS.Product p) =
-  fromMaybe
-    [ SS.OrderLineConfig
-        { id: Just $ UUID.toString id
-        , quantity: 1
-        , config: Nothing
-        }
-    ]
-    $ do
-        schema <- p.orderConfigSchema
-        default_ <- mkDefaultConfig schema
-        pure
-          [ SS.OrderLineConfig
-              { id: Just $ UUID.toString id
-              , quantity: 1
-              , config: Just default_
-              }
-          ]
+  fromMaybe' (\_ -> NA.singleton empty) do
+    schema <- p.orderConfigSchema
+    default_ <- mkDefaultConfig schema
+    pure
+      $ NA.singleton
+      $ SS.OrderLineConfig
+      $ emptyRec
+          { quantity = 1
+          , config = Just default_
+          }
+  where
+  empty@(SS.OrderLineConfig emptyRec) = emptyOrderLineConfig id
 
 calcSubTotal :: OrderSection -> OrderSection
 calcSubTotal os =
@@ -1428,7 +1421,9 @@ calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
   sumOrderSecs = A.foldl (\acc { summary } -> acc <> summary) mempty
 
 orderLineQuantity :: OrderLine -> Quantity
-orderLineQuantity ol = foldl (\a (SS.OrderLineConfig b) -> a + b.quantity) 0 ol.configs
+orderLineQuantity ol =
+  foldl (\a (SS.OrderLineConfig b) -> a + b.quantity) 0
+    $ NA.toArray ol.configs
 
 findSection :: OrderSectionId -> Array OrderSection -> Maybe OrderSection
 findSection secId = A.find (\{ orderSectionId } -> secId == orderSectionId)
@@ -1446,9 +1441,21 @@ deleteOrderLine olId orderLines = do
   idx <- A.findIndex (\{ orderLineId } -> olId == orderLineId) orderLines
   A.deleteAt idx orderLines
 
+deleteOrderLineConfig ::
+  SS.OrderLineConfigId ->
+  NonEmptyArray SS.OrderLineConfig ->
+  Maybe (Array SS.OrderLineConfig)
+deleteOrderLineConfig configId configs = do
+  idx <- NA.findIndex (\(SS.OrderLineConfig { id }) -> Just configId == id) configs
+  NA.deleteAt idx configs
+
 -- | Helper function to modify an identified order section. The sub-total of the
 -- | modified section is updated.
-modifyOrderSection :: OrderSectionId -> (OrderSection -> OrderSection) -> OrderForm -> OrderForm
+modifyOrderSection ::
+  OrderSectionId ->
+  (OrderSection -> OrderSection) ->
+  OrderForm ->
+  OrderForm
 modifyOrderSection secId updateOrderSection order =
   order
     { sections =
@@ -1458,7 +1465,12 @@ modifyOrderSection secId updateOrderSection order =
     }
 
 -- | Helper function to modify an indexed order line.
-modifyOrderLine :: OrderSectionId -> OrderLineId -> (OrderLine -> OrderLine) -> OrderForm -> OrderForm
+modifyOrderLine ::
+  OrderSectionId ->
+  OrderLineId ->
+  (OrderLine -> OrderLine) ->
+  OrderForm ->
+  OrderForm
 modifyOrderLine secId olId updateOrderLine =
   modifyOrderSection secId \section ->
     section
@@ -1467,6 +1479,19 @@ modifyOrderLine secId olId updateOrderLine =
           idx <- A.findIndex (\{ orderLineId } -> olId == orderLineId) section.orderLines
           modifyAt idx updateOrderLine section.orderLines
       }
+
+modifyOrderLineConfig ::
+  SS.OrderLineConfigId ->
+  (SS.OrderLineConfig -> SS.OrderLineConfig) ->
+  OrderLine ->
+  OrderLine
+modifyOrderLineConfig configId alter orderLine =
+  orderLine
+    { configs =
+      fromMaybe orderLine.configs do
+        idx <- NA.findIndex (\(SS.OrderLineConfig c) -> Just configId == c.id) orderLine.configs
+        NA.modifyAt idx alter orderLine.configs
+    }
 
 loadExisting ::
   forall slots output m.
@@ -1541,7 +1566,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
       $ calcSubTotal
           { orderSectionId:
               maybe'
-                (\_ -> InternalId $ SS.OrderSectionId $ show uuidSectionId)
+                (\_ -> InternalId $ SS.OrderSectionId $ UUID.toString uuidSectionId)
                 ExternalId
                 s.orderSectionId
           , solution: Just solution
@@ -1561,7 +1586,9 @@ loadExisting original@(SS.OrderForm orderForm) = do
     , product
     , charges: Just l.charges
     , unitMap: maybe Map.empty Charge.productChargeUnitMap product
-    , configs: l.configs
+    , configs:
+        fromMaybe' (\_ -> NA.singleton $ genEmptyOrderLineConfig uuidNs)
+          $ NA.fromArray l.configs
     , estimatedUsage: fromSmartSpecQuantity l.estimatedUsage
     }
     where
@@ -1598,7 +1625,7 @@ findLineFileIds ::
   OrderLine ->
   Array String
 findLineFileIds orderLine = do
-  SS.OrderLineConfig { config } <- orderLine.configs
+  SS.OrderLineConfig { config } <- NA.toArray orderLine.configs
   value <- maybe [] A.singleton config
   getFileIds value
   where
@@ -1634,6 +1661,21 @@ getOrderId = (\(SS.OrderForm o) -> o.id) <=< _.orderForm.original
 getOriginalOrderStatus :: StateOrderForm -> Maybe SS.OrderStatus
 getOriginalOrderStatus = map (\(SS.OrderForm o) -> o.status) <<< _.orderForm.original
 
+emptyOrderLineConfig :: SS.OrderLineConfigId -> SS.OrderLineConfig
+emptyOrderLineConfig id =
+  SS.OrderLineConfig
+    { id: Just id
+    , quantity: 0
+    , config: Nothing
+    }
+
+genEmptyOrderLineConfig :: UUID -> SS.OrderLineConfig
+genEmptyOrderLineConfig uuidNs =
+  emptyOrderLineConfig
+    $ SS.OrderLineConfigId
+    $ UUID.toString
+    $ genv5UUID "config" uuidNs
+
 emptyOrderLine :: OrderLineId -> OrderLine
 emptyOrderLine orderLineId =
   { orderLineId
@@ -1642,9 +1684,15 @@ emptyOrderLine orderLineId =
   , product: Nothing
   , charges: Nothing
   , unitMap: Map.empty
-  , configs: []
+  , configs: NA.singleton $ genEmptyOrderLineConfig emptyUUID
   , estimatedUsage: Map.empty
   }
+
+genOrderLineConfigId :: forall m. MonadEffect m => m SS.OrderLineConfigId
+genOrderLineConfigId =
+  H.liftEffect
+    $ (SS.OrderLineConfigId <<< UUID.toString)
+    <$> UUID.genUUID
 
 -- | Assemble a map from solution ID to its associated price books. The price
 -- | books are limited to the given pricing currency.
@@ -1987,7 +2035,10 @@ handleAction = case _ of
         (emptyOrderLine orderLineId)
           { product = Just prod
           , unitMap = Charge.productChargeUnitMap prod
-          , configs = mkDefaultConfigs freshIds.configId prod
+          , configs =
+            mkDefaultConfigs
+              (SS.OrderLineConfigId $ UUID.toString freshIds.configId)
+              prod
           }
         where
         orderLineId = InternalId $ SS.OrderLineId $ UUID.toString freshIds.orderLineId
@@ -2046,35 +2097,16 @@ handleAction = case _ of
         modifyInitialized
           $ modifyOrderForm
           $ modifyOrderSection orderSectionId (updateOrderSection freshIds)
-  OrderLineSetQuantity { orderSectionId, orderLineId, configIndex, quantity } ->
+  OrderLineSetQuantity { orderSectionId, orderLineId, configId, quantity } -> do
     let
       updateOrderConfig :: SS.OrderLineConfig -> SS.OrderLineConfig
       updateOrderConfig (SS.OrderLineConfig olc) = SS.OrderLineConfig $ olc { quantity = quantity }
-
-      -- | Remove the configuration entry. If this is the last entry then we
-      -- | ignore the request.
-      updateOrderLine :: UUID -> OrderLine -> OrderLine
-      updateOrderLine configId ol =
-        ol
-          { configs =
-            if A.null ol.configs then
-              [ SS.OrderLineConfig
-                  { id: Just $ UUID.toString configId
-                  , quantity
-                  , config: Nothing
-                  }
-              ]
-            else
-              fromMaybe ol.configs $ A.modifyAt configIndex updateOrderConfig ol.configs
-          }
-    in
-      do
-        configId <- H.liftEffect $ UUID.genUUID
-        modifyInitialized
-          $ modifyOrderForm
-          $ modifyOrderLine orderSectionId orderLineId (updateOrderLine configId)
+    modifyInitialized
+      $ modifyOrderForm
+      $ modifyOrderLine orderSectionId orderLineId
+      $ modifyOrderLineConfig configId updateOrderConfig
   OrderLineAddConfig { orderSectionId, orderLineId } -> do
-    configId <- H.liftEffect $ UUID.genUUID
+    configId <- genOrderLineConfigId
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderLine orderSectionId orderLineId \ol ->
@@ -2084,7 +2116,7 @@ handleAction = case _ of
                 product <- ol.product
                 pure $ ol.configs <> mkDefaultConfigs configId product
             }
-  OrderLineRemoveConfig { orderSectionId, orderLineId, configIndex } -> do
+  OrderLineRemoveConfig { orderSectionId, orderLineId, configId } -> do
     let
       -- | Remove the configuration entry. If this is the last entry then we
       -- | ignore the request.
@@ -2092,38 +2124,21 @@ handleAction = case _ of
       updateOrderLine ol =
         ol
           { configs =
-            if A.length ol.configs == 1 then
-              ol.configs
-            else
-              fromMaybe ol.configs $ A.deleteAt configIndex ol.configs
+            fromMaybe ol.configs
+              $ NA.fromArray
+              =<< deleteOrderLineConfig configId ol.configs
           }
     modifyInitialized $ modifyOrderForm
       $ modifyOrderLine orderSectionId orderLineId updateOrderLine
-  OrderLineSetConfig { orderSectionId, orderLineId, configIndex, alter } ->
+  OrderLineSetConfig { orderSectionId, orderLineId, configId, alter } -> do
     let
       alterConfig (SS.OrderLineConfig olc) =
         SS.OrderLineConfig
           $ olc { config = Just $ alter olc.config }
-
-      updateOrderLine :: UUID -> OrderLine -> OrderLine
-      updateOrderLine configId ol =
-        ol
-          { configs =
-            fromMaybe
-              [ SS.OrderLineConfig
-                  { id: Just $ UUID.toString configId
-                  , quantity: 1
-                  , config: Just $ alter Nothing
-                  }
-              ]
-              $ A.modifyAt configIndex alterConfig ol.configs
-          }
-    in
-      do
-        configId <- H.liftEffect $ UUID.genUUID
-        modifyInitialized
-          $ modifyOrderForm
-          $ modifyOrderLine orderSectionId orderLineId (updateOrderLine configId)
+    modifyInitialized
+      $ modifyOrderForm
+      $ modifyOrderLine orderSectionId orderLineId
+      $ modifyOrderLineConfig configId alterConfig
   OrderLineSetCharges { orderSectionId, orderLineId, charges, estimatedUsage } ->
     modifyInitialized
       $ modifyOrderForm
