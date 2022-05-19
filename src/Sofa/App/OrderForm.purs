@@ -350,23 +350,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       body
         [ HH.label_
             [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Product" ]
-            , HH.slot
-                SelectProduct.proxy
-                { orderSectionId, orderLineId: ol.orderLineId }
-                SelectProduct.component
-                { selected: Nothing
-                , available:
-                    A.filter
-                      (\(SS.Product { optionOnly }) -> not optionOnly)
-                      sol.products
-                }
-                ( \product ->
-                    OrderLineSetProduct
-                      { orderSectionId
-                      , orderLineId: ol.orderLineId
-                      , product
-                      }
-                )
+            , renderSelectProduct Nothing
             ]
         ]
     Just (SS.Product product) ->
@@ -402,6 +386,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     , renderQuantityInput $ NA.head ol.configs
                     ]
                 ]
+            , renderSelectProduct ol.product
             , renderChargeDetails olId ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
             ]
           <> ( if isNothing product.orderConfigSchema then
@@ -422,6 +407,27 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , HP.ref $ orderLineRefLabel orderSectionId ol.orderLineId
         ]
         subBody
+
+    renderSelectProduct selected
+      | not isInDraft = HH.text ""
+      | otherwise =
+        HH.slot
+          SelectProduct.proxy
+          { orderSectionId, orderLineId: ol.orderLineId }
+          SelectProduct.component
+          { selected
+          , available:
+              A.filter
+                (\(SS.Product { optionOnly }) -> not optionOnly)
+                sol.products
+          }
+          ( \product ->
+              OrderLineSetProduct
+                { orderSectionId
+                , orderLineId: ol.orderLineId
+                , product
+                }
+          )
 
     renderQuantityInput (SS.OrderLineConfig olc) =
       HH.input
