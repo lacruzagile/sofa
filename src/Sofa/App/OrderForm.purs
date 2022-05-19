@@ -720,7 +720,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
           HH.label
             [ Css.classes
                 [ "cursor-pointer"
-                , if available || isSelected then "nectary-btn-primary" else "nectary-btn-disabled"
+                , if available || isSelected then
+                    "nectary-btn-secondary"
+                  else
+                    "nectary-btn-secondary-disabled"
                 ]
             ]
             [ HH.div [ Css.class_ "grow" ] [ HH.text $ solutionLabel solution ]
@@ -729,7 +732,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
                 , Css.class_ "nectary-input-radio"
                 , HP.checked isSelected
-                , HP.enabled available
+                , HP.enabled $ available || isSelected
                 , HE.onChange \_ -> actionSetSolution id
                 ]
             ]

@@ -236,27 +236,6 @@
     animation-iteration-count: 1.5;
   }
 
-  /* An explicitly disabled button. Only for use on "fake buttons". */
-  .nectary-btn-disabled {
-    @apply
-      inline-flex
-      items-center
-      justify-center
-      h-12
-      px-6
-      py-2
-      bg-tropical-100
-      font-semibold
-      text-snow-100
-      outline-none
-      ring-1
-      focus:ring-2
-      active:ring-2
-      ring-transparent
-      focus:ring-tropical-700
-      rounded;
-  }
-
   .nectary-btn-primary {
     @apply
       inline-flex
@@ -305,6 +284,24 @@
       focus:ring-tropical-700
       active:ring-tropical-500
       disabled:ring-tropical-100
+      rounded;
+  }
+
+  /* An explicitly disabled secondary button. Only for use on "fake buttons". */
+  .nectary-btn-secondary-disabled {
+    @apply
+      inline-flex
+      items-center
+      justify-center
+      h-12
+      px-3
+      py-2
+      bg-snow-100
+      font-semibold
+      text-tropical-200
+      outline-none
+      ring-1
+      ring-tropical-100
       rounded;
   }
 
