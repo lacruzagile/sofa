@@ -1727,7 +1727,7 @@ emptyOrderLineConfig :: SS.OrderLineConfigId -> SS.OrderLineConfig
 emptyOrderLineConfig id =
   SS.OrderLineConfig
     { id: Just id
-    , quantity: 0
+    , quantity: 1
     , config: Nothing
     }
 
