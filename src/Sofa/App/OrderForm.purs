@@ -586,10 +586,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderSection sof sec = case sec.solution of
     Nothing ->
       body
-        [ HH.label_
-            [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Solution" ]
-            , renderSelectSolution Nothing
-            ]
+        [ HH.h2 [ Css.class_ "my-0" ] [ HH.text "Solution" ]
+        , renderSelectSolution Nothing
         ]
     Just solution@(SS.Solution sol) ->
       let
@@ -612,7 +610,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-4", "items-end" ] ]
                 [ HH.div [ Css.class_ "grow" ]
                     [ HH.h2
-                        [ Css.class_ "mt-0" ]
+                        [ Css.class_ "my-0" ]
                         [ HH.text "Solution – "
                         , HH.text $ solutionLabel solution
                         ]
@@ -710,34 +708,51 @@ render state = HH.section_ [ HH.article_ renderContent ]
     renderSelectSolution selectedSolution
       | not isInDraft = HH.text ""
       | otherwise =
-        HH.slot
-          (Proxy :: Proxy "selectSolution")
-          sec.orderSectionId
-          Select.component
-          ( Select.defaultInput
-              { selected = (\(SS.Solution { id }) -> id) <$> selectedSolution
-              , values =
-                let
-                  notSameSolutionId id' { solution } =
-                    maybe
-                      true
-                      (\(SS.Solution { id }) -> id' /= id)
-                      solution
+        HH.div
+          [ Css.classes [ "grid", "grid-cols-1", "lg:grid-cols-2", "gap-5" ] ]
+          $ A.fromFoldable
+          $ renderSolutionButton
+          <$> availableSolutions
+        where
+        selectedSolId = (\(SS.Solution { id }) -> id) <$> selectedSolution
 
-                  isSolutionAvailable id = A.all (notSameSolutionId id) sof.orderForm.sections
+        renderSolutionButton { solution: solution@(SS.Solution { id }), available } =
+          HH.label
+            [ Css.classes
+                [ "cursor-pointer"
+                , if available || isSelected then "nectary-btn-primary" else "nectary-btn-disabled"
+                ]
+            ]
+            [ HH.div [ Css.class_ "grow" ] [ HH.text $ solutionLabel solution ]
+            , HH.input
+                [ HP.type_ HP.InputRadio
+                , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
+                , Css.class_ "nectary-input-radio"
+                , HP.checked isSelected
+                , HP.enabled available
+                , HE.onChange \_ -> actionSetSolution id
+                ]
+            ]
+          where
+          isSelected = selectedSolId == Just id
 
-                  -- Filters out solutions that are already used for other
-                  -- order sections.
-                  filterAvailableSolutions = Map.filterKeys isSolutionAvailable
-                in
-                  map
-                    (\(Tuple i s) -> Tuple (HH.text $ solutionLabel s) i)
-                    $ Map.toUnfoldable
-                    $ filterAvailableSolutions pc.solutions
-              , noSelectionText = "Please choose a solution"
+        -- Filters out solution identifiers that are already used for other
+        -- order sections.
+        availableSolutions :: List { solution :: SS.Solution, available :: Boolean }
+        availableSolutions =
+          let
+            notSameSolutionId id' { solution } =
+              maybe
+                true
+                (\(SS.Solution { id }) -> id' /= id)
+                solution
+
+            toResult (Tuple id solution) =
+              { solution
+              , available: A.all (notSameSolutionId id) sof.orderForm.sections
               }
-          )
-          actionSetSolution
+          in
+            map toResult $ Map.toUnfoldable pc.solutions
 
     renderOrderLines sol orderLines =
       HH.div
