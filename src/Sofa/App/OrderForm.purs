@@ -453,7 +453,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                 [ HH.text "Product options" ]
             , HH.div
-                [ Css.classes [ "my-4", "grid", "grid-cols-2", "gap-5" ] ]
+                [ Css.classes [ "my-4", "grid", "grid-cols-1", "lg:grid-cols-2", "gap-5" ] ]
                 $ renderProductOption
                 <$> options
             ]
@@ -465,7 +465,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       where
       renderOptButton title sku =
         HH.button
-          [ Css.classes [ "nectary-btn-primary" ]
+          [ Css.classes [ "nectary-btn-primary", "truncate" ]
           , HE.onClick \_ -> AddOrderLineForProduct { orderSectionId, sku }
           ]
           [ HH.text title ]
