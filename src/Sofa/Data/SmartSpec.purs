@@ -1800,7 +1800,7 @@ derive newtype instance decodeJsonSkuCode :: DecodeJson SkuCode
 derive newtype instance encodeJsonSkuCode :: EncodeJson SkuCode
 
 data ProductOption
-  = ProdOptSkuCode String
+  = ProdOptSkuCode SkuCode
   | ProductOption
     { sku :: SkuCode
     , title :: Maybe String

@@ -76,7 +76,7 @@ render state = HH.section_ [ HH.article_ content ]
     ]
 
   productOption :: SS.ProductOption -> H.ComponentHTML Action Slots m
-  productOption (SS.ProdOptSkuCode s) = HH.li_ [ HH.text s ]
+  productOption (SS.ProdOptSkuCode s) = HH.li_ [ HH.text $ show s ]
 
   productOption (SS.ProductOption po) =
     HH.li_

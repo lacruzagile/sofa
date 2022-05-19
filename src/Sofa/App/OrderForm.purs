@@ -23,7 +23,7 @@ import Data.Traversable (for_, traverse)
 import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Tuple.Nested (tuple3, uncurry3)
-import Data.UUID (UUID, emptyUUID, genv5UUID)
+import Data.UUID (UUID, emptyUUID, genUUID, genv5UUID)
 import Data.UUID as UUID
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
@@ -198,6 +198,10 @@ data Action
     }
   | RemoveSection { orderSectionId :: OrderSectionId } Event.MouseEvent
   | AddOrderLine { orderSectionId :: OrderSectionId }
+  | AddOrderLineForProduct
+    { orderSectionId :: OrderSectionId
+    , sku :: SS.SkuCode
+    }
   | OrderLineSetProduct
     { orderSectionId :: OrderSectionId
     , orderLineId :: OrderLineId
@@ -387,6 +391,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     ]
                 ]
             , renderSelectProduct ol.product
+            , renderProductOptions product
             , renderChargeDetails olId ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
             ]
           <> ( if isNothing product.orderConfigSchema then
@@ -408,8 +413,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
         subBody
 
+    isOptionOnly (SS.Product { optionOnly }) = optionOnly
+
+    -- | Render the select product component. Note, we rendering it only if
+    -- |
+    -- | - the order is in draft status and
+    -- |
+    -- | - the order line product is a top-level one (not an option one).
     renderSelectProduct selected
       | not isInDraft = HH.text ""
+      | maybe false isOptionOnly selected = HH.text ""
       | otherwise =
         HH.slot
           SelectProduct.proxy
@@ -428,6 +441,34 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , product
                 }
           )
+
+    renderProductOptions { options: mOptions }
+      | not isInDraft = HH.text ""
+      | otherwise = case mOptions of
+        Nothing -> HH.text ""
+        Just [] -> HH.text ""
+        Just options ->
+          HH.details [ Css.class_ "mt-5" ]
+            [ HH.summary
+                [ Css.classes [ "text-lg", "cursor-pointer" ] ]
+                [ HH.text "Product options" ]
+            , HH.div
+                [ Css.classes [ "my-4", "grid", "grid-cols-2", "gap-5" ] ]
+                $ renderProductOption
+                <$> options
+            ]
+
+    renderProductOption = case _ of
+      SS.ProdOptSkuCode sku -> renderOptButton (show sku) sku
+      SS.ProductOption { sku, title, required: false } -> renderOptButton (fromMaybe (show sku) title) sku
+      _ -> HH.text ""
+      where
+      renderOptButton title sku =
+        HH.button
+          [ Css.classes [ "nectary-btn-primary" ]
+          , HE.onClick \_ -> AddOrderLineForProduct { orderSectionId, sku }
+          ]
+          [ HH.text title ]
 
     renderQuantityInput (SS.OrderLineConfig olc) =
       HH.input
@@ -1700,6 +1741,14 @@ genOrderLineConfigId =
     $ (SS.OrderLineConfigId <<< UUID.toString)
     <$> UUID.genUUID
 
+mkOrderLine :: OrderLineId -> SS.OrderLineConfigId -> SS.Product -> OrderLine
+mkOrderLine orderLineId configId product =
+  (emptyOrderLine orderLineId)
+    { product = Just product
+    , unitMap = Charge.productChargeUnitMap product
+    , configs = mkDefaultConfigs configId product
+    }
+
 -- | Assemble a map from solution ID to its associated price books. The price
 -- | books are limited to the given pricing currency.
 mkPriceBooks :: SS.ProductCatalog -> Maybe SS.PricingCurrency -> Map String (Array PriceBook)
@@ -1971,6 +2020,21 @@ handleAction = case _ of
       $ modifyOrderForm
       $ modifyOrderSection orderSectionId \section ->
           section { orderLines = snoc section.orderLines orderLine }
+  AddOrderLineForProduct { orderSectionId, sku } -> do
+    orderLineId <- H.liftEffect $ genInternalId SS.OrderLineId
+    configId <- H.liftEffect $ (SS.OrderLineConfigId <<< UUID.toString) <$> genUUID
+    modifyInitialized
+      $ modifyOrderForm
+      $ modifyOrderSection orderSectionId \section ->
+          fromMaybe section do
+            solProds <- SS.solutionProducts <$> section.solution
+            product <- Map.lookup sku solProds
+            let
+              orderLine = mkOrderLine orderLineId configId product
+            pure
+              $ section
+                  { orderLines = snoc section.orderLines orderLine
+                  }
   RemoveOrderLine { orderSectionId, orderLineId } event -> do
     -- Don't propagate the click to the underlying table row.
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
@@ -2036,18 +2100,12 @@ handleAction = case _ of
                 }
   OrderLineSetProduct { orderSectionId, orderLineId: oldOrderLineId, product } ->
     let
-      mkOrderLine :: { orderLineId :: UUID, configId :: UUID } -> SS.Product -> OrderLine
-      mkOrderLine freshIds prod =
-        (emptyOrderLine orderLineId)
-          { product = Just prod
-          , unitMap = Charge.productChargeUnitMap prod
-          , configs =
-            mkDefaultConfigs
-              (SS.OrderLineConfigId $ UUID.toString freshIds.configId)
-              prod
-          }
-        where
-        orderLineId = InternalId $ SS.OrderLineId $ UUID.toString freshIds.orderLineId
+      mkOrderLine' :: { orderLineId :: UUID, configId :: UUID } -> SS.Product -> OrderLine
+      mkOrderLine' freshIds prod =
+        mkOrderLine
+          (InternalId $ SS.OrderLineId $ UUID.toString freshIds.orderLineId)
+          (SS.OrderLineConfigId $ UUID.toString freshIds.configId)
+          prod
 
       -- | Build order lines for all required product options.
       requiredOptions ::
@@ -2072,7 +2130,7 @@ handleAction = case _ of
             , configId: UUID.genv5UUID (show i) freshIds.orderLineId
             }
         in
-          maybe [] (A.mapWithIndex (\i -> mkOrderLine $ mkId i)) requiredProds
+          maybe [] (A.mapWithIndex (\i -> mkOrderLine' $ mkId i)) requiredProds
 
       updateOrderSection ::
         { orderLineId :: UUID, configId :: UUID } ->
@@ -2089,7 +2147,7 @@ handleAction = case _ of
                       (\ls -> ls <> requiredOptions freshIds solProds)
                       ( do
                           idx <- A.findIndex (\ol -> ol.orderLineId == oldOrderLineId) section.orderLines
-                          ls <- A.updateAt idx (mkOrderLine freshIds product) section.orderLines
+                          ls <- A.updateAt idx (mkOrderLine' freshIds product) section.orderLines
                           pure ls
                       )
                   }
