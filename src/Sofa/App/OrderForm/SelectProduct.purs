@@ -1,22 +1,17 @@
 module Sofa.App.OrderForm.SelectProduct (Slot, Output(..), proxy, component) where
 
 import Prelude
-import Data.Array ((!!))
 import Data.Array as A
-import Data.Maybe (Maybe(..), maybe, maybe')
-import Data.String as S
-import Data.Time.Duration (Milliseconds(..))
-import Data.Traversable (for_)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Select as Sel
-import Sofa.Component.Typeahead as Typeahead
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 import Sofa.Css as Css
-import Sofa.Data.Auth (class CredentialStore)
+import Sofa.Data.SmartSpec (SkuCode)
 import Sofa.Data.SmartSpec as SS
 import Type.Proxy (Proxy(..))
-import Web.HTML.HTMLInputElement as HTMLInputElement
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -25,108 +20,62 @@ proxy :: Proxy "selectProduct"
 proxy = Proxy
 
 type Input
-  = { selected :: Maybe SS.Product
-    , available :: Array SS.Product
+  = { name :: String
+    , selected :: Maybe SkuCode
+    , products :: Array SS.Product
     }
 
 type Output
   = SS.Product
 
+data Action
+  = Select SkuCode
+
 type State
-  = ( selected :: Maybe SS.Product
-    , filtered :: Array SS.Product
-    , available :: Array SS.Product
-    )
+  = Input
 
 component ::
-  forall query f m.
+  forall query m.
   MonadAff m =>
-  CredentialStore f m =>
   H.Component query Input Output m
 component =
   H.mkComponent
     { initialState: identity
-    , render: \st -> HH.slot selectLabel unit selectComponent st identity
-    , eval: H.mkEval H.defaultEval { handleAction = H.raise }
-    }
-  where
-  selectLabel = Proxy :: Proxy "select"
-
-selectComponent :: forall query m. MonadAff m => H.Component (Sel.Query query ()) Input Output m
-selectComponent =
-  Sel.component mkInput
-    $ Sel.defaultSpec
-        { handleEvent = handleEvent
-        , render = render
-        }
-  where
-  mkInput :: Input -> Sel.Input State
-  mkInput input =
-    { inputType: Sel.Text
-    , debounceTime: Just (Milliseconds 50.0)
-    , search: Nothing
-    , getItemCount: A.length <<< _.filtered
-    , selected: input.selected
-    , filtered: input.available
-    , available: input.available
+    , render
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
 
-  handleEvent :: Sel.Event -> H.HalogenM (Sel.State State) _ () Output m Unit
-  handleEvent = case _ of
-    Sel.Searched str -> do
-      H.modify_ \st ->
-        st
-          { filtered =
-            let
-              pat = S.Pattern $ S.toLower str
+handleAction ::
+  forall m.
+  MonadAff m =>
+  Action -> H.HalogenM State Action () Output m Unit
+handleAction = case _ of
+  Select sku -> do
+    { products } <- H.modify _ { selected = Just sku }
+    case A.find (\(SS.Product { sku: sku' }) -> sku == sku') products of
+      Nothing -> pure unit
+      Just product -> H.raise product
 
-              containsPat t = S.contains pat (S.toLower t)
-
-              match (SS.Product { sku, title }) =
-                containsPat (show sku)
-                  || maybe false containsPat title
-            in
-              A.filter match st.available
-          }
-    Sel.Selected idx -> do
-      st' <-
-        H.modify \st ->
-          st
-            { search = ""
-            , selected = st.filtered !! idx
-            , filtered = st.available
-            , visibility = Sel.Off
-            }
-      -- Clear the input element.
-      inputElement <- H.getHTMLElementRef $ H.RefLabel "select-input"
-      for_ inputElement
-        $ maybe (pure unit) (H.liftEffect <<< HTMLInputElement.setValue "")
-        <<< HTMLInputElement.fromHTMLElement
-      -- Let the parent component know about the new selection.
-      maybe' pure H.raise st'.selected
-    _ -> pure unit
-
-  render :: Sel.State State -> H.ComponentHTML _ () m
-  render st =
-    Typeahead.render
-      $ (Typeahead.initRenderState st)
-          { selected = map (\(SS.Product { sku }) -> show sku) st.selected
-          , selectedIndex =
-            do
-              SS.Product { sku: selSku } <- st.selected
-              A.findIndex (\(SS.Product { sku }) -> sku == selSku) st.filtered
-          , values = renderItem <$> st.filtered
-          , noSelectionText = "Type to search product …"
-          }
-
-  renderItem :: SS.Product -> HH.PlainHTML
-  renderItem (SS.Product { sku, title }) = case title of
-    Nothing -> HH.text (show sku)
-    Just t ->
-      HH.div_
-        [ HH.text t
-        , HH.br_
-        , HH.span
-            [ Css.classes [ "text-xs", "text-stormy-300" ] ]
-            [ HH.text (show sku) ]
-        ]
+render :: forall m. State -> H.ComponentHTML Action () m
+render state =
+  HH.div
+    [ Css.classes [ "mt-5", "grid", "grid-cols-1", "lg:grid-cols-2", "gap-5" ] ]
+    $ renderProductButton
+    <$> state.products
+  where
+  renderProductButton (SS.Product { sku, title }) =
+    HH.label
+      [ Css.classes
+          [ "cursor-pointer"
+          , "nectary-btn-secondary"
+          ]
+      ]
+      [ HH.div [ Css.class_ "grow" ] [ HH.text $ fromMaybe (show sku) title ]
+      , HH.input
+          [ HP.type_ HP.InputRadio
+          , HP.name $ "prodsel-" <> state.name
+          , Css.class_ "nectary-input-radio"
+          , HP.checked $ maybe false (sku == _) state.selected
+          , HE.onChange \_ -> Select sku
+          ]
+      ]

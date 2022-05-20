@@ -353,10 +353,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderLine (SS.Solution sol) defaultCurrency orderSectionId olIdx ol = case ol.product of
     Nothing ->
       body
-        [ HH.label_
-            [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Product" ]
-            , renderSelectProduct Nothing
-            ]
+        [ HH.h3_ [ HH.text "Product" ]
+        , renderSelectProduct Nothing
         ]
     Just (SS.Product product) ->
       let
@@ -376,7 +374,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         body
           $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-8", "items-center" ] ]
-                [ HH.div [ Css.classes [ "grow", "text-lg", "font-semibold" ] ]
+                [ HH.h3 [ Css.classes [ "grow" ] ]
                     [ HH.text "Product "
                     , HH.text $ show $ olIdx + 1
                     , HH.text " – "
@@ -407,6 +405,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 ]
             )
     where
+    refLabel = orderLineRefLabel orderSectionId ol.orderLineId
+
     body subBody =
       Tuple (unwrap refLabel)
         $ HH.div
@@ -415,8 +415,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , HP.id $ unwrap refLabel
             ]
             subBody
-      where
-      refLabel = orderLineRefLabel orderSectionId ol.orderLineId
 
     isOptionOnly (SS.Product { optionOnly }) = optionOnly
 
@@ -433,8 +431,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
           SelectProduct.proxy
           { orderSectionId, orderLineId: ol.orderLineId }
           SelectProduct.component
-          { selected
-          , available:
+          { name: unwrap refLabel
+          , selected: (\(SS.Product { sku }) -> sku) <$> selected
+          , products:
               A.filter
                 (\(SS.Product { optionOnly }) -> not optionOnly)
                 sol.products
