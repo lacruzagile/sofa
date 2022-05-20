@@ -31,6 +31,7 @@ import Effect.Console as Console
 import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Elements.Keyed as HK
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPAria
@@ -348,7 +349,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     OrderSectionId ->
     Int ->
     OrderLine ->
-    H.ComponentHTML Action Slots m
+    Tuple String (H.ComponentHTML Action Slots m)
   renderOrderLine (SS.Solution sol) defaultCurrency orderSectionId olIdx ol = case ol.product of
     Nothing ->
       body
@@ -407,11 +408,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
             )
     where
     body subBody =
-      HH.div
-        [ Css.classes [ "p-6", "border", "border-snow-800", "rounded-lg" ]
-        , HP.ref $ orderLineRefLabel orderSectionId ol.orderLineId
-        ]
-        subBody
+      Tuple (unwrap refLabel)
+        $ HH.div
+            [ Css.classes [ "p-6", "border", "border-snow-800", "rounded-lg" ]
+            , HP.ref refLabel
+            , HP.id $ unwrap refLabel
+            ]
+            subBody
+      where
+      refLabel = orderLineRefLabel orderSectionId ol.orderLineId
 
     isOptionOnly (SS.Product { optionOnly }) = optionOnly
 
@@ -593,7 +598,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderSection ::
     StateOrderForm ->
     OrderSection ->
-    H.ComponentHTML Action Slots m
+    Tuple String (H.ComponentHTML Action Slots m)
   renderSection sof sec = case sec.solution of
     Nothing ->
       body
@@ -693,11 +698,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
         sof.currency
 
     body subBody =
-      HH.div
-        [ Css.classes [ "flex", "flex-col", "gap-6", "p-6", "rounded-md", "bg-snow-100" ]
-        , HP.ref $ sectionRefLabel sec.orderSectionId
-        ]
-        subBody
+      Tuple (unwrap refLabel)
+        $ HH.div
+            [ Css.classes [ "flex", "flex-col", "gap-6", "p-6", "rounded-md", "bg-snow-100" ]
+            , HP.ref refLabel
+            ]
+            subBody
+      where
+      refLabel = sectionRefLabel sec.orderSectionId
 
     solutionLabel (SS.Solution s) = fromMaybe s.id s.title
 
@@ -769,7 +777,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
             map toResult $ Map.toUnfoldable pc.solutions
 
     renderOrderLines sol orderLines =
-      HH.div
+      -- Need a keyed div since otherwise the references seem to be ignored.
+      -- Probably related to
+      -- https://github.com/purescript-halogen/purescript-halogen/issues/423.
+      HK.div
         [ Css.classes [ "flex", "flex-col", "gap-6" ] ]
         (A.mapWithIndex renderOrderLine' orderLines)
       where
@@ -894,7 +905,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Array OrderSection ->
     H.ComponentHTML Action Slots m
   renderSections sof secs =
-    HH.div [ Css.classes [ "flex", "flex-col", "gap-5" ] ]
+    -- Need a keyed div since otherwise the references seem to be ignored.
+    -- Probably related to
+    -- https://github.com/purescript-halogen/purescript-halogen/issues/423.
+    HK.div [ Css.classes [ "flex", "flex-col", "gap-5" ] ]
       $ renderSection sof
       <$> secs
 
@@ -1822,14 +1836,17 @@ mkNilPriceBook solution = do
     }
 
 sectionRefLabel :: OrderSectionId -> H.RefLabel
-sectionRefLabel sectionId = H.RefLabel $ "section-" <> show (toRawId sectionId)
+sectionRefLabel sectionId =
+  H.RefLabel
+    $ "ordersection/"
+    <> show (toRawId sectionId)
 
 orderLineRefLabel :: OrderSectionId -> OrderLineId -> H.RefLabel
 orderLineRefLabel orderSectionId orderLineId =
   H.RefLabel
-    $ "orderline-"
+    $ "orderline/"
     <> show (toRawId orderSectionId)
-    <> "-"
+    <> "/"
     <> show (toRawId orderLineId)
 
 handleAction ::
@@ -2133,12 +2150,18 @@ handleAction = case _ of
                         ]
                     ]
                 }
-  OrderLineSetProduct { orderSectionId, orderLineId: oldOrderLineId, product } ->
+  OrderLineSetProduct { orderSectionId, orderLineId: oldOrderLineId, product } -> do
     let
+      mkOrderLineId :: { orderLineId :: UUID, configId :: UUID } -> IEId SS.OrderLineId
+      mkOrderLineId freshIds =
+        InternalId
+          $ SS.OrderLineId
+          $ UUID.toString freshIds.orderLineId
+
       mkOrderLine' :: { orderLineId :: UUID, configId :: UUID } -> SS.Product -> OrderLine
       mkOrderLine' freshIds prod =
         mkOrderLine
-          (InternalId $ SS.OrderLineId $ UUID.toString freshIds.orderLineId)
+          (mkOrderLineId freshIds)
           (SS.OrderLineConfigId $ UUID.toString freshIds.configId)
           prod
 
@@ -2186,16 +2209,16 @@ handleAction = case _ of
                           pure ls
                       )
                   }
-    in
-      do
-        freshIds <-
-          H.liftEffect do
-            orderLineId <- UUID.genUUID
-            configId <- UUID.genUUID
-            pure { orderLineId, configId }
-        modifyInitialized
-          $ modifyOrderForm
-          $ modifyOrderSection orderSectionId (updateOrderSection freshIds)
+    freshIds <-
+      H.liftEffect do
+        orderLineId <- UUID.genUUID
+        configId <- UUID.genUUID
+        pure { orderLineId, configId }
+    modifyInitialized
+      $ modifyOrderForm
+      $ modifyOrderSection orderSectionId (updateOrderSection freshIds)
+    scrollToElement
+      $ orderLineRefLabel orderSectionId (mkOrderLineId freshIds)
   OrderLineSetQuantity { orderSectionId, orderLineId, configId, quantity } -> do
     let
       updateOrderConfig :: SS.OrderLineConfig -> SS.OrderLineConfig
