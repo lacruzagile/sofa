@@ -460,9 +460,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     renderProductOption = case _ of
       SS.ProdOptSkuCode sku -> renderOptButton (show sku) sku
-      SS.ProductOption { sku, title, required: false } -> renderOptButton (fromMaybe (show sku) title) sku
+      SS.ProductOption { sku, title, required: false } ->
+        renderOptButton
+          (fromMaybe' (optionLabel sku) title)
+          sku
       _ -> HH.text ""
       where
+      optionLabel sku _ =
+        fromMaybe (show sku) do
+          SS.Product product <-
+            A.find
+              (\(SS.Product { sku: sku' }) -> sku == sku')
+              sol.products
+          product.title
+
       renderOptButton title sku =
         HH.button
           [ Css.classes [ "nectary-btn-secondary", "truncate" ]
