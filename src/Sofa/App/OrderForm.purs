@@ -1947,10 +1947,10 @@ handleAction = case _ of
     scrollToElement
       $ orderLineRefLabel orderSectionId orderLineId
   AddSection -> do
-    sectionId <- H.liftEffect $ genInternalId SS.OrderSectionId
+    orderSectionId <- H.liftEffect $ genInternalId SS.OrderSectionId
     let
       section =
-        { orderSectionId: sectionId
+        { orderSectionId
         , solution: Nothing
         , priceBook: Nothing
         , orderLines: mempty
@@ -1958,7 +1958,9 @@ handleAction = case _ of
         }
     modifyInitialized
       $ modifyOrderForm \order -> order { sections = snoc order.sections section }
-  SectionSetSolution { orderSectionId, solutionId } ->
+    scrollToElement
+      $ sectionRefLabel orderSectionId
+  SectionSetSolution { orderSectionId, solutionId } -> do
     modifyInitialized \state ->
       let
         SS.ProductCatalog pc = state.productCatalog
@@ -1978,6 +1980,8 @@ handleAction = case _ of
         modifyOrderForm
           (modifyOrderSection orderSectionId updateSection)
           state
+    scrollToElement
+      $ sectionRefLabel orderSectionId
   SectionSetPriceBook { orderSectionId, priceBook } ->
     modifyInitialized
       $ modifyOrderForm
@@ -2038,6 +2042,8 @@ handleAction = case _ of
       $ modifyOrderForm
       $ modifyOrderSection orderSectionId \section ->
           section { orderLines = snoc section.orderLines orderLine }
+    scrollToElement
+      $ orderLineRefLabel orderSectionId orderLineId
   AddOrderLineForProduct { orderSectionId, sku } -> do
     orderLineId <- H.liftEffect $ genInternalId SS.OrderLineId
     configId <- H.liftEffect $ (SS.OrderLineConfigId <<< UUID.toString) <$> genUUID
