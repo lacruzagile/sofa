@@ -465,7 +465,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       where
       renderOptButton title sku =
         HH.button
-          [ Css.classes [ "nectary-btn-primary", "truncate" ]
+          [ Css.classes [ "nectary-btn-secondary", "truncate" ]
           , HE.onClick \_ -> AddOrderLineForProduct { orderSectionId, sku }
           ]
           [ HH.text title ]
