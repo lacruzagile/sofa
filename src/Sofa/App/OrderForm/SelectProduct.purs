@@ -66,8 +66,9 @@ render state =
   renderProductButton (SS.Product { sku, title }) =
     HH.label
       [ Css.classes
-          [ "cursor-pointer"
-          , "nectary-btn-secondary"
+          [ "nectary-btn-secondary"
+          , "cursor-pointer"
+          , "text-stormy-500"
           ]
       ]
       [ HH.div [ Css.class_ "grow" ] [ HH.text $ fromMaybe (show sku) title ]

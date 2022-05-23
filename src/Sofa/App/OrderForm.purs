@@ -480,7 +480,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
       renderOptButton title sku =
         HH.button
-          [ Css.classes [ "nectary-btn-secondary", "truncate" ]
+          [ Css.classes [ "nectary-btn-secondary", "text-stormy-500", "truncate" ]
           , HE.onClick \_ -> AddOrderLineForProduct { orderSectionId, sku }
           ]
           [ HH.text title ]
@@ -737,11 +737,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
         renderSolutionButton { solution: solution@(SS.Solution { id }), available } =
           HH.label
             [ Css.classes
-                [ "cursor-pointer"
-                , if available || isSelected then
+                [ if available || isSelected then
                     "nectary-btn-secondary"
                   else
                     "nectary-btn-secondary-disabled"
+                , "cursor-pointer"
+                , "text-stormy-500"
                 ]
             ]
             [ HH.div [ Css.class_ "grow" ] [ HH.text $ solutionLabel solution ]
