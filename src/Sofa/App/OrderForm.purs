@@ -735,26 +735,27 @@ render state = HH.section_ [ HH.article_ renderContent ]
         selectedSolId = (\(SS.Solution { id }) -> id) <$> selectedSolution
 
         renderSolutionButton { solution: solution@(SS.Solution { id }), available } =
-          HH.label
-            [ Css.classes
-                [ if available || isSelected then
-                    "nectary-btn-secondary"
-                  else
-                    "nectary-btn-secondary-disabled"
-                , "cursor-pointer"
-                , "text-stormy-500"
-                ]
-            ]
-            [ HH.div [ Css.class_ "grow" ] [ HH.text $ solutionLabel solution ]
-            , HH.input
-                [ HP.type_ HP.InputRadio
-                , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
-                , Css.class_ "nectary-input-radio"
-                , HP.checked isSelected
-                , HP.enabled $ available || isSelected
-                , HE.onChange \_ -> actionSetSolution id
-                ]
-            ]
+          if not (available || isSelected) then
+            HH.text ""
+          else
+            HH.label
+              [ Css.classes
+                  [ "nectary-btn-secondary"
+                  , "cursor-pointer"
+                  , "text-stormy-500"
+                  , if isSelected then "ring-tropical-500" else "ring-snow-700"
+                  ]
+              ]
+              [ HH.div [ Css.class_ "grow" ] [ HH.text $ solutionLabel solution ]
+              , HH.input
+                  [ HP.type_ HP.InputRadio
+                  , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
+                  , Css.class_ "nectary-input-radio"
+                  , HP.checked isSelected
+                  , HP.enabled $ available || isSelected
+                  , HE.onChange \_ -> actionSetSolution id
+                  ]
+              ]
           where
           isSelected = selectedSolId == Just id
 

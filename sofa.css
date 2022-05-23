@@ -287,24 +287,6 @@
       rounded;
   }
 
-  /* An explicitly disabled secondary button. Only for use on "fake buttons". */
-  .nectary-btn-secondary-disabled {
-    @apply
-      inline-flex
-      items-center
-      justify-center
-      h-12
-      px-3
-      py-2
-      bg-snow-100
-      font-semibold
-      text-tropical-200
-      outline-none
-      ring-1
-      ring-tropical-100
-      rounded;
-  }
-
   .nectary-btn-cta {
     @apply
       inline-flex

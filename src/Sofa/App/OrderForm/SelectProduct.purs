@@ -64,19 +64,23 @@ render state =
     <$> state.products
   where
   renderProductButton (SS.Product { sku, title }) =
-    HH.label
-      [ Css.classes
-          [ "nectary-btn-secondary"
-          , "cursor-pointer"
-          , "text-stormy-500"
-          ]
-      ]
-      [ HH.div [ Css.class_ "grow" ] [ HH.text $ fromMaybe (show sku) title ]
-      , HH.input
-          [ HP.type_ HP.InputRadio
-          , HP.name $ "prodsel-" <> state.name
-          , Css.class_ "nectary-input-radio"
-          , HP.checked $ maybe false (sku == _) state.selected
-          , HE.onChange \_ -> Select sku
-          ]
-      ]
+    let
+      isSelected = maybe false (sku == _) state.selected
+    in
+      HH.label
+        [ Css.classes
+            [ "nectary-btn-secondary"
+            , "cursor-pointer"
+            , "text-stormy-500"
+            , if isSelected then "ring-tropical-500" else "ring-snow-700"
+            ]
+        ]
+        [ HH.div [ Css.class_ "grow" ] [ HH.text $ fromMaybe (show sku) title ]
+        , HH.input
+            [ HP.type_ HP.InputRadio
+            , HP.name $ "prodsel-" <> state.name
+            , Css.class_ "nectary-input-radio"
+            , HP.checked isSelected
+            , HE.onChange \_ -> Select sku
+            ]
+        ]
