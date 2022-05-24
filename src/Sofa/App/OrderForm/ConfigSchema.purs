@@ -266,11 +266,13 @@ render state@{ orderLineId } =
                 [ HP.type_ HP.InputText
                 , Css.classes [ "nectary-input", "w-full" ]
                 , HP.placeholder placeholder
+                , HE.onInput $ CheckInput entryIdx
                 , HE.onValueChange (act <<< const <<< SS.CvString)
                 ]
                   <> opt HP.value (maybe c.default (Just <<< show) value)
                   <> pat
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , errorText = Map.lookup entryIdx state.errors
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
             , wrapperClasses = [ Css.c "w-96" ]
             }
@@ -283,10 +285,12 @@ render state@{ orderLineId } =
               , Css.classes [ "nectary-input", "w-full" ]
               , HP.placeholder $ "String matching " <> c.pattern
               , HP.pattern c.pattern
+              , HE.onInput $ CheckInput entryIdx
               , HE.onValueChange (act <<< const <<< SS.CvString)
               ]
                 <> opt HP.value (maybe c.default (Just <<< show) value)
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , errorText = Map.lookup entryIdx state.errors
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
             , wrapperClasses = [ Css.c "w-96" ]
             }
