@@ -60,6 +60,7 @@ import Sofa.Data.Currency (mkCurrency, unsafeMkCurrency)
 import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
+import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal)
 import Sofa.Data.SubTotal as SubTotal
@@ -222,7 +223,7 @@ data Action
     { orderSectionId :: OrderSectionId
     , orderLineId :: OrderLineId
     , configId :: SS.OrderLineConfigId
-    , alter :: Maybe SS.ConfigValue -> SS.ConfigValue
+    , configValue :: Maybe SS.ConfigValue
     }
   | OrderLineRemoveConfig
     { orderSectionId :: OrderSectionId
@@ -580,12 +581,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                             }
                         , getConfigs: orderSchemaGetConfigs state orderSectionId
                         }
-                        ( \value ->
+                        ( \configValue ->
                             OrderLineSetConfig
                               { orderSectionId
                               , orderLineId: ol.orderLineId
                               , configId: cId
-                              , alter: const value
+                              , configValue
                               }
                         )
                   )
@@ -1185,17 +1186,39 @@ render state = HH.section_ [ HH.article_ renderContent ]
       sof.orderUpdateInFlight
         || not sof.orderForm.changed
         || fromMaybe true do
-            _ <- sof.orderForm.seller
-            _ <- sof.orderForm.buyer
-            _ <- sof.orderForm.commercial
+            _ <- sof.orderForm.seller -- Need a selected seller.
+            _ <- sof.orderForm.buyer -- Need a selected buyer.
+            _ <- sof.orderForm.commercial -- Need a selected billing account.
+            -- Need valid order sections.
             _ <- traverse checkOrderSection sof.orderForm.sections
             pure false
       where
       checkOrderSection os = do
-        SS.Solution solution <- os.solution
-        _ <- solution.uri
-        _ <- os.priceBook
+        SS.Solution solution <- os.solution -- Need a selected solution
+        _ <- solution.uri -- … that actually exist.
+        _ <- os.priceBook -- Need a selected price book.
+        -- Need valid order lines.
+        _ <- traverse checkOrderLine os.orderLines
         pure unit
+
+      checkOrderLine ol = do
+        product <- ol.product -- Need a selected product.
+        -- Need valid configurations.
+        _ <- traverse (checkOrderLineConfig product) ol.configs
+        pure unit
+
+      -- The order config schema and the actual configuration need to match.
+      checkOrderLineConfig product orderLineConfig =
+        let
+          SS.Product { orderConfigSchema } = product
+
+          SS.OrderLineConfig { config } = orderLineConfig
+        in
+          case Tuple orderConfigSchema config of
+            Tuple Nothing Nothing -> pure unit
+            Tuple (Just ocs) (Just conf)
+              | Schema.isValidValue ocs conf -> pure unit
+            _ -> Nothing
 
     preventFulfill =
       sof.orderFulfillInFlight
@@ -2253,15 +2276,15 @@ handleAction = case _ of
           }
     modifyInitialized $ modifyOrderForm
       $ modifyOrderLine orderSectionId orderLineId updateOrderLine
-  OrderLineSetConfig { orderSectionId, orderLineId, configId, alter } -> do
+  OrderLineSetConfig { orderSectionId, orderLineId, configId, configValue } -> do
     let
-      alterConfig (SS.OrderLineConfig olc) =
+      updateConfig (SS.OrderLineConfig olc) =
         SS.OrderLineConfig
-          $ olc { config = Just $ alter olc.config }
+          $ olc { config = configValue }
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderLine orderSectionId orderLineId
-      $ modifyOrderLineConfig configId alterConfig
+      $ modifyOrderLineConfig configId updateConfig
   OrderLineSetCharges { orderSectionId, orderLineId, charges, estimatedUsage } ->
     modifyInitialized
       $ modifyOrderForm

@@ -15,7 +15,7 @@ import Data.List as List
 import Data.List as SList
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe, maybe')
 import Data.String as S
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -45,6 +45,9 @@ import Sofa.Data.Schema (isValidValue)
 import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Type.Proxy (Proxy(..))
+import Web.Event.Event as WebEvent
+import Web.HTML.HTMLInputElement as HtmlInputElement
+import Web.HTML.ValidityState as Validity
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -74,13 +77,16 @@ type Input
     }
 
 type Output
-  = SS.ConfigValue
+  = Maybe SS.ConfigValue
 
 type State
   = { orderLineId :: Maybe SS.OrderLineId
     , configValue :: SS.ConfigValue
     , schemaEntry :: SS.ConfigSchemaEntry
     , readOnly :: Boolean
+    , errors :: Map ConfigEntryIndex String
+    -- ^ Whether there is an invalid input. The label points to the erroneous
+    -- configuration field.
     , configTabs :: Map ConfigEntryIndex Int
     -- ^ The currently selected tab of a `oneOf` configuration entry.
     , dataSourceVars :: DataSourceVars
@@ -95,6 +101,7 @@ data Action
   = NoOp
   | Receive Input
   | SetConfigTab ConfigEntryIndex Int
+  | CheckInput ConfigEntryIndex WebEvent.Event
   | UpdateValue (Maybe SS.ConfigValue -> SS.ConfigValue)
 
 mkDefaultConfig :: SS.ConfigSchemaEntry -> Maybe SS.ConfigValue
@@ -142,6 +149,7 @@ initialState input =
   , configValue: input.configValue
   , schemaEntry: input.schemaEntry
   , readOnly: input.readOnly
+  , errors: Map.empty
   , configTabs: Map.empty
   , dataSourceVars: input.dataSourceVars
   , getConfigs: input.getConfigs
@@ -206,12 +214,14 @@ render state@{ orderLineId } =
               [ Css.classes [ "nectary-input", "nectary-input-number", "w-full" ]
               , HP.type_ HP.InputNumber
               , HP.placeholder "Integer"
+              , HE.onInput $ CheckInput entryIdx
               , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
               ]
                 <> opt (HP.value <<< show) value
                 <> opt (HP.min <<< Int.toNumber) c.minimum
                 <> opt (HP.max <<< Int.toNumber) c.maximum
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , errorText = Map.lookup entryIdx state.errors
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
             , wrapperClasses = [ Css.c "w-96" ]
             }
@@ -694,6 +704,57 @@ handleAction = case _ of
   SetConfigTab entryIdx tabIdx ->
     H.modify_ \st ->
       st { configTabs = Map.insert entryIdx tabIdx st.configTabs }
+  -- Check that the given input entry is valid. If invalid, then the error
+  -- message is added to the state.
+  CheckInput entryIdx event -> do
+    errorMsg <-
+      H.liftEffect
+        $ case WebEvent.target event >>= HtmlInputElement.fromEventTarget of
+            Nothing -> pure Nothing
+            Just target -> do
+              validity <- HtmlInputElement.validity target
+              let
+                -- Checks the validity state using the given function `f`. If
+                -- the check fails then return the given error message.
+                --
+                -- The result of this function is suitable as the `previous`
+                -- parameter for a new call to `check`.
+                check f msg previous = do
+                  p <- previous
+                  case p of
+                    Just _ -> pure p
+                    Nothing ->
+                      f validity
+                        >>= case _ of
+                            false -> pure Nothing
+                            true -> pure (Just msg)
+              isValid <- Validity.valid validity
+              if isValid then
+                pure Nothing
+              else
+                check Validity.valueMissing "Value missing"
+                  $ check Validity.typeMismatch "Type mismatch"
+                  $ check Validity.patternMismatch "Pattern mismatch"
+                  $ check Validity.tooLong "Too long"
+                  $ check Validity.tooShort "Too short"
+                  $ check Validity.rangeUnderflow "Range underflow"
+                  $ check Validity.rangeOverflow "Range overflow"
+                  $ check Validity.stepMismatch "Step mismatch"
+                  $ check Validity.badInput "Bad input"
+                  $ check Validity.customError "Custom error"
+                  $ pure Nothing
+    H.modify_ \st ->
+      st
+        { errors =
+          maybe'
+            (\_ -> Map.delete entryIdx st.errors)
+            (\msg -> Map.insert entryIdx msg st.errors)
+            errorMsg
+        }
+    -- If there is an error then let the parent component know.
+    when (isJust errorMsg) $ H.raise Nothing
   UpdateValue update -> do
     state <- H.modify \st -> st { configValue = update (Just st.configValue) }
-    H.raise state.configValue
+    -- If there are no errors then let the parent component know about the new
+    -- configuration value.
+    when (Map.isEmpty state.errors) $ H.raise $ Just state.configValue
