@@ -15,7 +15,7 @@ import Data.List as List
 import Data.List as SList
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, maybe, maybe')
 import Data.String as S
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -755,10 +755,6 @@ handleAction = case _ of
             (\msg -> Map.insert entryIdx msg st.errors)
             errorMsg
         }
-    -- If there is an error then let the parent component know.
-    when (isJust errorMsg) $ H.raise Nothing
   UpdateValue update -> do
     state <- H.modify \st -> st { configValue = update (Just st.configValue) }
-    -- If there are no errors then let the parent component know about the new
-    -- configuration value.
-    when (Map.isEmpty state.errors) $ H.raise $ Just state.configValue
+    H.raise $ Just state.configValue
