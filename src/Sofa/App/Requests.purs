@@ -154,7 +154,7 @@ getBuyerContacts (CrmAccountId id) =
 getLegalEntities :: forall m. MonadAff m => m (Loadable (Array LegalEntity))
 getLegalEntities = map (map conv) $ getJson url
   where
-  url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> "legalentities.json"
+  url = smartSpecBaseUrl </> "examples" </> "legalentities.json"
 
   conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
   conv { legalEntities } = legalEntities
@@ -347,7 +347,7 @@ getProductCatalog = getJson url
   -- This URL is "virtual" in the sense that we fetch this URL but the reverse
   -- proxy will redirect the request to the product catalog suitable for the
   -- current deployment.
-  url = smartSpecBaseUrl </> "v1alpha1" </> "examples" </> smartSpecProdCatalogFilename
+  url = smartSpecBaseUrl </> "examples" </> smartSpecProdCatalogFilename
 
 newtype DataSourceResponse
   = DataSourceResponse (FO.Object ConfigValue)
