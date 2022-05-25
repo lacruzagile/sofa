@@ -40,18 +40,6 @@ genInternalId f = (InternalId <<< f <<< UUID.toString) <$> genUUID
 genInternalId' :: forall a. (String -> a) -> String -> UUID -> IEId a
 genInternalId' f s ns = InternalId $ f $ UUID.toString $ genv5UUID s ns
 
--- | Whether the given ID matches either the given internal or external ID.
-eqEither :: forall a. Eq a => a -> IEId a -> Boolean
-eqEither x = case _ of
-  InternalId y -> x == y
-  ExternalId y -> x == y
-
--- | Whether the given ID matches either the given internal or external ID inside.
-hasId :: forall a r. Eq a => a -> { id :: IEId a | r } -> Boolean
-hasId x { id } = case id of
-  InternalId y -> x == y
-  ExternalId y -> x == y
-
 -- | If the given ID is external, then return just that ID, otherwise return
 -- | nothing.
 toExternalId :: forall a. IEId a -> Maybe a
