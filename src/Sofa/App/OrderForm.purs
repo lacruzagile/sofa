@@ -337,7 +337,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     withCharges = case _ of
       [] -> empty
       charges ->
-        HH.details [ Css.class_ "mt-5" ]
+        HH.details_
           [ HH.summary
               [ Css.classes [ "text-lg", "cursor-pointer" ] ]
               [ HH.text "Charges" ]
@@ -397,7 +397,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> ( if isNothing product.orderConfigSchema then
                 []
               else
-                [ HH.details [ Css.classes [ "mt-5" ] ]
+                [ HH.details_
                     $ [ HH.summary
                           [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                           [ HH.text "Configuration" ]
@@ -411,7 +411,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
     body subBody =
       Tuple (unwrap refLabel)
         $ HH.div
-            [ Css.classes [ "p-6", "border", "border-snow-800", "rounded-lg" ]
+            [ Css.classes
+                [ "p-6"
+                , "border"
+                , "border-snow-800"
+                , "rounded-lg"
+                , "flex"
+                , "flex-col"
+                , "gap-5"
+                ]
             , HP.ref refLabel
             , HP.id $ unwrap refLabel
             ]
@@ -453,7 +461,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         Nothing -> HH.text ""
         Just [] -> HH.text ""
         Just options ->
-          HH.details [ Css.class_ "mt-5" ]
+          HH.details_
             [ HH.summary
                 [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                 [ HH.text "Product options" ]

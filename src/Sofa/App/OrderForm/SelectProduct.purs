@@ -60,8 +60,7 @@ render :: forall m. State -> H.ComponentHTML Action () m
 render state =
   HH.div
     [ Css.classes
-        [ "mt-5"
-        , "grid"
+        [ "grid"
         , "grid-cols-1"
         , "lg:grid-cols-2"
         , "xl:grid-cols-3"
