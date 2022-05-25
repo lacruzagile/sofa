@@ -458,7 +458,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                 [ HH.text "Product options" ]
             , HH.div
-                [ Css.classes [ "my-4", "grid", "grid-cols-1", "lg:grid-cols-2", "gap-5" ] ]
+                [ Css.classes
+                    [ "my-4"
+                    , "grid"
+                    , "grid-cols-1"
+                    , "lg:grid-cols-2"
+                    , "xl:grid-cols-3"
+                    , "gap-5"
+                    ]
+                ]
                 $ renderProductOption
                 <$> options
             ]
@@ -728,7 +736,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | not isInDraft = HH.text ""
       | otherwise =
         HH.div
-          [ Css.classes [ "grid", "grid-cols-1", "lg:grid-cols-2", "gap-5" ] ]
+          [ Css.classes
+              [ "grid"
+              , "grid-cols-1"
+              , "lg:grid-cols-2"
+              , "xl:grid-cols-3"
+              , "gap-5"
+              ]
+          ]
           $ A.fromFoldable
           $ renderSolutionButton
           <$> availableSolutions
