@@ -100,6 +100,7 @@ closeBtn closeAction =
     [ Icon.close6 [ Icon.ariaLabel "Close" ]
     ]
 
+-- | Renders an alert box.
 render :: forall w i. Alert w i -> HH.HTML w i
 render alert =
   HH.div

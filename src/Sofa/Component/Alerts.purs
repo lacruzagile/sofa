@@ -30,19 +30,29 @@ import Sofa.Component.Alert as Alert
 import Sofa.Css as Css
 import Type.Proxy (Proxy(..))
 
+-- | A type class that enriches a monad with the ability to create alert
+-- | notifications.
 class
   MonadAff m <= MonadAlert m where
+  -- | Retrieves the alert sink into which alerts can be pushed. This function
+  -- | is typically not called by client code, you would instead use the `push`
+  -- | function.
   getAlertSink :: m AlertSink
 
+-- | A plain alert, whose content does not reference any component slots or
+-- | actions.
 type PlainAlert
   = Alert Void Void
 
+-- | An alert sink that can be used to publish alerts.
 newtype AlertSink
   = AlertSink (AVar PlainAlert)
 
+-- | Creates a new alert sink.
 mkAlertSink :: Aff AlertSink
 mkAlertSink = AlertSink <$> AVar.empty
 
+-- | Publishes a new alert.
 push :: forall m. MonadAlert m => PlainAlert -> m Unit
 push alert = do
   AlertSink var <- getAlertSink
@@ -70,6 +80,9 @@ data Action
   | StartRemove UUID
   | FinishRemove UUID
 
+-- | Indicates how long an alert of the given type should be shown until
+-- | automatically removed. If `Nothing`, then the alert will be kept until the
+-- | user removes it.
 typeTtl :: AlertType -> Maybe Milliseconds
 typeTtl = case _ of
   Informative -> Just $ Milliseconds 10_000.0
@@ -153,6 +166,8 @@ handleAction = case _ of
 
       alertState = { id, alert, removing: false }
     H.modify_ \st -> st { alerts = st.alerts <> [ alertState ] }
+    -- If the alert should be removed then we start an asynchronous process to
+    -- perform the remove after the given time.
     maybe' pure (oneShotTimer (StartRemove id)) ttl
   StartRemove id -> do
     H.modify_ \st ->
@@ -169,6 +184,8 @@ handleAction = case _ of
   FinishRemove id -> do
     H.modify_ \st -> st { alerts = A.filter (\a -> a.id /= id) st.alerts }
 
+-- Forks off a process that listens for alerts being dropped into the alert
+-- sink.
 startListenLoop ::
   forall slots output m.
   MonadAff m =>

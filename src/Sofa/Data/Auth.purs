@@ -79,8 +79,8 @@ newtype Credentials
   , user :: String
   }
 
--- | The authentication instance, containing the fetch lock variable that
--- | ensures that we have at most one token fetch in flight.
+-- | The authentication instance. This, for example, contains the fetch lock
+-- | variable that ensures that we have at most one token fetch in flight.
 newtype AuthInstance
   = AuthInstance
   { id :: UUID
@@ -113,6 +113,10 @@ instance encodeCredentials :: EncodeJson Credentials where
       ~> ("user" := creds.user)
       ~> jsonEmptyObject
 
+-- | A type class that enriches a monad with the ability to manage
+-- | authentication credentials. The underlying monad must support forked
+-- | sub-processes since we fork off a background process that performs token
+-- | refreshes.
 class
   (MonadEffect m, Functor f, MonadFork f m) <= CredentialStore f m | m -> f where
   -- | Whether this credential store supports the set and clear operations.
@@ -120,7 +124,8 @@ class
   getCredentials :: m (Maybe Credentials)
   setCredentials :: Credentials -> m Unit
   clearCredentials :: m Unit
-  -- | Returns the unique authenticator instance. This function is idempotent.
+  -- | Returns the unique authenticator instance. The authentication instance
+  -- | should be the same throughout the execution of the application.
   getAuthInstance :: m AuthInstance
 
 newtype TokenResponse
@@ -416,11 +421,13 @@ getAuthorizationHeader =
 authInstanceStorageKey :: String
 authInstanceStorageKey = "auth-instance"
 
--- Initializes the authentication mechanism. Intended to be called on
--- application start. This will pick up any existing credentials and ensure they
--- start getting refreshed.
+-- | Initializes the authentication mechanism. Intended to be called once at
+-- | application start. This will pick up any existing credentials and ensure
+-- | they start getting refreshed.
 initialize :: forall f m. MonadAff m ⇒ CredentialStore f m ⇒ m Unit
 initialize = do
+  -- If the current execution environment uses read-only credentials then
+  -- initialization is a no-op.
   whenM (not <$> credentialsAreReadOnly) do
     -- Write the instance ID to session storage. This will help avoid duplicate
     -- refreshes when doing hot-reloading.
