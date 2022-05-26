@@ -25,6 +25,7 @@ import Web.Storage.Storage as LS
 -- |
 -- | - `deployment` – indicates the current deployment environment
 -- | - `alertSink` – the sink for global alerts
+-- | - `authInstance` – the authentication state
 type Env
   = { deployment :: Deployment
     , alertSink :: AlertSink

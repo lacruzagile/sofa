@@ -1,6 +1,6 @@
 -- | The user navigation bar item. When the user is not logged in then this
--- | shows a login button, which when clicked opens a login modal. When logged
--- | in, the component shows a logout button.
+-- | shows a login button, which when clicked redirects the browser to the SSO
+-- | login page. When logged in, the component shows a logout button.
 module Sofa.App.NavbarItemUser (Slot, proxy, component) where
 
 import Prelude
