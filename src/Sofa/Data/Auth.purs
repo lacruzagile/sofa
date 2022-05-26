@@ -12,7 +12,6 @@ module Sofa.Data.Auth
   , getUser
   , handleSsoRedirect
   , initialize
-  , login
   , logout
   , mkAuthInstance
   , mkCredentials
@@ -353,23 +352,6 @@ fetchToken user schedule formFields = do
         setCredentials creds
         when schedule $ scheduleRefresh
       pure creds
-
-login ::
-  forall f m.
-  MonadAff m =>
-  CredentialStore f m =>
-  String -> String -> m (Either Error Credentials)
-login user pass = do
-  result <-
-    fetchToken user true
-      [ Tuple "grant_type" (Just "password")
-      , Tuple "username" (Just user)
-      , Tuple "password" (Just pass)
-      ]
-  case result of
-    Left _ -> pure unit
-    Right _ -> notifyEvent EvLogin
-  pure result
 
 refresh ::
   forall f m.
