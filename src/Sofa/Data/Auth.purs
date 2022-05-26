@@ -419,7 +419,7 @@ getAuthorizationHeader =
     pure $ RequestHeader "Authorization" ("Bearer " <> creds.accessToken)
 
 authInstanceStorageKey :: String
-authInstanceStorageKey = "auth-instance"
+authInstanceStorageKey = "sofa-auth-instance"
 
 -- | Initializes the authentication mechanism. Intended to be called once at
 -- | application start. This will pick up any existing credentials and ensure

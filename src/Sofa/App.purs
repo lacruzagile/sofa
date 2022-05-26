@@ -80,7 +80,7 @@ instance credentialStoreAppM :: CredentialStore Fiber AppM where
         $ do
             w <- Html.window
             s <- HtmlWindow.sessionStorage w
-            mJsonStr <- LS.getItem "sofa-cred" s
+            mJsonStr <- LS.getItem authCredentialsStorageKey s
             pure
               $ do
                   jsonStr <- mJsonStr
@@ -102,7 +102,7 @@ instance credentialStoreAppM :: CredentialStore Fiber AppM where
             s <- HtmlWindow.sessionStorage w
             let
               jsonStr = stringify (encodeJson creds)
-            LS.setItem "sofa-cred" jsonStr s
+            LS.setItem authCredentialsStorageKey jsonStr s
   clearCredentials =
     AppM
       $ ReaderT
@@ -115,8 +115,11 @@ instance credentialStoreAppM :: CredentialStore Fiber AppM where
         $ do
             w <- Html.window
             s <- HtmlWindow.sessionStorage w
-            LS.removeItem "sofa-cred" s
+            LS.removeItem authCredentialsStorageKey s
   getAuthInstance = AppM $ ReaderT \env -> pure env.authInstance
+
+authCredentialsStorageKey :: String
+authCredentialsStorageKey = "sofa-auth-credentials"
 
 -- | Runs the `AppM` monad, takes an environment as input.
 runAppM :: forall a. Env -> AppM a -> Aff a
