@@ -1026,7 +1026,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ( \o ->
               entry
                 [ title "Created by"
-                , value [ HH.text $ maybe "Not Available" show o.createdBy ]
+                , value [ HH.text $ fromMaybe "Not Available" o.createdBy ]
                 ]
           )
       , withOriginal
