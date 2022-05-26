@@ -2836,6 +2836,7 @@ newtype OrderForm
   , orderNotes :: Array OrderNote
   , sections :: Array OrderSection
   , createTime :: Maybe DateTime
+  , createdBy :: Maybe String
   }
 
 instance decodeJsonOrderForm :: DecodeJson OrderForm where
@@ -2860,6 +2861,12 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
     orderNotes <- o .:? "orderNotes" .!= []
     sections <- o .: "sections"
     createTime <- decodeJsonDateTime' =<< o .:? "createTime"
+    createdBy <- do
+      createdBy <- o .:? "createdBy"
+      case createdBy of
+        Just d
+          | d /= "" -> pure createdBy
+        _ -> pure Nothing
     pure
       $ OrderForm
           { id
@@ -2874,6 +2881,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
           , orderNotes
           , sections
           , createTime
+          , createdBy
           }
 
 instance encodeJsonOrderForm :: EncodeJson OrderForm where
@@ -2890,6 +2898,7 @@ instance encodeJsonOrderForm :: EncodeJson OrderForm where
       ~>? ("orderNotes" :=? ifNonEmpty x.orderNotes)
       ~>? ("sections" := x.sections)
       ~> ("createTime" :=? map dateTimeToIsoDateString x.createTime)
+      ~>? ("createdBy" :=? x.createdBy)
       ~>? jsonEmptyObject
 
 newtype LegalEntityTraffic

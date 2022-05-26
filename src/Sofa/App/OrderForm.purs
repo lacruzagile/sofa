@@ -1025,6 +1025,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
       , withOriginal
           ( \o ->
               entry
+                [ title "Created by"
+                , value [ HH.text $ maybe "Not Available" show o.createdBy ]
+                ]
+          )
+      , withOriginal
+          ( \o ->
+              entry
                 [ title "Approval"
                 , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
                 ]
@@ -1358,6 +1365,7 @@ toJson orderForm = do
         , orderNotes: orderForm.notes
         , sections
         , createTime: Nothing
+        , createdBy: Nothing
         }
   where
   toOrderLine :: OrderLine -> Either String SS.OrderLine
