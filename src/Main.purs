@@ -12,7 +12,7 @@ import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Router as Router
 import Sofa.Component.Alerts as Alert
-import Sofa.Data.Auth (handleSsoRedirect, mkAuthEventEmitter, mkAuthInstance)
+import Sofa.Data.Auth (handleSsoRedirect, mkAuthInstance)
 import Sofa.Data.Deployment (detectDeployment, getCrmQuoteId)
 import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
@@ -26,12 +26,11 @@ main :: Effect Unit
 main = do
   deployment <- detectDeployment
   mCrmQuoteId <- getCrmQuoteId
-  authEventEmitter <- mkAuthEventEmitter
   authInstance <- mkAuthInstance
   HA.runHalogenAff do
     alertSink <- Alert.mkAlertSink
     let
-      env = { deployment, alertSink, authEventEmitter, authInstance }
+      env = { deployment, alertSink, authInstance }
     runAppM env handleSsoRedirect
     awaitLoad
     mBody <- HA.selectElement (QuerySelector "#sofa-app")

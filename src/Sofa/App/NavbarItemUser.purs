@@ -17,7 +17,7 @@ import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
-import Sofa.Data.Auth (class CredentialStore, AuthEvent(..), credentialsAreReadOnly, getAuthEventEmitter, getCredentials, getUser, login, logout, mkSsoAuthorizeUrl, toEmitter)
+import Sofa.Data.Auth (class CredentialStore, AuthEvent(..), credentialsAreReadOnly, getAuthInstance, getCredentials, getUser, login, logout, mkSsoAuthorizeUrl, toEmitter)
 import Sofa.Data.Auth as Auth
 import Sofa.Data.Loadable (Loadable(..), isLoading)
 import Sofa.Widgets as Widgets
@@ -207,7 +207,7 @@ handleAction = case _ of
     -- Initialize the authentication module.
     H.lift Auth.initialize
     -- Start listening to authentication events.
-    authEventEmitter <- toEmitter <$> H.lift getAuthEventEmitter
+    authEventEmitter <- toEmitter <$> H.lift getAuthInstance
     _ <- H.subscribe (AuthEv <$> authEventEmitter)
     -- Load credentials from the credential store.
     readOnly <- H.lift credentialsAreReadOnly

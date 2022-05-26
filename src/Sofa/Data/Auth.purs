@@ -1,13 +1,11 @@
 -- | Types and functions useful for authentication.
 module Sofa.Data.Auth
   ( AuthEvent(..)
-  , AuthEventEmitter
   , AuthInstance
   , Credentials
   , class CredentialStore
   , clearCredentials
   , credentialsAreReadOnly
-  , getAuthEventEmitter
   , getAuthInstance
   , getAuthorizationHeader
   , getCredentials
@@ -16,7 +14,6 @@ module Sofa.Data.Auth
   , initialize
   , login
   , logout
-  , mkAuthEventEmitter
   , mkAuthInstance
   , mkCredentials
   , mkSsoAuthorizeUrl
@@ -82,15 +79,14 @@ newtype Credentials
   , user :: String
   }
 
-newtype AuthEventEmitter
-  = AuthEventEmitter (HS.SubscribeIO AuthEvent)
-
 -- | The authentication instance, containing the fetch lock variable that
 -- | ensures that we have at most one token fetch in flight.
 newtype AuthInstance
   = AuthInstance
   { id :: UUID
   , fetchLock :: AVar Unit
+  , eventListener :: HS.Listener AuthEvent
+  , eventEmitter :: HS.Emitter AuthEvent
   }
 
 data AuthEvent
@@ -124,9 +120,7 @@ class
   getCredentials :: m (Maybe Credentials)
   setCredentials :: Credentials -> m Unit
   clearCredentials :: m Unit
-  -- | Authentication event emitter.
-  getAuthEventEmitter :: m AuthEventEmitter
-  --  | Returns the unique authenticator instance. This function is idempotent.
+  -- | Returns the unique authenticator instance. This function is idempotent.
   getAuthInstance :: m AuthInstance
 
 newtype TokenResponse
@@ -168,26 +162,24 @@ mkCredentials user accessToken =
 getUser :: Credentials -> String
 getUser (Credentials { user }) = user
 
-mkAuthEventEmitter :: Effect AuthEventEmitter
-mkAuthEventEmitter = AuthEventEmitter <$> HS.create
-
-toEmitter :: AuthEventEmitter -> HS.Emitter AuthEvent
-toEmitter (AuthEventEmitter s) = s.emitter
+toEmitter :: AuthInstance -> HS.Emitter AuthEvent
+toEmitter (AuthInstance { eventEmitter }) = eventEmitter
 
 notifyEvent ::
   forall f m.
   CredentialStore f m =>
   AuthEvent -> m Unit
 notifyEvent event = do
-  AuthEventEmitter { listener } <- getAuthEventEmitter
-  liftEffect $ HS.notify listener event
+  AuthInstance { eventListener } <- getAuthInstance
+  liftEffect $ HS.notify eventListener event
 
 -- | Creates an authentication instance.
 mkAuthInstance ∷ Effect AuthInstance
 mkAuthInstance = do
   id <- genUUID
   fetchLock <- AVarEff.new unit
-  pure $ AuthInstance { id, fetchLock }
+  { emitter: eventEmitter, listener: eventListener } <- HS.create
+  pure $ AuthInstance { id, fetchLock, eventEmitter, eventListener }
 
 -- | Base URL to use for the token service.
 tokenBaseUrl :: String
