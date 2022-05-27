@@ -2405,12 +2405,12 @@ instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
           , solutionUri:
               -- We do a bit of mapping here for backwards compatibility.
               case solutionUri of
-                Just "NOVA" -> Just "solution.sms-automated.nova.json"
-                Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/solution.phase1.sms-prod.json" -> Just "solution.sms-automated.nova.json"
-                Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/v1alpha1/examples/solution.phase1.sms-prod.json" -> Just "solution.sms-automated.nova.json"
+                Just "NOVA" -> Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/solution.sms-automated.nova.json"
+                Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/solution.phase1.sms-prod.json" -> Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/solution.sms-automated.nova.json"
+                Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/v1alpha1/examples/solution.phase1.sms-prod.json" -> Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/solution.sms-automated.nova.json"
                 Just uri -> case S.stripPrefix (S.Pattern "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/v1alpha1/examples/") uri of
                   Nothing -> solutionUri
-                  Just suffix -> Just suffix
+                  Just suffix -> Just $ "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/" <> suffix
                 _ -> solutionUri
           }
 
