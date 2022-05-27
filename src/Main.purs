@@ -17,6 +17,7 @@ import Sofa.Data.Deployment (detectDeployment, getCrmQuoteId)
 import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
+import Sofa.App.SsoLoggingIn as SsoLoggingIn
 
 -- | SOFA application entry point. This will attach the application to an
 -- | element with the ID `sofa-app`, for example,
@@ -31,7 +32,6 @@ main = do
     alertSink <- Alert.mkAlertSink
     let
       env = { deployment, alertSink, authInstance }
-    runAppM env handleSsoRedirect
     awaitLoad
     mBody <- HA.selectElement (QuerySelector "#sofa-app")
     case mBody of
@@ -40,8 +40,14 @@ main = do
         Nothing -> runFull env body
         Just crmQuoteId -> runOnlyOrderForm env crmQuoteId body
 
+-- | Start the full standalone SOFA implementation.
 runFull :: Env -> Html.HTMLElement -> Aff Unit
 runFull env body = do
+  -- First handle any SSO redirects.
+  { dispose: disposeSsoLoggingIn } <- runUI SsoLoggingIn.component unit body
+  runAppM env handleSsoRedirect
+  disposeSsoLoggingIn
+  -- Then run the actual app.
   let
     router = H.hoist (runAppM env) Router.component
   app <- runUI router unit body
