@@ -3,7 +3,7 @@ module Sofa.App.OrderForm (Slot, Input(..), proxy, component) where
 import Prelude
 import Control.Alternative (guard, (<|>))
 import Control.Parallel (parallel, sequential)
-import Data.Argonaut (encodeJson, stringifyWithIndent)
+import Data.Argonaut (decodeJson, encodeJson, jsonParser, printJsonDecodeError, stringify, stringifyWithIndent)
 import Data.Array (foldl, modifyAt, snoc)
 import Data.Array as A
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -25,6 +25,7 @@ import Data.Tuple (Tuple(..), uncurry)
 import Data.Tuple.Nested (tuple3, uncurry3)
 import Data.UUID (UUID, emptyUUID, genUUID, genv5UUID)
 import Data.UUID as UUID
+import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Effect.Console as Console
@@ -70,6 +71,7 @@ import Type.Proxy (Proxy(..))
 import Web.Event.Event (stopPropagation) as Event
 import Web.HTML as Html
 import Web.HTML.Window as HtmlWindow
+import Web.Storage.Storage as HtmlStorage
 import Web.UIEvent.MouseEvent (MouseEvent, toEvent) as Event
 
 type Slot id
@@ -1412,6 +1414,36 @@ toJson orderForm = do
 toJsonStr :: OrderForm -> Either String String
 toJsonStr = map (stringifyWithIndent 2 <<< encodeJson) <<< toJson
 
+orderFormSessionStorageKey :: String
+orderFormSessionStorageKey = "sofa-order-form"
+
+setSessionOrderForm :: SS.OrderForm -> Effect Unit
+setSessionOrderForm orderForm =
+  Html.window
+    >>= HtmlWindow.sessionStorage
+    >>= HtmlStorage.setItem orderFormSessionStorageKey json
+  where
+  json = stringify $ encodeJson orderForm
+
+getSessionOrderForm :: Effect (Either String SS.OrderForm)
+getSessionOrderForm = do
+  mJsonStr <-
+    HtmlStorage.getItem orderFormSessionStorageKey
+      =<< HtmlWindow.sessionStorage
+      =<< Html.window
+  let
+    mapLeft f = either (Left <<< f) Right
+  pure do
+    jsonStr <- note "No stored order" mJsonStr
+    json <- jsonParser jsonStr
+    mapLeft printJsonDecodeError $ decodeJson json
+
+clearSessionOrderForm :: Effect Unit
+clearSessionOrderForm =
+  HtmlStorage.removeItem orderFormSessionStorageKey
+    =<< HtmlWindow.sessionStorage
+    =<< Html.window
+
 loadCatalog ::
   forall slots output m.
   MonadAff m =>
@@ -1744,11 +1776,18 @@ modifyInitialized ::
   MonadAff m =>
   (StateOrderForm -> StateOrderForm) ->
   H.HalogenM State Action slots output m Unit
-modifyInitialized f =
-  H.modify_
-    $ case _ of
-        Initialized st -> Initialized (f <$> st)
-        initializing -> initializing
+modifyInitialized f = do
+  state <-
+    H.modify
+      $ case _ of
+          Initialized st -> Initialized (f <$> st)
+          initializing -> initializing
+  -- Try to persist the modified order form in the browser session storage.
+  H.liftEffect case state of
+    Initialized (Loaded { orderForm }) ->
+      either (\_ -> pure unit) setSessionOrderForm
+        $ toJson orderForm
+    _ -> pure unit
 
 -- | Applies the given modification to the order form. After applying the
 -- | modification, the totals are recalculated.
@@ -1921,7 +1960,19 @@ handleAction = case _ of
         Loaded order -> loadExisting order
         Loading -> H.put $ Initialized Loading
     case st of
-      Initializing NewOrder -> loadCatalog Nothing
+      Initializing NewOrder -> do
+        -- Check if there is an order in session storage. If there is one then
+        -- load that order, otherwise simply load the product catalog and start
+        -- with a completely empty order form.
+        --
+        -- This lets us to do things like a login flow or a hard reload of the
+        -- current tab without losing order form content.
+        mStoredOrder <- H.liftEffect getSessionOrderForm
+        H.liftEffect $ Console.log $ either identity (\_ -> "Got stored order") mStoredOrder
+        either
+          (\_ -> loadCatalog Nothing)
+          loadExisting
+          mStoredOrder
       Initializing (ExistingOrder orderForm) -> loadExisting orderForm
       Initializing (ExistingOrderId id) -> do
         H.put $ Initialized Loading
@@ -1931,7 +1982,7 @@ handleAction = case _ of
         H.put $ Initialized Loading
         orderForm <- H.lift $ Requests.getOrderForQuote crmQuoteId
         load orderForm
-      _ -> pure unit
+      Initialized _ -> pure unit
   SetOrderDisplayName name ->
     modifyInitialized
       $ \st ->
@@ -2344,7 +2395,9 @@ handleAction = case _ of
           _ -> pure unit
         pure unit
       _ -> pure unit
-    -- Reloading the catalog will reset the state.
+    -- Flush the order form state from the browser store.
+    H.liftEffect clearSessionOrderForm
+    -- Reloading the catalog will reset the component state.
     loadCatalog Nothing
   CreateUpdateOrder -> do
     st <- H.get
