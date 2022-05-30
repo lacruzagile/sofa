@@ -37,6 +37,7 @@ to generate this file without the comments in this block.
   , "integers"
   , "js-date"
   , "js-uri"
+  , "jwt"
   , "lists"
   , "maybe"
   , "media-types"

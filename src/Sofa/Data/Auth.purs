@@ -57,6 +57,7 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Console as Console
 import Effect.Now (nowDateTime)
 import Halogen.Subscription as HS
+import Jwt as Jwt
 import Web.HTML as Html
 import Web.HTML.Location as HtmlLocation
 import Web.HTML.Window as HtmlWindow
@@ -152,6 +153,15 @@ instance decodeJsonTokenResponse :: DecodeJson TokenResponse where
           , scope
           , tokenType
           }
+
+newtype SsoAccessToken
+  = SsoAccessToken { user :: String }
+
+instance decodeSsoAccessToken :: DecodeJson SsoAccessToken where
+  decodeJson json = do
+    o <- decodeJson json
+    user <- o .: "user_name"
+    pure $ SsoAccessToken { user }
 
 -- | Make static credentials, for use when deployed in Salesforce.
 mkCredentials :: String -> String -> Credentials
@@ -274,7 +284,7 @@ handleSsoRedirect = do
     Nothing -> pure unit
     Just { authCode, location, redirectUrl, targetUrl } -> do
       void
-        $ fetchToken "user" false
+        $ fetchToken false
             [ Tuple "grant_type" (Just "authorization_code")
             , Tuple "code" (Just authCode)
             , Tuple "redirect_uri" (Just redirectUrl)
@@ -286,8 +296,8 @@ fetchToken ::
   forall f m.
   MonadAff m =>
   CredentialStore f m =>
-  String -> Boolean -> Array (Tuple String (Maybe String)) -> m (Either String Credentials)
-fetchToken user schedule formFields = do
+  Boolean -> Array (Tuple String (Maybe String)) -> m (Either String Credentials)
+fetchToken schedule formFields = do
   AuthInstance authInstance <- getAuthInstance
   -- Try to take the lock, leaving the avar empty. Any fetch that occurs while
   -- the avar is empty will block until the winning fetch completes, then we can
@@ -313,12 +323,14 @@ fetchToken user schedule formFields = do
         withExceptT printJsonDecodeError
           $ except
           $ decodeJson resp.body
-      | statusBadRequest resp.status -> throwError "Bad username or password, try again."
-      | otherwise -> throwError "Generic error"
+      | otherwise -> throwError "Authentication error"
     where
     statusOk (StatusCode n) = 200 <= n && n < 300
 
-    statusBadRequest (StatusCode n) = 400 == n
+  handleAccessToken accessToken =
+    withExceptT (\_ -> "Invalid access token")
+      $ except
+      $ Jwt.decodeWith decodeJson accessToken
 
   runFetch =
     runExceptT do
@@ -333,6 +345,7 @@ fetchToken user schedule formFields = do
               , responseFormat = ResponseFormat.json
               }
       TokenResponse tokenResp <- handleResponse mresponse
+      SsoAccessToken accessTokenResp <- handleAccessToken tokenResp.accessToken
       now <- liftEffect nowDateTime
       let
         -- Calculate expiry timestamp. Note, the expiry is 30 seconds before the
@@ -346,7 +359,7 @@ fetchToken user schedule formFields = do
             { accessToken: tokenResp.accessToken
             , refreshToken: tokenResp.refreshToken
             , expiry
-            , user
+            , user: accessTokenResp.user
             }
       lift do
         setCredentials creds
@@ -356,11 +369,10 @@ fetchToken user schedule formFields = do
 refresh ::
   forall f m.
   MonadAff m =>
-  CredentialStore f m =>
-  String -> String -> m (Either Error Credentials)
-refresh user refreshToken = do
+  CredentialStore f m => String -> m (Either Error Credentials)
+refresh refreshToken = do
   result <-
-    fetchToken user true
+    fetchToken true
       [ Tuple "grant_type" (Just "refresh_token")
       , Tuple "refresh_token" (Just refreshToken)
       ]
@@ -387,7 +399,7 @@ getActiveCredentials =
     case mCreds of
       Just (Credentials creds)
         | creds.expiry > now -> pure (Credentials creds)
-        | otherwise -> ExceptT $ refresh creds.user creds.refreshToken
+        | otherwise -> ExceptT $ refresh creds.refreshToken
       _ -> throwError "Not logged in"
 
 getAuthorizationHeader ::
@@ -443,8 +455,8 @@ scheduleRefresh = do
       mCreds <- getCredentials
       case mCreds of
         Nothing -> pure unit
-        Just (Credentials { user, refreshToken }) -> do
-          refreshResult <- refresh user refreshToken
+        Just (Credentials { refreshToken }) -> do
+          refreshResult <- refresh refreshToken
           liftEffect
             $ Console.log
             $ case refreshResult of
