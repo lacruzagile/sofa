@@ -1967,12 +1967,21 @@ handleAction = case _ of
         --
         -- This lets us to do things like a login flow or a hard reload of the
         -- current tab without losing order form content.
-        mStoredOrder <- H.liftEffect getSessionOrderForm
-        H.liftEffect $ Console.log $ either identity (\_ -> "Got stored order") mStoredOrder
-        either
-          (\_ -> loadCatalog Nothing)
-          loadExisting
-          mStoredOrder
+        --
+        -- Note, we only load an order from session storage if it has not been
+        -- saved to the backend, i.e., when it is lacking an order ID.
+        eStoredOrder <- H.liftEffect getSessionOrderForm
+        let
+          noOrder err = do
+            H.liftEffect $ Console.log err
+            loadCatalog Nothing
+
+          gotOrder order = do
+            H.liftEffect $ Console.log "Got stored order"
+            case order of
+              SS.OrderForm { id: Nothing } -> loadExisting order
+              _ -> loadCatalog Nothing
+        either noOrder gotOrder eStoredOrder
       Initializing (ExistingOrder orderForm) -> loadExisting orderForm
       Initializing (ExistingOrderId id) -> do
         H.put $ Initialized Loading
