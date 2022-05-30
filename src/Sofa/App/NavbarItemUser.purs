@@ -33,12 +33,14 @@ data State
   | LoggedIn
     { readOnly :: Boolean
     , user :: String
+    , menuOpen :: Boolean
     }
 
 data Action
   = Initialize
   | Login
   | Logout
+  | SetMenuVisibility Boolean
   | AuthEv AuthEvent
 
 component ::
@@ -93,14 +95,42 @@ render = case _ of
       [ HE.onClick \_ -> Login ]
       [ renderUser "Login" ]
 
-  renderLoggedIn { readOnly, user }
+  renderLoggedIn { readOnly, user, menuOpen }
     | readOnly = renderUser user
     | otherwise =
-      HH.button
-        [ HP.title $ "Logged in as " <> user
-        , HE.onClick $ \_ -> Logout
+      HH.div
+        [ Css.classes [ "relative", "mx-2" ]
+        , HE.onMouseLeave \_ -> SetMenuVisibility false
         ]
-        [ renderUser "Logout" ]
+        [ HH.div
+            [ HE.onMouseEnter \_ -> SetMenuVisibility true ]
+            [ renderUser user ]
+        , renderUserMenu menuOpen
+        ]
+
+  renderUserMenu open
+    | not open = HH.text ""
+    | otherwise =
+      HH.div
+        [ Css.classes
+            [ "absolute"
+            , "w-full"
+            , "flex"
+            , "flex-col"
+            , "bg-white"
+            , "overflow-auto"
+            , "border"
+            , "rounded-sm"
+            , "divide-y"
+            , "z-10"
+            ]
+        ]
+        [ HH.button
+            [ Css.classes [ "p-3", "hover:bg-snow-500", "text-left" ]
+            , HE.onClick \_ -> Logout
+            ]
+            [ HH.text "Logout" ]
+        ]
 
 handleAction ::
   forall output f m.
@@ -121,7 +151,13 @@ handleAction = case _ of
     H.put
       $ maybe
           LoggedOut
-          (\credentials -> LoggedIn { readOnly, user: getUser credentials })
+          ( \credentials ->
+              LoggedIn
+                { readOnly
+                , user: getUser credentials
+                , menuOpen: false
+                }
+          )
           mCredentials
   Login ->
     -- Redirect to the SSO authorize page. Once authentication is complete the
@@ -135,6 +171,10 @@ handleAction = case _ of
   Logout -> do
     H.lift logout
     H.put LoggedOut
+  SetMenuVisibility v ->
+    H.modify_ case _ of
+      LoggedOut -> LoggedOut
+      LoggedIn s -> LoggedIn $ s { menuOpen = v }
   AuthEv EvLogin -> pure unit
   AuthEv EvLogout -> do
     H.lift
