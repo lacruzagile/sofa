@@ -2853,7 +2853,7 @@ instance decodeJsonOrderForm :: DecodeJson OrderForm where
             Nothing
             (\qid -> if qid == CrmQuoteId "" then Nothing else Just qid)
         )
-        (o .: "crmQuoteId")
+        (o .:? "crmQuoteId")
     commercial <- o .: "commercial"
     buyer <- o .: "buyer"
     seller <- o .: "seller"
