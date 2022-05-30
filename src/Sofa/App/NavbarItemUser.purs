@@ -123,6 +123,7 @@ render = case _ of
             , "rounded-sm"
             , "divide-y"
             , "z-10"
+            , "shadow-md"
             ]
         ]
         [ HH.button
