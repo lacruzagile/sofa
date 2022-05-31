@@ -463,36 +463,37 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     renderProductOptions { options: mOptions }
       | not isInDraft = HH.text ""
-      | otherwise = case mOptions of
-        Nothing -> HH.text ""
-        Just [] -> HH.text ""
-        Just options ->
-          HH.details
-            [ propOpen true ]
-            [ HH.summary
-                [ Css.classes [ "text-lg", "cursor-pointer" ] ]
-                [ HH.text "Product options" ]
-            , HH.div
-                [ Css.classes
-                    [ "my-4"
-                    , "grid"
-                    , "grid-cols-1"
-                    , "lg:grid-cols-2"
-                    , "xl:grid-cols-3"
-                    , "gap-5"
-                    ]
-                ]
-                $ renderProductOption
-                <$> options
-            ]
+      | otherwise = maybe (HH.text "") go mOptions
+        where
+        go options = case A.concatMap renderProductOption options of
+          [] -> HH.text ""
+          renderedOptions ->
+            HH.details
+              [ propOpen true ]
+              [ HH.summary
+                  [ Css.classes [ "text-lg", "cursor-pointer" ] ]
+                  [ HH.text "Product options" ]
+              , HH.div
+                  [ Css.classes
+                      [ "my-4"
+                      , "grid"
+                      , "grid-cols-1"
+                      , "lg:grid-cols-2"
+                      , "xl:grid-cols-3"
+                      , "gap-5"
+                      ]
+                  ]
+                  renderedOptions
+              ]
 
     renderProductOption = case _ of
-      SS.ProdOptSkuCode sku -> renderOptButton (show sku) sku
+      SS.ProdOptSkuCode sku -> [ renderOptButton (show sku) sku ]
       SS.ProductOption { sku, title, required: false } ->
-        renderOptButton
-          (fromMaybe' (optionLabel sku) title)
-          sku
-      _ -> HH.text ""
+        [ renderOptButton
+            (fromMaybe' (optionLabel sku) title)
+            sku
+        ]
+      _ -> []
       where
       optionLabel sku _ =
         fromMaybe (show sku) do
