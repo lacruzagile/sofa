@@ -9,7 +9,6 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
 import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Alerts as Alerts
