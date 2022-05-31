@@ -277,6 +277,9 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
   where
+  -- For some reason this doesn't seem to be predefined in Halogen.
+  propOpen = HP.prop (HH.PropName "open")
+
   renderOrderLineStatus status reason =
     let
       wrap content
@@ -399,7 +402,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
           <> ( if isNothing product.orderConfigSchema then
                 []
               else
-                [ HH.details_
+                [ HH.details
+                    [ propOpen true ]
                     $ [ HH.summary
                           [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                           [ HH.text "Configuration" ]
@@ -463,7 +467,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
         Nothing -> HH.text ""
         Just [] -> HH.text ""
         Just options ->
-          HH.details_
+          HH.details
+            [ propOpen true ]
             [ HH.summary
                 [ Css.classes [ "text-lg", "cursor-pointer" ] ]
                 [ HH.text "Product options" ]
