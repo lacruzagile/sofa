@@ -139,13 +139,13 @@ stop-k8s-staging:
     name: eu1tst
     action: stop
 
-deploy-salesforce-staging:
+deploy-salesforce-sofa:
   image: salesforce/salesforcedx:7.136.1-slim
   stage: deploy
   only: [ master ]
   when: manual
   environment:
-    name: sf-staging
+    name: sf-sofa
   script:
     - >-
       ./salesforce/build-deployment
