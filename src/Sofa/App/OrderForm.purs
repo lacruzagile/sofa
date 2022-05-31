@@ -2312,12 +2312,12 @@ handleAction = case _ of
 
           requiredProds = A.mapMaybe (requiredSkuCode >=> (\o -> Map.lookup o solProds)) <$> p.options
 
-          -- Since we don't have access to the Effect monad here we generate a
-          -- v5 UUID instead. Its namespace is the ID of the originating order
+          -- Since we don't have access to the Effect monad here we generate v5
+          -- UUIDs instead. Its namespace is the ID of the originating order
           -- line.
           mkId i =
-            { orderLineId: freshIds.orderLineId
-            , configId: UUID.genv5UUID (show i) freshIds.orderLineId
+            { orderLineId: UUID.genv5UUID ("ol" <> show i) freshIds.orderLineId
+            , configId: UUID.genv5UUID ("oc" <> show i) freshIds.orderLineId
             }
         in
           maybe [] (A.mapWithIndex (\i -> mkOrderLine' $ mkId i)) requiredProds
