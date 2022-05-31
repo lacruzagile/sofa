@@ -1457,6 +1457,7 @@ loadCatalog ::
 loadCatalog crmQuoteId = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
+  orderSectionId <- genOrderSectionId
   let
     res =
       ( \(pc :: SS.ProductCatalog) ->
@@ -1475,7 +1476,7 @@ loadCatalog crmQuoteId = do
               , observers: []
               , notes: []
               , summary: mempty
-              , sections: []
+              , sections: [ emptyOrderSection orderSectionId ]
               }
           , orderUpdateInFlight: false
           , orderFulfillInFlight: false
@@ -1850,6 +1851,15 @@ getOrderId = (\(SS.OrderForm o) -> o.id) <=< _.orderForm.original
 getOriginalOrderStatus :: StateOrderForm -> Maybe SS.OrderStatus
 getOriginalOrderStatus = map (\(SS.OrderForm o) -> o.status) <<< _.orderForm.original
 
+emptyOrderSection :: OrderSectionId -> OrderSection
+emptyOrderSection orderSectionId =
+  { orderSectionId
+  , solution: Nothing
+  , priceBook: Nothing
+  , orderLines: mempty
+  , summary: mempty
+  }
+
 emptyOrderLineConfig :: SS.OrderLineConfigId -> SS.OrderLineConfig
 emptyOrderLineConfig id =
   SS.OrderLineConfig
@@ -1876,6 +1886,12 @@ emptyOrderLine orderLineId =
   , configs: NA.singleton $ genEmptyOrderLineConfig emptyUUID
   , estimatedUsage: Map.empty
   }
+
+genOrderLineId :: forall m. MonadEffect m => m OrderLineId
+genOrderLineId = H.liftEffect $ genInternalId SS.OrderLineId
+
+genOrderSectionId :: forall m. MonadEffect m => m OrderSectionId
+genOrderSectionId = H.liftEffect $ genInternalId SS.OrderSectionId
 
 genOrderLineConfigId :: forall m. MonadEffect m => m SS.OrderLineConfigId
 genOrderLineConfigId =
@@ -2095,20 +2111,16 @@ handleAction = case _ of
     scrollToElement
       $ orderLineRefLabel orderSectionId orderLineId
   AddSection -> do
-    orderSectionId <- H.liftEffect $ genInternalId SS.OrderSectionId
-    let
-      section =
-        { orderSectionId
-        , solution: Nothing
-        , priceBook: Nothing
-        , orderLines: mempty
-        , summary: mempty
-        }
+    orderSectionId <- genOrderSectionId
     modifyInitialized
-      $ modifyOrderForm \order -> order { sections = snoc order.sections section }
+      $ modifyOrderForm \order ->
+          order
+            { sections = snoc order.sections (emptyOrderSection orderSectionId)
+            }
     scrollToElement
       $ sectionRefLabel orderSectionId
   SectionSetSolution { orderSectionId, solutionId } -> do
+    orderLineId <- genOrderLineId
     modifyInitialized \state ->
       let
         SS.ProductCatalog pc = state.productCatalog
@@ -2121,7 +2133,7 @@ handleAction = case _ of
               $ section
                   { solution = Just solution
                   , priceBook = mkNilPriceBook solution
-                  , orderLines = []
+                  , orderLines = [ emptyOrderLine orderLineId ]
                   , summary = (mempty :: SubTotal)
                   }
       in
@@ -2183,7 +2195,7 @@ handleAction = case _ of
             $ Alerts.push
             $ Alert.errorAlert "Error deleting order section" errMsg
   AddOrderLine { orderSectionId } -> do
-    orderLineId <- H.liftEffect $ genInternalId SS.OrderLineId
+    orderLineId <- genOrderLineId
     let
       orderLine = emptyOrderLine orderLineId
     modifyInitialized
