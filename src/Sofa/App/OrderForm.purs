@@ -398,19 +398,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , renderSelectProduct ol.product
             , renderProductOptions product
             , renderChargeDetails olId ol.unitMap defaultCurrency ol.estimatedUsage ol.charges
-            ]
-          <> ( if isNothing product.orderConfigSchema then
-                []
+            , if isNothing product.orderConfigSchema then
+                HH.text ""
               else
-                [ HH.details
-                    [ propOpen true ]
-                    $ [ HH.summary
-                          [ Css.classes [ "text-lg", "cursor-pointer" ] ]
-                          [ HH.text "Configuration" ]
-                      ]
-                    <> renderProductConfigs product ol.configs
-                ]
-            )
+                HH.details
+                  [ propOpen true ]
+                  $ [ HH.summary
+                        [ Css.classes [ "text-lg", "cursor-pointer" ] ]
+                        [ HH.text "Configuration" ]
+                    ]
+                  <> renderProductConfigs product ol.configs
+            ]
     where
     refLabel = orderLineRefLabel orderSectionId ol.orderLineId
 
