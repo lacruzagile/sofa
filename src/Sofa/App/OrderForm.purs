@@ -699,14 +699,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , renderSelectSolution (Just solution)
             , renderOrderLines solution sec.orderLines
             , HH.div
-                [ Css.classes
-                    [ "flex"
-                    , "items-center"
-                    , "gap-4"
-                    , "pt-6"
-                    , "border-t"
-                    ]
-                ]
+                [ Css.classes [ "flex", "items-center", "gap-4" ] ]
                 [ renderOrderSectionSummary sec.summary
                 , HH.div [ Css.class_ "grow" ] []
                 , renderRemoveSectionButton
@@ -725,7 +718,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     body subBody =
       Tuple (unwrap refLabel)
         $ HH.div
-            [ Css.classes [ "flex", "flex-col", "gap-6", "p-6", "rounded-md", "bg-snow-100" ]
+            [ Css.classes [ "flex", "flex-col", "gap-8", "p-6", "rounded-md", "bg-snow-100" ]
             , HP.ref refLabel
             ]
             subBody
@@ -753,7 +746,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | not isInDraft = HH.text ""
       | otherwise =
         HH.button
-          [ Css.classes [ "nectary-btn-destructive", "px-6", "gap-4" ]
+          [ Css.classes [ "nectary-btn-destructive", "h-8" ]
           , HE.onClick $ RemoveSection { orderSectionId: sec.orderSectionId }
           ]
           [ HH.text "Discard solution"
@@ -764,20 +757,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
         HH.text ""
       else
         HH.button
-          [ Css.classes
-              [ "nectary-btn-secondary"
-              , "px-6"
-              , "gap-x-4"
-              ]
-          , HE.onClick \_ ->
-              AddOrderLine
-                { orderSectionId: sec.orderSectionId
-                }
+          [ Css.classes [ "nectary-btn-secondary", "h-8" ]
+          , HE.onClick \_ -> AddOrderLine { orderSectionId: sec.orderSectionId }
           ]
-          [ Icon.add
-              [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
-              ]
-          , HH.text "Add product"
+          [ HH.text "Add product"
           ]
       where
       -- We're in the process of adding an order line if there is a order line
