@@ -22,9 +22,9 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.Component.Icon as Icon
+import Sofa.Component.Spinner as Spinner
 import Sofa.Css as Css
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event as Event
 import Web.File.Blob (Blob)
@@ -177,7 +177,7 @@ render state =
   renderBody = case state.status of
     Loading ->
       renderBodyUpload (renderText_ "Attaching …")
-        $ Widgets.spinner (Css.cs [ "w-8", "h-8", "mx-auto" ])
+        $ Spinner.render (Css.cs [ "w-8", "h-8", "mx-auto" ])
     Loaded msg ->
       renderBodySuccess (renderText_ msg)
         $ HH.button

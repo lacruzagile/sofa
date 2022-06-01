@@ -17,13 +17,13 @@ import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Modal as Modal
+import Sofa.Component.Spinner as Spinner
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (focusElementByRef)
-import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
@@ -190,7 +190,7 @@ renderModal state observer =
                   ]
                   [ HH.text "Save"
                   , if isCreating then
-                      Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                      Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
                     else
                       HH.text ""
                   ]
@@ -215,7 +215,7 @@ renderShowObserver state idx (SS.OrderObserver o) =
       in
         if isDeleting then
           HH.div [ Css.classes wrapperClasses ]
-            [ Widgets.spinner [ Css.c "w-3", Css.c "h-3", Css.c "m-auto" ]
+            [ Spinner.render [ Css.c "w-3", Css.c "h-3", Css.c "m-auto" ]
             ]
         else
           HH.button

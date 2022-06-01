@@ -53,6 +53,7 @@ import Sofa.Component.Alerts as Alerts
 import Sofa.Component.EditableInput as EditableInput
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
+import Sofa.Component.Spinner as Spinner
 import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -1235,7 +1236,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
             [ HH.text "Fulfill order"
             , if sof.orderFulfillInFlight then
-                Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
               else
                 HH.text ""
             ]
@@ -1246,7 +1247,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
           [ HH.text $ maybe "Send order" (const "Update order") (getOrderId sof)
           , if sof.orderUpdateInFlight then
-              Widgets.spinner [ Css.c "ml-2", Css.c "align-text-bottom" ]
+              Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
             else
               HH.text ""
           ]

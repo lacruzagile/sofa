@@ -12,8 +12,8 @@ import Halogen.HTML.Properties as HP
 import Select as Sel
 import Select.Setters as SelSet
 import Sofa.Component.Icon as Icon
+import Sofa.Component.Spinner as Spinner
 import Sofa.Css as Css
-import Sofa.Widgets as Widgets
 import Web.UIEvent.FocusEvent as Event
 
 type RenderState act
@@ -54,7 +54,7 @@ render st =
   HH.div [ HP.classes st.wrapperClasses ]
     [ HH.div [ Css.class_ "relative" ]
         [ if st.loading then
-            Widgets.spinner [ Css.c "absolute", Css.c "right-2.5", Css.c "top-4" ]
+            Spinner.render [ Css.c "absolute", Css.c "right-2.5", Css.c "top-4" ]
           else
             HH.text ""
         , Icon.search

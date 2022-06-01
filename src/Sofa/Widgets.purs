@@ -3,7 +3,6 @@ module Sofa.Widgets
   , dateWithTimeTooltip
   , dateWithTimeTooltipRight
   , monetaryAmount
-  , spinner
   , subTotalTable
   ) where
 
@@ -16,7 +15,6 @@ import Data.Monoid.Additive (Additive(..))
 import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Halogen.HTML as HH
-import Halogen.HTML.Properties as HP
 import Sofa.Component.Tooltip as TT
 import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
@@ -166,22 +164,3 @@ subTotalTable title (SubTotal summary) =
         (monetaryAmount currency (BN.toNumber n))
 
     showMonetary (Additive n) = Currency.formatter currency (BN.toNumber n)
-
--- | Render a Nectary spinner.
-spinner :: forall w i. Array HH.ClassName -> HH.HTML w i
-spinner classes =
-  HH.div
-    [ HP.classes $ spinnerClasses <> classes ]
-    []
-  where
-  spinnerClasses =
-    Css.cs
-      [ "inline-block"
-      , "border-4"
-      , "border-snow-700"
-      , "border-b-stormy-500"
-      , "rounded-full"
-      , "animate-spin"
-      , "w-5"
-      , "h-5"
-      ]

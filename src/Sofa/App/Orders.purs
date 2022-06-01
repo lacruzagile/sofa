@@ -16,6 +16,7 @@ import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
+import Sofa.Component.Spinner as Spinner
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
@@ -181,7 +182,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         Loading ->
           HH.button
             [ Css.classes btnClasses, HP.disabled true ]
-            [ Widgets.spinner [] ]
+            [ Spinner.render [] ]
         Loaded (Just tok) ->
           HH.button
             [ Css.classes btnClasses, HE.onClick \_ -> LoadNext tok ]

@@ -4,8 +4,8 @@ import Prelude
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Sofa.Component.Spinner as Spinner
 import Sofa.Css as Css
-import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -37,6 +37,6 @@ render _ =
         , "place-items-center"
         ]
     ]
-    [ Widgets.spinner (Css.cs [ "w-12", "h-12" ])
+    [ Spinner.render (Css.cs [ "w-12", "h-12" ])
     , HH.text "Logging in"
     ]

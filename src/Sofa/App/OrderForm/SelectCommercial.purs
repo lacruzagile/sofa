@@ -13,6 +13,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Select as Sel
 import Sofa.App.Requests (getBillingAccount, getBillingAccounts)
+import Sofa.Component.Spinner as Spinner
 import Sofa.Component.Typeahead as Typeahead
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -20,7 +21,6 @@ import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (focusElementByRef)
-import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
@@ -183,7 +183,7 @@ component =
             ]
         ]
         [ HH.div [ Css.class_ "grow" ] [ HH.text "Loading billing account …" ]
-        , Widgets.spinner [ Css.c "my-4" ]
+        , Spinner.render [ Css.c "my-4" ]
         ]
     _ ->
       let
