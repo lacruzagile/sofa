@@ -361,6 +361,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       body
         [ HH.h3_ [ HH.text "Product" ]
         , renderSelectProduct Nothing
+        , renderRemoveOrderLineButton
         ]
     Just (SS.Product product) ->
       let
@@ -408,6 +409,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                         [ HH.text "Configuration" ]
                     ]
                   <> renderProductConfigs product ol.configs
+            , renderRemoveOrderLineButton
             ]
     where
     refLabel = orderLineRefLabel orderSectionId ol.orderLineId
@@ -428,6 +430,23 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , HP.id $ unwrap refLabel
             ]
             subBody
+
+    renderRemoveOrderLineButton
+      | not isInDraft = HH.text ""
+      | otherwise =
+        HH.div [ Css.class_ "flex" ]
+          [ HH.div [ Css.class_ "grow" ] []
+          , HH.button
+              [ Css.classes [ "nectary-btn-destructive", "h-8", "px-6", "gap-4" ]
+              , HE.onClick
+                  $ RemoveOrderLine
+                      { orderSectionId
+                      , orderLineId: ol.orderLineId
+                      }
+              ]
+              [ HH.text "Discard product"
+              ]
+          ]
 
     isOptionOnly (SS.Product { optionOnly }) = optionOnly
 
@@ -626,6 +645,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
       body
         [ HH.h2 [ Css.class_ "my-0" ] [ HH.text "Solution" ]
         , renderSelectSolution Nothing
+        , HH.div [ Css.class_ "flex" ]
+            [ HH.div [ Css.class_ "grow" ] []
+            , renderRemoveSectionButton
+            ]
         ]
     Just solution@(SS.Solution sol) ->
       let
@@ -639,10 +662,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 i
           in
             A.mapWithIndex mkPriceBookOption priceBooks
-
-        -- We're in the process of adding an order line if there is a order line
-        -- that doesn't have a product.
-        isAddingOrderLine = A.any (\{ product } -> isNothing product) sec.orderLines
       in
         body
           $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-4", "items-end" ] ]
@@ -689,25 +708,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 ]
                 [ renderOrderSectionSummary sec.summary
                 , HH.div [ Css.class_ "grow" ] []
-                , if not isInDraft || isAddingOrderLine then
-                    HH.text ""
-                  else
-                    HH.button
-                      [ Css.classes
-                          [ "nectary-btn-secondary"
-                          , "px-6"
-                          , "gap-x-4"
-                          ]
-                      , HE.onClick \_ ->
-                          AddOrderLine
-                            { orderSectionId: sec.orderSectionId
-                            }
-                      ]
-                      [ Icon.add
-                          [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
-                          ]
-                      , HH.text "Add product"
-                      ]
+                , renderRemoveSectionButton
+                , renderAddProductButton
                 ]
             ]
     where
@@ -745,6 +747,41 @@ render state = HH.section_ [ HH.article_ renderContent ]
             }
       )
         $ A.index priceBooks i
+
+    renderRemoveSectionButton
+      | not isInDraft = HH.text ""
+      | otherwise =
+        HH.button
+          [ Css.classes [ "nectary-btn-destructive", "px-6", "gap-4" ]
+          , HE.onClick $ RemoveSection { orderSectionId: sec.orderSectionId }
+          ]
+          [ HH.text "Discard solution"
+          ]
+
+    renderAddProductButton =
+      if not isInDraft || isAddingOrderLine then
+        HH.text ""
+      else
+        HH.button
+          [ Css.classes
+              [ "nectary-btn-secondary"
+              , "px-6"
+              , "gap-x-4"
+              ]
+          , HE.onClick \_ ->
+              AddOrderLine
+                { orderSectionId: sec.orderSectionId
+                }
+          ]
+          [ Icon.add
+              [ Icon.classes [ Css.c "w-6", Css.c "fill-tropical-500" ]
+              ]
+          , HH.text "Add product"
+          ]
+      where
+      -- We're in the process of adding an order line if there is a order line
+      -- that doesn't have a product.
+      isAddingOrderLine = A.any (\{ product } -> isNothing product) sec.orderLines
 
     renderSelectSolution selectedSolution
       | not isInDraft = HH.text ""
