@@ -872,12 +872,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
       [ HH.div [ Css.classes [ "flex", "items-center", "mb-6" ] ]
           [ HH.h2 [ Css.classes [ "grow", "m-0" ] ] [ HH.text "Order summary" ]
-          , HH.button
-              [ Css.classes [ "nectary-btn-primary", "h-8" ]
-              , HE.onClick \_ -> AddSection
-              ]
-              [ HH.text "Add solution"
-              ]
+          , if not isInDraft then
+              HH.text ""
+            else
+              HH.button
+                [ Css.classes [ "nectary-btn-primary", "h-8" ]
+                , HE.onClick \_ -> AddSection
+                ]
+                [ HH.text "Add solution"
+                ]
           ]
       , HH.table [ Css.classes [ "table-auto", "w-full" ] ]
           [ HH.thead_
