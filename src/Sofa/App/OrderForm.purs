@@ -876,7 +876,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ]
               ]
           , HH.tbody_
-              $ if A.null sof.orderForm.sections then
+              $ if A.null sectionsWithSolution then
                   [ HH.tr_
                       [ HH.td
                           [ HP.colSpan 4
@@ -886,10 +886,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       ]
                   ]
                 else
-                  A.concat $ sectionRow <$> sof.orderForm.sections
+                  A.concat $ sectionRow <$> sectionsWithSolution
           ]
       ]
     where
+    sectionsWithSolution = A.filter (\{ solution } -> isJust solution) sof.orderForm.sections
+
     th cls =
       HH.th
         [ Css.classes $ [ "p-2", "font-semibold", "text-left" ] <> cls
