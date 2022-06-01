@@ -10,6 +10,7 @@ app:
 ports:
   http: 80
   https: 443
+  httpMetrics: 9117
 
 image:
   repository: nexus.int.clxnetworks.net:8089/dev/business-process-automation/sofa
