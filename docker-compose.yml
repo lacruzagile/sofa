@@ -6,10 +6,11 @@ services:
       dockerfile: docker/Dockerfile
     image: nexus.int.clxnetworks.net:8089/dev/business-process-automation/sofa:latest
     ports:
-      - "8080:80"
+      - "1234:80"
     environment:
       DEPLOYMENT_ENV: staging
-      ORDERING_SERVICE_URL: https://ordering.eu1tst.bpa.staging.sinch.com
-      SERVER_NAME: localhost:8080
+      ORDERING_SERVICE_URL: https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com
+      SERVER_NAME: localhost:1234
       SMART_SPEC_URL: https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com
-      TOKEN_SERVICE_URL: https://public.token-service.common-auth.staging.sinch.com
+      TOKEN_SERVICE_URL: https://sso.admin-portal.int.staging.sinch.com
+      AUTH_CLIENT_CREDENTIALS: Basic ADD CREDENTIALS HERE

@@ -16,7 +16,7 @@ $ docker-compose up --no-build
 ```
 
 in a terminal to fetch the most recent build. Then open
-<http://localhost:8080/> in a web browser.
+<http://localhost:1234/> in a web browser.
 
 ## Development
 
