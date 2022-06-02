@@ -12,6 +12,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Sofa.Component.Select as Select
+import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.SmartSpec as SS
 import Type.Proxy (Proxy(..))
@@ -109,6 +110,7 @@ render st =
         { selected = st.selectedId
         , values = map (\o -> Tuple (HH.text o.label) o.configId) st.options
         , noSelectionText = "Please choose a configuration"
+        , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
         }
     )
     Select
