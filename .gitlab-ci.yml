@@ -142,7 +142,7 @@ stop-k8s-staging:
 deploy-salesforce-sofa:
   image: salesforce/salesforcedx:7.153.0-slim
   stage: deploy
-  # only: [ master ]
+  only: [ master ]
   when: manual
   environment:
     name: sf-sofa
