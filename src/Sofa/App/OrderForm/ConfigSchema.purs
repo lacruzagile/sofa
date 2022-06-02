@@ -357,24 +357,7 @@ render state@{ orderLineId } =
             )
             $ FO.toUnfoldable c.properties
       in
-        if S.null fallbackTitle then
-          HH.div
-            [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
-            renderFields
-        else
-          HH.fieldset
-            [ Css.classes
-                [ "my-2"
-                , "p-3"
-                , "flex"
-                , "flex-col"
-                , "gap-y-4"
-                , "border"
-                ]
-            ]
-            ( [ HH.legend_ [ withDescription fallbackTitle schemaEntry ] ]
-                <> renderFields
-            )
+        renderSectionEntry fallbackTitle schemaEntry renderFields
     SS.CseOneOf c ->
       let
         withTabs content =
@@ -417,12 +400,19 @@ render state@{ orderLineId } =
 
         -- Just show the first tab.
         firstValue = renderEntry entryIdx act "" value <$> A.head c.oneOf
+
+        -- The rendered alternatives. Note, if there is only one alternative
+        -- then we immediately render that as if it was the field. Otherwise we
+        -- render the different alternatives as tabs.
+        inner = case c.oneOf of
+          [ elem ] -> renderEntry entryIdx act fallbackTitle value elem
+          _ ->
+            maybe (HH.text $ "No oneOf schema matches the value: " <> show value) withTabs
+              $ selectedTab
+              <|> matchingValue
+              <|> firstValue
       in
-        renderEntryUnlabelled "" schemaEntry
-          $ maybe (HH.text $ "No oneOf schema matches the value: " <> show value) withTabs
-          $ selectedTab
-          <|> matchingValue
-          <|> firstValue
+        renderSectionEntry fallbackTitle schemaEntry [ inner ]
 
   pushEntryIndex :: ConfigEntryIndex -> Int -> ConfigEntryIndex
   pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
@@ -593,6 +583,32 @@ render state@{ orderLineId } =
         [ withDescription fallbackTitle schemaEntry
         , inner
         ]
+
+  renderSectionEntry fallbackTitle schemaEntry fields
+    | S.null fallbackTitle =
+      HH.div
+        [ Css.classes [ "flex", "flex-col", "gap-4" ] ]
+        fields
+    | otherwise =
+      HH.fieldset
+        [ Css.classes [ "flex", "flex-col", "gap-4" ] ]
+        $ case mTitle of
+            Nothing -> fields
+            Just title ->
+              [ HH.legend
+                  [ Css.classes [ "mb-4", "text-xl", "font-semibold" ] ]
+                  [ HH.text title ]
+              , case SS.configSchemaEntryDescription schemaEntry of
+                  Nothing -> HH.text ""
+                  Just description -> HH.p_ [ HH.text description ]
+              ]
+                <> fields
+      where
+      mTitle = case SS.configSchemaEntryTitle schemaEntry of
+        Nothing
+          | S.null fallbackTitle -> Nothing
+          | otherwise -> Just fallbackTitle
+        Just title -> Just title
 
   renderEnumEntry ::
     forall a r.

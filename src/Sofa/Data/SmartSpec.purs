@@ -1475,7 +1475,7 @@ configSchemaEntryTitle = case _ of
   CseConst x -> x.title
   CseArray x -> x.title
   CseObject x -> x.title
-  CseOneOf _x -> Nothing
+  CseOneOf x -> x.title
 
 configSchemaEntryDescription :: ConfigSchemaEntry -> Maybe String
 configSchemaEntryDescription = case _ of
@@ -1486,7 +1486,7 @@ configSchemaEntryDescription = case _ of
   CseConst x -> x.description
   CseArray x -> x.description
   CseObject x -> x.description
-  CseOneOf _x -> Nothing
+  CseOneOf x -> x.description
 
 data ConfigValue
   = CvBoolean Boolean
