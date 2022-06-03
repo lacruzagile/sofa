@@ -177,7 +177,8 @@ render state =
   renderBody = case state.status of
     Loading ->
       renderBodyUpload (renderText_ "Attaching …")
-        $ Spinner.render (Css.cs [ "w-8", "h-8", "mx-auto" ])
+        $ Spinner.render
+        $ Spinner.defaults { size = 8, classes = Css.cs [ "mx-auto" ] }
     Loaded msg ->
       renderBodySuccess (renderText_ msg)
         $ HH.button

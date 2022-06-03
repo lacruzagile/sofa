@@ -183,7 +183,7 @@ component =
             ]
         ]
         [ HH.div [ Css.class_ "grow" ] [ HH.text "Loading billing account …" ]
-        , Spinner.render [ Css.c "my-4" ]
+        , Spinner.render $ Spinner.defaults { classes = [ Css.c "my-4" ] }
         ]
     _ ->
       let

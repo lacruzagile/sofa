@@ -141,7 +141,7 @@ selectComponent =
             ]
         ]
         [ HH.div [ Css.class_ "grow" ] [ HH.text "Loading customer …" ]
-        , Spinner.render [ Css.c "my-4" ]
+        , Spinner.render $ Spinner.defaults { classes = [ Css.c "my-4" ] }
         ]
     _ ->
       Typeahead.render

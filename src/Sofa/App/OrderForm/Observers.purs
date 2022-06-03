@@ -190,7 +190,11 @@ renderModal state observer =
                   ]
                   [ HH.text "Save"
                   , if isCreating then
-                      Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                      Spinner.render
+                        ( Spinner.defaults
+                            { classes = Css.cs [ "ml-2", "align-text-bottom" ]
+                            }
+                        )
                     else
                       HH.text ""
                   ]
@@ -215,7 +219,8 @@ renderShowObserver state idx (SS.OrderObserver o) =
       in
         if isDeleting then
           HH.div [ Css.classes wrapperClasses ]
-            [ Spinner.render [ Css.c "w-3", Css.c "h-3", Css.c "m-auto" ]
+            [ Spinner.render
+                $ Spinner.defaults { classes = Css.cs [ "w-3", "h-3", "m-auto" ] }
             ]
         else
           HH.button

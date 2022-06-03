@@ -54,7 +54,10 @@ render st =
   HH.div [ HP.classes st.wrapperClasses ]
     [ HH.div [ Css.class_ "relative" ]
         [ if st.loading then
-            Spinner.render [ Css.c "absolute", Css.c "right-2.5", Css.c "top-4" ]
+            Spinner.render
+              $ Spinner.defaults
+                  { classes = Css.cs [ "absolute", "right-2.5", "top-4" ]
+                  }
           else
             HH.text ""
         , Icon.search

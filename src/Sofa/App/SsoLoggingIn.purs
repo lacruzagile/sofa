@@ -37,6 +37,6 @@ render _ =
         , "place-items-center"
         ]
     ]
-    [ Spinner.render (Css.cs [ "w-12", "h-12" ])
+    [ Spinner.render (Spinner.defaults { size = 12 })
     , HH.text "Logging in"
     ]

@@ -1220,10 +1220,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , HE.onClick $ \_ -> FulfillOrder
             ]
             [ HH.text "Fulfill order"
-            , if sof.orderFulfillInFlight then
-                Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
-              else
-                HH.text ""
+            , if sof.orderFulfillInFlight then buttonSpinner unit else HH.text ""
             ]
       , HH.button
           [ Css.class_ "nectary-btn-primary"
@@ -1231,13 +1228,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , HE.onClick $ \_ -> CreateUpdateOrder
           ]
           [ HH.text $ maybe "Send order" (const "Update order") (getOrderId sof)
-          , if sof.orderUpdateInFlight then
-              Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
-            else
-              HH.text ""
+          , if sof.orderUpdateInFlight then buttonSpinner unit else HH.text ""
           ]
       ]
     where
+    buttonSpinner _ =
+      Spinner.render
+        $ Spinner.defaults { classes = Css.cs [ "ml-2", "align-text-bottom" ] }
+
     -- An order is in draft status or fresh (i.e., not yet created in the
     -- backend).
     isFreshOrder =

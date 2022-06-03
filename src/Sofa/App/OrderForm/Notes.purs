@@ -227,7 +227,11 @@ renderDetails st =
                 ]
                 [ HH.text "Save"
                 , if isCreating then
-                    Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                    Spinner.render
+                      ( Spinner.defaults
+                          { classes = Css.cs [ "ml-2", "align-text-bottom" ]
+                          }
+                      )
                   else
                     HH.text ""
                 ]
@@ -306,7 +310,11 @@ renderDetails st =
 
     spinner p =
       if p then
-        Spinner.render [ Css.c "w-4", Css.c "h-4", Css.c "ml-2", Css.c "align-middle" ]
+        Spinner.render
+          ( Spinner.defaults
+              { classes = Css.cs [ "w-4", "h-4", "ml-2", "align-middle" ]
+              }
+          )
       else
         HH.text ""
 
@@ -355,7 +363,11 @@ renderDetails st =
               ]
               [ HH.text "Save"
               , if isUpdating then
-                  Spinner.render [ Css.c "ml-2", Css.c "align-text-bottom" ]
+                  Spinner.render
+                    ( Spinner.defaults
+                        { classes = Css.cs [ "ml-2", "align-text-bottom" ]
+                        }
+                    )
                 else
                   HH.text ""
               ]

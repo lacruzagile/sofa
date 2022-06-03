@@ -182,7 +182,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         Loading ->
           HH.button
             [ Css.classes btnClasses, HP.disabled true ]
-            [ Spinner.render [] ]
+            [ Spinner.render Spinner.defaults ]
         Loaded (Just tok) ->
           HH.button
             [ Css.classes btnClasses, HE.onClick \_ -> LoadNext tok ]
