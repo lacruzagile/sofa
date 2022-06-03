@@ -11,13 +11,13 @@ import Halogen.VDom.Driver (runUI)
 import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Router as Router
+import Sofa.App.SsoLoggingIn as SsoLoggingIn
 import Sofa.Component.Alerts as Alert
 import Sofa.Data.Auth (handleSsoRedirect, mkAuthInstance)
 import Sofa.Data.Deployment (detectDeployment, getCrmQuoteId)
 import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
-import Sofa.App.SsoLoggingIn as SsoLoggingIn
 
 -- | SOFA application entry point. This will attach the application to an
 -- | element with the ID `sofa-app`, for example,
