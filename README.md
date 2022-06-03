@@ -77,6 +77,21 @@ $ yarn spago docs
 
 and opening `generated-docs/html/index.html` in a browser.
 
+### Using a custom product catalog
+
+If you want to experiment using SOFA with a custom product catalog
+then the simplest way is to edit `~/.proxyrc` so that the line
+
+    "/examples": {
+
+becomes
+
+    "/examples/legalentities.json": {
+
+Then place your product catalog JSON file in
+
+    dist/examples/product-catalog.json
+
 ## Salesforce deployment
 
 The `salesforce` directory contains the necessary files to produce a Salesforce deployment.
