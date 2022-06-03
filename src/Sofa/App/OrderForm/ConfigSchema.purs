@@ -242,33 +242,41 @@ render state@{ orderLineId } =
         $ InputField.defaultInput
             { props =
               let
+                -- Can be removed once
+                -- https://github.com/purescript-halogen/purescript-dom-indexed/pull/28
+                -- has been released.
+                pMinLength = HP.prop (HH.PropName "minLength")
+
+                pMaxLength = HP.prop (HH.PropName "maxLength")
+
                 mi = maybe "0" show c.minLength
 
                 ma = maybe "" show c.maxLength
 
                 pat = case c.pattern of
                   Just pattern -> [ HP.pattern pattern ]
-                  Nothing ->
-                    if mi == "0" && ma == "" then
-                      []
-                    else
-                      [ HP.pattern $ ".{" <> mi <> "," <> ma <> "}" ]
+                  Nothing -> []
 
                 placeholder = case c.pattern of
                   Just pattern -> "String matching " <> pattern
                   Nothing -> case Tuple mi ma of
                     Tuple "0" "" -> "String"
-                    Tuple "0" ma' -> "String of max " <> ma' <> " characters"
+                    Tuple "0" ma' -> "String with at most " <> ma' <> " characters"
+                    Tuple mi' "" -> "String with at least " <> mi' <> " characters"
                     Tuple mi' ma'
-                      | mi' == ma' -> "String of " <> mi' <> " characters"
+                      | mi' == ma' -> "String with " <> mi' <> " characters"
                       | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
               in
                 [ HP.type_ HP.InputText
                 , Css.classes [ "nectary-input", "w-full" ]
                 , HP.placeholder placeholder
+                , HP.required $ maybe false (_ > 0) c.minLength
+                -- ^ Basic heuristic. Should support proper JSON Schema `required`.
                 , HE.onInput $ CheckInput entryIdx
                 , HE.onValueChange (act <<< const <<< SS.CvString)
                 ]
+                  <> opt pMinLength c.minLength
+                  <> opt pMaxLength c.maxLength
                   <> opt HP.value (maybe c.default (Just <<< show) value)
                   <> pat
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
