@@ -441,8 +441,8 @@ render state@{ orderLineId } =
             }
             (mact (act <<< const <<< SS.CvString))
     SS.SwCheckbox { dataSource } ->
-      unlabelled
-        $ maybe
+      sectioned
+        [ maybe
             insufficientDataError
             ( \getEnumData ->
                 HH.slot
@@ -458,6 +458,7 @@ render state@{ orderLineId } =
                   (mact (act <<< const <<< SS.CvArray) <<< Just)
             )
             (mkGetEnumData <$> dataSourceWithFallback dataSource)
+        ]
     SS.SwDropdown { dataSource } ->
       labelled
         $ maybe
@@ -536,6 +537,8 @@ render state@{ orderLineId } =
     labelled = renderEntry' fallbackTitle schemaEntry
 
     unlabelled = renderEntryUnlabelled fallbackTitle schemaEntry
+
+    sectioned = renderSectionEntry fallbackTitle schemaEntry
 
     mkGetEnumData :: SS.SchemaDataSourceEnum -> Maybe String -> m DataSourceEnumResult
     mkGetEnumData dataSource = getDataSourceEnum state.dataSourceVars dataSource
