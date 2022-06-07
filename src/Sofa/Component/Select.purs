@@ -23,6 +23,7 @@ import Halogen.HTML.Properties as HP
 import Select as Sel
 import Select.Setters as SelSet
 import Sofa.Component.Icon as Icon
+import Sofa.Component.Spinner as Spinner
 import Sofa.Css as Css
 import Type.Proxy (Proxy(..))
 
@@ -184,22 +185,34 @@ render st =
     st.values !! idx
 
   renderInput :: H.ComponentHTML _ () m
-  renderInput =
-    HH.button
-      (SelSet.setToggleProps [ Css.classes btnClasses ])
-      [ maybe
-          (HH.span [ Css.class_ "text-stormy-300" ] [ HH.text st.noSelectionText ])
-          HH.fromPlainHTML
-          selected
-      ]
+  renderInput
+    | st.loading =
+      HH.button
+        [ Css.classes btnClasses
+        , HP.disabled true
+        ]
+        [ HH.text "Loading… "
+        , Spinner.render
+            $ Spinner.defaults
+                { classes = Css.cs [ "absolute", "right-2.5", "top-4" ]
+                }
+        ]
+    | otherwise =
+      HH.button
+        (SelSet.setToggleProps [ Css.classes btnClasses ])
+        [ maybe
+            (HH.span [ Css.class_ "text-stormy-300" ] [ HH.text st.noSelectionText ])
+            HH.fromPlainHTML
+            selected
+        ]
 
   btnClasses =
     [ "nectary-input"
-    , "nectary-dropdown-icon"
     , "w-full"
     , "text-left"
     , "truncate"
     ]
+      <> (if st.loading || A.null st.values then [] else [ "nectary-dropdown-icon" ])
       <> (if st.visibility == Sel.Off then [] else [ "rounded-b-none" ])
 
   containerClasses =
