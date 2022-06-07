@@ -197,6 +197,13 @@ render st =
                 { classes = Css.cs [ "absolute", "right-2.5", "top-4" ]
                 }
         ]
+    | A.null st.values =
+      HH.button
+        [ Css.classes btnClasses
+        , HP.disabled true
+        ]
+        [ HH.text "No option available"
+        ]
     | otherwise =
       HH.button
         (SelSet.setToggleProps [ Css.classes btnClasses ])
