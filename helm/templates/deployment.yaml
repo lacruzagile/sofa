@@ -69,6 +69,8 @@ spec:
               value: {{ .Values.app.smartSpecUrl }}
             - name: TOKEN_SERVICE_URL
               value: {{ .Values.app.tokenServiceUrl }}
+            - name: ADMIN_PORTAL_HOME_URL
+              value: {{ .Values.app.adminPortalHomeUrl }}
             - name: AUTH_CLIENT_CREDENTIALS
               valueFrom:
                 secretKeyRef:
