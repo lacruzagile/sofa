@@ -16,6 +16,8 @@ data Deployment
   = Standard
   | Salesforce SalesforceData
 
+-- | The fields injected by the Salesforce deployment. These injected fields are
+-- | indicated by the `{!$xyz}` tags in the `salesforce/sofaPage.page` file.
 type SalesforceData
   = { accessToken :: String
     , organizationId :: String

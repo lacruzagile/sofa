@@ -1,3 +1,6 @@
+-- | The main order form component. This shows and manages updates of a single
+-- | order. Due to its complexity we've split this component into a bunch of
+-- | sub-components.
 module Sofa.App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
@@ -96,6 +99,10 @@ type Slots
     , orderName :: EditableInput.Slot Unit
     )
 
+-- | The order form component input. We can either start an entirely new order
+-- | or use an existing order. The existing order can either be given directly
+-- | or indirectly using an order or quote ID (which will be fetched from the
+-- | backend).
 data Input
   = NewOrder
   | ExistingOrder SS.OrderForm

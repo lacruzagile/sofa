@@ -15,6 +15,7 @@ import Data.String as S
 import Data.String.Regex as Re
 import Sofa.Data.SmartSpec (ConfigSchemaEntry(..), ConfigValue(..))
 
+-- | Tries to extract the title field from the given configuration schema entry.
 getTitle :: ConfigSchemaEntry -> Maybe String
 getTitle = case _ of
   CseBoolean { title } -> title
