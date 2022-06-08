@@ -2,7 +2,6 @@ module Sofa.Data.Deployment
   ( Deployment(..)
   , SalesforceData(..)
   , detectDeployment
-  , getCrmQuoteId
   ) where
 
 import Prelude
@@ -21,6 +20,9 @@ data Deployment
 
 -- | The fields injected by the Salesforce deployment. These injected fields are
 -- | indicated by the `{!$xyz}` tags in the `salesforce/sofaPage.page` file.
+-- |
+-- | - `crmQuoteId` - when SOFA runs inside a CRM quotation then this is set to
+-- |  the quote ID
 type SalesforceData
   = { accessToken :: String
     , organizationId :: String
@@ -38,13 +40,3 @@ foreign import sfData ::
 detectDeployment :: Effect Deployment
 detectDeployment = do
   maybe Standard Salesforce <$> sfData Just Nothing
-
--- | Attempts to retrieve the quote identifier from the SOFA runtime context.
--- | Basically, when non-nothing then we are running inside a quotation inside
--- | Salesforce.
-getCrmQuoteId :: Effect (Maybe SS.CrmQuoteId)
-getCrmQuoteId = do
-  deployment <- detectDeployment
-  case deployment of
-    Standard -> pure Nothing
-    Salesforce { crmQuoteId } -> pure crmQuoteId
