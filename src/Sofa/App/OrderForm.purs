@@ -502,10 +502,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       ]
                   ]
                   ( renderedFeatures
-                      <> [ HH.hr [ Css.class_ "col-span-full" ] ]
+                      <> separator
                       <> renderedOptions
                   )
               ]
+
+        -- Include separator if we have both features and options.
+        separator
+          | A.null renderedFeatures || A.null renderedOptions = []
+          | otherwise = [ HH.hr [ Css.class_ "col-span-full" ] ]
 
         renderedOptions = A.concatMap renderProductOption $ fromMaybe [] mOptions
 
