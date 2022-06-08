@@ -872,6 +872,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   [ th [ "w-full" ] [ HH.text "Name" ]
                   , th [ "px-5" ] [ HH.text "Status" ]
                   , th [ "px-5" ] [ HH.text "Quantity" ]
+                  , th [] [ HH.text "Asset" ]
                   , th [] [ HH.text "Remove" ]
                   ]
               ]
@@ -910,6 +911,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
 
+    tdAsset onClick =
+      HH.td [ Css.class_ "text-center" ]
+        [ HH.button
+            [ Css.classes [ "p-2", "fill-snow-700", "hover:fill-snow-900" ]
+            , HE.onClick onClick
+            ]
+            [ Icon.info
+                [ Icon.classes [ Css.c "w-5" ]
+                , Icon.ariaLabel "Asset"
+                ]
+            ]
+        ]
+
     sectionRow { orderSectionId, solution, orderLines } = case solution of
       Nothing -> [ HH.text "" ]
       Just (SS.Solution sol) ->
@@ -929,6 +943,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , HH.br_
                 , HH.text $ fromMaybe (show sol.id) sol.title
                 ]
+            , HH.td [ Css.class_ "text-center" ] []
             , tdDelete $ RemoveSection { orderSectionId }
             ]
         ]
@@ -954,7 +969,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , HH.td
               [ Css.classes [ "p-2", "px-5" ] ]
               [ HH.text $ show $ orderLineQuantity ol ]
+          , tdAsset $ RemoveOrderLine { orderSectionId, orderLineId: ol.orderLineId }
           , tdDelete $ RemoveOrderLine { orderSectionId, orderLineId: ol.orderLineId }
+          
           ]
 
   renderSections ::
