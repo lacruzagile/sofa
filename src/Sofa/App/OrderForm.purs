@@ -203,9 +203,9 @@ data Action
     }
   | RemoveSection { orderSectionId :: OrderSectionId } Event.MouseEvent
   | AddOrderLine { orderSectionId :: OrderSectionId }
-  | AddOrderLineForProduct
+  | AddOrderLineForProducts
     { orderSectionId :: OrderSectionId
-    , sku :: SS.SkuCode
+    , skus :: Array SS.SkuCode
     }
   | OrderLineSetProduct
     { orderSectionId :: OrderSectionId
@@ -479,18 +479,18 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 }
           )
 
-    renderProductOptions { options: mOptions }
+    renderProductOptions { options: mOptions, features: mFeatures }
       | not isInDraft = HH.text ""
-      | otherwise = maybe (HH.text "") go mOptions
+      | otherwise = rendered
         where
-        go options = case A.concatMap renderProductOption options of
-          [] -> HH.text ""
-          renderedOptions ->
+        rendered = case Tuple renderedOptions renderedFeatures of
+          Tuple [] [] -> HH.text ""
+          _ ->
             HH.details
               [ propOpen true ]
               [ HH.summary
                   [ Css.classes [ "text-lg", "cursor-pointer" ] ]
-                  [ HH.text "Product options" ]
+                  [ HH.text "Product features / options" ]
               , HH.div
                   [ Css.classes
                       [ "my-4"
@@ -501,8 +501,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       , "gap-5"
                       ]
                   ]
-                  renderedOptions
+                  ( renderedFeatures
+                      <> [ HH.hr [ Css.class_ "col-span-full" ] ]
+                      <> renderedOptions
+                  )
               ]
+
+        renderedOptions = A.concatMap renderProductOption $ fromMaybe [] mOptions
+
+        renderedFeatures = map renderProductFeature $ fromMaybe [] mFeatures
 
     renderProductOption = case _ of
       SS.ProdOptSkuCode sku -> [ renderOptButton (show sku) sku ]
@@ -524,9 +531,24 @@ render state = HH.section_ [ HH.article_ renderContent ]
       renderOptButton title sku =
         HH.button
           [ Css.classes [ "nectary-btn-secondary", "text-stormy-500", "truncate" ]
-          , HE.onClick \_ -> AddOrderLineForProduct { orderSectionId, sku }
+          , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus: [ sku ] }
           ]
           [ HH.text title ]
+
+    renderProductFeature (SS.ProductFeature { title, description, options }) =
+      HH.button
+        [ Css.classes [ "nectary-btn-secondary", "text-stormy-500", "truncate" ]
+        , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus: options }
+        ]
+        [ case description of
+            Nothing -> HH.text finalTitle
+            Just desc ->
+              Tooltip.render
+                (Tooltip.defaultInput { text = desc })
+                (Icon.textWithTooltip finalTitle)
+        ]
+      where
+      finalTitle = fromMaybe "Untitled" title
 
     renderQuantityInput (SS.OrderLineConfig olc) =
       HH.input
@@ -2227,21 +2249,32 @@ handleAction = case _ of
           section { orderLines = snoc section.orderLines orderLine }
     scrollToElement
       $ orderLineRefLabel orderSectionId orderLineId
-  AddOrderLineForProduct { orderSectionId, sku } -> do
-    orderLineId <- H.liftEffect $ genInternalId SS.OrderLineId
-    configId <- H.liftEffect $ (SS.OrderLineConfigId <<< UUID.toString) <$> genUUID
+  AddOrderLineForProducts { orderSectionId, skus } -> do
+    ids <-
+      H.liftEffect
+        $ List.replicateM (A.length skus) do
+            orderLineId <- genInternalId SS.OrderLineId
+            configId <- (SS.OrderLineConfigId <<< UUID.toString) <$> genUUID
+            pure { orderLineId, configId }
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderSection orderSectionId \section ->
-          fromMaybe section do
-            solProds <- SS.solutionProducts <$> section.solution
-            product <- Map.lookup sku solProds
-            let
-              orderLine = mkOrderLine orderLineId configId product
-            pure
-              $ section
-                  { orderLines = snoc section.orderLines orderLine
-                  }
+          let
+            make ::
+              { orderLineId :: OrderLineId, configId :: SS.OrderLineConfigId } ->
+              SS.SkuCode -> Maybe OrderLine
+            make { orderLineId, configId } sku = do
+              solProds <- SS.solutionProducts <$> section.solution
+              product <- Map.lookup sku solProds
+              pure $ mkOrderLine orderLineId configId product
+
+            newOrderLines =
+              A.fromFoldable
+                $ List.catMaybes
+                $ List.zipWith make ids
+                $ List.fromFoldable skus
+          in
+            section { orderLines = section.orderLines <> newOrderLines }
   RemoveOrderLine { orderSectionId, orderLineId } event -> do
     -- Don't propagate the click to the underlying table row.
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
