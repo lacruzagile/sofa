@@ -13,13 +13,9 @@ exports.sfData = just => nothing => () => {
     organizationId:  __ORGANIZATION_ID__,
     userId:  __USER_ID__,
     userEmail:  __USER_EMAIL__,
+    crmQuoteId:
+      typeof __QUOTE_SFID__ === "undefined" || __QUOTE_SFID__ == ""
+        ? nothing
+        : just(__QUOTE_SFID__),
   })
-}
-
-exports._getCrmQuoteId = just => nothing => () => {
-  if (typeof __QUOTE_SFID__ === "undefined" || __QUOTE_SFID__ == "") {
-    return nothing;
-  } else {
-    return just(__QUOTE_SFID__);
-  }
 }
