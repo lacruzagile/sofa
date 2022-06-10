@@ -1312,7 +1312,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       checkOrderSection os = do
         SS.Solution solution <- os.solution -- Need a selected solution
         _ <- solution.uri -- … that actually exist.
-        _ <- os.priceBook -- Need a selected price book.
+        -- If there are defined price books then we need to select one.
+        _ <- if A.null solution.priceBooks then Just unit else void os.priceBook
         -- Need valid order lines.
         _ <- traverse checkOrderLine os.orderLines
         pure unit
