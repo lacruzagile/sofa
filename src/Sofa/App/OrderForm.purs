@@ -21,6 +21,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
+import Data.Set as Set
 import Data.String as S
 import Data.Traversable (for_, traverse)
 import Data.TraversableWithIndex (traverseWithIndex)
@@ -519,7 +520,28 @@ render state = HH.section_ [ HH.article_ renderContent ]
           | A.null renderedFeatures || A.null renderedOptions = []
           | otherwise = [ HH.hr [ Css.class_ "col-span-full" ] ]
 
-        renderedOptions = A.concatMap renderProductOption $ fromMaybe [] mOptions
+        -- Keeps the options in the input array that are not referenced by a
+        -- product feature.
+        filterStandaloneOptions :: Array SS.ProductOption -> Array SS.ProductOption
+        filterStandaloneOptions options = case mFeatures of
+          Nothing -> options
+          Just [] -> options
+          Just features ->
+            let
+              optionSkus (SS.ProductFeature { options: skus }) = skus
+
+              featOpts = Set.fromFoldable $ A.concatMap optionSkus features
+
+              getSku = case _ of
+                SS.ProdOptSkuCode sku -> sku
+                SS.ProductOption { sku } -> sku
+            in
+              A.filter (\option -> not $ Set.member (getSku option) featOpts) options
+
+        renderedOptions =
+          A.concatMap renderProductOption
+            $ filterStandaloneOptions
+            $ fromMaybe [] mOptions
 
         renderedFeatures = map renderProductFeature $ fromMaybe [] mFeatures
 
