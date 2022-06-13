@@ -5,7 +5,7 @@ import Control.Alternative (guard)
 import Data.Array as A
 import Data.Either (either)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), isJust, isNothing, maybe)
 import Data.String.Regex as Re
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -57,7 +57,8 @@ type State
     }
 
 data Action
-  = Receive Input
+  = Initialize
+  | Receive Input
   | Select SS.OrderLineConfigId -- ^ When the users selects a configuration.
 
 component ::
@@ -73,6 +74,7 @@ component =
         H.mkEval
           H.defaultEval
             { handleAction = handleAction
+            , initialize = initialize
             , receive = Just <<< Receive
             }
     }
@@ -96,6 +98,9 @@ initialState input =
         maybe [] (\configId -> [ { configId, label } ]) id
   }
 
+initialize :: Maybe Action
+initialize = Just Initialize
+
 render ::
   forall f m.
   MonadAff m =>
@@ -115,32 +120,62 @@ render st =
     )
     Select
 
+mkOutput :: State -> Maybe SS.ConfigValue
+mkOutput state = do
+  SS.OrderLineConfigId configId <- state.selectedId
+  value <- state.value
+  case value of
+    SS.CvObject x ->
+      Just
+        $ SS.CvObject
+        $ Map.insert "configId" (SS.CvString configId) x
+    _ -> Nothing
+
+-- | Checks the given state and if there is no existing selection and there is
+-- | only one option then switch the selection to that one option.
+selectOnlyOption ::
+  forall m.
+  MonadAff m =>
+  State -> H.HalogenM State Action Slots Output m Unit
+selectOnlyOption state = do
+  let
+    -- If only one option is available then grab its ID.
+    onlyOptionId = case state.options of
+      [ { configId } ] -> Just configId
+      _ -> Nothing
+  -- If there is no selection from the input _and_ there is only one option,
+  -- then automatically select that option.
+  when (isNothing state.selectedId && isJust onlyOptionId) do
+    let
+      newState = state { selectedId = onlyOptionId }
+    H.put newState
+    -- Inform the select component about the new selection.
+    H.tell selectProxy unit $ Select.SetSelected newState.selectedId
+    -- Let the parent know about the selection.
+    H.raise $ mkOutput newState
+
 handleAction ::
   forall f m.
   MonadAff m =>
   CredentialStore f m =>
   Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
+  Initialize -> do
+    state <- H.get
+    selectOnlyOption state
   Receive input -> do
     let
       newState = initialState input
-    oldOptions <- H.gets _.options
-    when (newState.options /= oldOptions) do
+    { selectedId: oldSelectedId, options: oldOptions } <- H.get
+    when (newState.options /= oldOptions || isNothing oldSelectedId) do
       H.put newState
-      -- Also inform the select component about the new options.
+      -- Also inform the select component about the new options and selection.
       H.tell selectProxy unit
         $ Select.SetValues
         $ map (\o -> Tuple (HH.text o.label) o.configId)
         $ newState.options
+      selectOnlyOption newState
   Select selectedId -> do
-    st' <- H.modify \st -> st { selectedId = Just selectedId }
+    newState <- H.modify _ { selectedId = Just selectedId }
     -- Let the parent component know about the new selection.
-    H.raise do
-      SS.OrderLineConfigId configId <- st'.selectedId
-      value <- st'.value
-      case value of
-        SS.CvObject x ->
-          Just
-            $ SS.CvObject
-            $ Map.insert "configId" (SS.CvString configId) x
-        _ -> Nothing
+    H.raise $ mkOutput newState

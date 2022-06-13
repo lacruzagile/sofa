@@ -1,6 +1,7 @@
 module Sofa.App.OrderForm.Widget.Dropdown (Slot, Output(..), proxy, component) where
 
 import Prelude
+import Control.Alternative ((<|>))
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Maybe (Maybe(..), maybe, maybe')
@@ -94,10 +95,17 @@ component =
         H.modify \st ->
           st
             { selectedIndex =
-              do
-                inputValue <- st.selectedValue
-                available <- Loadable.toMaybe lAvailable
-                A.findIndex (\(Tuple _ v) -> v == inputValue) available
+              let
+                selectSelected = do
+                  inputValue <- st.selectedValue
+                  available <- Loadable.toMaybe lAvailable
+                  A.findIndex (\(Tuple _ v) -> v == inputValue) available
+
+                selectOnly = do
+                  available <- Loadable.toMaybe lAvailable
+                  if A.length available == 1 then Just 0 else Nothing
+              in
+                selectSelected <|> selectOnly
             , available = lAvailable
             }
       -- Set the input element to the full selection key.
