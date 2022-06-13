@@ -14,6 +14,7 @@ services:
       SMART_SPEC_URL: https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com
       TOKEN_SERVICE_URL: https://sso.admin-portal.int.staging.sinch.com
       AUTH_CLIENT_CREDENTIALS: Basic ADD CREDENTIALS HERE
+      ADMIN_PORTAL_HOME_URL: https://admin.int.staging.sinch.com/
   apache-exporter:
     image: lusotycoon/apache-exporter:v0.11.0
     ports:

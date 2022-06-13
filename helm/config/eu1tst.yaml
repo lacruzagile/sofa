@@ -8,3 +8,4 @@ app:
   orderingServiceUrl: http://ordering
   smartSpecUrl: http://smart-solution:8080
   tokenServiceUrl: https://sso.admin-portal.int.staging.sinch.com
+  adminPortalHomeUrl: https://admin.int.staging.sinch.com/

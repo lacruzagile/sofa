@@ -16,6 +16,7 @@ import Halogen.HTML as HH
 import Routing.Hash (matches)
 import Sofa.App.Home as Home
 import Sofa.App.NavbarItemUser as NavbarItemUser
+import Sofa.App.NavbarTile as NavbarTile
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Orders as Orders
 import Sofa.App.ProductCatalog as ProductCatalog
@@ -50,6 +51,7 @@ type Slots
     , orderForm :: OrderForm.Slot Unit
     , orders :: Orders.Slot Unit
     , navbarItemUser :: NavbarItemUser.Slot Unit
+    , navbarTile :: NavbarTile.Slot Unit
     , nectaryAlerts :: Alerts.Slot Unit
     )
 
@@ -209,6 +211,7 @@ renderNavbar =
     [ HH.div [ Css.classes navbarWrapperClasses ]
         [ primaryItem Route.Home
         , expander
+        , tileMenu
         , navbarSubItemUser
         ]
     ]
@@ -238,6 +241,8 @@ renderNavbar =
           , Icon.ariaLabel "SOFA Home"
           ]
       ]
+
+  tileMenu = HH.slot_ NavbarTile.proxy unit NavbarTile.component absurd
 
   navbarSubItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
 

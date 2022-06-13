@@ -1,3 +1,6 @@
+-- | The main order form component. This shows and manages updates of a single
+-- | order. Due to its complexity we've split this component into a bunch of
+-- | sub-components.
 module Sofa.App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
@@ -9,7 +12,7 @@ import Data.Array as A
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NA
 import Data.Date (Date, Month(..), canonicalDate)
-import Data.Either (Either(..), either, note)
+import Data.Either (Either(..), either, isLeft, note)
 import Data.Enum (toEnum)
 import Data.Int as Int
 import Data.List.Lazy (List)
@@ -18,6 +21,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
+import Data.Set as Set
 import Data.String as S
 import Data.Traversable (for_, traverse)
 import Data.TraversableWithIndex (traverseWithIndex)
@@ -96,6 +100,10 @@ type Slots
     , orderName :: EditableInput.Slot Unit
     )
 
+-- | The order form component input. We can either start an entirely new order
+-- | or use an existing order. The existing order can either be given directly
+-- | or indirectly using an order or quote ID (which will be fetched from the
+-- | backend).
 data Input
   = NewOrder
   | ExistingOrder SS.OrderForm
@@ -203,9 +211,9 @@ data Action
     }
   | RemoveSection { orderSectionId :: OrderSectionId } Event.MouseEvent
   | AddOrderLine { orderSectionId :: OrderSectionId }
-  | AddOrderLineForProduct
+  | AddOrderLineForProducts
     { orderSectionId :: OrderSectionId
-    , sku :: SS.SkuCode
+    , skus :: Array SS.SkuCode
     }
   | OrderLineSetProduct
     { orderSectionId :: OrderSectionId
@@ -479,18 +487,18 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 }
           )
 
-    renderProductOptions { options: mOptions }
+    renderProductOptions { options: mOptions, features: mFeatures }
       | not isInDraft = HH.text ""
-      | otherwise = maybe (HH.text "") go mOptions
+      | otherwise = rendered
         where
-        go options = case A.concatMap renderProductOption options of
-          [] -> HH.text ""
-          renderedOptions ->
+        rendered = case Tuple renderedOptions renderedFeatures of
+          Tuple [] [] -> HH.text ""
+          _ ->
             HH.details
               [ propOpen true ]
               [ HH.summary
                   [ Css.classes [ "text-lg", "cursor-pointer" ] ]
-                  [ HH.text "Product options" ]
+                  [ HH.text "Product features / options" ]
               , HH.div
                   [ Css.classes
                       [ "my-4"
@@ -501,8 +509,41 @@ render state = HH.section_ [ HH.article_ renderContent ]
                       , "gap-5"
                       ]
                   ]
-                  renderedOptions
+                  ( renderedFeatures
+                      <> separator
+                      <> renderedOptions
+                  )
               ]
+
+        -- Include separator if we have both features and options.
+        separator
+          | A.null renderedFeatures || A.null renderedOptions = []
+          | otherwise = [ HH.hr [ Css.class_ "col-span-full" ] ]
+
+        -- Keeps the options in the input array that are not referenced by a
+        -- product feature.
+        filterStandaloneOptions :: Array SS.ProductOption -> Array SS.ProductOption
+        filterStandaloneOptions options = case mFeatures of
+          Nothing -> options
+          Just [] -> options
+          Just features ->
+            let
+              optionSkus (SS.ProductFeature { options: skus }) = skus
+
+              featOpts = Set.fromFoldable $ A.concatMap optionSkus features
+
+              getSku = case _ of
+                SS.ProdOptSkuCode sku -> sku
+                SS.ProductOption { sku } -> sku
+            in
+              A.filter (\option -> not $ Set.member (getSku option) featOpts) options
+
+        renderedOptions =
+          A.concatMap renderProductOption
+            $ filterStandaloneOptions
+            $ fromMaybe [] mOptions
+
+        renderedFeatures = map renderProductFeature $ fromMaybe [] mFeatures
 
     renderProductOption = case _ of
       SS.ProdOptSkuCode sku -> [ renderOptButton (show sku) sku ]
@@ -524,9 +565,24 @@ render state = HH.section_ [ HH.article_ renderContent ]
       renderOptButton title sku =
         HH.button
           [ Css.classes [ "nectary-btn-secondary", "text-stormy-500", "truncate" ]
-          , HE.onClick \_ -> AddOrderLineForProduct { orderSectionId, sku }
+          , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus: [ sku ] }
           ]
           [ HH.text title ]
+
+    renderProductFeature (SS.ProductFeature { title, description, options }) =
+      HH.button
+        [ Css.classes [ "nectary-btn-secondary", "text-stormy-500", "truncate" ]
+        , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus: options }
+        ]
+        [ case description of
+            Nothing -> HH.text finalTitle
+            Just desc ->
+              Tooltip.render
+                (Tooltip.defaultInput { text = desc })
+                (Icon.textWithTooltip finalTitle)
+        ]
+      where
+      finalTitle = fromMaybe "Untitled" title
 
     renderQuantityInput (SS.OrderLineConfig olc) =
       HH.input
@@ -1233,7 +1289,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
         else
           HH.button
             [ Css.class_ "nectary-btn-primary"
-            , HP.disabled preventFulfill
+            , HP.disabled $ isLeft preventFulfill
+            , HP.title (either identity (const "") preventFulfill)
             , HE.onClick $ \_ -> FulfillOrder
             ]
             [ HH.text "Fulfill order"
@@ -1241,7 +1298,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
       , HH.button
           [ Css.class_ "nectary-btn-primary"
-          , HP.disabled preventCreate
+          , HP.disabled $ isLeft preventCreate
+          , HP.title (either identity (const "") preventCreate)
           , HE.onClick $ \_ -> CreateUpdateOrder
           ]
           [ HH.text $ maybe "Send order" (const "Update order") (getOrderId sof)
@@ -1259,47 +1317,57 @@ render state = HH.section_ [ HH.article_ renderContent ]
       sof.orderForm.status == SS.OsInDraft
         || isNothing sof.orderForm.original
 
-    preventCreate =
-      sof.orderUpdateInFlight
-        || not sof.orderForm.changed
-        || fromMaybe true do
-            _ <- sof.orderForm.seller -- Need a selected seller.
-            _ <- sof.orderForm.buyer -- Need a selected buyer.
-            _ <- sof.orderForm.commercial -- Need a selected billing account.
-            -- Need valid order sections.
-            _ <- traverse checkOrderSection sof.orderForm.sections
-            pure false
-      where
-      checkOrderSection os = do
-        SS.Solution solution <- os.solution -- Need a selected solution
-        _ <- solution.uri -- … that actually exist.
-        _ <- os.priceBook -- Need a selected price book.
-        -- Need valid order lines.
-        _ <- traverse checkOrderLine os.orderLines
-        pure unit
+    -- Prevent order creation/update if left value, otherwise allow.
+    preventCreate :: Either String Unit
+    preventCreate
+      | sof.orderUpdateInFlight = Left "Order updating…"
+      | not sof.orderForm.changed = Left "Order unchanged"
+      | otherwise = checkOrder <|> Right unit
+        where
+        checkOrder = do
+          _ <- note "Seller not set" sof.orderForm.seller
+          _ <- note "Buyer not set" sof.orderForm.buyer
+          _ <- note "Commercial not set" sof.orderForm.commercial
+          -- Need valid order sections.
+          _ <- traverse checkOrderSection sof.orderForm.sections
+          pure unit
 
-      checkOrderLine ol = do
-        product <- ol.product -- Need a selected product.
-        -- Need valid configurations.
-        _ <- traverse (checkOrderLineConfig product) ol.configs
-        pure unit
+        checkOrderSection os = do
+          SS.Solution solution <- note "Missing solution in section" os.solution
+          _ <- note "Missing solution URI in section" solution.uri
+          _ <-
+            if A.null solution.priceBooks then
+              Right unit
+            else
+              note "Missing price book in section" (void os.priceBook)
+          -- Need valid order lines.
+          _ <- traverse checkOrderLine os.orderLines
+          pure unit
 
-      -- The order config schema and the actual configuration need to match.
-      checkOrderLineConfig product orderLineConfig =
-        let
-          SS.Product { orderConfigSchema } = product
+        checkOrderLine ol = do
+          product <- note "Missing product in order line" ol.product
+          _ <- traverse (checkOrderLineConfig product) ol.configs
+          pure unit
 
-          SS.OrderLineConfig { config } = orderLineConfig
-        in
-          case Tuple orderConfigSchema config of
-            Tuple Nothing Nothing -> pure unit
-            Tuple (Just ocs) (Just conf)
-              | Schema.isValidValue ocs conf -> pure unit
-            _ -> Nothing
+        -- The order config schema and the actual configuration need to match.
+        checkOrderLineConfig product orderLineConfig =
+          let
+            SS.Product { orderConfigSchema } = product
 
-    preventFulfill =
-      sof.orderFulfillInFlight
-        || maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
+            SS.OrderLineConfig { config } = orderLineConfig
+          in
+            case Tuple orderConfigSchema config of
+              Tuple Nothing Nothing -> Right unit
+              Tuple (Just ocs) (Just conf)
+                | Schema.isValidValue ocs conf -> Right unit
+              _ -> Left "Invalid configuration in order line"
+
+    -- Prevent order fulfill if left value, otherwise allow.
+    preventFulfill :: Either String Unit
+    preventFulfill
+      | sof.orderFulfillInFlight = Left "Order fulfilling…"
+      | getOriginalOrderStatus sof /= Just SS.OsInFulfillment = Left "Order not in fulfillment status"
+      | otherwise = Right unit
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
@@ -1529,8 +1597,8 @@ mkDefaultConfig :: SS.ConfigSchemaEntry -> Maybe SS.ConfigValue
 mkDefaultConfig = case _ of
   SS.CseBoolean x -> SS.CvBoolean <$> x.default
   SS.CseInteger x -> SS.CvInteger <$> x.default
-  SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum)
-  SS.CseRegex x -> SS.CvString <$> x.default
+  SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum <|> Just "")
+  SS.CseRegex x -> SS.CvString <$> (x.default <|> Just "")
   SS.CseConst x -> Just x.const
   SS.CseArray _ -> Just $ SS.CvArray []
   SS.CseObject x ->
@@ -2244,21 +2312,32 @@ handleAction = case _ of
           section { orderLines = snoc section.orderLines orderLine }
     scrollToElement
       $ orderLineRefLabel orderSectionId orderLineId
-  AddOrderLineForProduct { orderSectionId, sku } -> do
-    orderLineId <- H.liftEffect $ genInternalId SS.OrderLineId
-    configId <- H.liftEffect $ (SS.OrderLineConfigId <<< UUID.toString) <$> genUUID
+  AddOrderLineForProducts { orderSectionId, skus } -> do
+    ids <-
+      H.liftEffect
+        $ List.replicateM (A.length skus) do
+            orderLineId <- genInternalId SS.OrderLineId
+            configId <- (SS.OrderLineConfigId <<< UUID.toString) <$> genUUID
+            pure { orderLineId, configId }
     modifyInitialized
       $ modifyOrderForm
       $ modifyOrderSection orderSectionId \section ->
-          fromMaybe section do
-            solProds <- SS.solutionProducts <$> section.solution
-            product <- Map.lookup sku solProds
-            let
-              orderLine = mkOrderLine orderLineId configId product
-            pure
-              $ section
-                  { orderLines = snoc section.orderLines orderLine
-                  }
+          let
+            make ::
+              { orderLineId :: OrderLineId, configId :: SS.OrderLineConfigId } ->
+              SS.SkuCode -> Maybe OrderLine
+            make { orderLineId, configId } sku = do
+              solProds <- SS.solutionProducts <$> section.solution
+              product <- Map.lookup sku solProds
+              pure $ mkOrderLine orderLineId configId product
+
+            newOrderLines =
+              A.fromFoldable
+                $ List.catMaybes
+                $ List.zipWith make ids
+                $ List.fromFoldable skus
+          in
+            section { orderLines = section.orderLines <> newOrderLines }
   RemoveOrderLine { orderSectionId, orderLineId } event -> do
     -- Don't propagate the click to the underlying table row.
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event

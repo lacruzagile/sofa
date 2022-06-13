@@ -32,16 +32,24 @@ module Sofa.App.Requests
   ) where
 
 import Prelude
+import Affjax as AX
+import Affjax.RequestBody as RequestBody
+import Affjax.RequestHeader (RequestHeader)
+import Affjax.ResponseFormat as ResponseFormat
+import Affjax.StatusCode (StatusCode(..))
 import Control.Alternative ((<|>))
-import Data.Argonaut (class DecodeJson, JsonDecodeError(..), decodeJson, (.:))
+import Data.Argonaut (JsonDecodeError(..), (.:), class DecodeJson, class EncodeJson, Json, decodeJson, encodeJson, printJsonDecodeError)
 import Data.Either (Either(..))
+import Data.HTTP.Method as HTTP
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff (Aff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Foreign.Object as FO
 import JSURI (encodeURIComponent)
-import Sofa.Data.Auth (class CredentialStore)
-import Sofa.Data.Loadable (Loadable(..), deleteR_, getJson, getRJson, patchRJson, postRJson, postRJson_)
+import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
+import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
 
 -- | Base URL to use for the ordering service.
@@ -466,3 +474,158 @@ deleteFile ::
 deleteFile fileId = deleteR_ url
   where
   url = filesUrl </> fileId
+
+handleResponse ::
+  forall result body r.
+  (body -> Loadable result) ->
+  Either AX.Error { body :: body, status :: StatusCode | r } ->
+  Loadable result
+handleResponse handleBody = case _ of
+  Left err -> Error $ AX.printError err
+  Right resp
+    | statusOk resp.status -> handleBody resp.body
+    | statusNotFound resp.status -> Error "Not found"
+    | otherwise -> Error "Generic error"
+  where
+  statusOk (StatusCode n) = 200 <= n && n < 300
+
+  statusNotFound (StatusCode n) = n == 404
+
+handleEmptyResponse :: Either AX.Error (AX.Response Unit) -> Loadable Unit
+handleEmptyResponse = handleResponse \_ -> Loaded unit
+
+handleJsonResponse ::
+  forall a.
+  DecodeJson a =>
+  Either AX.Error (AX.Response Json) -> Loadable a
+handleJsonResponse =
+  handleResponse \body -> case decodeJson body of
+    Left err -> Error $ printJsonDecodeError err
+    Right value -> Loaded value
+
+withAuthorizationHeader ::
+  forall f m a.
+  MonadAff m =>
+  CredentialStore f m =>
+  (RequestHeader -> Aff (Loadable a)) -> m (Loadable a)
+withAuthorizationHeader fetcher = do
+  creds <- getAuthorizationHeader
+  case creds of
+    Left err -> pure $ Error err
+    Right authHdr -> liftAff $ fetcher authHdr
+
+-- | Fetch JSON from an URL.
+getJson :: forall a m. DecodeJson a => MonadAff m => String -> m (Loadable a)
+getJson url =
+  liftAff
+    $ map handleJsonResponse
+    $ AX.request
+    $ AX.defaultRequest
+        { url = url
+        , method = Left HTTP.GET
+        , timeout = Just (Milliseconds 10_000.0)
+        , responseFormat = ResponseFormat.json
+        }
+
+-- | Fetch JSON from an URL.
+getRJson ::
+  forall a f m.
+  DecodeJson a =>
+  MonadAff m =>
+  CredentialStore f m =>
+  String -> m (Loadable a)
+getRJson url =
+  withAuthorizationHeader \authHdr ->
+    map handleJsonResponse
+      $ AX.request
+      $ AX.defaultRequest
+          { url = url
+          , method = Left HTTP.GET
+          , headers = [ authHdr ]
+          , timeout = Just (Milliseconds 10_000.0)
+          , responseFormat = ResponseFormat.json
+          }
+
+-- | Submit JSON using a PATCH request and parse the response.
+patchRJson ::
+  forall a b f m.
+  EncodeJson a =>
+  DecodeJson b =>
+  MonadAff m =>
+  CredentialStore f m =>
+  String ->
+  a ->
+  m (Loadable b)
+patchRJson url body =
+  withAuthorizationHeader \authHdr ->
+    map handleJsonResponse
+      $ AX.request
+      $ AX.defaultRequest
+          { url = url
+          , method = Left HTTP.PATCH
+          , headers = [ authHdr ]
+          , timeout = Just (Milliseconds 10_000.0)
+          , responseFormat = ResponseFormat.json
+          , content = Just $ RequestBody.json $ encodeJson body
+          }
+
+-- | Submit JSON using a POST request and parse the response.
+postRJson ::
+  forall a b f m.
+  EncodeJson a =>
+  DecodeJson b =>
+  MonadAff m =>
+  CredentialStore f m =>
+  String ->
+  a ->
+  m (Loadable b)
+postRJson url body =
+  withAuthorizationHeader \authHdr ->
+    map handleJsonResponse
+      $ AX.request
+      $ AX.defaultRequest
+          { url = url
+          , method = Left HTTP.POST
+          , headers = [ authHdr ]
+          , timeout = Just (Milliseconds 10_000.0)
+          , responseFormat = ResponseFormat.json
+          , content = Just $ RequestBody.json $ encodeJson body
+          }
+
+-- | Submit an empty POST request and parse the response.
+postRJson_ ::
+  forall a f m.
+  DecodeJson a =>
+  MonadAff m =>
+  CredentialStore f m =>
+  String ->
+  m (Loadable a)
+postRJson_ url =
+  withAuthorizationHeader \authHdr ->
+    map handleJsonResponse
+      $ AX.request
+      $ AX.defaultRequest
+          { url = url
+          , method = Left HTTP.POST
+          , headers = [ authHdr ]
+          , timeout = Just (Milliseconds 10_000.0)
+          , responseFormat = ResponseFormat.json
+          }
+
+-- | Submit a DELETE request.
+deleteR_ ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  String ->
+  m (Loadable Unit)
+deleteR_ url =
+  withAuthorizationHeader \authHdr ->
+    map handleEmptyResponse
+      $ AX.request
+      $ AX.defaultRequest
+          { url = url
+          , method = Left HTTP.DELETE
+          , headers = [ authHdr ]
+          , timeout = Just (Milliseconds 10_000.0)
+          }

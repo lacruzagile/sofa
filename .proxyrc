@@ -28,5 +28,9 @@
   "/v1alpha1/sofa-util": {
     "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
+  },
+  "/admin-portal/home": {
+    "target": "https://sofa.eu1tst.bpa.unauth.int.staging.sinch.com/",
+    "changeOrigin": true
   }
 }
