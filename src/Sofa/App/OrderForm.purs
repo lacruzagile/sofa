@@ -12,7 +12,7 @@ import Data.Array as A
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NA
 import Data.Date (Date, Month(..), canonicalDate)
-import Data.Either (Either(..), either, note)
+import Data.Either (Either(..), either, isLeft, note)
 import Data.Enum (toEnum)
 import Data.Int as Int
 import Data.List.Lazy (List)
@@ -1272,7 +1272,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
         else
           HH.button
             [ Css.class_ "nectary-btn-primary"
-            , HP.disabled preventFulfill
+            , HP.disabled $ isLeft preventFulfill
+            , HP.title (either identity (const "") preventFulfill)
             , HE.onClick $ \_ -> FulfillOrder
             ]
             [ HH.text "Fulfill order"
@@ -1280,7 +1281,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
       , HH.button
           [ Css.class_ "nectary-btn-primary"
-          , HP.disabled preventCreate
+          , HP.disabled $ isLeft preventCreate
+          , HP.title (either identity (const "") preventCreate)
           , HE.onClick $ \_ -> CreateUpdateOrder
           ]
           [ HH.text $ maybe "Send order" (const "Update order") (getOrderId sof)
@@ -1298,48 +1300,57 @@ render state = HH.section_ [ HH.article_ renderContent ]
       sof.orderForm.status == SS.OsInDraft
         || isNothing sof.orderForm.original
 
-    preventCreate =
-      sof.orderUpdateInFlight
-        || not sof.orderForm.changed
-        || fromMaybe true do
-            _ <- sof.orderForm.seller -- Need a selected seller.
-            _ <- sof.orderForm.buyer -- Need a selected buyer.
-            _ <- sof.orderForm.commercial -- Need a selected billing account.
-            -- Need valid order sections.
-            _ <- traverse checkOrderSection sof.orderForm.sections
-            pure false
-      where
-      checkOrderSection os = do
-        SS.Solution solution <- os.solution -- Need a selected solution
-        _ <- solution.uri -- … that actually exist.
-        -- If there are defined price books then we need to select one.
-        _ <- if A.null solution.priceBooks then Just unit else void os.priceBook
-        -- Need valid order lines.
-        _ <- traverse checkOrderLine os.orderLines
-        pure unit
+    -- Prevent order creation/update if left value, otherwise allow.
+    preventCreate :: Either String Unit
+    preventCreate
+      | sof.orderUpdateInFlight = Left "Order updating…"
+      | not sof.orderForm.changed = Left "Order unchanged"
+      | otherwise = checkOrder <|> Right unit
+        where
+        checkOrder = do
+          _ <- note "Seller not set" sof.orderForm.seller
+          _ <- note "Buyer not set" sof.orderForm.buyer
+          _ <- note "Commercial not set" sof.orderForm.commercial
+          -- Need valid order sections.
+          _ <- traverse checkOrderSection sof.orderForm.sections
+          pure unit
 
-      checkOrderLine ol = do
-        product <- ol.product -- Need a selected product.
-        -- Need valid configurations.
-        _ <- traverse (checkOrderLineConfig product) ol.configs
-        pure unit
+        checkOrderSection os = do
+          SS.Solution solution <- note "Missing solution in section" os.solution
+          _ <- note "Missing solution URI in section" solution.uri
+          _ <-
+            if A.null solution.priceBooks then
+              Right unit
+            else
+              note "Missing price book in section" (void os.priceBook)
+          -- Need valid order lines.
+          _ <- traverse checkOrderLine os.orderLines
+          pure unit
 
-      -- The order config schema and the actual configuration need to match.
-      checkOrderLineConfig product orderLineConfig =
-        let
-          SS.Product { orderConfigSchema } = product
+        checkOrderLine ol = do
+          product <- note "Missing product in order line" ol.product
+          _ <- traverse (checkOrderLineConfig product) ol.configs
+          pure unit
 
-          SS.OrderLineConfig { config } = orderLineConfig
-        in
-          case Tuple orderConfigSchema config of
-            Tuple Nothing Nothing -> pure unit
-            Tuple (Just ocs) (Just conf)
-              | Schema.isValidValue ocs conf -> pure unit
-            _ -> Nothing
+        -- The order config schema and the actual configuration need to match.
+        checkOrderLineConfig product orderLineConfig =
+          let
+            SS.Product { orderConfigSchema } = product
 
-    preventFulfill =
-      sof.orderFulfillInFlight
-        || maybe true (SS.OsInFulfillment /= _) (getOriginalOrderStatus sof)
+            SS.OrderLineConfig { config } = orderLineConfig
+          in
+            case Tuple orderConfigSchema config of
+              Tuple Nothing Nothing -> Right unit
+              Tuple (Just ocs) (Just conf)
+                | Schema.isValidValue ocs conf -> Right unit
+              _ -> Left "Invalid configuration in order line"
+
+    -- Prevent order fulfill if left value, otherwise allow.
+    preventFulfill :: Either String Unit
+    preventFulfill
+      | sof.orderFulfillInFlight = Left "Order fulfilling…"
+      | getOriginalOrderStatus sof /= Just SS.OsInFulfillment = Left "Order not in fulfillment status"
+      | otherwise = Right unit
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
