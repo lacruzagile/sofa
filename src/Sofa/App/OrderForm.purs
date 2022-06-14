@@ -841,7 +841,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         where
         selectedSolId = (\(SS.Solution { id }) -> id) <$> selectedSolution
 
-        renderSolutionButton { solution: solution@(SS.Solution { id }), available } =
+        renderSolutionButton { solution, available } =
           if not (available || isSelected) then
             HH.text ""
           else
@@ -853,7 +853,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   , if isSelected then "ring-tropical-500" else "ring-snow-700"
                   ]
               ]
-              [ HH.div [ Css.class_ "grow" ] [ HH.text $ solutionLabel solution ]
+              [ HH.div [ Css.class_ "grow" ]
+                  [ case description of
+                      Nothing -> HH.text $ solutionLabel solution
+                      Just desc ->
+                        Tooltip.render
+                          (Tooltip.defaultInput { text = desc })
+                          (Icon.textWithTooltip $ solutionLabel solution)
+                  ]
               , HH.input
                   [ HP.type_ HP.InputRadio
                   , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
@@ -864,6 +871,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ]
               ]
           where
+          SS.Solution { id, description } = solution
+
           isSelected = selectedSolId == Just id
 
         -- Filters out solution identifiers that are already used for other
