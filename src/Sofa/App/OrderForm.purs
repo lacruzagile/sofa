@@ -136,7 +136,7 @@ type OrderForm
     , status :: SS.OrderStatus
     , observers :: Array SS.OrderObserver
     , notes :: Array SS.OrderNote
-    , summary :: SubTotal
+    , orderTotal :: SubTotal
     , sections :: Array OrderSection
     }
 
@@ -146,7 +146,7 @@ type OrderSection
     , priceBook :: Maybe PriceBook
     , orderLines :: Array OrderLine
     -- ^ Order lines of the product options.
-    , summary :: SubTotal
+    , subTotal :: SubTotal
     }
 
 type OrderLine
@@ -756,7 +756,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , renderOrderLines solution sec.orderLines
             , HH.div
                 [ Css.classes [ "flex", "items-center", "gap-4" ] ]
-                [ renderOrderSectionSummary sec.summary
+                [ renderOrderSectionSubTotal sec.subTotal
                 , HH.div [ Css.class_ "grow" ] []
                 , renderRemoveSectionButton
                 , renderAddProductButton
@@ -1034,11 +1034,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
       $ renderSection sof
       <$> secs
 
-  renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSectionSummary = Widgets.subTotalTable ""
+  renderOrderSectionSubTotal :: SubTotal -> H.ComponentHTML Action Slots m
+  renderOrderSectionSubTotal = Widgets.subTotalTable ""
 
-  renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSummary subTotal
+  renderOrderSubTotal :: SubTotal -> H.ComponentHTML Action Slots m
+  renderOrderSubTotal subTotal
     | mempty == subTotal = HH.text ""
     | otherwise =
       HH.div
@@ -1261,7 +1261,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , "space-x-4"
           ]
       ]
-      [ renderOrderSummary sof.orderForm.summary
+      [ renderOrderSubTotal sof.orderForm.orderTotal
       , HH.div [ Css.class_ "grow" ] []
       , if isFreshOrder then
           HH.button
@@ -1575,7 +1575,7 @@ loadCatalog crmQuoteId = do
               , status: SS.OsInDraft
               , observers: []
               , notes: []
-              , summary: mempty
+              , orderTotal: mempty
               , sections: [ emptyOrderSection orderSectionId ]
               }
           , orderUpdateInFlight: false
@@ -1625,7 +1625,7 @@ calcSubTotal :: OrderSection -> OrderSection
 calcSubTotal os =
   os
     { orderLines = orderLines'
-    , summary = sumOrderLines orderLines'
+    , subTotal = sumOrderLines orderLines'
     }
   where
   defaultCurrency = maybe (SS.ChargeCurrency (unsafeMkCurrency "FIX")) _.currency os.priceBook
@@ -1699,9 +1699,9 @@ calcSubTotal os =
     calcCharge = SubTotal.calcSubTotal quantity estimatedUsageMap unitMap defaultCurrency
 
 calcTotal :: OrderForm -> OrderForm
-calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
+calcTotal orderForm = orderForm { orderTotal = sumOrderSecs orderForm.sections }
   where
-  sumOrderSecs = A.foldl (\acc { summary } -> acc <> summary) mempty
+  sumOrderSecs = A.foldl (\acc { subTotal } -> acc <> subTotal) mempty
 
 orderLineQuantity :: OrderLine -> Quantity
 orderLineQuantity ol =
@@ -1815,7 +1815,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
               , status: orderForm.status
               , observers: orderForm.orderObservers
               , notes: orderForm.orderNotes
-              , summary: mempty
+              , orderTotal: mempty
               , sections
               }
         , orderUpdateInFlight: false
@@ -1855,7 +1855,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
           , solution: Just solution
           , priceBook: Just priceBook
           , orderLines: A.mapWithIndex (convertOrderLine solution uuidSectionId) s.orderLines
-          , summary: mempty
+          , subTotal: mempty
           }
 
   convertOrderLine (SS.Solution solution) uuidNs idx (SS.OrderLine l) =
@@ -1957,7 +1957,7 @@ emptyOrderSection orderSectionId =
   , solution: Nothing
   , priceBook: Nothing
   , orderLines: mempty
-  , summary: mempty
+  , subTotal: mempty
   }
 
 emptyOrderLineConfig :: SS.OrderLineConfigId -> SS.OrderLineConfig
@@ -2171,7 +2171,7 @@ handleAction = case _ of
                       mkNilPriceBook solution
                     else
                       Nothing
-                , summary = mempty :: SubTotal
+                , subTotal = mempty :: SubTotal
                 }
           in
             st
@@ -2183,9 +2183,9 @@ handleAction = case _ of
                   , commercial = Just commercial
                   --  If the currency changed then we can't use the same price
                   --  book, so the summary and all sections need to be updated.
-                  , summary =
+                  , orderTotal =
                     if st.currency == currency then
-                      st.orderForm.summary
+                      st.orderForm.orderTotal
                     else
                       mempty
                   , sections =
@@ -2234,7 +2234,7 @@ handleAction = case _ of
                   { solution = Just solution
                   , priceBook = mkNilPriceBook solution
                   , orderLines = [ emptyOrderLine orderLineId ]
-                  , summary = (mempty :: SubTotal)
+                  , subTotal = (mempty :: SubTotal)
                   }
       in
         modifyOrderForm
