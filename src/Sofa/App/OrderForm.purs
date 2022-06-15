@@ -1314,7 +1314,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     preventCreate
       | sof.orderUpdateInFlight = Left "Order updating…"
       | not sof.orderForm.changed = Left "Order unchanged"
-      | otherwise = checkOrder <|> Right unit
+      | otherwise = checkOrder
         where
         checkOrder = do
           _ <- note "Seller not set" sof.orderForm.seller
