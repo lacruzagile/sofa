@@ -1317,8 +1317,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | otherwise = checkOrder
         where
         checkOrder = do
-          _ <- note "Seller not set" sof.orderForm.seller
-          _ <- note "Buyer not set" sof.orderForm.buyer
+          _ <- note "Legal entity not set" sof.orderForm.seller
+          _ <- note "Customer not set" sof.orderForm.buyer
           _ <- note "Commercial not set" sof.orderForm.commercial
           -- Need valid order sections.
           _ <- traverse checkOrderSection sof.orderForm.sections
