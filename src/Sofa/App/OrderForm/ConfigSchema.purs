@@ -41,6 +41,7 @@ import Sofa.Component.Tabs as Tabs
 import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
+import Sofa.Data.Schema (mkDefaultConfig)
 import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Type.Proxy (Proxy(..))
@@ -102,27 +103,6 @@ data Action
   | SetConfigTab ConfigEntryIndex Int
   | CheckInput ConfigEntryIndex WebEvent.Event
   | UpdateValue (Maybe SS.ConfigValue -> SS.ConfigValue)
-
-mkDefaultConfig :: SS.ConfigSchemaEntry -> Maybe SS.ConfigValue
-mkDefaultConfig = case _ of
-  SS.CseBoolean x -> SS.CvBoolean <$> x.default
-  SS.CseInteger x -> SS.CvInteger <$> x.default
-  SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum)
-  SS.CseRegex x -> SS.CvString <$> x.default
-  SS.CseConst x -> Just x.const
-  SS.CseArray _ -> Just $ SS.CvArray []
-  SS.CseObject x ->
-    let
-      defaults :: Map String SS.ConfigValue
-      defaults =
-        Map.fromFoldable
-          $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefaultConfig v)
-          $ FO.toUnfoldable x.properties
-    in
-      Just $ SS.CvObject defaults
-  SS.CseOneOf { oneOf } -> case A.head oneOf of
-    Just x -> mkDefaultConfig x
-    Nothing -> Nothing
 
 component ::
   forall query f m.

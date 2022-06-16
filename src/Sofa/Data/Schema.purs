@@ -1,13 +1,17 @@
 -- | A collection of utility function related to Smart Spec data schemas.
 module Sofa.Data.Schema
-  ( getTitle
-  , checkValue
+  ( checkValue
+  , getTitle
   , isValidValue
+  , mkDefaultConfig
   ) where
 
 import Prelude
+import Control.Alternative ((<|>))
 import Data.Array as A
 import Data.Either (Either(..), isRight)
+import Data.List.Lazy as List
+import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), maybe)
 import Data.String as S
@@ -101,3 +105,26 @@ checkValue _ _ = Left "incompatible types"
 
 isValidValue :: ConfigSchemaEntry -> ConfigValue -> Boolean
 isValidValue cse cv = isRight $ checkValue cse cv
+
+-- | Attempt to construct a default value that satisfies the given configuration
+-- | schema.
+mkDefaultConfig :: ConfigSchemaEntry -> Maybe ConfigValue
+mkDefaultConfig = case _ of
+  CseBoolean x -> CvBoolean <$> x.default
+  CseInteger x -> CvInteger <$> x.default
+  CseString x -> CvString <$> (x.default <|> A.head x.enum <|> Just "")
+  CseRegex x -> CvString <$> (x.default <|> Just "")
+  CseConst x -> Just x.const
+  CseArray _ -> Just $ CvArray []
+  CseObject x ->
+    let
+      defaults :: Map String ConfigValue
+      defaults =
+        Map.fromFoldable
+          $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefaultConfig v)
+          $ FO.toUnfoldable x.properties
+    in
+      Just $ CvObject defaults
+  CseOneOf { oneOf } -> case A.head oneOf of
+    Just x -> mkDefaultConfig x
+    Nothing -> Nothing

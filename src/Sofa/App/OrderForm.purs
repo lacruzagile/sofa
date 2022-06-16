@@ -66,6 +66,7 @@ import Sofa.Data.Currency (mkCurrency, unsafeMkCurrency)
 import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
+import Sofa.Data.Schema (mkDefaultConfig)
 import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal)
@@ -1586,27 +1587,6 @@ loadCatalog crmQuoteId = do
       )
         <$> productCatalog
   H.put $ Initialized res
-
-mkDefaultConfig :: SS.ConfigSchemaEntry -> Maybe SS.ConfigValue
-mkDefaultConfig = case _ of
-  SS.CseBoolean x -> SS.CvBoolean <$> x.default
-  SS.CseInteger x -> SS.CvInteger <$> x.default
-  SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum <|> Just "")
-  SS.CseRegex x -> SS.CvString <$> (x.default <|> Just "")
-  SS.CseConst x -> Just x.const
-  SS.CseArray _ -> Just $ SS.CvArray []
-  SS.CseObject x ->
-    let
-      defaults :: Map String SS.ConfigValue
-      defaults =
-        Map.fromFoldable
-          $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefaultConfig v)
-          $ FO.toUnfoldable x.properties
-    in
-      Just $ SS.CvObject defaults
-  SS.CseOneOf { oneOf } -> case A.head oneOf of
-    Just x -> mkDefaultConfig x
-    Nothing -> Nothing
 
 mkDefaultConfigs :: SS.OrderLineConfigId -> SS.Product -> NonEmptyArray SS.OrderLineConfig
 mkDefaultConfigs id (SS.Product p) =
