@@ -46,7 +46,7 @@ checkValue (CseString si) (CvString i) =
       Left _ -> false -- Some regex syntax error.
       Right re -> Re.test re str
   in
-    case 1 of
+    case unit of
       _
         | maybe false (\c -> c > len) si.minLength -> Left "string too small"
       _
