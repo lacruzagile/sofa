@@ -1350,8 +1350,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           in
             case Tuple orderConfigSchema config of
               Tuple Nothing Nothing -> Right unit
-              Tuple (Just ocs) (Just conf)
-                | Schema.isValidValue ocs conf -> Right unit
+              Tuple (Just ocs) (Just conf) -> Schema.checkValue ocs conf
               -- If the product has no configuration schema then we allow an empty object.
               Tuple Nothing (Just (SS.CvObject obj))
                 | Map.isEmpty obj -> Right unit

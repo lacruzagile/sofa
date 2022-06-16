@@ -41,7 +41,6 @@ import Sofa.Component.Tabs as Tabs
 import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
-import Sofa.Data.Schema (isValidValue)
 import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Type.Proxy (Proxy(..))
@@ -366,7 +365,7 @@ render state@{ orderLineId } =
                 { selected:
                     fromMaybe 0 do
                       v <- value
-                      A.findIndex (\schema -> isValidValue schema v) c.oneOf
+                      A.findIndex (\schema -> Schema.isValidValue schema v) c.oneOf
                 , tabs:
                     A.mapWithIndex
                       ( \i schema ->
@@ -388,14 +387,14 @@ render state@{ orderLineId } =
           let
             value' = do
               v <- value
-              if isValidValue schema v then value else Nothing
+              if Schema.isValidValue schema v then value else Nothing
           pure $ renderEntry entryIdx act "" value' schema
 
         -- The user has not selected a tab but we have a value so show the
         -- first matching tab.
         matchingValue = do
           v <- value
-          schema <- A.find (\schema -> isValidValue schema v) c.oneOf
+          schema <- A.find (\schema -> Schema.isValidValue schema v) c.oneOf
           pure $ renderEntry entryIdx act "" value schema
 
         -- Just show the first tab.
