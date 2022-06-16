@@ -67,6 +67,7 @@ import Sofa.Data.Currency (mkCurrency, unsafeMkCurrency)
 import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
+import Sofa.Data.Schema (mkDefaultConfig)
 import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal)
@@ -139,7 +140,7 @@ type OrderForm
     , status :: SS.OrderStatus
     , observers :: Array SS.OrderObserver
     , notes :: Array SS.OrderNote
-    , summary :: SubTotal
+    , orderTotal :: SubTotal
     , sections :: Array OrderSection
     }
 
@@ -149,7 +150,7 @@ type OrderSection
     , priceBook :: Maybe PriceBook
     , orderLines :: Array OrderLine
     -- ^ Order lines of the product options.
-    , summary :: SubTotal
+    , subTotal :: SubTotal
     }
 
 type OrderLine
@@ -759,7 +760,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , renderOrderLines solution sec.orderLines
             , HH.div
                 [ Css.classes [ "flex", "items-center", "gap-4" ] ]
-                [ renderOrderSectionSummary sec.summary
+                [ renderOrderSectionSubTotal sec.subTotal
                 , HH.div [ Css.class_ "grow" ] []
                 , renderRemoveSectionButton
                 , renderAddProductButton
@@ -844,7 +845,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         where
         selectedSolId = (\(SS.Solution { id }) -> id) <$> selectedSolution
 
-        renderSolutionButton { solution: solution@(SS.Solution { id }), available } =
+        renderSolutionButton { solution, available } =
           if not (available || isSelected) then
             HH.text ""
           else
@@ -856,7 +857,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   , if isSelected then "ring-tropical-500" else "ring-snow-700"
                   ]
               ]
-              [ HH.div [ Css.class_ "grow" ] [ HH.text $ solutionLabel solution ]
+              [ HH.div [ Css.class_ "grow" ]
+                  [ case description of
+                      Nothing -> HH.text $ solutionLabel solution
+                      Just desc ->
+                        Tooltip.render
+                          (Tooltip.defaultInput { text = desc })
+                          (Icon.textWithTooltip $ solutionLabel solution)
+                  ]
               , HH.input
                   [ HP.type_ HP.InputRadio
                   , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
@@ -867,6 +875,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   ]
               ]
           where
+          SS.Solution { id, description } = solution
+
           isSelected = selectedSolId == Just id
 
         -- Filters out solution identifiers that are already used for other
@@ -1036,11 +1046,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
       $ renderSection sof
       <$> secs
 
-  renderOrderSectionSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSectionSummary = Widgets.subTotalTable ""
+  renderOrderSectionSubTotal :: SubTotal -> H.ComponentHTML Action Slots m
+  renderOrderSectionSubTotal = Widgets.subTotalTable ""
 
-  renderOrderSummary :: SubTotal -> H.ComponentHTML Action Slots m
-  renderOrderSummary subTotal
+  renderOrderSubTotal :: SubTotal -> H.ComponentHTML Action Slots m
+  renderOrderSubTotal subTotal
     | mempty == subTotal = HH.text ""
     | otherwise =
       HH.div
@@ -1263,7 +1273,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , "space-x-4"
           ]
       ]
-      [ renderOrderSummary sof.orderForm.summary
+      [ renderOrderSubTotal sof.orderForm.orderTotal
       , HH.div [ Css.class_ "grow" ] []
       , if isFreshOrder then
           HH.button
@@ -1316,11 +1326,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
     preventCreate
       | sof.orderUpdateInFlight = Left "Order updating…"
       | not sof.orderForm.changed = Left "Order unchanged"
-      | otherwise = checkOrder <|> Right unit
+      | otherwise = checkOrder
         where
         checkOrder = do
-          _ <- note "Seller not set" sof.orderForm.seller
-          _ <- note "Buyer not set" sof.orderForm.buyer
+          _ <- note "Legal entity not set" sof.orderForm.seller
+          _ <- note "Customer not set" sof.orderForm.buyer
           _ <- note "Commercial not set" sof.orderForm.commercial
           -- Need valid order sections.
           _ <- traverse checkOrderSection sof.orderForm.sections
@@ -1352,8 +1362,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
           in
             case Tuple orderConfigSchema config of
               Tuple Nothing Nothing -> Right unit
-              Tuple (Just ocs) (Just conf)
-                | Schema.isValidValue ocs conf -> Right unit
+              Tuple (Just ocs) (Just conf) -> Schema.checkValue ocs conf
+              -- If the product has no configuration schema then we allow an empty object.
+              Tuple Nothing (Just (SS.CvObject obj))
+                | Map.isEmpty obj -> Right unit
               _ -> Left "Invalid configuration in order line"
 
     -- Prevent order fulfill if left value, otherwise allow.
@@ -1577,7 +1589,7 @@ loadCatalog crmQuoteId = do
               , status: SS.OsInDraft
               , observers: []
               , notes: []
-              , summary: mempty
+              , orderTotal: mempty
               , sections: [ emptyOrderSection orderSectionId ]
               }
           , orderUpdateInFlight: false
@@ -1587,27 +1599,6 @@ loadCatalog crmQuoteId = do
       )
         <$> productCatalog
   H.put $ Initialized res
-
-mkDefaultConfig :: SS.ConfigSchemaEntry -> Maybe SS.ConfigValue
-mkDefaultConfig = case _ of
-  SS.CseBoolean x -> SS.CvBoolean <$> x.default
-  SS.CseInteger x -> SS.CvInteger <$> x.default
-  SS.CseString x -> SS.CvString <$> (x.default <|> A.head x.enum <|> Just "")
-  SS.CseRegex x -> SS.CvString <$> (x.default <|> Just "")
-  SS.CseConst x -> Just x.const
-  SS.CseArray _ -> Just $ SS.CvArray []
-  SS.CseObject x ->
-    let
-      defaults :: Map String SS.ConfigValue
-      defaults =
-        Map.fromFoldable
-          $ List.mapMaybe (\(Tuple k v) -> (\v' -> Tuple k v') <$> mkDefaultConfig v)
-          $ FO.toUnfoldable x.properties
-    in
-      Just $ SS.CvObject defaults
-  SS.CseOneOf { oneOf } -> case A.head oneOf of
-    Just x -> mkDefaultConfig x
-    Nothing -> Nothing
 
 mkDefaultConfigs :: SS.OrderLineConfigId -> SS.Product -> NonEmptyArray SS.OrderLineConfig
 mkDefaultConfigs id (SS.Product p) =
@@ -1628,7 +1619,7 @@ calcSubTotal :: OrderSection -> OrderSection
 calcSubTotal os =
   os
     { orderLines = orderLines'
-    , summary = sumOrderLines orderLines'
+    , subTotal = sumOrderLines orderLines'
     }
   where
   defaultCurrency = maybe (SS.ChargeCurrency (unsafeMkCurrency "FIX")) _.currency os.priceBook
@@ -1702,9 +1693,9 @@ calcSubTotal os =
     calcCharge = SubTotal.calcSubTotal quantity estimatedUsageMap unitMap defaultCurrency
 
 calcTotal :: OrderForm -> OrderForm
-calcTotal orderForm = orderForm { summary = sumOrderSecs orderForm.sections }
+calcTotal orderForm = orderForm { orderTotal = sumOrderSecs orderForm.sections }
   where
-  sumOrderSecs = A.foldl (\acc { summary } -> acc <> summary) mempty
+  sumOrderSecs = A.foldl (\acc { subTotal } -> acc <> subTotal) mempty
 
 orderLineQuantity :: OrderLine -> Quantity
 orderLineQuantity ol =
@@ -1818,7 +1809,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
               , status: orderForm.status
               , observers: orderForm.orderObservers
               , notes: orderForm.orderNotes
-              , summary: mempty
+              , orderTotal: mempty
               , sections
               }
         , orderUpdateInFlight: false
@@ -1859,7 +1850,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
           , solution: Just solution
           , priceBook: Just priceBook
           , orderLines: A.mapWithIndex (convertOrderLine solution uuidSectionId) s.orderLines
-          , summary: mempty
+          , subTotal: mempty
           }
 
   convertOrderLine (SS.Solution solution) uuidNs idx (SS.OrderLine l) =
@@ -1961,7 +1952,7 @@ emptyOrderSection orderSectionId =
   , solution: Nothing
   , priceBook: Nothing
   , orderLines: mempty
-  , summary: mempty
+  , subTotal: mempty
   }
 
 emptyOrderLineConfig :: SS.OrderLineConfigId -> SS.OrderLineConfig
@@ -2175,7 +2166,7 @@ handleAction = case _ of
                       mkNilPriceBook solution
                     else
                       Nothing
-                , summary = mempty :: SubTotal
+                , subTotal = mempty :: SubTotal
                 }
           in
             st
@@ -2187,9 +2178,9 @@ handleAction = case _ of
                   , commercial = Just commercial
                   --  If the currency changed then we can't use the same price
                   --  book, so the summary and all sections need to be updated.
-                  , summary =
+                  , orderTotal =
                     if st.currency == currency then
-                      st.orderForm.summary
+                      st.orderForm.orderTotal
                     else
                       mempty
                   , sections =
@@ -2238,7 +2229,7 @@ handleAction = case _ of
                   { solution = Just solution
                   , priceBook = mkNilPriceBook solution
                   , orderLines = [ emptyOrderLine orderLineId ]
-                  , summary = (mempty :: SubTotal)
+                  , subTotal = (mempty :: SubTotal)
                   }
       in
         modifyOrderForm

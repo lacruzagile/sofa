@@ -8,6 +8,8 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Sofa.Component.Icon as Icon
+import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Sofa.Data.SmartSpec (SkuCode)
 import Sofa.Data.SmartSpec as SS
@@ -70,9 +72,11 @@ render state =
     $ renderProductButton
     <$> state.products
   where
-  renderProductButton (SS.Product { sku, title }) =
+  renderProductButton (SS.Product { sku, title, description }) =
     let
       isSelected = maybe false (sku == _) state.selected
+
+      finalTitle = fromMaybe (show sku) title
     in
       HH.label
         [ Css.classes
@@ -82,7 +86,14 @@ render state =
             , if isSelected then "ring-tropical-500" else "ring-snow-700"
             ]
         ]
-        [ HH.div [ Css.class_ "grow" ] [ HH.text $ fromMaybe (show sku) title ]
+        [ HH.div [ Css.class_ "grow" ]
+            [ case description of
+                Nothing -> HH.text finalTitle
+                Just desc ->
+                  Tooltip.render
+                    (Tooltip.defaultInput { text = desc })
+                    (Icon.textWithTooltip finalTitle)
+            ]
         , HH.input
             [ HP.type_ HP.InputRadio
             , HP.name $ "prodsel-" <> state.name

@@ -1,6 +1,7 @@
 module Sofa.App.OrderForm.Widget.FileAttachment (Slot, Output(..), proxy, component) where
 
 import Prelude
+import Control.Alternative (guard)
 import Data.Foldable (for_)
 import Data.Int as Int
 import Data.Map as Map
@@ -81,15 +82,23 @@ initialState :: Input -> State
 initialState input =
   { orderLineId: input.orderLineId
   , fileId:
-      let
-        fileTag = Just (SS.CvString "FILE_ATTACHMENT")
-      in
-        case input.value of
-          Just (SS.CvObject v)
-            | Map.lookup "type" v == fileTag -> case Map.lookup "fileId" v of
-              Just (SS.CvString str) -> Just str
-              _ -> Nothing
+      do
+        -- Fetch the object content.
+        obj <- case input.value of
+          Just (SS.CvObject v) -> pure v
           _ -> Nothing
+        -- Verify that the object type is a file attachment.
+        let
+          fileTag = Just (SS.CvString "FILE_ATTACHMENT")
+        guard $ Map.lookup "type" obj == fileTag
+        -- Fetch the file ID.
+        str <- case Map.lookup "fileId" obj of
+          Just (SS.CvString str) -> pure str
+          _ -> Nothing
+        -- Verify that we actually got a file ID.
+        guard $ not (S.null str)
+        -- All good, let's use the given string.
+        pure str
   , maxSize: input.maxSize
   , mediaTypes: input.mediaTypes
   }

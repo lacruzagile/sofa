@@ -56,6 +56,7 @@ type Output a
 -- | will be reset.
 data Query a b
   = SetValues (Array (Tuple HH.PlainHTML a)) b
+  | SetSelected (Maybe a) b
 
 type State a
   = ( selectedIndex :: Maybe Int
@@ -160,6 +161,15 @@ component =
         _
           { values = values
           , selectedIndex = Nothing
+          }
+      pure $ Just next
+    SetSelected mSelected next -> do
+      H.modify_ \st ->
+        st
+          { selectedIndex =
+            do
+              selected <- mSelected
+              A.findIndex (\(Tuple _ v) -> v == selected) st.values
           }
       pure $ Just next
 
