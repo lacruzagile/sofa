@@ -1376,7 +1376,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         Nothing -> Left "Order not saved"
         Just status
           | SS.isFinalOrderStatus status -> Left "Order in a final status"
-          | status == SS.OsInFulfillment -> Left "Order in already in fulfillment"
+          | status == SS.OsInFulfillment -> Left "Order is already in fulfillment"
           | otherwise -> Right unit
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
