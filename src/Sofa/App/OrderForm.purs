@@ -41,6 +41,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.App.Charge (Slot, component, proxy) as Charge
 import Sofa.App.OrderForm.Buyer as Buyer
+import Sofa.App.OrderForm.AssetModal as AssetModal
 import Sofa.App.OrderForm.Commercial as Commercial
 import Sofa.App.OrderForm.ConfigSchema as ConfigSchema
 import Sofa.App.OrderForm.Notes as Notes
@@ -98,6 +99,7 @@ type Slots
     , productConfig :: ConfigSchema.Slot ConfigId
     , charge :: Charge.Slot OrderLineFullId
     , orderName :: EditableInput.Slot Unit
+    , assetModal :: AssetModal.Slot OrderLineFullId
     )
 
 -- | The order form component input. We can either start an entirely new order
@@ -122,6 +124,7 @@ type StateOrderForm
     , orderForm :: OrderForm
     , orderUpdateInFlight :: Boolean -- ^ Whether a current order update request is in flight.
     , orderFulfillInFlight :: Boolean -- ^ Whether a current order fulfillment request is in flight.
+    , assetModalOpen :: Maybe OrderLineId
     }
 
 -- Similar to SS.OrderForm but with a few optional fields.
@@ -940,6 +943,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   [ th [ "w-full" ] [ HH.text "Name" ]
                   , th [ "px-5" ] [ HH.text "Status" ]
                   , th [ "px-5" ] [ HH.text "Quantity" ]
+                  , th [] [ HH.text "Asset" ]
                   , th [] [ HH.text "Remove" ]
                   ]
               ]
@@ -978,6 +982,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
 
+    tdAsset orderLineFullId statusReason =
+      HH.td [ Css.class_ "text-center" ]
+        [ HH.slot_ (Proxy :: Proxy "assetModal") orderLineFullId AssetModal.component { statusReason }
+        ]
+
     sectionRow { orderSectionId, solution, orderLines } = case solution of
       Nothing -> [ HH.text "" ]
       Just (SS.Solution sol) ->
@@ -997,6 +1006,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , HH.br_
                 , HH.text $ fromMaybe (show sol.id) sol.title
                 ]
+            , HH.td [ Css.class_ "text-center" ] []
             , tdDelete $ RemoveSection { orderSectionId }
             ]
         ]
@@ -1022,6 +1032,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , HH.td
               [ Css.classes [ "p-2", "px-5" ] ]
               [ HH.text $ show $ orderLineQuantity ol ]
+          , tdAsset { orderSectionId, orderLineId: ol.orderLineId } ol.statusReason
           , tdDelete $ RemoveOrderLine { orderSectionId, orderLineId: ol.orderLineId }
           ]
 
@@ -1585,6 +1596,7 @@ loadCatalog crmQuoteId = do
               }
           , orderUpdateInFlight: false
           , orderFulfillInFlight: false
+          , assetModalOpen: Nothing
           }
       )
         <$> productCatalog
@@ -1804,6 +1816,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
               }
         , orderUpdateInFlight: false
         , orderFulfillInFlight: false
+        , assetModalOpen: Nothing
         }
 
   convertOrderSection ::
