@@ -10,7 +10,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm as OrderForm
-import Sofa.App.OrderForm.SelectOrderStatus (statusColorClass)
 import Sofa.App.Requests (getOrders)
 import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
@@ -94,7 +93,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               [ HP.classes
                   [ Css.c "nectary-tag"
                   , Css.c "w-fit"
-                  , statusColorClass o.status
+                  , Css.statusColorClass o.status
                   ]
               ]
               [ HH.text $ SS.prettyOrderStatus o.status ]

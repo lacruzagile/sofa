@@ -40,13 +40,12 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.App.Charge (Slot, component, proxy) as Charge
-import Sofa.App.OrderForm.Buyer as Buyer
 import Sofa.App.OrderForm.AssetModal as AssetModal
+import Sofa.App.OrderForm.Buyer as Buyer
 import Sofa.App.OrderForm.Commercial as Commercial
 import Sofa.App.OrderForm.ConfigSchema as ConfigSchema
 import Sofa.App.OrderForm.Notes as Notes
 import Sofa.App.OrderForm.Observers as Observers
-import Sofa.App.OrderForm.SelectOrderStatus as SelectOrderStatus
 import Sofa.App.OrderForm.SelectProduct as SelectProduct
 import Sofa.App.OrderForm.Seller as Seller
 import Sofa.App.OrderForm.Widget.AssetConfigLink (SkuConfigs)
@@ -94,7 +93,6 @@ type Slots
     , observers :: Observers.Slot Unit
     , selectSolution :: Select.Slot OrderSectionId String -- Output is solution ID.
     , selectPriceBook :: Select.Slot OrderSectionId Int -- Output is price book index.
-    , selectOrderStatus :: SelectOrderStatus.Slot Unit
     , selectProduct :: SelectProduct.Slot OrderLineFullId
     , productConfig :: ConfigSchema.Slot ConfigId
     , charge :: Charge.Slot OrderLineFullId
@@ -1184,13 +1182,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
       SetOrderDisplayName
 
   renderOrderStatus :: SS.OrderStatus -> H.ComponentHTML Action Slots m
-  renderOrderStatus selected =
-    HH.slot
-      SelectOrderStatus.proxy
-      unit
-      SelectOrderStatus.component
-      selected
-      SetOrderStatus
+  renderOrderStatus orderStatus =
+    HH.div
+      [ HP.classes [ Css.c "nectary-tag", Css.statusColorClass orderStatus ] ]
+      [ HH.text (SS.prettyOrderStatus orderStatus) ]
 
   renderOrderNotes :: Maybe SS.OrderId -> Array SS.OrderNote -> H.ComponentHTML Action Slots m
   renderOrderNotes orderId notes =
@@ -1277,7 +1272,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
       [ renderOrderSubTotal sof.orderForm.orderTotal
       , HH.div [ Css.class_ "grow" ] []
-      , if isFreshOrder then
+      , if sof.orderForm.status == SS.OsInDraft then
           HH.button
             [ Css.class_ "nectary-btn-destructive"
             , HP.disabled
@@ -1293,6 +1288,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
             [ HH.text "Discard order" ]
         else
+          HH.text ""
+      , if isSavedDraftOrder then
           HH.button
             [ Css.class_ "nectary-btn-primary"
             , HP.disabled $ isLeft preventFulfill
@@ -1302,6 +1299,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HH.text "Fulfill order"
             , if sof.orderFulfillInFlight then buttonSpinner unit else HH.text ""
             ]
+        else
+          HH.text ""
       , HH.button
           [ Css.class_ "nectary-btn-primary"
           , HP.disabled $ isLeft preventCreate
@@ -1317,11 +1316,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
       Spinner.render
         $ Spinner.defaults { classes = Css.cs [ "ml-2", "align-text-bottom" ] }
 
-    -- An order is in draft status or fresh (i.e., not yet created in the
-    -- backend).
-    isFreshOrder =
+    -- The order is in draft status and is saved to the backend.
+    isSavedDraftOrder =
       sof.orderForm.status == SS.OsInDraft
-        || isNothing sof.orderForm.original
+        || isJust sof.orderForm.original
 
     -- Prevent order creation/update if left value, otherwise allow.
     preventCreate :: Either String Unit
@@ -1374,8 +1372,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
     preventFulfill :: Either String Unit
     preventFulfill
       | sof.orderFulfillInFlight = Left "Order fulfilling…"
-      | getOriginalOrderStatus sof /= Just SS.OsInFulfillment = Left "Order not in fulfillment status"
-      | otherwise = Right unit
+      | otherwise = case getOriginalOrderStatus sof of
+        Nothing -> Left "Order not saved"
+        Just status
+          | SS.isFinalOrderStatus status -> Left "Order in a final status"
+          | status == SS.OsInFulfillment -> Left "Order in already in fulfillment"
+          | otherwise -> Right unit
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =

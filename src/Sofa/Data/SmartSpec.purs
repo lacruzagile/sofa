@@ -109,6 +109,7 @@ module Sofa.Data.SmartSpec
   , countryRegex
   , emptyAddress
   , emptyContact
+  , isFinalOrderStatus
   , orderStatuses
   , prettyDate
   , prettyDateTime
@@ -2481,6 +2482,10 @@ orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
   bottom = genericFromEnum (genericBottom :: OrderStatus)
 
   top = genericFromEnum (genericTop :: OrderStatus)
+
+-- | Whether the given status is a final status.
+isFinalOrderStatus :: OrderStatus -> Boolean
+isFinalOrderStatus s = (s == OsFulfilled) || (s == OsCancelled)
 
 data OrderApprovalStatus
   = OasUndecided

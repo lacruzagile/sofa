@@ -3,10 +3,12 @@ module Sofa.Css
   , class_
   , classes
   , cs
+  , statusColorClass
   ) where
 
 import Halogen (ClassName(..))
 import Halogen.HTML.Properties as HP
+import Sofa.Data.SmartSpec as SS
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | Creates a class name.
@@ -31,3 +33,15 @@ class_ name = HP.class_ (ClassName name)
 -- | property.
 classes :: forall r i. Array String -> HP.IProp ( class :: String | r ) i
 classes names = HP.classes (cs names)
+
+statusColorClass :: SS.OrderStatus -> ClassName
+statusColorClass status =
+  ClassName case status of
+    SS.OsInDraft -> "bg-snow-600"
+    SS.OsInReview -> "bg-informative-200"
+    SS.OsInApproval -> "bg-informative-200"
+    SS.OsInSignature -> "bg-informative-200"
+    SS.OsInConfiguration -> "bg-informative-200"
+    SS.OsInFulfillment -> "bg-informative-200"
+    SS.OsFulfilled -> "bg-success-200"
+    SS.OsCancelled -> "bg-warning-200"
