@@ -11,10 +11,11 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties.ARIA as HPAria
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
+import Web.UIEvent.MouseEvent (MouseEvent)
 
 type Input w i
   = { title :: HH.PlainHTML
-    , closeAction :: Maybe (Unit -> i)
+    , closeAction :: Maybe (MouseEvent -> i)
     -- ^ The close action to trigger when the close icon is clicked. If
     -- nothing then no close button is added.
     , content :: HH.HTML w i
@@ -79,6 +80,6 @@ render input =
           , "items-center"
           , "justify-center"
           ]
-      , HE.onClick $ \_ -> act unit
+      , HE.onClick act
       ]
       [ Icon.close6 [ Icon.ariaLabel "Close" ] ]
