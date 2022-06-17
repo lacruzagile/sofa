@@ -55,6 +55,7 @@ render input =
           , "z-10"
           , "bg-black/60"
           , "flex"
+          , "cursor-default"
           ]
       ]
 
