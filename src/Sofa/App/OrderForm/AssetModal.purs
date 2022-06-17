@@ -3,31 +3,19 @@ module Sofa.App.OrderForm.AssetModal (Slot, Input(..), component) where
 
 import Prelude
 import Data.Array as A
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Newtype (unwrap)
-import Data.String as S
-import Data.String.Utils (startsWith)
-import Data.Tuple (Tuple(..))
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Maybe (Maybe(..))
+import Data.String as S
+import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
-import Sofa.App.OrderForm.SelectBuyer as SelectBuyer
-import Sofa.App.Requests (getBuyerContacts)
-import Sofa.Component.Modal as Modal
-import Sofa.Component.Select as Select
 import Sofa.Component.Icon as Icon
+import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
-import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.Loadable as Loadable
-import Sofa.Data.SmartSpec as SS
-import Sofa.Widgets as Widgets
-import Type.Proxy (Proxy(..))
 import Web.Event.Event (stopPropagation) as Event
 import Web.UIEvent.MouseEvent (MouseEvent, toEvent) as Event
 
@@ -89,7 +77,7 @@ render state
   | otherwise = renderIcon
 
 renderModal ::
-  forall f m.
+  forall m.
   Map String String -> H.ComponentHTML Action () m
 renderModal statusReason =
   HH.div_
@@ -116,6 +104,9 @@ renderIcon =
         ]
     ]
 
+renderContent ::
+  forall m.
+  Map String String -> H.ComponentHTML Action () m
 renderContent statusReason =
   HH.div [ Css.classes [ "flex", "flex-col", "gap-y-4", "text-left" ] ]
     [ HH.div
@@ -139,18 +130,17 @@ renderEntries entries = A.concatMap renderEntry $ Map.toUnfoldable entries
 
 renderEntry :: forall m. Tuple String String -> Array (H.ComponentHTML Action () m)
 renderEntry (Tuple k v) =
-  [ renderSmallTitle k
+  [ HH.h4_ [ HH.text k ]
   , HH.div_
       [ HH.text v
-    --   , Icon.upload
-    --       [ Icon.classes [ Css.c "w-5", Css.c "sofa-icon-inline" ]
-    --       , Icon.ariaLabel "copy"
-    --       ]
+      --   , Icon.upload
+      --       [ Icon.classes [ Css.c "w-5", Css.c "sofa-icon-inline" ]
+      --       , Icon.ariaLabel "copy"
+      --       ]
       ]
   ]
 
-renderSmallTitle t = HH.h4_ [ HH.text t ]
-
+closeButton ∷ forall w. Array (HH.HTML w Action)
 closeButton =
   [ HH.div [ Css.class_ "grow" ] []
   , HH.button
