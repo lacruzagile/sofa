@@ -4,7 +4,7 @@
 module Sofa.App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
-import Control.Alternative (guard, (<|>))
+import Control.Alternative (guard)
 import Control.Parallel (parallel, sequential)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser, printJsonDecodeError, stringify, stringifyWithIndent)
 import Data.Array (foldl, modifyAt, snoc)
@@ -33,7 +33,6 @@ import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Effect.Console as Console
-import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HK
@@ -378,16 +377,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         olId :: OrderLineFullId
         olId = { orderSectionId, orderLineId: ol.orderLineId }
 
-        renderProductTitle = case product.title of
-          Nothing -> HH.text (show product.sku)
-          Just t ->
-            Tooltip.render
-              ( Tooltip.defaultInput
-                  { text = show (product.sku)
-                  , width = Just "20rem"
-                  }
-              )
-              (Tooltip.contentWithIcon (HH.text t))
+        renderProductTitle = HH.text $ fromMaybe (show product.sku) product.title
       in
         body
           $ [ HH.div [ Css.classes [ "flex", "flex-wrap", "gap-8", "items-center" ] ]
@@ -544,18 +534,32 @@ render state = HH.section_ [ HH.article_ renderContent ]
             $ filterStandaloneOptions
             $ fromMaybe [] mOptions
 
-        renderedFeatures = map renderProductFeature $ fromMaybe [] mFeatures
+        renderedFeatures =
+          let
+            renderFeatureButton (SS.ProductFeature { title, description, options }) =
+              renderOptionButton
+                (fromMaybe "Untitled" title)
+                description
+                options
+          in
+            map renderFeatureButton $ fromMaybe [] mFeatures
 
     renderProductOption = case _ of
-      SS.ProdOptSkuCode sku -> [ renderOptButton (show sku) sku ]
+      SS.ProdOptSkuCode sku ->
+        [ renderOptionButton
+            (optionLabel sku)
+            (optionDescription sku)
+            [ sku ]
+        ]
       SS.ProductOption { sku, title, required: false } ->
-        [ renderOptButton
-            (fromMaybe' (optionLabel sku) title)
-            sku
+        [ renderOptionButton
+            (fromMaybe' (\_ -> optionLabel sku) title)
+            (optionDescription sku)
+            [ sku ]
         ]
       _ -> []
       where
-      optionLabel sku _ =
+      optionLabel sku =
         fromMaybe (show sku) do
           SS.Product product <-
             A.find
@@ -563,27 +567,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
               sol.products
           product.title
 
-      renderOptButton title sku =
-        HH.button
-          [ Css.classes [ "nectary-btn-secondary", "text-stormy-500", "truncate" ]
-          , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus: [ sku ] }
-          ]
-          [ HH.text title ]
+      optionDescription sku = do
+        SS.Product product <-
+          A.find
+            (\(SS.Product { sku: sku' }) -> sku == sku')
+            sol.products
+        product.description
 
-    renderProductFeature (SS.ProductFeature { title, description, options }) =
+    renderOptionButton title description skus =
       HH.button
-        [ Css.classes [ "nectary-btn-secondary", "text-stormy-500", "truncate" ]
-        , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus: options }
+        [ Css.classes [ "nectary-btn-secondary", "text-stormy-500" ]
+        , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus }
         ]
         [ case description of
-            Nothing -> HH.text finalTitle
+            Nothing -> HH.text title
             Just desc ->
               Tooltip.render
                 (Tooltip.defaultInput { text = desc })
-                (Icon.textWithTooltip finalTitle)
+                (Icon.textWithTooltip title)
         ]
-      where
-      finalTitle = fromMaybe "Untitled" title
 
     renderQuantityInput (SS.OrderLineConfig olc) =
       HH.input
