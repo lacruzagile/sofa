@@ -81,19 +81,17 @@ render state =
       HH.label
         [ Css.classes
             [ "nectary-btn-secondary"
+            , "flex-wrap"
             , "cursor-pointer"
             , "text-stormy-500"
+            , "h-auto"
+            , "py-4"
+            , "px-5"
+            , "content-start"
             , if isSelected then "ring-tropical-500" else "ring-snow-700"
             ]
         ]
-        [ HH.div [ Css.class_ "grow" ]
-            [ case description of
-                Nothing -> HH.text finalTitle
-                Just desc ->
-                  Tooltip.render
-                    (Tooltip.defaultInput { text = desc })
-                    (Icon.textWithTooltip finalTitle)
-            ]
+        [ HH.div [ Css.classes [ "text-xl", "grow" ] ] [ HH.text finalTitle ]
         , HH.input
             [ HP.type_ HP.InputRadio
             , HP.name $ "prodsel-" <> state.name
@@ -101,4 +99,10 @@ render state =
             , HP.checked isSelected
             , HE.onChange \_ -> Select sku
             ]
+        , case description of
+            Nothing -> HH.text ""
+            Just desc ->
+              HH.div
+                [ Css.classes [ "mt-5", "w-full", "font-normal", "self-start" ] ]
+                [ HH.text desc ]
         ]

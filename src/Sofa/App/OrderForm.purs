@@ -369,7 +369,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderLine (SS.Solution sol) defaultCurrency orderSectionId olIdx ol = case ol.product of
     Nothing ->
       body
-        [ HH.h3_ [ HH.text "Product" ]
+        [ HH.h2_ [ HH.text "Product" ]
         , renderSelectProduct Nothing
         , renderRemoveOrderLineButton
         ]
@@ -577,15 +577,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     renderOptionButton title description skus =
       HH.button
-        [ Css.classes [ "nectary-btn-secondary", "text-stormy-500" ]
+        [ Css.classes
+            [ "nectary-btn-secondary"
+            , "text-left"
+            , "text-stormy-500"
+            , "flex-wrap"
+            , "h-auto"
+            , "py-4"
+            , "px-5"
+            , "content-start"
+            ]
         , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus }
         ]
-        [ case description of
-            Nothing -> HH.text title
+        [ HH.div [ Css.classes [ "text-xl", "grow" ] ] [ HH.text title ]
+        , case description of
+            Nothing -> HH.text ""
             Just desc ->
-              Tooltip.render
-                (Tooltip.defaultInput { text = desc })
-                (Icon.textWithTooltip title)
+              HH.div
+                [ Css.classes [ "mt-5", "w-full", "font-normal", "self-start" ] ]
+                [ HH.text desc ]
         ]
 
     renderQuantityInput (SS.OrderLineConfig olc) =
@@ -852,19 +862,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
             HH.label
               [ Css.classes
                   [ "nectary-btn-secondary"
+                  , "flex-wrap"
                   , "cursor-pointer"
                   , "text-stormy-500"
+                  , "h-auto"
+                  , "py-4"
+                  , "px-5"
+                  , "content-start"
                   , if isSelected then "ring-tropical-500" else "ring-snow-700"
                   ]
               ]
-              [ HH.div [ Css.class_ "grow" ]
-                  [ case description of
-                      Nothing -> HH.text $ solutionLabel solution
-                      Just desc ->
-                        Tooltip.render
-                          (Tooltip.defaultInput { text = desc })
-                          (Icon.textWithTooltip $ solutionLabel solution)
-                  ]
+              [ HH.div
+                  [ Css.classes [ "text-xl", "grow" ] ]
+                  [ HH.text $ solutionLabel solution ]
               , HH.input
                   [ HP.type_ HP.InputRadio
                   , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
@@ -873,6 +883,12 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   , HP.enabled $ available || isSelected
                   , HE.onChange \_ -> actionSetSolution id
                   ]
+              , case description of
+                  Nothing -> HH.text ""
+                  Just desc ->
+                    HH.div
+                      [ Css.classes [ "mt-5", "w-full", "font-normal", "self-start" ] ]
+                      [ HH.text desc ]
               ]
           where
           SS.Solution { id, description } = solution
