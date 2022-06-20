@@ -11,7 +11,6 @@ import Prelude
 import Control.Alternative ((<|>))
 import Data.Array as A
 import Data.Int as Int
-import Data.List as List
 import Data.List as SList
 import Data.Map (Map)
 import Data.Map as Map
