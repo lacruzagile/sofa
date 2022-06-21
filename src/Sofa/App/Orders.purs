@@ -41,8 +41,7 @@ type State
     }
 
 data Action
-  = NoOp
-  | LoadNext String
+  = LoadNext String
 
 firstPageToken :: String
 firstPageToken = ""
@@ -248,7 +247,6 @@ handleAction ::
   MonadAlert m =>
   Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
-  NoOp -> pure unit
   LoadNext nextPageToken -> do
     H.modify_ \st -> st { nextPageToken = Loading }
     let

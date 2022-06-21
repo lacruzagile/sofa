@@ -47,8 +47,7 @@ type State
     }
 
 data Action
-  = NoOp
-  | ChooseCommercial (Loadable SS.Commercial)
+  = ChooseCommercial (Loadable SS.Commercial)
   | OpenDetails
   | AcceptAndCloseDetails
   | CancelAndCloseDetails
@@ -275,7 +274,6 @@ handleAction ::
   CredentialStore f m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
-  NoOp -> pure unit
   ChooseCommercial commercial -> do
     H.modify_ $ \st -> st { commercial = commercial }
     -- Switch focus to OK button.

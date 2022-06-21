@@ -187,8 +187,7 @@ type ConfigId
     }
 
 data Action
-  = NoOp
-  | Initialize
+  = Initialize
   | SetOrderDisplayName String
   | SetSeller SS.Seller
   | SetBuyer SS.Buyer
@@ -2086,7 +2085,6 @@ handleAction ::
   MonadAlert m =>
   Action -> H.HalogenM State Action Slots output m Unit
 handleAction = case _ of
-  NoOp -> pure unit
   Initialize -> do
     st <- H.get
     let

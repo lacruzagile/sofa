@@ -63,8 +63,7 @@ type State
     }
 
 data Action
-  = NoOp
-  | ChooseBuyer (Loadable SS.Buyer)
+  = ChooseBuyer (Loadable SS.Buyer)
   | SetContactPrimary SS.Contact
   | SetContactFinance SS.Contact
   | SetCustomerStatus Boolean
@@ -351,7 +350,6 @@ handleAction ::
   CredentialStore f m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
-  NoOp -> pure unit
   ChooseBuyer (Loaded buyer) -> do
     H.modify_ $ \st -> st { buyer = Loaded buyer, buyerAvailableContacts = Loading }
     case buyer of
