@@ -6,10 +6,7 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties as HP
-import Sofa.Component.Icon as Icon
-import Sofa.Component.Tooltip as Tooltip
+import Sofa.Component.Card as Card
 import Sofa.Css as Css
 import Sofa.Data.SmartSpec (SkuCode)
 import Sofa.Data.SmartSpec as SS
@@ -73,36 +70,11 @@ render state =
     <$> state.products
   where
   renderProductButton (SS.Product { sku, title, description }) =
-    let
-      isSelected = maybe false (sku == _) state.selected
-
-      finalTitle = fromMaybe (show sku) title
-    in
-      HH.label
-        [ Css.classes
-            [ "nectary-btn-secondary"
-            , "flex-wrap"
-            , "cursor-pointer"
-            , "text-stormy-500"
-            , "h-auto"
-            , "py-4"
-            , "px-5"
-            , "content-start"
-            , if isSelected then "ring-tropical-500" else "ring-snow-700"
-            ]
-        ]
-        [ HH.div [ Css.classes [ "text-xl", "grow" ] ] [ HH.text finalTitle ]
-        , HH.input
-            [ HP.type_ HP.InputRadio
-            , HP.name $ "prodsel-" <> state.name
-            , Css.class_ "nectary-input-radio"
-            , HP.checked isSelected
-            , HE.onChange \_ -> Select sku
-            ]
-        , case description of
-            Nothing -> HH.text ""
-            Just desc ->
-              HH.div
-                [ Css.classes [ "mt-5", "w-full", "font-normal", "self-start" ] ]
-                [ HH.text desc ]
-        ]
+    Card.renderRadio
+      { title: HH.text $ fromMaybe (show sku) title
+      , body: [ HH.text $ fromMaybe "" description ]
+      , name: "prodsel-" <> state.name
+      , selected: maybe false (sku == _) state.selected
+      , enabled: true
+      , onChange: \_ -> Select sku
+      }

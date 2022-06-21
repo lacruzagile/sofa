@@ -53,6 +53,7 @@ import Sofa.App.Requests as Requests
 import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Alerts as Alerts
+import Sofa.Component.Card as Card
 import Sofa.Component.EditableInput as EditableInput
 import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
@@ -575,27 +576,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
         product.description
 
     renderOptionButton title description skus =
-      HH.button
-        [ Css.classes
-            [ "nectary-btn-secondary"
-            , "text-left"
-            , "text-stormy-500"
-            , "flex-wrap"
-            , "h-auto"
-            , "py-4"
-            , "px-5"
-            , "content-start"
-            ]
-        , HE.onClick \_ -> AddOrderLineForProducts { orderSectionId, skus }
-        ]
-        [ HH.div [ Css.classes [ "text-xl", "grow" ] ] [ HH.text title ]
-        , case description of
-            Nothing -> HH.text ""
-            Just desc ->
-              HH.div
-                [ Css.classes [ "mt-5", "w-full", "font-normal", "self-start" ] ]
-                [ HH.text desc ]
-        ]
+      Card.renderButton
+        { title: HH.text title
+        , body: [ HH.text $ fromMaybe "" description ]
+        , onClick: \_ -> AddOrderLineForProducts { orderSectionId, skus }
+        }
 
     renderQuantityInput (SS.OrderLineConfig olc) =
       HH.input
@@ -858,37 +843,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
           if not (available || isSelected) then
             HH.text ""
           else
-            HH.label
-              [ Css.classes
-                  [ "nectary-btn-secondary"
-                  , "flex-wrap"
-                  , "cursor-pointer"
-                  , "text-stormy-500"
-                  , "h-auto"
-                  , "py-4"
-                  , "px-5"
-                  , "content-start"
-                  , if isSelected then "ring-tropical-500" else "ring-snow-700"
-                  ]
-              ]
-              [ HH.div
-                  [ Css.classes [ "text-xl", "grow" ] ]
-                  [ HH.text $ solutionLabel solution ]
-              , HH.input
-                  [ HP.type_ HP.InputRadio
-                  , HP.name $ "selsol-" <> show (toRawId sec.orderSectionId)
-                  , Css.class_ "nectary-input-radio"
-                  , HP.checked isSelected
-                  , HP.enabled $ available || isSelected
-                  , HE.onChange \_ -> actionSetSolution id
-                  ]
-              , case description of
-                  Nothing -> HH.text ""
-                  Just desc ->
-                    HH.div
-                      [ Css.classes [ "mt-5", "w-full", "font-normal", "self-start" ] ]
-                      [ HH.text desc ]
-              ]
+            Card.renderRadio
+              { title: HH.text $ solutionLabel solution
+              , body: [ HH.text $ fromMaybe "" description ]
+              , name: "selsol-" <> show (toRawId sec.orderSectionId)
+              , selected: isSelected
+              , enabled: available || isSelected
+              , onChange: \_ -> actionSetSolution id
+              }
           where
           SS.Solution { id, description } = solution
 
