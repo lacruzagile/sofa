@@ -3,12 +3,14 @@ module Sofa.App.OrderForm.Commercial (Slot, Input(..), Output(..), Query(..), pr
 
 import Prelude
 import Data.Maybe (Maybe(..), maybe)
+import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm.SelectCommercial as SelectCommercial
+import Sofa.App.Requests as Requests
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -39,7 +41,10 @@ type Output
 
 type State
   = { commercial :: Loadable SS.Commercial -- ^ The currently chosen commercial.
+    , billingAccount :: Loadable SS.BillingAccount
+    -- ^ The currently chosen billing account.
     , acceptedCommercial :: Loadable SS.Commercial -- ^ The latest accepted commercial.
+    , acceptedBillingAccount :: Loadable SS.BillingAccount -- ^ The latest accepted billing account.
     , crmAccountId :: Maybe SS.CrmAccountId
     , readOnly :: Boolean
     , enabled :: Boolean
@@ -47,7 +52,8 @@ type State
     }
 
 data Action
-  = ChooseCommercial (Loadable SS.Commercial)
+  = Initialize
+  | ChooseCommercial (Loadable SS.BillingAccount)
   | OpenDetails
   | AcceptAndCloseDetails
   | CancelAndCloseDetails
@@ -72,7 +78,8 @@ component =
     , eval:
         H.mkEval
           H.defaultEval
-            { handleAction = handleAction
+            { initialize = Just Initialize
+            , handleAction = handleAction
             , handleQuery = handleQuery
             }
     }
@@ -81,7 +88,9 @@ initialState :: Input -> State
 initialState input = case input of
   Nothing ->
     { commercial: Idle
+    , billingAccount: Idle
     , acceptedCommercial: Idle
+    , acceptedBillingAccount: Idle
     , crmAccountId: Nothing
     , readOnly: false
     , enabled: false
@@ -89,7 +98,9 @@ initialState input = case input of
     }
   Just { commercial, crmAccountId, readOnly } ->
     { commercial: Loaded commercial
+    , billingAccount: Loading
     , acceptedCommercial: Loaded commercial
+    , acceptedBillingAccount: Loading
     , crmAccountId: Just crmAccountId
     , readOnly
     , enabled: true
@@ -136,13 +147,19 @@ renderSummary st
       [ HH.text "Not available" ]
   | otherwise = case st.acceptedCommercial of
     Loaded c ->
-      btn okClasses
-        [ renderBillingOption c
-        , subtleSlash
-        , renderContractTerm c
-        , subtleSlash
-        , renderBillingCurrency c
-        ]
+      btn okClasses case st.acceptedBillingAccount of
+        Loaded (SS.BillingAccount ba) ->
+          [ HH.text ba.displayName
+          , subtleSlash
+          , HH.text ba.shortId
+          ]
+        _ ->
+          [ renderBillingOption c
+          , subtleSlash
+          , renderContractTerm c
+          , subtleSlash
+          , renderBillingCurrency c
+          ]
     _ -> btn badClasses [ HH.text "Select …" ]
     where
     btn classes = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
@@ -268,23 +285,63 @@ renderDetails st =
 
   renderSmallTitle t = HH.h4_ [ HH.text t ]
 
+getBillingAccount ::
+  forall slots f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  H.HalogenM State Action slots Output m (Loadable SS.BillingAccount)
+getBillingAccount = do
+  state <- H.get
+  -- Try to fetch the billing account. This is only possible if we have a CRM
+  -- account ID and billing account ID.
+  case Tuple state.crmAccountId state.commercial of
+    Tuple
+      (Just crmAccountId)
+      (Loaded (SS.Commercial { billingAccountId: Just billingAccountId })) ->
+      H.lift
+        $ Requests.getBillingAccount crmAccountId billingAccountId
+    _ -> pure Idle
+
 handleAction ::
   forall slots f m.
   MonadAff m =>
   CredentialStore f m =>
   Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
-  ChooseCommercial commercial -> do
-    H.modify_ $ \st -> st { commercial = commercial }
+  Initialize -> do
+    billingAccount <- getBillingAccount
+    H.modify_
+      _
+        { billingAccount = billingAccount
+        , acceptedBillingAccount = billingAccount
+        }
+  ChooseCommercial billingAccount -> do
+    H.modify_
+      _
+        { commercial = map (\(SS.BillingAccount ba) -> ba.commercial) billingAccount
+        , billingAccount = billingAccount
+        }
     -- Switch focus to OK button.
     focusElementByRef okBtnLabel
   OpenDetails -> H.modify_ $ \st -> st { open = true }
   AcceptAndCloseDetails -> do
-    st' <- H.modify $ \st -> st { acceptedCommercial = st.commercial, open = false }
+    st' <-
+      H.modify \st ->
+        st
+          { acceptedCommercial = st.commercial
+          , acceptedBillingAccount = st.billingAccount
+          , open = false
+          }
     case st'.acceptedCommercial of
       Loaded commercial -> H.raise commercial
       _ -> pure unit
-  CancelAndCloseDetails -> H.modify_ $ \st -> st { commercial = st.acceptedCommercial, open = false }
+  CancelAndCloseDetails ->
+    H.modify_ \st ->
+      st
+        { commercial = st.acceptedCommercial
+        , billingAccount = st.acceptedBillingAccount
+        , open = false
+        }
 
 handleQuery ::
   forall action output a m.

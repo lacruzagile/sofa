@@ -37,7 +37,7 @@ type Input
     }
 
 type Output
-  = Loadable SS.Commercial
+  = Loadable SS.BillingAccount
 
 data Query a
   = SetCrmAccountId SS.CrmAccountId a
@@ -103,7 +103,7 @@ component =
     , available: Idle
     }
 
-  handleAction :: Action -> H.HalogenM _ _ _ _ _ Unit
+  handleAction :: Action -> H.HalogenM _ _ _ Output m Unit
   handleAction = case _ of
     Initialize -> do
       state <- H.modify _ { available = Loading, filtered = Loading }
@@ -117,7 +117,7 @@ component =
       when (isNothing state.selected)
         $ focusElementByRef (H.RefLabel "select-input")
 
-  handleQuery :: forall a. Query a -> H.HalogenM _ _ _ _ _ (Maybe a)
+  handleQuery :: forall a. Query a -> H.HalogenM _ _ _ Output m (Maybe a)
   handleQuery = case _ of
     SetCrmAccountId crmAccountId next -> do
       H.modify_
@@ -130,7 +130,7 @@ component =
           }
       pure (Just next)
 
-  handleEvent :: Sel.Event -> H.HalogenM _ _ _ _ _ Unit
+  handleEvent :: Sel.Event -> H.HalogenM _ _ _ Output m Unit
   handleEvent = case _ of
     Sel.Searched str -> do
       H.modify_ \st -> st { filtered = filterAvailable str st.available }
@@ -165,9 +165,7 @@ component =
         _ -> pure unit
       H.modify_ \st -> st { selectedFull = selectedFull }
       -- Let the parent component know about the new selection.
-      H.raise
-        $ (\(SS.BillingAccount { commercial }) -> commercial)
-        <$> selectedFull
+      H.raise selectedFull
     _ -> pure unit
 
   render :: Sel.State State -> H.ComponentHTML Action' () m
