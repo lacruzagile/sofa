@@ -578,7 +578,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     renderOptionButton title description skus =
       Card.renderButton
         { title: HH.text title
-        , body: [ HH.text $ fromMaybe "" description ]
+        , body: maybe [] (A.singleton <<< HH.text) description
         , onClick: \_ -> AddOrderLineForProducts { orderSectionId, skus }
         }
 
@@ -845,7 +845,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           else
             Card.renderRadio
               { title: HH.text $ solutionLabel solution
-              , body: [ HH.text $ fromMaybe "" description ]
+              , body: maybe [] (A.singleton <<< HH.text) description
               , name: "selsol-" <> show (toRawId sec.orderSectionId)
               , selected: isSelected
               , enabled: available || isSelected

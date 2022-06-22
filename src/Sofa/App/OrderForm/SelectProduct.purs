@@ -72,7 +72,7 @@ render state =
   renderProductButton (SS.Product { sku, title, description }) =
     Card.renderRadio
       { title: HH.text $ fromMaybe (show sku) title
-      , body: [ HH.text $ fromMaybe "" description ]
+      , body: maybe [] (A.singleton <<< HH.text) description
       , name: "prodsel-" <> state.name
       , selected: maybe false (sku == _) state.selected
       , enabled: true
