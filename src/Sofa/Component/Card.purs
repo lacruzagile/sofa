@@ -73,7 +73,7 @@ render { wrapper, wrapperClasses, mInput, title, body } =
           [] -> HH.text ""
           b ->
             HH.div
-              [ Css.classes [ "mt-5", "w-full", "font-normal", "self-start" ] ]
+              [ Css.classes [ "mt-4", "w-full", "font-normal", "self-start" ] ]
               b
       ]
 
