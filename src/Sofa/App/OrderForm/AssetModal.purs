@@ -86,6 +86,7 @@ renderModal statusReason =
         $ Modal.defaultInput
             { title = HH.text "Asset Information"
             , closeAction = Just CloseModal
+            , backgroundClickAction = Just CloseModal
             , content = renderContent statusReason
             }
     ]

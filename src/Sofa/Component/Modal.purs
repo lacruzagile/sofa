@@ -16,8 +16,11 @@ import Web.UIEvent.MouseEvent (MouseEvent)
 type Input w i
   = { title :: HH.PlainHTML
     , closeAction :: Maybe (MouseEvent -> i)
-    -- ^ The close action to trigger when the close icon is clicked. If
-    -- nothing then no close button is added.
+    -- ^ The action to trigger when the close icon is clicked. If nothing then
+    -- no close button is added.
+    , backgroundClickAction :: Maybe (MouseEvent -> i)
+    -- ^ The action to trigger when the modal background is clicked. If nothing
+    -- then the default click handler is used.
     , content :: HH.HTML w i
     }
 
@@ -25,12 +28,13 @@ defaultInput :: forall w i. Input w i
 defaultInput =
   { title: HH.text ""
   , closeAction: Nothing
+  , backgroundClickAction: Nothing
   , content: HH.text ""
   }
 
 render :: forall w i. Input w i -> HH.HTML w i
 render input =
-  faded
+  background
     [ wrapper
         $ [ HH.div [ Css.classes [ "mb-4", "flex" ] ]
               [ HH.h3
@@ -44,20 +48,25 @@ render input =
           ]
     ]
   where
-  faded =
+  bgOnClick = case input.backgroundClickAction of
+    Nothing -> []
+    Just onClick -> [ HE.onClick onClick ]
+
+  background =
     HH.div
-      [ Css.classes
-          [ "fixed"
-          , "inset-0"
-          , "w-full"
-          , "h-full"
-          , "overflow-y-auto"
-          , "z-10"
-          , "bg-black/60"
-          , "flex"
-          , "cursor-default"
-          ]
-      ]
+      $ [ Css.classes
+            [ "fixed"
+            , "inset-0"
+            , "w-full"
+            , "h-full"
+            , "overflow-y-auto"
+            , "z-10"
+            , "bg-black/60"
+            , "flex"
+            , "cursor-default"
+            ]
+        ]
+      <> bgOnClick
 
   wrapper =
     HH.div
