@@ -42,6 +42,7 @@ import Data.Argonaut (JsonDecodeError(..), (.:), class DecodeJson, class EncodeJ
 import Data.Either (Either(..))
 import Data.HTTP.Method as HTTP
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple)
 import Effect.Aff (Aff)
@@ -508,10 +509,12 @@ handleJsonResponse = handleResponse decodeSuccessBody decodeErrorBody
     Left err -> Error $ printJsonDecodeError err
     Right value -> Loaded value
 
-  -- Try to extract the error message.
+  -- Try to extract the error message. Note, if the message exists but is an
+  -- empty string then we'll ignore it.
   decodeErrorBody body = case decodeJson body of
-    Left _ -> "Generic error"
-    Right ({ message } :: { message :: String }) -> message
+    Right ({ message } :: { message :: String })
+      | not (S.null message) -> message
+    _ -> "Generic error"
 
 withAuthorizationHeader ::
   forall f m a.
