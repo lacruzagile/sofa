@@ -478,30 +478,40 @@ deleteFile fileId = deleteR_ url
 handleResponse ::
   forall result body r.
   (body -> Loadable result) ->
+  (body -> String) ->
   Either AX.Error { body :: body, status :: StatusCode | r } ->
   Loadable result
-handleResponse handleBody = case _ of
+handleResponse handleBody decodeError = case _ of
   Left err -> Error $ AX.printError err
   Right resp
     | statusOk resp.status -> handleBody resp.body
     | statusNotFound resp.status -> Error "Not found"
-    | otherwise -> Error "Generic error"
+    | otherwise -> Error $ decodeError resp.body
   where
   statusOk (StatusCode n) = 200 <= n && n < 300
 
   statusNotFound (StatusCode n) = n == 404
 
 handleEmptyResponse :: Either AX.Error (AX.Response Unit) -> Loadable Unit
-handleEmptyResponse = handleResponse \_ -> Loaded unit
+handleEmptyResponse =
+  handleResponse
+    (\_ -> Loaded unit)
+    (\_ -> "Generic error")
 
 handleJsonResponse ::
   forall a.
   DecodeJson a =>
   Either AX.Error (AX.Response Json) -> Loadable a
-handleJsonResponse =
-  handleResponse \body -> case decodeJson body of
+handleJsonResponse = handleResponse decodeSuccessBody decodeErrorBody
+  where
+  decodeSuccessBody body = case decodeJson body of
     Left err -> Error $ printJsonDecodeError err
     Right value -> Loaded value
+
+  -- Try to extract the error message.
+  decodeErrorBody body = case decodeJson body of
+    Left _ -> "Generic error"
+    Right ({ message } :: { message :: String }) -> message
 
 withAuthorizationHeader ::
   forall f m a.
