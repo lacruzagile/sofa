@@ -4,24 +4,18 @@
 module Sofa.App.NavbarTile (Slot, proxy, component) where
 
 import Prelude
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
-import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
-import Sofa.Data.Auth (class CredentialStore, AuthEvent(..), credentialsAreReadOnly, getAuthInstance, getCredentials, getUser, logout, mkSsoAuthorizeUrl, toEmitter)
-import Sofa.Data.Auth as Auth
+import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Deployment (detectDeployment, Deployment(..))
 import Type.Proxy (Proxy(..))
-import Web.HTML as Html
-import Web.HTML.Location as HtmlLocation
-import Web.HTML.Window as HtmlWindow
 
 type Slot id
   = forall query output. H.Slot query output id
@@ -67,68 +61,48 @@ initialize :: Maybe Action
 initialize = Just Initialize
 
 render :: forall slots m. State -> H.ComponentHTML Action slots m
-render = renderLoggedIn
-  where
-  renderUser text =
+render { enable, menuOpen }
+  | not enable = HH.text ""
+  | otherwise =
     HH.div
-      [ Css.classes
-          [ "flex"
-          , "flex-col"
-          , "place-content-center"
-          , "items-center"
-          , "h-full"
-          , "px-5"
-          ]
+      [ Css.classes [ "relative", "mx-2" ]
+      , HE.onMouseLeave \_ -> SetMenuVisibility false
       ]
-      [ Icon.user
-          [ Icon.classes [ Css.c "w-8", Css.c "h-8" ]
-          , Icon.ariaHidden true
+      [ HH.div
+          [ HE.onMouseEnter \_ -> SetMenuVisibility true ]
+          [ Icon.tiles
+              [ Icon.classes [ Css.c "w-5", Css.c "h-8" ]
+              , Icon.ariaLabel "Menu"
+              ]
           ]
-      , HH.span [ Css.class_ "text-sm" ] [ HH.text text ]
+      , renderTileMenu menuOpen
       ]
-
-  renderLoggedIn { enable, menuOpen }
-    | not enable = HH.text ""
-    | otherwise =
-      HH.div
-        [ Css.classes [ "relative", "mx-2" ]
-        , HE.onMouseLeave \_ -> SetMenuVisibility false
-        ]
-        [ HH.div
-            [ HE.onMouseEnter \_ -> SetMenuVisibility true ]
-            [ Icon.tiles
-                [ Icon.classes [ Css.c "w-5", Css.c "h-8" ]
-                , Icon.ariaLabel "Menu"
-                ]
-            ]
-        , renderUserMenu menuOpen
-        ]
-
-  renderUserMenu open
-    | not open = HH.text ""
-    | otherwise =
-      HH.div
-        [ Css.classes
-            [ "absolute"
-            , "w-40"
-            , "right-0"
-            , "flex"
-            , "flex-col"
-            , "bg-white"
-            , "overflow-auto"
-            , "border"
-            , "rounded-sm"
-            , "divide-y"
-            , "z-10"
-            , "shadow-md"
-            ]
-        ]
-        [ HH.a
-            [ Css.classes [ "p-3", "hover:bg-snow-500", "text-left" ]
-            , HP.href "/admin-portal/home"
-            ]
-            [ HH.text "Go to dashboard" ]
-        ]
+    where
+    renderTileMenu open
+      | not open = HH.text ""
+      | otherwise =
+        HH.div
+          [ Css.classes
+              [ "absolute"
+              , "w-40"
+              , "right-0"
+              , "flex"
+              , "flex-col"
+              , "bg-white"
+              , "overflow-auto"
+              , "border"
+              , "rounded-sm"
+              , "divide-y"
+              , "z-10"
+              , "shadow-md"
+              ]
+          ]
+          [ HH.a
+              [ Css.classes [ "p-3", "hover:bg-snow-500", "text-left" ]
+              , HP.href "/admin-portal/home"
+              ]
+              [ HH.text "Go to dashboard" ]
+          ]
 
 handleAction ::
   forall output m.
