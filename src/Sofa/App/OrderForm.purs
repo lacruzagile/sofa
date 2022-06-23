@@ -1138,7 +1138,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
     value = HH.div_
 
-    orderId = orderForm.original >>= \(SS.OrderForm order) -> order.id
+    orderId = case orderForm.original of
+      Nothing -> Nothing
+      Just (SS.OrderForm original) -> original.id
 
     withOriginal renderEntry = case orderForm.original of
       Nothing -> HH.text ""
@@ -1229,14 +1231,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
         SetBuyer
 
     renderCommercial =
-      HH.slot Commercial.proxy unit Commercial.component
-        ( (\c cai -> { commercial: c, crmAccountId: cai, readOnly: not isInDraft })
-            <$> orderForm.commercial
-            <*> getCrmAccountId
-        )
-        SetCommercial
-      where
-      getCrmAccountId = orderForm.buyer >>= (\(SS.Buyer { crmAccountId }) -> crmAccountId)
+      let
+        input = do
+          commercial <- orderForm.commercial
+          SS.Buyer buyer <- orderForm.buyer
+          crmAccountId <- buyer.crmAccountId
+          pure { commercial, crmAccountId, readOnly: not isInDraft }
+      in
+        HH.slot Commercial.proxy unit Commercial.component input SetCommercial
 
   renderOrderFooter sof =
     HH.div
