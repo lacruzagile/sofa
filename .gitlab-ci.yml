@@ -139,6 +139,20 @@ stop-k8s-staging:
     name: eu1tst
     action: stop
 
+deploy-k8s-prod:
+  extends: .deploy-k8s
+  only: [ master ]
+  environment:
+    name: eu1
+    on_stop: stop-k8s-prod
+
+stop-k8s-prod:
+  extends: .stop-k8s
+  only: [ master ]
+  environment:
+    name: eu1
+    action: stop
+
 deploy-salesforce-sofa:
   image: salesforce/salesforcedx:7.153.0-slim
   stage: deploy

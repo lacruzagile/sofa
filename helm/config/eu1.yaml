@@ -1,0 +1,13 @@
+replicaCount: 2
+
+ingress:
+  host: sofa.eu1.bpa.unauth.int.prod.sinch.com
+
+app:
+  deploymentEnv: production
+  orderingServiceUrl: http://ordering
+  smartSpecUrl: http://smart-solution:8080
+  tokenServiceUrl: https://sso.int.clxnetworks.net
+  adminPortalHomeUrl: https://admin.int.prod.sinch.com/
+  # Sealed secret containing the UAA `sofa` client credentials.
+  authClientCredentials: AgAdPT1hF7WFEd9awAmLMexUAnro3fWbC7BFAKSE06z3eBbCec/8JmIDG41rKUZ5Dnav9HEqsBw3dB+RKR7qLIF1iZQurJqufOtpAIY+LAwMt+FL4z5yDjffvFx6yB3puhsWKJK6X/UUXcnOB38o5jXR+Szf/1xgJAi3BMg5NLAKyLIMmVywI4TF2fvTyDiBj9lpuk0ESn6DfHHt37S6dro0UCV2rz1RekxanJqpJbrat3UNdJQjGAj1jmrCXagth7ugy4gxSV4/3KDbIElUhir205nIxSRPbGJsgV17zZxp5iCOmNyea8vzuJpS4WimXSdkwFEa5/m2MVJFKGd6VDoN9jkd5Q2J8oL9YBhKDr2WpqRZnfj6AvNC95SClVDrQ36I+bcUR63zZ0ZhvuobZuQwBnGLHBC66AXbPsHJ7oQXgyfgFR37zMXTPZbBwMnadHTIFJs3TeOJtFcBvzxSnTdpt2jjfxSgXT74asWTrKH0Defn2SxAssCQMDHIB9XwUGpW26ik9Vj6FlYpwu62+7uFP4urLjC3D8XIQ4m8fTo4IbiSl2ofXNnuv0lAn0ilozBSoH4cOkzKXrI2MgZ9S3z9bKFE76V5HllUw/AVjogqbUiY/4nhe0MQwCII4Fsro4Elj5t+8hV6/+Ho3foNNishbRkW6XNQH+HPjNBnwFH0m1z5erJceUpEewPkNfoWDRdwIsomJXrfyCsHQ7yjwmySgGq77e47NOU7wUDJr+xiu8wG+e6P5Qjjje0=
