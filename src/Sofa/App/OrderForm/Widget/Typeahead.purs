@@ -4,7 +4,7 @@ import Prelude
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Int as Int
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple(..), fst, snd)
@@ -33,6 +33,7 @@ type Input m
     , minInputLength :: Int
     , debounceMs :: Int
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , readOnly :: Boolean
     }
 
 type Output
@@ -44,6 +45,7 @@ type State m
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , minInputLength :: Int
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , readOnly :: Boolean
     )
 
 data Action
@@ -88,6 +90,7 @@ component =
     , available: Idle
     , minInputLength: input.minInputLength
     , getEnumData: input.getEnumData
+    , readOnly: input.readOnly
     }
 
   getDataItemCount st = maybe 0 A.length $ Loadable.toMaybe $ st.filtered
@@ -141,28 +144,48 @@ component =
     _ -> pure unit
 
   render :: Sel.State (State m) -> H.ComponentHTML Action' () m
-  render st =
-    Typeahead.render
-      $ (Typeahead.initRenderState st)
-          { selected = map fst st.selected
-          , selectedIndex =
-            do
-              Tuple _ selVal <- st.selected
-              vals <- Loadable.toMaybe st.filtered
-              A.findIndex (\(Tuple _ val) -> val == selVal) vals
-          , values =
-            case st.filtered of
-              Loaded filtered ->
-                let
-                  renderItem (Tuple key _) = HH.text key
-                in
-                  renderItem <$> filtered
-              _ -> []
-          , noSelectionText = "Type to search value …"
-          , loading = Loadable.isLoading st.filtered
-          , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
-          , onInputFocus = Just $ \_ -> InputFocused
-          }
+  render st
+    | st.readOnly =
+      HH.div
+        [ Css.classes
+            [ "w-96"
+            , "h-12"
+            , "px-3"
+            , "py-2"
+            , "my-0.5"
+            , "rounded"
+            , "bg-snow-100"
+            , "flex"
+            , "items-center"
+            ]
+        ]
+        [ HH.text
+            $ fromMaybe "" do
+                Tuple label _ <- st.selected
+                pure label
+        ]
+    | otherwise =
+      Typeahead.render
+        $ (Typeahead.initRenderState st)
+            { selected = map fst st.selected
+            , selectedIndex =
+              do
+                Tuple _ selVal <- st.selected
+                vals <- Loadable.toMaybe st.filtered
+                A.findIndex (\(Tuple _ val) -> val == selVal) vals
+            , values =
+              case st.filtered of
+                Loaded filtered ->
+                  let
+                    renderItem (Tuple key _) = HH.text key
+                  in
+                    renderItem <$> filtered
+                _ -> []
+            , noSelectionText = "Type to search value …"
+            , loading = Loadable.isLoading st.filtered
+            , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+            , onInputFocus = Just $ \_ -> InputFocused
+            }
 
 filterAvailable ::
   forall f.

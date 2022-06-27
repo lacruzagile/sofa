@@ -4,7 +4,7 @@ import Prelude
 import Control.Alternative ((<|>))
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Maybe (Maybe(..), maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, maybe, maybe')
 import Data.Tuple (Tuple(..), fst)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -29,6 +29,7 @@ proxy = Proxy
 type Input m
   = { value :: Maybe SS.ConfigValue
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , readOnly :: Boolean
     }
 
 type Output
@@ -39,6 +40,7 @@ type State m
     , selectedValue :: Maybe SS.ConfigValue
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , readOnly :: Boolean
     )
 
 data Action
@@ -68,7 +70,7 @@ component =
           { initialize = Just Initialize
           , handleAction = handleAction
           , handleEvent = handleEvent
-          , render = render
+          , render = renderSelect
           }
 
   mapInput :: (Input m) -> Sel.Input (State m)
@@ -81,6 +83,7 @@ component =
     , selectedValue: input.value
     , available: Idle
     , getEnumData: input.getEnumData
+    , readOnly: input.readOnly
     }
 
   getDataItemCount st = maybe 0 A.length $ Loadable.toMaybe $ st.available
@@ -137,15 +140,37 @@ component =
       H.raise st'.selectedValue
     _ -> pure unit
 
-  render :: Sel.State (State m) -> H.ComponentHTML Action' () m
-  render st =
-    Select.render
-      $ (Select.initRenderState st)
-          { selectedIndex = st.selectedIndex
-          , values =
-            case Loadable.toMaybe st.available of
-              Nothing -> []
-              Just available -> map (HH.text <<< fst) available
-          , loading = Loadable.isLoading st.available
-          , wrapperClasses = [ Css.c "w-96" ]
-          }
+  renderSelect :: Sel.State (State m) -> H.ComponentHTML Action' () m
+  renderSelect st
+    | st.readOnly =
+      HH.div
+        [ Css.classes
+            [ "w-96"
+            , "h-12"
+            , "px-3"
+            , "py-2"
+            , "my-0.5"
+            , "rounded"
+            , "bg-snow-100"
+            , "flex"
+            , "items-center"
+            ]
+        ]
+        [ HH.text
+            $ fromMaybe "" do
+                selectedIndex <- st.selectedIndex
+                available <- Loadable.toMaybe st.available
+                Tuple label _ <- A.index available selectedIndex
+                pure label
+        ]
+    | otherwise =
+      Select.render
+        $ (Select.initRenderState st)
+            { selectedIndex = st.selectedIndex
+            , values =
+              case Loadable.toMaybe st.available of
+                Nothing -> []
+                Just available -> map (HH.text <<< fst) available
+            , loading = Loadable.isLoading st.available
+            , wrapperClasses = [ Css.c "w-96" ]
+            }

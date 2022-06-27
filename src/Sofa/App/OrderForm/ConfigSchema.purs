@@ -189,9 +189,14 @@ render state@{ orderLineId } =
       InputField.render
         $ InputField.defaultInput
             { props =
-              [ Css.classes [ "nectary-input", "nectary-input-number", "w-full" ]
+              [ Css.classes
+                  $ if state.readOnly then
+                      readOnlyInputClasses
+                    else
+                      [ "nectary-input", "nectary-input-number", "w-full" ]
               , HP.type_ HP.InputNumber
               , HP.placeholder "Integer"
+              , HP.disabled state.readOnly
               , HE.onInput $ CheckInput entryIdx
               , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
               ]
@@ -246,8 +251,13 @@ render state@{ orderLineId } =
                       | otherwise -> "String between " <> mi' <> " and " <> ma' <> " characters"
               in
                 [ HP.type_ HP.InputText
-                , Css.classes [ "nectary-input", "w-full" ]
+                , Css.classes
+                    $ if state.readOnly then
+                        readOnlyInputClasses
+                      else
+                        [ "nectary-input", "w-full" ]
                 , HP.placeholder placeholder
+                , HP.disabled state.readOnly
                 , HP.required $ maybe false (_ > 0) c.minLength
                 -- ^ Basic heuristic. Should support proper JSON Schema `required`.
                 , HE.onInput $ CheckInput entryIdx
@@ -268,8 +278,13 @@ render state@{ orderLineId } =
         $ InputField.defaultInput
             { props =
               [ HP.type_ HP.InputText
-              , Css.classes [ "nectary-input", "w-full" ]
+              , Css.classes
+                  $ if state.readOnly then
+                      readOnlyInputClasses
+                    else
+                      [ "nectary-input", "w-full" ]
               , HP.placeholder $ "String matching " <> c.pattern
+              , HP.disabled state.readOnly
               , HP.pattern c.pattern
               , HE.onInput $ CheckInput entryIdx
               , HE.onValueChange (act <<< const <<< SS.CvString)
@@ -392,6 +407,18 @@ render state@{ orderLineId } =
       in
         renderSectionEntry fallbackTitle schemaEntry [ inner ]
 
+  readOnlyInputClasses =
+    [ "w-96"
+    , "h-12"
+    , "px-3"
+    , "py-2"
+    , "my-0.5"
+    , "rounded"
+    , "bg-snow-100"
+    , "flex"
+    , "items-center"
+    ]
+
   pushEntryIndex :: ConfigEntryIndex -> Int -> ConfigEntryIndex
   pushEntryIndex oldIdx idx = oldIdx { entryIndex = idx SList.: oldIdx.entryIndex }
 
@@ -416,6 +443,7 @@ render state@{ orderLineId } =
                 case value of
                   Just (SS.CvString string) -> Just string
                   _ -> Nothing
+            , readOnly: state.readOnly
             }
             (mact (act <<< const <<< SS.CvString))
     SS.SwCheckbox { dataSource } ->
@@ -432,6 +460,7 @@ render state@{ orderLineId } =
                         Just (SS.CvArray vs) -> vs
                         _ -> []
                   , getEnumData: getEnumData
+                  , readOnly: state.readOnly
                   }
                   (mact (act <<< const <<< SS.CvArray) <<< Just)
             )
@@ -445,7 +474,10 @@ render state@{ orderLineId } =
                   WDropdown.proxy
                   entryIdx
                   WDropdown.component
-                  { value, getEnumData: getEnumData }
+                  { value
+                  , getEnumData: getEnumData
+                  , readOnly: state.readOnly
+                  }
                   (mact (act <<< const))
             )
             (mkGetEnumData <$> dataSourceWithFallback dataSource)
@@ -475,6 +507,7 @@ render state@{ orderLineId } =
                   , minInputLength
                   , debounceMs
                   , getEnumData: getEnumData
+                  , readOnly: state.readOnly
                   }
                   (mact (act <<< const))
             )
@@ -488,6 +521,7 @@ render state@{ orderLineId } =
             { value: maybe' (\_ -> mkDefaultConfig schemaEntry) Just value
             , skuPattern: sku
             , configs: state.getConfigs unit
+            , readOnly: state.readOnly
             }
             (mact (act <<< const))
     SS.SwFileAttachment { maxSize, mediaTypes } ->
@@ -602,23 +636,33 @@ render state@{ orderLineId } =
     H.ComponentHTML Action Slots m
   renderEnumEntry entryIdx act fallbackTitle value schemaEntry c mkValue showValue =
     renderEntry' fallbackTitle schemaEntry
-      $ let
-          onIndexChange i = mact (act <<< const <<< mkValue) $ A.index c.enum i
-        in
-          HH.slot
-            (Proxy :: Proxy "selectEnum")
-            entryIdx
-            Select.component
-            ( Select.defaultInput
-                { selected =
-                  do
+      $ if state.readOnly then
+          HH.div
+            [ Css.classes readOnlyInputClasses ]
+            [ HH.text
+                $ fromMaybe "" do
                     selVal <- value <|> (mkValue <$> c.default)
-                    A.findIndex (\v -> mkValue v == selVal) c.enum
-                , values = A.mapWithIndex (\i e -> Tuple (HH.text $ showValue e) i) c.enum
-                , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
-                }
-            )
-            onIndexChange
+                    selected <- A.find (\v -> mkValue v == selVal) c.enum
+                    pure $ showValue selected
+            ]
+        else
+          let
+            onIndexChange i = mact (act <<< const <<< mkValue) $ A.index c.enum i
+          in
+            HH.slot
+              (Proxy :: Proxy "selectEnum")
+              entryIdx
+              Select.component
+              ( Select.defaultInput
+                  { selected =
+                    do
+                      selVal <- value <|> (mkValue <$> c.default)
+                      A.findIndex (\v -> mkValue v == selVal) c.enum
+                  , values = A.mapWithIndex (\i e -> Tuple (HH.text $ showValue e) i) c.enum
+                  , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+                  }
+              )
+              onIndexChange
 
   withDescription fallbackTitle schemaEntry = case SS.configSchemaEntryDescription schemaEntry of
     Nothing -> body false

@@ -28,6 +28,7 @@ proxy = Proxy
 type Input m
   = { value :: Array SS.ConfigValue
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , readOnly :: Boolean
     }
 
 type Output
@@ -37,6 +38,7 @@ type State m
   = { selected :: Set SS.ConfigValue
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , readOnly :: Boolean
     }
 
 data Action
@@ -69,6 +71,7 @@ initialState input =
   { selected: Set.fromFoldable input.value
   , available: Idle
   , getEnumData: input.getEnumData
+  , readOnly: input.readOnly
   }
 
 render ::
@@ -94,6 +97,7 @@ render st = case st.available of
       [ HH.input
           [ HP.type_ InputCheckbox
           , Css.class_ "nectary-input-checkbox"
+          , HP.disabled st.readOnly
           , HP.checked $ Set.member v st.selected
           , HE.onChecked $ Check v
           ]

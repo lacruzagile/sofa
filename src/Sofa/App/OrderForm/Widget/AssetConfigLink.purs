@@ -5,7 +5,7 @@ import Control.Alternative (guard)
 import Data.Array as A
 import Data.Either (either)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust, isNothing, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.String.Regex as Re
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
@@ -35,6 +35,7 @@ type Input
     , skuPattern :: String -- ^ Regex of eligible SKUs.
     , configs :: Array SkuConfigs
     -- ^ Array of configurations associated with different SKUs.
+    , readOnly :: Boolean
     }
 
 type SkuConfigs
@@ -54,6 +55,7 @@ type State
     , skuPattern :: String
     , value :: Maybe SS.ConfigValue
     , options :: Array { configId :: SS.OrderLineConfigId, label :: String }
+    , readOnly :: Boolean
     }
 
 data Action
@@ -96,6 +98,7 @@ initialState input =
         guard $ Re.test re (show configs.sku)
         { label, config: SS.OrderLineConfig { id } } <- configs.configs
         maybe [] (\configId -> [ { configId, label } ]) id
+  , readOnly: input.readOnly
   }
 
 initialize :: Maybe Action
@@ -106,19 +109,39 @@ render ::
   MonadAff m =>
   CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
-render st =
-  HH.slot
-    selectProxy
-    unit
-    Select.component
-    ( Select.defaultInput
-        { selected = st.selectedId
-        , values = map (\o -> Tuple (HH.text o.label) o.configId) st.options
-        , noSelectionText = "Please choose a configuration"
-        , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
-        }
-    )
-    Select
+render st
+  | st.readOnly =
+    HH.div
+      [ Css.classes
+          [ "w-96"
+          , "h-12"
+          , "px-3"
+          , "my-0.5"
+          , "flex"
+          , "items-center"
+          , "rounded"
+          , "bg-snow-100"
+          ]
+      ]
+      [ HH.text
+          $ fromMaybe "" do
+              selectedId <- st.selectedId
+              { label } <- A.find (\{ configId } -> configId == selectedId) st.options
+              pure label
+      ]
+  | otherwise =
+    HH.slot
+      selectProxy
+      unit
+      Select.component
+      ( Select.defaultInput
+          { selected = st.selectedId
+          , values = map (\o -> Tuple (HH.text o.label) o.configId) st.options
+          , noSelectionText = "Please choose a configuration"
+          , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+          }
+      )
+      Select
 
 mkOutput :: State -> Maybe SS.ConfigValue
 mkOutput state = do

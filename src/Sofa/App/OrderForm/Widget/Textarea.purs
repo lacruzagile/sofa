@@ -18,14 +18,15 @@ proxy :: Proxy "widgetTextarea"
 proxy = Proxy
 
 type Input
-  = { value :: Maybe String }
+  = { value :: Maybe String
+    , readOnly :: Boolean
+    }
 
 type Output
   = Maybe String
 
 type State
-  = { value :: Maybe String
-    }
+  = Input
 
 data Action
   = SetValue String
@@ -50,12 +51,28 @@ render ::
   MonadAff m =>
   CredentialStore f m =>
   State -> H.ComponentHTML Action slots m
-render st =
-  HH.textarea
-    [ HP.value $ fromMaybe "" st.value
-    , Css.classes [ "nectary-textarea", "w-96" ]
-    , HE.onValueChange SetValue
-    ]
+render st
+  | st.readOnly =
+    HH.div
+      [ Css.classes
+          [ "w-96"
+          , "min-h-[5rem]"
+          , "max-h-[12rem]"
+          , "px-3"
+          , "py-2"
+          , "my-0.5"
+          , "rounded"
+          , "bg-snow-100"
+          , "overflow-scroll"
+          ]
+      ]
+      [ HH.text $ fromMaybe " " st.value ]
+  | otherwise =
+    HH.textarea
+      [ HP.value $ fromMaybe "" st.value
+      , Css.classes [ "nectary-textarea", "w-96" ]
+      , HE.onValueChange SetValue
+      ]
 
 handleAction ::
   forall slots f m.

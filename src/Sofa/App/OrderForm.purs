@@ -582,25 +582,27 @@ render state = HH.section_ [ HH.article_ renderContent ]
         , onClick: \_ -> AddOrderLineForProducts { orderSectionId, skus }
         }
 
-    renderQuantityInput (SS.OrderLineConfig olc) =
-      HH.input
-        [ Css.classes
-            [ "nectary-input"
-            , "nectary-input-number"
-            , "w-24"
-            ]
-        , HP.type_ HP.InputNumber
-        , HP.min 1.0
-        , HP.value $ show olc.quantity
-        , HE.onValueChange
-            $ \v ->
-                OrderLineSetQuantity
-                  { orderSectionId
-                  , orderLineId: ol.orderLineId
-                  , configId: fromMaybe (SS.OrderLineConfigId "") olc.id
-                  , quantity: fromMaybe olc.quantity $ Int.fromString v
-                  }
-        ]
+    renderQuantityInput (SS.OrderLineConfig olc)
+      | not isInDraft = HH.text $ show olc.quantity
+      | otherwise =
+        HH.input
+          [ Css.classes
+              [ "nectary-input"
+              , "nectary-input-number"
+              , "w-24"
+              ]
+          , HP.type_ HP.InputNumber
+          , HP.min 1.0
+          , HP.value $ show olc.quantity
+          , HE.onValueChange
+              $ \v ->
+                  OrderLineSetQuantity
+                    { orderSectionId
+                    , orderLineId: ol.orderLineId
+                    , configId: fromMaybe (SS.OrderLineConfigId "") olc.id
+                    , quantity: fromMaybe olc.quantity $ Int.fromString v
+                    }
+          ]
 
     renderProductConfigs product configs =
       let
