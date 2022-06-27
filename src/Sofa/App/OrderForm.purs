@@ -919,7 +919,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   , th [ "px-5" ] [ HH.text "Status" ]
                   , th [ "px-5" ] [ HH.text "Quantity" ]
                   , th [] [ HH.text "Asset" ]
-                  , th [] [ HH.text "Remove" ]
+                  , if isInDraft then th [] [ HH.text "Remove" ] else HH.text ""
                   ]
               ]
           , HH.tbody_
@@ -944,18 +944,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ Css.classes $ [ "p-2", "font-semibold", "text-left" ] <> cls
         ]
 
-    tdDelete onClick =
-      HH.td [ Css.class_ "text-center" ]
-        [ HH.button
-            [ Css.classes [ "p-2", "fill-error-500", "hover:fill-error-800" ]
-            , HE.onClick onClick
-            ]
-            [ Icon.delete
-                [ Icon.classes [ Css.c "w-5" ]
-                , Icon.ariaLabel "Delete"
-                ]
-            ]
-        ]
+    tdDelete onClick
+      | not isInDraft = HH.text ""
+      | otherwise =
+        HH.td [ Css.class_ "text-center" ]
+          [ HH.button
+              [ Css.classes [ "p-2", "fill-error-500", "hover:fill-error-800" ]
+              , HE.onClick onClick
+              ]
+              [ Icon.delete
+                  [ Icon.classes [ Css.c "w-5" ]
+                  , Icon.ariaLabel "Delete"
+                  ]
+              ]
+          ]
 
     tdAsset orderLineFullId statusReason =
       HH.td [ Css.class_ "text-center" ]
