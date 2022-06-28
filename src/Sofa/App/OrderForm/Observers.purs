@@ -267,22 +267,32 @@ handleAction = case _ of
   StopNewObserver event -> do
     H.liftEffect $ Event.preventDefault event
     state <- H.modify _ { observerAction = ObserverCreating Loading }
-    case Tuple state.orderId state.newObserver of
-      Tuple (Just oid) (Just email) -> do
-        observerResult <- H.lift $ postOrderObserver oid (mkObserver email)
-        maybeReportError "Failed to create observer." observerResult
-        state' <-
-          H.modify \st ->
-            st
-              { observers =
-                fromMaybe st.observers
-                  $ (\observer -> st.observers <> [ observer ])
-                  <$> Loadable.toMaybe observerResult
-              , newObserver = Nothing
-              , observerAction = ObserverIdle (Just st.observerAction)
-              }
-        H.raise state'.observers
-      _ -> pure unit
+    let
+      updateState mObserver st =
+        st
+          { observers =
+            maybe
+              st.observers
+              (\observer -> st.observers <> [ observer ])
+              mObserver
+          , newObserver = Nothing
+          , observerAction = ObserverIdle (Just st.observerAction)
+          }
+    case state.newObserver of
+      Nothing -> pure unit
+      Just newObserver -> case state.orderId of
+        -- The order has not been saved to the backend, simply add the observer
+        -- to the state so it's available when the order is saved.
+        Nothing -> do
+          state' <- H.modify $ updateState $ Just $ mkObserver newObserver
+          H.raise state'.observers
+        -- The order has been saved to the backend, post the observer directly
+        -- to the backend.
+        Just orderId -> do
+          observerResult <- H.lift $ postOrderObserver orderId (mkObserver newObserver)
+          maybeReportError "Failed to create observer." observerResult
+          state' <- H.modify $ updateState $ Loadable.toMaybe observerResult
+          H.raise state'.observers
   RemoveObserver idx -> do
     state <- H.modify _ { observerAction = ObserverDeleting idx Loading }
     let

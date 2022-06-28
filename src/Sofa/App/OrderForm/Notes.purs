@@ -400,21 +400,27 @@ handleAction = case _ of
   StopNewNote event -> do
     H.liftEffect $ Event.preventDefault event
     state <- H.modify \st -> st { noteAction = NoteCreating Loading }
-    case Tuple state.orderId state.newNote of
-      Tuple (Just oid) (Just text) -> do
-        noteResult <- H.lift $ postOrderNote oid (mkNote text)
-        state' <-
-          H.modify \st ->
-            st
-              { notes =
-                fromMaybe st.notes
-                  $ (\note -> st.notes <> [ note ])
-                  <$> Loadable.toMaybe noteResult
-              , newNote = Nothing
-              , noteAction = NoteIdle (Just st.noteAction)
-              }
-        H.raise state'.notes
-      _ -> pure unit
+    let
+      updateState mNote st =
+        st
+          { notes = maybe st.notes (\note -> st.notes <> [ note ]) mNote
+          , newNote = Nothing
+          , noteAction = NoteIdle (Just st.noteAction)
+          }
+    case state.newNote of
+      Nothing -> pure unit
+      Just newNoteText -> case state.orderId of
+        -- The order has not been saved to the backend, simply add the note to
+        -- the state so it's available when the order is saved.
+        Nothing -> do
+          state' <- H.modify $ updateState $ Just $ mkNote newNoteText
+          H.raise state'.notes
+        -- The order has been saved to the backend, post the note directly to
+        -- the backend.
+        Just orderId -> do
+          noteResult <- H.lift $ postOrderNote orderId (mkNote newNoteText)
+          state' <- H.modify $ updateState $ Loadable.toMaybe noteResult
+          H.raise state'.notes
   RemoveNote idx -> do
     state <- H.modify \st -> st { noteAction = NoteDeleting idx Loading }
     let
