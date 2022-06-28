@@ -15,7 +15,7 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Sofa.Component.Alerts (class MonadAlert, AlertSink)
 import Sofa.Data.Auth (class CredentialStore, AuthInstance, mkCredentials)
-import Sofa.Data.Deployment (Deployment)
+import Sofa.Data.Deployment (class MonadDeployment, Deployment)
 import Sofa.Data.Deployment as Deployment
 import Web.HTML as Html
 import Web.HTML.Window as HtmlWindow
@@ -117,6 +117,9 @@ instance credentialStoreAppM :: CredentialStore Fiber AppM where
             s <- HtmlWindow.sessionStorage w
             LS.removeItem authCredentialsStorageKey s
   getAuthInstance = AppM $ ReaderT \env -> pure env.authInstance
+
+instance deploymentAppM :: MonadDeployment AppM where
+  getDeployment = AppM $ ReaderT \env -> pure env.deployment
 
 authCredentialsStorageKey :: String
 authCredentialsStorageKey = "sofa-auth-credentials"

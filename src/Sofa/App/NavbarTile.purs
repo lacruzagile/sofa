@@ -10,11 +10,9 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
-import Sofa.Data.Auth (class CredentialStore)
-import Sofa.Data.Deployment (detectDeployment, Deployment(..))
+import Sofa.Data.Deployment (class MonadDeployment, Deployment(..), getDeployment)
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -33,10 +31,9 @@ data Action
   | SetMenuVisibility Boolean
 
 component ::
-  forall query input output f m.
+  forall query input output m.
   MonadAff m =>
-  MonadAlert m =>
-  CredentialStore f m =>
+  MonadDeployment m =>
   H.Component query input output m
 component =
   H.mkComponent
@@ -107,10 +104,11 @@ render { enable, menuOpen }
 handleAction ::
   forall output m.
   MonadAff m =>
+  MonadDeployment m =>
   Action -> H.HalogenM State Action () output m Unit
 handleAction = case _ of
   Initialize -> do
-    deployment <- H.liftEffect detectDeployment
+    deployment <- H.lift getDeployment
     case deployment of
       Standard ->
         H.modify_ \st ->

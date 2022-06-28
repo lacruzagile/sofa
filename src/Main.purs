@@ -1,9 +1,12 @@
 module Main (main) where
 
 import Prelude
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.Aff (Aff)
+import Effect.AVar (AVar)
+import Effect.AVar as AVar
+import Effect.Aff (Aff, forkAff)
 import Effect.Console as Console
 import Halogen as H
 import Halogen.Aff as HA
@@ -14,7 +17,7 @@ import Sofa.App.Router as Router
 import Sofa.App.SsoLoggingIn as SsoLoggingIn
 import Sofa.Component.Alerts as Alert
 import Sofa.Data.Auth (handleSsoRedirect, mkAuthInstance)
-import Sofa.Data.Deployment (Deployment(..), detectDeployment)
+import Sofa.Data.Deployment (Deployment(..), SalesforcePageData, detectDeployment)
 import Sofa.Data.SmartSpec (CrmQuoteId)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
@@ -40,7 +43,22 @@ main = do
           $ Console.error "Could not find 'sofa-app' element to attach."
       Just body -> case deployment of
         Salesforce { crmQuoteId: Just qId } -> runOnlyOrderForm env qId body
+        Salesforce { pageData } -> do
+          void $ forkAff $ H.liftEffect $ consumeSalesforcePageData pageData
+          runFull env body
         _ -> runFull env body
+
+-- TODO: This is just a test function. Needs to be replaced by proper
+-- implementation.
+consumeSalesforcePageData :: AVar SalesforcePageData -> Effect Unit
+consumeSalesforcePageData avar = do
+  Console.log $ "Waiting for Salesforce page data"
+  void
+    $ AVar.take avar case _ of
+        Left _ -> Console.warn "Could not read Salesforce page data"
+        Right pageData -> do
+          Console.log $ "Got Salesforce page data: " <> show pageData
+          consumeSalesforcePageData avar
 
 -- | Start the full standalone SOFA implementation.
 runFull :: Env -> Html.HTMLElement -> Aff Unit

@@ -27,6 +27,7 @@ import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
+import Sofa.Data.Deployment (class MonadDeployment)
 import Sofa.Data.Route (Route)
 import Sofa.Data.Route as Route
 
@@ -66,6 +67,7 @@ component ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   H.Component Query input output m
 component =
   H.mkComponent
@@ -87,6 +89,7 @@ render ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   State -> H.ComponentHTML Action Slots m
 render state =
   HH.div_
@@ -205,6 +208,7 @@ renderNavbar ::
   MonadAff m =>
   MonadAlert m =>
   CredentialStore f m =>
+  MonadDeployment m =>
   H.ComponentHTML Action Slots m
 renderNavbar =
   HH.nav [ Css.classes navbarClasses ]

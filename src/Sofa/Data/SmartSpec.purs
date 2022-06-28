@@ -2028,6 +2028,11 @@ emptyAddress =
     , postalCode: Nothing
     }
 
+derive instance genericAddress :: Generic Address _
+
+instance showAddress :: Show Address where
+  show = genericShow
+
 instance decodeJsonAddress :: DecodeJson Address where
   decodeJson json = do
     o <- decodeJson json
@@ -2112,6 +2117,11 @@ emptyContact :: Contact
 emptyContact = Contact { contactId: Nothing, email: Nothing, displayName: Nothing, phone: Nothing }
 
 derive instance eqContact :: Eq Contact
+
+derive instance genericContact :: Generic Contact _
+
+instance showContact :: Show Contact where
+  show = genericShow
 
 derive newtype instance decodeJsonContact :: DecodeJson Contact
 
