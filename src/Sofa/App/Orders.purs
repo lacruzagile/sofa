@@ -1,5 +1,5 @@
 -- | Provides an order list component. Fetches orders from the Ordering backend.
-module Sofa.App.Orders (Slot, proxy, component) where
+module Sofa.App.Orders (Slot, Input(..), OrderFilter(..), proxy, component) where
 
 import Prelude
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
@@ -35,9 +35,18 @@ type Slots
   = ( orderForm :: OrderForm.Slot Unit
     )
 
+type Input
+  = OrderFilter
+
+data OrderFilter
+  = ListAllAccessibleOrder
+  | ListCustomerOrders { crmAccountId :: SS.CrmAccountId }
+
 type State
   = { orders :: Array SS.OrderForm -- ^ All loaded orders.
     , nextPageToken :: Loadable (Maybe String)
+    , orderFilter :: OrderFilter
+    -- TODO: Make use of the order filter field once backend support is available.
     }
 
 data Action
@@ -47,11 +56,11 @@ firstPageToken :: String
 firstPageToken = ""
 
 component ::
-  forall query input output f m.
+  forall query output f m.
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
-  H.Component query input output m
+  H.Component query Input output m
 component =
   H.mkComponent
     { initialState
@@ -64,10 +73,11 @@ component =
             }
     }
 
-initialState :: forall input. input -> State
-initialState _ =
+initialState :: Input -> State
+initialState input =
   { orders: []
   , nextPageToken: Idle
+  , orderFilter: input
   }
 
 initialize :: Maybe Action

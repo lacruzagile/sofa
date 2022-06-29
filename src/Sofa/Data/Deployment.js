@@ -1,6 +1,6 @@
 "use strict";
 
-exports.getSfData = just => nothing => pageData => () => {
+exports.getSfData = just => nothing => parsePageData => () => {
   if (typeof __ACCESSTOKEN__ === "undefined"
       || typeof __ORGANIZATION_ID__ === "undefined"
       || typeof __USER_ID__ === "undefined"
@@ -14,15 +14,12 @@ exports.getSfData = just => nothing => pageData => () => {
     userId:  __USER_ID__,
     userEmail:  __USER_EMAIL__,
     crmQuoteId:
-      typeof __QUOTE_SFID__ === "undefined" || __QUOTE_SFID__ == ""
+      typeof __QUOTE_SFID__ === "undefined" || __QUOTE_SFID__ === ""
         ? nothing
         : just(__QUOTE_SFID__),
-    pageData: pageData
+    pageData:
+      typeof __SALESFORCE_DATA__ === "undefined" || __SALESFORCE_DATA__ === ""
+        ? nothing
+        : just(parsePageData(__SALESFORCE_DATA__)())
   })
-}
-
-exports.attachPopulateSalesforceData = populateSalesforceData => () => {
-  // Attach the populateSalesforceData method on the window object so that
-  // the Salesforce wrapper can call it.
-  window.populateSalesforceData = json => populateSalesforceData(json)();
 }

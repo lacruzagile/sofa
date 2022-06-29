@@ -9,14 +9,13 @@ module Sofa.Data.Deployment
 
 import Prelude
 import Control.Alternative ((<|>))
-import Data.Argonaut (class DecodeJson, Json, JsonDecodeError(..), decodeJson, printJsonDecodeError, (.:))
+import Data.Argonaut (class DecodeJson, JsonDecodeError(..), decodeJson, jsonParser, printJsonDecodeError, (.:))
+import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Show.Generic (genericShow)
 import Effect (Effect)
-import Effect.AVar (AVar)
-import Effect.AVar as AVar
 import Effect.Exception (throwException)
 import Effect.Exception as Exception
 import Sofa.Data.SmartSpec as SS
@@ -29,6 +28,11 @@ import Sofa.Data.SmartSpec as SS
 data Deployment
   = Standard
   | Salesforce SalesforceData
+
+derive instance genericDeployment :: Generic Deployment _
+
+instance showDeployment :: Show Deployment where
+  show = genericShow
 
 class MonadDeployment m where
   getDeployment :: m Deployment
@@ -44,7 +48,7 @@ type SalesforceData
     , userId :: String
     , userEmail :: String
     , crmQuoteId :: Maybe SS.CrmQuoteId
-    , pageData :: AVar SalesforcePageData
+    , pageData :: Maybe SalesforcePageData
     }
 
 data SalesforcePageData
@@ -105,31 +109,21 @@ instance decodeJsonSalesforcePageData :: DecodeJson SalesforcePageData where
 foreign import getSfData ::
   (forall x. x -> Maybe x) ->
   (forall x. Maybe x) ->
-  AVar SalesforcePageData ->
+  (String -> Effect SalesforcePageData) ->
   Effect (Maybe SalesforceData)
 
--- | Attaches the given `populateSalesforceData` function on the `window`
--- | object.
-foreign import attachPopulateSalesforceData ::
-  (Json -> Effect Unit) ->
-  Effect Unit
-
-populateSalesforceData :: AVar SalesforcePageData -> Json -> Effect Unit
-populateSalesforceData avar jsonPageData = do
-  let
-    ePageData = decodeJson jsonPageData
-  case ePageData of
-    Left err -> throwException $ Exception.error $ printJsonDecodeError err
-    Right pageData -> void $ AVar.put pageData avar (either throwException pure)
+parseSalesforceData :: String -> Effect SalesforcePageData
+parseSalesforceData pageDataStr =
+  either handleError pure do
+    json <- jsonParser pageDataStr
+    bimap printJsonDecodeError identity $ decodeJson json
+  where
+  handleError :: forall a. String -> Effect a
+  handleError = throwException <<< Exception.error
 
 -- | Figures out which type of deployment we're running. This action should only
 -- | be run once and very early in the app execution.
 detectDeployment :: Effect Deployment
 detectDeployment = do
-  sfPageData <- AVar.empty
-  mSfData <- getSfData Just Nothing sfPageData
-  case mSfData of
-    Nothing -> pure Standard
-    Just sfData -> do
-      attachPopulateSalesforceData (populateSalesforceData sfPageData)
-      pure $ Salesforce sfData
+  maybe Standard Salesforce
+    <$> getSfData Just Nothing parseSalesforceData

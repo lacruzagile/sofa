@@ -1,24 +1,21 @@
 module Main (main) where
 
 import Prelude
-import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.AVar (AVar)
-import Effect.AVar as AVar
-import Effect.Aff (Aff, forkAff)
+import Effect.Aff (Aff)
 import Effect.Console as Console
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
 import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
+import Sofa.App.Orders as Orders
 import Sofa.App.Router as Router
 import Sofa.App.SsoLoggingIn as SsoLoggingIn
 import Sofa.Component.Alerts as Alert
 import Sofa.Data.Auth (handleSsoRedirect, mkAuthInstance)
-import Sofa.Data.Deployment (Deployment(..), SalesforcePageData, detectDeployment)
-import Sofa.Data.SmartSpec (CrmQuoteId)
+import Sofa.Data.Deployment (Deployment(..), SalesforcePageData(..), detectDeployment)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
 
@@ -42,23 +39,27 @@ main = do
         H.liftEffect
           $ Console.error "Could not find 'sofa-app' element to attach."
       Just body -> case deployment of
-        Salesforce { crmQuoteId: Just qId } -> runOnlyOrderForm env qId body
-        Salesforce { pageData } -> do
-          void $ forkAff $ H.liftEffect $ consumeSalesforcePageData pageData
-          runFull env body
+        Salesforce { crmQuoteId: Just qId } ->
+          runOrderForm
+            env
+            body
+            (OrderForm.ExistingCrmQuoteId qId)
+        Salesforce { pageData: Just (SfPageOrderForm sfData) } ->
+          runOrderForm
+            env
+            body
+            (OrderForm.SalesforceNewOrder sfData)
+        Salesforce { pageData: Just SfPageUserOrderList } ->
+          runOrderList
+            env
+            body
+            Orders.ListAllAccessibleOrder
+        Salesforce { pageData: Just (SfPageCustomerOrderList rec) } ->
+          runOrderList
+            env
+            body
+            (Orders.ListCustomerOrders rec)
         _ -> runFull env body
-
--- TODO: This is just a test function. Needs to be replaced by proper
--- implementation.
-consumeSalesforcePageData :: AVar SalesforcePageData -> Effect Unit
-consumeSalesforcePageData avar = do
-  Console.log $ "Waiting for Salesforce page data"
-  void
-    $ AVar.take avar case _ of
-        Left _ -> Console.warn "Could not read Salesforce page data"
-        Right pageData -> do
-          Console.log $ "Got Salesforce page data: " <> show pageData
-          consumeSalesforcePageData avar
 
 -- | Start the full standalone SOFA implementation.
 runFull :: Env -> Html.HTMLElement -> Aff Unit
@@ -73,9 +74,16 @@ runFull env body = do
   app <- runUI router unit body
   Router.startRouting app
 
-runOnlyOrderForm :: Env -> CrmQuoteId -> Html.HTMLElement -> Aff Unit
-runOnlyOrderForm env crmQuoteId body =
+runOrderForm :: Env -> Html.HTMLElement -> OrderForm.Input -> Aff Unit
+runOrderForm env body orderFormInput =
   let
     router = H.hoist (runAppM env) OrderForm.component
   in
-    void $ runUI router (OrderForm.ExistingCrmQuoteId crmQuoteId) body
+    void $ runUI router orderFormInput body
+
+runOrderList :: Env -> Html.HTMLElement -> Orders.Input -> Aff Unit
+runOrderList env body ordersInput =
+  let
+    router = H.hoist (runAppM env) Orders.component
+  in
+    void $ runUI router ordersInput body

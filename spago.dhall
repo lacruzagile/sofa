@@ -17,6 +17,7 @@ to generate this file without the comments in this block.
   , "argonaut"
   , "arrays"
   , "avar"
+  , "bifunctors"
   , "console"
   , "control"
   , "datetime"

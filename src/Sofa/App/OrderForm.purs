@@ -111,6 +111,16 @@ data Input
   | ExistingOrder SS.OrderForm
   | ExistingOrderId SS.OrderId
   | ExistingCrmQuoteId SS.CrmQuoteId
+  | SalesforceNewOrder
+    { crmAccountId :: SS.CrmAccountId
+    , corporateName :: String
+    , taxId :: String
+    , website :: SS.Uri
+    , registrationNr :: String
+    , address :: SS.Address
+    , contacts :: Array SS.Contact
+    , platformAccountId :: String
+    }
 
 data State
   = Initializing Input
@@ -2180,6 +2190,8 @@ handleAction = case _ of
         H.put $ Initialized Loading
         orderForm <- H.lift $ Requests.getOrderForQuote crmQuoteId
         load orderForm
+      -- TODO:
+      Initializing (SalesforceNewOrder _) -> loadCatalog Nothing
       Initialized _ -> pure unit
   SetOrderDisplayName name ->
     modifyInitialized

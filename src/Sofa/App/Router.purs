@@ -275,7 +275,9 @@ renderBody state =
     where
     input = OrderForm.NewOrder
 
-  slotOrders = HH.slot_ Orders.proxy unit Orders.component absurd
+  slotOrders = HH.slot_ Orders.proxy unit Orders.component input
+    where
+    input = Orders.ListAllAccessibleOrder
 
   slotOrder id = HH.slot_ OrderForm.proxy unit OrderForm.component input
     where
