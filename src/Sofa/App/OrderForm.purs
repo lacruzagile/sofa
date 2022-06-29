@@ -1272,25 +1272,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HH.text "Discard order" ]
         else
           HH.text ""
-      , if isSavedDraftOrder then
-          HH.button
-            [ Css.class_ "nectary-btn-primary"
-            , HP.disabled $ isLeft preventFulfill
-            , HP.title (either identity (const "") preventFulfill)
-            , HE.onClick $ \_ -> FulfillOrder
-            ]
-            [ HH.text "Fulfill order"
-            , if sof.orderFulfillInFlight then buttonSpinner unit else HH.text ""
-            ]
-        else
-          HH.text ""
+      , HH.button
+          [ Css.class_ "nectary-btn-primary"
+          , HP.disabled $ isLeft preventFulfill
+          , HP.title (either identity (const "") preventFulfill)
+          , HE.onClick $ \_ -> FulfillOrder
+          ]
+          [ HH.text $ if sof.orderForm.changed then "Save & fulfill order" else "Fulfill order"
+          , if sof.orderFulfillInFlight then buttonSpinner unit else HH.text ""
+          ]
       , HH.button
           [ Css.class_ "nectary-btn-primary"
           , HP.disabled $ isLeft preventCreate
           , HP.title (either identity (const "") preventCreate)
           , HE.onClick $ \_ -> CreateUpdateOrder
           ]
-          [ HH.text $ maybe "Send order" (const "Update order") (getOrderId sof)
+          [ HH.text "Save order"
           , if sof.orderUpdateInFlight then buttonSpinner unit else HH.text ""
           ]
       ]
@@ -1299,10 +1296,48 @@ render state = HH.section_ [ HH.article_ renderContent ]
       Spinner.render
         $ Spinner.defaults { classes = Css.cs [ "ml-2", "align-text-bottom" ] }
 
-    -- The order is in draft status and is saved to the backend.
-    isSavedDraftOrder =
-      sof.orderForm.status == SS.OsInDraft
-        || isJust sof.orderForm.original
+    -- | Validates that the order in the current state is valid. If an error is
+    -- | found then this is a left value containing the error message.
+    checkOrder :: Either String Unit
+    checkOrder = do
+      _ <- note "Legal entity not set" sof.orderForm.seller
+      _ <- note "Customer not set" sof.orderForm.buyer
+      _ <- note "Commercial not set" sof.orderForm.commercial
+      -- Need valid order sections.
+      _ <- traverse checkOrderSection sof.orderForm.sections
+      pure unit
+      where
+      checkOrderSection os = do
+        SS.Solution solution <- note "Missing solution in section" os.solution
+        _ <- note "Missing solution URI in section" solution.uri
+        _ <-
+          if A.null solution.priceBooks then
+            Right unit
+          else
+            note "Missing price book in section" (void os.priceBook)
+        -- Need valid order lines.
+        _ <- traverse checkOrderLine os.orderLines
+        pure unit
+
+      checkOrderLine ol = do
+        product <- note "Missing product in order line" ol.product
+        _ <- traverse (checkOrderLineConfig product) ol.configs
+        pure unit
+
+      -- The order config schema and the actual configuration need to match.
+      checkOrderLineConfig product orderLineConfig =
+        let
+          SS.Product { orderConfigSchema } = product
+
+          SS.OrderLineConfig { config } = orderLineConfig
+        in
+          case Tuple orderConfigSchema config of
+            Tuple Nothing Nothing -> Right unit
+            Tuple (Just ocs) (Just conf) -> Schema.checkValue ocs conf
+            -- If the product has no configuration schema then we allow an empty object.
+            Tuple Nothing (Just (SS.CvObject obj))
+              | Map.isEmpty obj -> Right unit
+            _ -> Left "Invalid configuration in order line"
 
     -- Prevent order creation/update if left value, otherwise allow.
     preventCreate :: Either String Unit
@@ -1310,57 +1345,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
       | sof.orderUpdateInFlight = Left "Order updating…"
       | not sof.orderForm.changed = Left "Order unchanged"
       | otherwise = checkOrder
-        where
-        checkOrder = do
-          _ <- note "Legal entity not set" sof.orderForm.seller
-          _ <- note "Customer not set" sof.orderForm.buyer
-          _ <- note "Commercial not set" sof.orderForm.commercial
-          -- Need valid order sections.
-          _ <- traverse checkOrderSection sof.orderForm.sections
-          pure unit
-
-        checkOrderSection os = do
-          SS.Solution solution <- note "Missing solution in section" os.solution
-          _ <- note "Missing solution URI in section" solution.uri
-          _ <-
-            if A.null solution.priceBooks then
-              Right unit
-            else
-              note "Missing price book in section" (void os.priceBook)
-          -- Need valid order lines.
-          _ <- traverse checkOrderLine os.orderLines
-          pure unit
-
-        checkOrderLine ol = do
-          product <- note "Missing product in order line" ol.product
-          _ <- traverse (checkOrderLineConfig product) ol.configs
-          pure unit
-
-        -- The order config schema and the actual configuration need to match.
-        checkOrderLineConfig product orderLineConfig =
-          let
-            SS.Product { orderConfigSchema } = product
-
-            SS.OrderLineConfig { config } = orderLineConfig
-          in
-            case Tuple orderConfigSchema config of
-              Tuple Nothing Nothing -> Right unit
-              Tuple (Just ocs) (Just conf) -> Schema.checkValue ocs conf
-              -- If the product has no configuration schema then we allow an empty object.
-              Tuple Nothing (Just (SS.CvObject obj))
-                | Map.isEmpty obj -> Right unit
-              _ -> Left "Invalid configuration in order line"
 
     -- Prevent order fulfill if left value, otherwise allow.
     preventFulfill :: Either String Unit
     preventFulfill
-      | sof.orderFulfillInFlight = Left "Order fulfilling…"
+      | sof.orderUpdateInFlight = Left "Saving order…"
+      | sof.orderFulfillInFlight = Left "Fulfilling order…"
       | otherwise = case getOriginalOrderStatus sof of
-        Nothing -> Left "Order not saved"
         Just status
           | SS.isFinalOrderStatus status -> Left "Order in a final status"
           | status == SS.OsInFulfillment -> Left "Order is already in fulfillment"
-          | otherwise -> Right unit
+        _ -> checkOrder
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
@@ -1761,8 +1756,9 @@ loadExisting ::
   forall slots output m.
   MonadAff m =>
   SS.OrderForm ->
+  Boolean ->
   H.HalogenM State Action slots output m Unit
-loadExisting original@(SS.OrderForm orderForm) = do
+loadExisting original@(SS.OrderForm orderForm) changed = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
   H.put $ Initialized $ convertOrderForm =<< productCatalog
@@ -1787,7 +1783,7 @@ loadExisting original@(SS.OrderForm orderForm) = do
         , orderForm:
             calcTotal
               { original: Just original
-              , changed: false
+              , changed
               , displayName: orderForm.displayName
               , crmQuoteId: orderForm.crmQuoteId
               , commercial: Just orderForm.commercial
@@ -2046,6 +2042,52 @@ orderLineRefLabel orderSectionId orderLineId =
     <> "/"
     <> show (toRawId orderLineId)
 
+-- | Saves the order in the given state to the backend. Returns the saved order
+-- | form object, or nothing if the save failed.
+createUpdateOrder ::
+  forall output f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  MonadAlert m =>
+  State -> H.HalogenM State Action Slots output m (Maybe SS.OrderForm)
+createUpdateOrder state = do
+  let
+    -- Updates the current state to match the response order object.
+    ld o = case o of
+      Loaded o' -> do
+        loadExisting o' false
+        pure $ Just o'
+      _ -> do
+        modifyInitialized $ _ { orderUpdateInFlight = false }
+        pure Nothing
+
+    alert = case _ of
+      Error msg ->
+        Alerts.push
+          $ Alert.errorAlert "Failed to save order." msg
+      _ ->
+        Alerts.push
+          $ Alert.defaultAlert
+              { type_ = Alert.Success
+              , content = HH.text "Order successfully saved."
+              }
+
+    run json =
+      maybe'
+        (\_ -> Requests.postOrder json)
+        (\id -> Requests.patchOrder id json)
+  case state of
+    Initialized (Loaded st') -> case toJson st'.orderForm of
+      Left msg -> do
+        H.liftEffect $ Console.error $ "Could not produce order JSON: " <> msg
+        pure Nothing
+      Right json -> do
+        modifyInitialized $ _ { orderUpdateInFlight = true }
+        order <- H.lift $ run json (getOrderId st')
+        H.lift $ alert order
+        ld order
+    _ -> pure Nothing
+
 handleAction ::
   forall output f m.
   MonadAff m =>
@@ -2059,7 +2101,7 @@ handleAction = case _ of
       load = case _ of
         Error err -> H.put $ Initialized (Error err)
         Idle -> H.put $ Initialized Idle
-        Loaded order -> loadExisting order
+        Loaded order -> loadExisting order false
         Loading -> H.put $ Initialized Loading
     case st of
       Initializing NewOrder -> do
@@ -2081,10 +2123,10 @@ handleAction = case _ of
           gotOrder order = do
             H.liftEffect $ Console.log "Got stored order"
             case order of
-              SS.OrderForm { id: Nothing } -> loadExisting order
+              SS.OrderForm { id: Nothing } -> loadExisting order true
               _ -> loadCatalog Nothing
         either noOrder gotOrder eStoredOrder
-      Initializing (ExistingOrder orderForm) -> loadExisting orderForm
+      Initializing (ExistingOrder orderForm) -> loadExisting orderForm false
       Initializing (ExistingOrderId id) -> do
         H.put $ Initialized Loading
         orderForm <- H.lift $ Requests.getOrder id
@@ -2518,53 +2560,27 @@ handleAction = case _ of
     -- Reloading the catalog will reset the component state.
     loadCatalog Nothing
   CreateUpdateOrder -> do
-    st <- H.get
-    let
-      -- Updates the current state to match the response order object.
-      ld o = case o of
-        Loaded o' -> loadExisting o'
-        _ -> modifyInitialized $ _ { orderUpdateInFlight = false }
-
-      alert = case _ of
-        Error msg ->
-          Alerts.push
-            $ Alert.errorAlert "Failed to save order." msg
-        _ ->
-          Alerts.push
-            $ Alert.defaultAlert
-                { type_ = Alert.Success
-                , content = HH.text "Order successfully saved."
-                }
-
-      run json =
-        maybe'
-          (\_ -> Requests.postOrder json)
-          (\id -> Requests.patchOrder id json)
-    case st of
-      Initialized (Loaded st') -> case toJson st'.orderForm of
-        Left msg -> do
-          H.liftEffect $ Console.error $ "Could not produce order JSON: " <> msg
-          pure unit
-        Right json -> do
-          modifyInitialized $ _ { orderUpdateInFlight = true }
-          order <- H.lift $ run json (getOrderId st')
-          ld order
-          H.lift $ alert order
-      _ -> pure unit
+    state <- H.get
+    void $ createUpdateOrder state
+    pure unit
   FulfillOrder -> do
-    st <- H.get
-    let
-      -- Updates the current state to match the response order object.
-      ld o = case o of
-        Loaded o' -> loadExisting o'
-        _ -> modifyInitialized $ _ { orderFulfillInFlight = false }
-    case st of
-      Initialized
-        ( Loaded
-          { orderForm: { original: Just (SS.OrderForm { id: Just id }) }
-        }
-      ) -> do
+    state <- H.get
+    -- If the order is unsaved then make sure to save it first.
+    mSavedOrder <- case state of
+      Initialized (Loaded { orderForm: { changed, original: Just savedOrder } })
+        | not changed -> pure $ Just savedOrder
+      _ -> createUpdateOrder state
+    -- Fulfill the saved order.
+    case mSavedOrder of
+      Just (SS.OrderForm { id: Just id }) -> do
+        let
+          -- Updates the current state to match the response order object.
+          ld o = case o of
+            Loaded o' -> loadExisting o' false
+            _ -> modifyInitialized $ _ { orderFulfillInFlight = false }
         modifyInitialized $ _ { orderFulfillInFlight = true }
         order <- H.lift $ Requests.postOrderFulfillment id
         ld order
-      _ -> pure unit
+      _ -> do
+        H.liftEffect $ Console.log "Could not fulfill unsaved order"
+        pure unit
