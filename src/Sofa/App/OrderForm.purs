@@ -56,6 +56,7 @@ import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Card as Card
 import Sofa.Component.EditableInput as EditableInput
 import Sofa.Component.Icon as Icon
+import Sofa.Component.Modal as Modal
 import Sofa.Component.Select as Select
 import Sofa.Component.Spinner as Spinner
 import Sofa.Component.Tooltip as Tooltip
@@ -122,9 +123,20 @@ type StateOrderForm
     -- ^ Map from solution title to price books in the current currency.
     , orderForm :: OrderForm
     , orderUpdateInFlight :: Boolean -- ^ Whether a current order update request is in flight.
-    , orderFulfillInFlight :: Boolean -- ^ Whether a current order fulfillment request is in flight.
+    , orderFulfillStatus :: OrderFulfillStatus
     , assetModalOpen :: Maybe OrderLineId
     }
+
+-- | The order fulfillment status. This indicates in which state the order
+-- | fulfillment is. Most importantly, it allows us to distinguish between "no
+-- | active fulfillment", "waiting for fulfillment confirmation", and "waiting
+-- | for fulfill request completion".
+data OrderFulfillStatus
+  = FulfillStatusIdle
+  | FulfillStatusConfirming
+  | FulfillStatusActive
+
+derive instance eqOrderFulfillStatus :: Eq OrderFulfillStatus
 
 -- Similar to SS.OrderForm but with a few optional fields.
 type OrderForm
@@ -253,7 +265,9 @@ data Action
     Event.MouseEvent
   | DiscardOrder -- ^ Discard the currently loaded order.
   | CreateUpdateOrder -- ^ Create or update the current order.
-  | FulfillOrder -- ^ Trigger order fulfillment.
+  | FulfillOrderStart -- ^ Show modal for user to confirm order fulfillment.
+  | FulfillOrderCancel -- ^ The user canceled the fulfillment confirmation.
+  | FulfillOrderConfirm -- ^ The user confirmed the fulfillment confirmation.
 
 component ::
   forall query output f m.
@@ -1276,10 +1290,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ Css.class_ "nectary-btn-primary"
           , HP.disabled $ isLeft preventFulfill
           , HP.title (either identity (const "") preventFulfill)
-          , HE.onClick $ \_ -> FulfillOrder
+          , HE.onClick $ \_ -> FulfillOrderStart
           ]
           [ HH.text $ if sof.orderForm.changed then "Save & fulfill order" else "Fulfill order"
-          , if sof.orderFulfillInFlight then buttonSpinner unit else HH.text ""
+          , if sof.orderFulfillStatus == FulfillStatusActive then
+              buttonSpinner unit
+            else
+              HH.text ""
           ]
       , HH.button
           [ Css.class_ "nectary-btn-primary"
@@ -1350,12 +1367,39 @@ render state = HH.section_ [ HH.article_ renderContent ]
     preventFulfill :: Either String Unit
     preventFulfill
       | sof.orderUpdateInFlight = Left "Saving order…"
-      | sof.orderFulfillInFlight = Left "Fulfilling order…"
+      | sof.orderFulfillStatus /= FulfillStatusIdle = Left "Fulfilling order…"
       | otherwise = case getOriginalOrderStatus sof of
         Just status
           | SS.isFinalOrderStatus status -> Left "Order in a final status"
           | status == SS.OsInFulfillment -> Left "Order is already in fulfillment"
         _ -> checkOrder
+
+  renderFulfillmentConfirmModal sof = case sof.orderFulfillStatus of
+    FulfillStatusConfirming ->
+      Modal.render
+        $ Modal.defaultInput
+            { title = HH.text "Are you sure you want to fulfill this order?"
+            , closeAction = Just (\_ -> FulfillOrderCancel)
+            , backgroundClickAction = Nothing
+            , content =
+              HH.div [ Css.classes [ "flex", "flex-col", "gap-6", "max-w-128" ] ]
+                [ HH.p_ [ HH.text "Once the order is fulfilled it is not possible to edit the order anymore." ]
+                , HH.div [ Css.classes [ "flex", "gap-5" ] ]
+                    [ HH.div [ Css.class_ "grow" ] []
+                    , HH.button
+                        [ Css.class_ "nectary-btn-secondary"
+                        , HE.onClick \_ -> FulfillOrderCancel
+                        ]
+                        [ HH.text "Cancel" ]
+                    , HH.button
+                        [ Css.class_ "nectary-btn-primary"
+                        , HE.onClick \_ -> FulfillOrderConfirm
+                        ]
+                        [ HH.text "Fulfill Order" ]
+                    ]
+                ]
+            }
+    _ -> HH.text ""
 
   renderOrderForm :: StateOrderForm -> Array (H.ComponentHTML Action Slots m)
   renderOrderForm sof =
@@ -1378,6 +1422,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 ]
             ]
         ]
+    , renderFulfillmentConfirmModal sof
     ]
 
   error err =
@@ -1575,7 +1620,7 @@ loadCatalog crmQuoteId = do
               , sections: [ emptyOrderSection orderSectionId ]
               }
           , orderUpdateInFlight: false
-          , orderFulfillInFlight: false
+          , orderFulfillStatus: FulfillStatusIdle
           , assetModalOpen: Nothing
           }
       )
@@ -1796,7 +1841,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
               , sections
               }
         , orderUpdateInFlight: false
-        , orderFulfillInFlight: false
+        , orderFulfillStatus: FulfillStatusIdle
         , assetModalOpen: Nothing
         }
 
@@ -2563,7 +2608,13 @@ handleAction = case _ of
     state <- H.get
     void $ createUpdateOrder state
     pure unit
-  FulfillOrder -> do
+  FulfillOrderStart ->
+    modifyInitialized
+      $ _ { orderFulfillStatus = FulfillStatusConfirming }
+  FulfillOrderCancel -> do
+    modifyInitialized
+      $ _ { orderFulfillStatus = FulfillStatusIdle }
+  FulfillOrderConfirm -> do
     state <- H.get
     -- If the order is unsaved then make sure to save it first.
     mSavedOrder <- case state of
@@ -2573,14 +2624,12 @@ handleAction = case _ of
     -- Fulfill the saved order.
     case mSavedOrder of
       Just (SS.OrderForm { id: Just id }) -> do
-        let
-          -- Updates the current state to match the response order object.
-          ld o = case o of
-            Loaded o' -> loadExisting o' false
-            _ -> modifyInitialized $ _ { orderFulfillInFlight = false }
-        modifyInitialized $ _ { orderFulfillInFlight = true }
+        modifyInitialized $ _ { orderFulfillStatus = FulfillStatusActive }
         order <- H.lift $ Requests.postOrderFulfillment id
-        ld order
+        -- Updates the current state to match the response order object.
+        case order of
+          Loaded o' -> loadExisting o' false
+          _ -> modifyInitialized $ _ { orderFulfillStatus = FulfillStatusIdle }
       _ -> do
         H.liftEffect $ Console.log "Could not fulfill unsaved order"
         pure unit
