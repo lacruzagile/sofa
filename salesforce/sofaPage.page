@@ -19,7 +19,7 @@
     const __USER_EMAIL__ = '{!$User.Email}';
     const __ACCOUNT_SFID__ = '{!Quote.Account}';
     const __QUOTE_SFID__ = '{!Quote.ID}';
-    const __SALESFORCE_DATA__ = '{!salesforcedata}';
+    const __SALESFORCE_DATA__ = '';
     const __DEPLOYMENT_ENV__ = '@deploymentEnv@';
     const __ORDERING_BASE_URL__ = '@orderingBaseUrl@';
     const __SMART_SPEC_BASE_URL__ = '@smartSpecBaseUrl@';
