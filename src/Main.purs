@@ -10,12 +10,12 @@ import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
 import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
-import Sofa.App.Orders as Orders
+import Sofa.App.SalesforceDebugPage as SalesforceDebugPage
 import Sofa.App.Router as Router
 import Sofa.App.SsoLoggingIn as SsoLoggingIn
 import Sofa.Component.Alerts as Alert
 import Sofa.Data.Auth (handleSsoRedirect, mkAuthInstance)
-import Sofa.Data.Deployment (Deployment(..), SalesforcePageData(..), detectDeployment)
+import Sofa.Data.Deployment (Deployment(..), SalesforcePageData, detectDeployment)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
 
@@ -44,21 +44,7 @@ main = do
             env
             body
             (OrderForm.ExistingCrmQuoteId qId)
-        Salesforce { pageData: Just (SfPageOrderForm sfData) } ->
-          runOrderForm
-            env
-            body
-            (OrderForm.SalesforceNewOrder sfData)
-        Salesforce { pageData: Just SfPageUserOrderList } ->
-          runOrderList
-            env
-            body
-            Orders.ListAllAccessibleOrder
-        Salesforce { pageData: Just (SfPageCustomerOrderList rec) } ->
-          runOrderList
-            env
-            body
-            (Orders.ListCustomerOrders rec)
+        Salesforce { pageData: Just pageData } -> runSalesforceDebugPage env body pageData
         _ -> runFull env body
 
 -- | Start the full standalone SOFA implementation.
@@ -81,9 +67,9 @@ runOrderForm env body orderFormInput =
   in
     void $ runUI router orderFormInput body
 
-runOrderList :: Env -> Html.HTMLElement -> Orders.Input -> Aff Unit
-runOrderList env body ordersInput =
+runSalesforceDebugPage :: Env -> Html.HTMLElement -> SalesforcePageData -> Aff Unit
+runSalesforceDebugPage env body buyerInput =
   let
-    router = H.hoist (runAppM env) Orders.component
+    router = H.hoist (runAppM env) SalesforceDebugPage.component
   in
-    void $ runUI router ordersInput body
+    void $ runUI router buyerInput body

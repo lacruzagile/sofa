@@ -47,6 +47,9 @@ contactFinance = 2 :: ContactType
 type Input
   = Maybe
       { buyer :: SS.Buyer
+      , buyerAvailableContacts :: Maybe (Array SS.Contact)
+      -- ^ The buyer contacts, if available. When nothing then we fetch the
+      -- contacts from the ordering backend.
       , readOnly :: Boolean
       }
 
@@ -101,9 +104,9 @@ initialState input = case input of
     , enabled: false
     , open: false
     }
-  Just { buyer, readOnly } ->
+  Just { buyer, buyerAvailableContacts, readOnly } ->
     { buyer: Loaded buyer
-    , buyerAvailableContacts: Idle
+    , buyerAvailableContacts: maybe Idle Loaded buyerAvailableContacts
     , acceptedBuyer: Loaded buyer
     , readOnly
     , enabled: true

@@ -12,9 +12,7 @@ import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, JsonDecodeError(..), decodeJson, jsonParser, printJsonDecodeError, (.:))
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
-import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Exception (throwException)
 import Effect.Exception as Exception
@@ -28,11 +26,6 @@ import Sofa.Data.SmartSpec as SS
 data Deployment
   = Standard
   | Salesforce SalesforceData
-
-derive instance genericDeployment :: Generic Deployment _
-
-instance showDeployment :: Show Deployment where
-  show = genericShow
 
 class MonadDeployment m where
   getDeployment :: m Deployment
@@ -53,22 +46,12 @@ type SalesforceData
 
 data SalesforcePageData
   = SfPageOrderForm
-    { crmAccountId :: SS.CrmAccountId
-    , corporateName :: String
-    , taxId :: String
-    , website :: SS.Uri
-    , registrationNr :: String
-    , address :: SS.Address
+    { buyer :: SS.Buyer
     , contacts :: Array SS.Contact
     , billingAccountId :: String
     }
   | SfPageCustomerOrderList { crmAccountId :: SS.CrmAccountId }
   | SfPageUserOrderList
-
-derive instance genericSalesforcePageData :: Generic SalesforcePageData _
-
-instance showSalesforcePageData :: Show SalesforcePageData where
-  show = genericShow
 
 instance decodeJsonSalesforcePageData :: DecodeJson SalesforcePageData where
   decodeJson json = do
@@ -92,12 +75,21 @@ instance decodeJsonSalesforcePageData :: DecodeJson SalesforcePageData where
       billingAccountId <- o .: "platformAccountId"
       pure
         $ SfPageOrderForm
-            { crmAccountId
-            , corporateName
-            , taxId
-            , website
-            , registrationNr
-            , address
+            { buyer:
+                SS.Buyer
+                  { buyerId: Nothing
+                  , crmAccountId
+                  , address
+                  , contacts:
+                      { primary: SS.emptyContact
+                      , finance: SS.emptyContact
+                      }
+                  , existingCustomer: true
+                  , corporateName
+                  , taxId
+                  , website
+                  , registrationNr
+                  }
             , contacts
             , billingAccountId
             }

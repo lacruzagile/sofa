@@ -112,14 +112,9 @@ data Input
   | ExistingOrderId SS.OrderId
   | ExistingCrmQuoteId SS.CrmQuoteId
   | SalesforceNewOrder
-    { crmAccountId :: SS.CrmAccountId
-    , corporateName :: String
-    , taxId :: String
-    , website :: SS.Uri
-    , registrationNr :: String
-    , address :: SS.Address
+    { buyer :: SS.Buyer
     , contacts :: Array SS.Contact
-    , platformAccountId :: String
+    , billingAccountId :: String
     }
 
 data State
@@ -155,6 +150,9 @@ type OrderForm
     , crmQuoteId :: Maybe SS.CrmQuoteId
     , commercial :: Maybe SS.Commercial
     , buyer :: Maybe SS.Buyer
+    , buyerAvailableContacts :: Maybe (Array SS.Contact)
+    -- ^ The buyer contacts, if available. When nothing then we fetch the
+    -- contacts from the ordering backend.
     , seller :: Maybe SS.Seller
     , displayName :: Maybe String
     , status :: SS.OrderStatus
@@ -1253,10 +1251,15 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ((\s -> { seller: s, readOnly: not isInDraft }) <$> orderForm.seller)
         SetSeller
 
-    renderBuyer =
-      HH.slot Buyer.proxy unit Buyer.component
-        ((\b -> { buyer: b, readOnly: not isInDraft }) <$> orderForm.buyer)
-        SetBuyer
+    renderBuyer = HH.slot Buyer.proxy unit Buyer.component input SetBuyer
+      where
+      mkInput b =
+        { buyer: b
+        , buyerAvailableContacts: orderForm.buyerAvailableContacts
+        , readOnly: not isInDraft
+        }
+
+      input = mkInput <$> orderForm.buyer
 
     renderCommercial =
       let
@@ -1622,6 +1625,7 @@ loadCatalog crmQuoteId = do
               , crmQuoteId
               , commercial: Nothing
               , buyer: Nothing
+              , buyerAvailableContacts: Nothing
               , seller: Nothing
               , status: SS.OsInDraft
               , observers: []
@@ -1843,6 +1847,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
               , crmQuoteId: orderForm.crmQuoteId
               , commercial: Just orderForm.commercial
               , buyer: Just orderForm.buyer
+              , buyerAvailableContacts: Nothing
               , seller: Just orderForm.seller
               , status: orderForm.status
               , observers: orderForm.orderObservers
