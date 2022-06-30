@@ -60,7 +60,7 @@ data SalesforcePageData
     , registrationNr :: String
     , address :: SS.Address
     , contacts :: Array SS.Contact
-    , platformAccountId :: String
+    , billingAccountId :: String
     }
   | SfPageCustomerOrderList { crmAccountId :: SS.CrmAccountId }
   | SfPageUserOrderList
@@ -87,7 +87,9 @@ instance decodeJsonSalesforcePageData :: DecodeJson SalesforcePageData where
       registrationNr <- o .: "registrationNr"
       address <- o .: "address"
       contacts <- o .: "contacts"
-      platformAccountId <- o .: "platformAccountId"
+      -- Note the name change, billingAccountId is the naming used in SOFA and
+      -- Smart Spec so best to keep that.
+      billingAccountId <- o .: "platformAccountId"
       pure
         $ SfPageOrderForm
             { crmAccountId
@@ -97,7 +99,7 @@ instance decodeJsonSalesforcePageData :: DecodeJson SalesforcePageData where
             , registrationNr
             , address
             , contacts
-            , platformAccountId
+            , billingAccountId
             }
 
     decodeCustomerOrderList o = do
