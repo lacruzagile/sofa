@@ -1,12 +1,18 @@
--- | A component providing rendering of Nectary style input fields.
+-- | A component providing rendering of Nectary style input fields and text areas.
 module Sofa.Component.InputField
-  ( Input
+  ( InputCommon
+  -- * Single line input
+  , Input
   , defaultInput
   , render
+  -- * Textarea
+  , InputTextarea
+  , defaultTextarea
+  , renderTextarea
   ) where
 
 import Prelude
-import DOM.HTML.Indexed (HTMLinput)
+import DOM.HTML.Indexed (HTMLinput, HTMLtextarea)
 import Data.Array as A
 import Data.Maybe (Maybe(..), fromMaybe)
 import Halogen.HTML as HH
@@ -16,6 +22,16 @@ import Sofa.Component.Icon as Icon
 import Sofa.Component.Tooltip as Tooltip
 import Sofa.Css as Css
 import Unsafe.Coerce (unsafeCoerce)
+
+type InputCommon el i
+  = { props :: Array (HP.IProp el i)
+    , label :: String
+    , optionalText :: Maybe String
+    , errorText :: Maybe String
+    , additionalText :: Maybe String
+    , tooltipText :: Maybe String
+    , wrapperClasses :: Array HH.ClassName
+    }
 
 -- | Input parameters for input field rendering.
 -- |
@@ -34,14 +50,7 @@ import Unsafe.Coerce (unsafeCoerce)
 -- |
 -- | - `wrapperClasses` – additional classes to add to the wrapper element
 type Input i
-  = { props :: Array (HP.IProp HTMLinput i)
-    , label :: String
-    , optionalText :: Maybe String
-    , errorText :: Maybe String
-    , additionalText :: Maybe String
-    , tooltipText :: Maybe String
-    , wrapperClasses :: Array HH.ClassName
-    }
+  = InputCommon HTMLinput i
 
 defaultInput :: forall i. Input i
 defaultInput =
@@ -54,25 +63,35 @@ defaultInput =
   , wrapperClasses: []
   }
 
--- | Render a Nectary styled input field.
-render :: forall w i. Input i -> HH.HTML w i
-render input =
+type InputTextarea i
+  = InputCommon HTMLtextarea i
+
+defaultTextarea :: forall i. InputTextarea i
+defaultTextarea =
+  { props: []
+  , label: ""
+  , errorText: Nothing
+  , optionalText: Nothing
+  , additionalText: Nothing
+  , tooltipText: Nothing
+  , wrapperClasses: []
+  }
+
+renderCommon :: forall w el i. InputCommon el i -> HH.HTML w i -> HH.HTML w i
+renderCommon input inputElement =
   HH.div [ HP.classes $ [ Css.c "w-full" ] <> input.wrapperClasses ]
     [ HH.label_
         [ renderTop
-        , HH.input ([ Css.classes [ "nectary-input", "w-full" ] ] <> input.props)
+        , inputElement
         ]
     , renderBottom
     ]
   where
+  disabled = fromMaybe false $ A.findMap extractDisabledProp input.props
+
   extractDisabledProp = case _ of
     HP.IProp (Property "disabled" p) -> Just $ unsafeCoerce p
     _ -> Nothing
-
-  disabled =
-    fromMaybe false
-      $ A.findMap extractDisabledProp
-      $ input.props
 
   subduedColor
     | disabled = "text-stormy-100"
@@ -120,3 +139,15 @@ render input =
         HH.div
           [ Css.classes [ "leading-5", "text-xs", "text-right", subduedColor ] ]
           [ HH.text txt ]
+
+-- | Render a Nectary styled input field.
+render :: forall w i. Input i -> HH.HTML w i
+render input =
+  renderCommon input
+    $ HH.input ([ Css.classes [ "nectary-input", "w-full" ] ] <> input.props)
+
+-- | Render a Nectary styled text are.
+renderTextarea :: forall w i. InputTextarea i -> HH.HTML w i
+renderTextarea input =
+  renderCommon input
+    $ HH.textarea ([ Css.classes [ "nectary-textarea", "w-full" ] ] <> input.props)
