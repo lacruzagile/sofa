@@ -5,7 +5,7 @@ ingress:
 
 app:
   deploymentEnv: production
-  orderingServiceUrl: http://ordering
+  orderingServiceUrl: http://ordering:8081
   smartSpecUrl: http://smart-solution:8080
   tokenServiceUrl: https://sso.int.clxnetworks.net
   adminPortalHomeUrl: https://admin.int.prod.sinch.com/
