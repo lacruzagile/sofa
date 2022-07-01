@@ -88,7 +88,6 @@ initialState input = case input of
   Just { seller, readOnly } ->
     { legalEntity: Nothing
     , seller: Just seller
-    -- TODO: Fetch legal entity and populate this field.
     , acceptedLegalEntity: Nothing
     , acceptedSeller: Just seller
     , readOnly
