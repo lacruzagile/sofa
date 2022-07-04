@@ -43,7 +43,7 @@ render ::
   CredentialStore f m =>
   State -> H.ComponentHTML action Slots m
 render = case _ of
-  SfPageOrderForm { buyer, contacts, billingAccountId } ->
+  SfPageOrderForm { buyer, contacts, billingAccountId, legalEntityRegisteredName } ->
     HH.div [ Css.classes [ "grid", "grid-cols-2", "gap-5" ] ]
       [ HH.strong_ [ HH.text "Buyer" ]
       , HH.slot_
@@ -54,10 +54,13 @@ render = case _ of
               { buyer: buyer
               , buyerAvailableContacts: Just contacts
               , readOnly: false
+              , fixedBuyer: true
               }
           )
       , HH.strong_ [ HH.text "Platform account ID" ]
-      , HH.div_ [ HH.text billingAccountId ]
+      , HH.div_ [ HH.text $ show billingAccountId ]
+      , HH.strong_ [ HH.text "Legal Entity" ]
+      , HH.div_ [ HH.text legalEntityRegisteredName ]
       ]
   SfPageCustomerOrderList { crmAccountId } ->
     HH.div_

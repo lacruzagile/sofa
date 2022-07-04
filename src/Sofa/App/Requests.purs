@@ -19,6 +19,7 @@ module Sofa.App.Requests
   , getFileContent
   , getFileMetadata
   , getLegalEntities
+  , getLegalEntity
   , getOrder
   , getOrderForQuote
   , getOrders
@@ -41,6 +42,7 @@ import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Control.Alternative ((<|>))
 import Data.Argonaut (JsonDecodeError(..), (.:), class DecodeJson, class EncodeJson, Json, decodeJson, encodeJson, printJsonDecodeError)
+import Data.Array as A
 import Data.Either (Either(..))
 import Data.HTTP.Method as HTTP
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -54,7 +56,7 @@ import JSURI (encodeURIComponent)
 import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.SmartSpec (AssetConfig, BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (AssetConfig, BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity(..), OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
 import Web.URL.URLSearchParams (URLSearchParams)
 import Web.URL.URLSearchParams as UrlParams
 
@@ -195,6 +197,18 @@ getLegalEntities = map (map conv) $ getJson url
 
   conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
   conv { legalEntities } = legalEntities
+
+-- | Fetch the legal entity with the given registered name.
+getLegalEntity :: forall m. MonadAff m => String -> m (Loadable LegalEntity)
+getLegalEntity registeredName = do
+  lLegalEntities <- getLegalEntities
+  let
+    isMatch (LegalEntity le) = le.registeredName == registeredName
+  pure do
+    legalEntities <- lLegalEntities
+    case A.find isMatch legalEntities of
+      Nothing -> Error $ "Legal entity not found: " <> registeredName
+      Just legalEntity -> Loaded legalEntity
 
 getOrders ::
   forall f m.

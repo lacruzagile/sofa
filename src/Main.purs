@@ -10,12 +10,13 @@ import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
 import Sofa.App (Env, runAppM)
 import Sofa.App.OrderForm as OrderForm
-import Sofa.App.SalesforceDebugPage as SalesforceDebugPage
+import Sofa.App.Orders as Orders
 import Sofa.App.Router as Router
+import Sofa.App.SalesforceDebugPage as SalesforceDebugPage
 import Sofa.App.SsoLoggingIn as SsoLoggingIn
 import Sofa.Component.Alerts as Alert
 import Sofa.Data.Auth (handleSsoRedirect, mkAuthInstance)
-import Sofa.Data.Deployment (Deployment(..), SalesforcePageData, detectDeployment)
+import Sofa.Data.Deployment (Deployment(..), SalesforcePageData(..), detectDeployment)
 import Web.DOM.ParentNode (QuerySelector(..))
 import Web.HTML.HTMLElement as Html
 
@@ -39,12 +40,16 @@ main = do
         H.liftEffect
           $ Console.error "Could not find 'sofa-app' element to attach."
       Just body -> case deployment of
-        Salesforce { crmQuoteId: Just qId } ->
-          runOrderForm
-            env
-            body
-            (OrderForm.ExistingCrmQuoteId qId)
-        Salesforce { pageData: Just pageData } -> runSalesforceDebugPage env body pageData
+        Salesforce { crmQuoteId: Just qId } -> do
+          runOrderForm env body (OrderForm.ExistingCrmQuoteId qId)
+        -- Salesforce { pageData: Just (SfPageOrderForm pageData) } -> do
+        --   runOrderForm env body (OrderForm.SalesforceNewOrder pageData)
+        -- Salesforce { pageData: Just (SfPageCustomerOrderList rec) } -> do
+        --   runOrders env body (Orders.ListCustomerOrders rec)
+        -- Salesforce { pageData: Just SfPageUserOrderList } -> do
+        --   runOrders env body Orders.ListAllAccessibleOrder
+        Salesforce { pageData: Just pageData } -> do
+          runSalesforceDebugPage env body pageData
         _ -> runFull env body
 
 -- | Start the full standalone SOFA implementation.
@@ -64,6 +69,13 @@ runOrderForm :: Env -> Html.HTMLElement -> OrderForm.Input -> Aff Unit
 runOrderForm env body orderFormInput =
   let
     router = H.hoist (runAppM env) OrderForm.component
+  in
+    void $ runUI router orderFormInput body
+
+runOrders :: Env -> Html.HTMLElement -> Orders.Input -> Aff Unit
+runOrders env body orderFormInput =
+  let
+    router = H.hoist (runAppM env) Orders.component
   in
     void $ runUI router orderFormInput body
 

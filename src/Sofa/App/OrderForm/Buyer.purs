@@ -1,5 +1,5 @@
 -- | The buyer component of the order form.
-module Sofa.App.OrderForm.Buyer (Slot, Input(..), Output(..), Query(..), proxy, component) where
+module Sofa.App.OrderForm.Buyer (Slot, Input(..), Output(..), proxy, component) where
 
 import Prelude
 import Data.Array as A
@@ -27,7 +27,7 @@ import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 
 type Slot id
-  = H.Slot Query Output id
+  = forall query. H.Slot query Output id
 
 proxy :: Proxy "buyer"
 proxy = Proxy
@@ -50,6 +50,9 @@ type Input
       , buyerAvailableContacts :: Maybe (Array SS.Contact)
       -- ^ The buyer contacts, if available. When nothing then we fetch the
       -- contacts from the ordering backend.
+      , fixedBuyer :: Boolean
+      -- ^ Whether the buyer is fixed, when `false` then the user is allowed to
+      -- choose a different buyer.
       , readOnly :: Boolean
       }
 
@@ -60,8 +63,8 @@ type State
   = { buyer :: Loadable SS.Buyer -- ^ The currently chosen buyer.
     , buyerAvailableContacts :: Loadable (Array (SS.Contact)) -- ^ Available contacts for the chosen buyer.
     , acceptedBuyer :: Loadable SS.Buyer -- ^ The latest accepted buyer.
+    , fixedBuyer :: Boolean
     , readOnly :: Boolean
-    , enabled :: Boolean
     , open :: Boolean -- ^ Whether the details modal is open.
     }
 
@@ -74,42 +77,34 @@ data Action
   | AcceptAndCloseDetails
   | CancelAndCloseDetails
 
-data Query a
-  = ResetBuyer (Maybe SS.Buyer) Boolean a
-
 component ::
-  forall f m.
+  forall query f m.
   MonadAff m =>
   CredentialStore f m =>
-  H.Component Query Input Output m
+  H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
     , render
-    , eval:
-        H.mkEval
-          H.defaultEval
-            { handleAction = handleAction
-            , handleQuery = handleQuery
-            }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
 
 initialState :: Input -> State
-initialState input = case input of
+initialState = case _ of
   Nothing ->
     { buyer: Idle
     , buyerAvailableContacts: Idle
     , acceptedBuyer: Idle
     , readOnly: false
-    , enabled: false
+    , fixedBuyer: false
     , open: false
     }
-  Just { buyer, buyerAvailableContacts, readOnly } ->
-    { buyer: Loaded buyer
-    , buyerAvailableContacts: maybe Idle Loaded buyerAvailableContacts
-    , acceptedBuyer: Loaded buyer
-    , readOnly
-    , enabled: true
+  Just input ->
+    { buyer: Loaded input.buyer
+    , buyerAvailableContacts: maybe Idle Loaded input.buyerAvailableContacts
+    , acceptedBuyer: Loaded input.buyer
+    , readOnly: input.readOnly
+    , fixedBuyer: input.fixedBuyer
     , open: false
     }
 
@@ -123,37 +118,32 @@ render state
   | otherwise = renderSummary state
 
 renderSummary :: forall slots m. State -> H.ComponentHTML Action slots m
-renderSummary st
-  | not st.enabled =
-    HH.div
-      [ Css.class_ "text-gray-400" ]
-      [ HH.text "Not available" ]
-  | otherwise = case st.acceptedBuyer of
-    Loaded (SS.Buyer { corporateName }) -> btn okClasses corporateName
-    _ -> btn badClasses "Select …"
-    where
-    btn classes txt =
-      HH.button
-        [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
-        [ HH.text txt ]
+renderSummary st = case st.acceptedBuyer of
+  Loaded (SS.Buyer { corporateName }) -> btn okClasses corporateName
+  _ -> btn badClasses "Select …"
+  where
+  btn classes txt =
+    HH.button
+      [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
+      [ HH.text txt ]
 
-    okClasses =
-      Css.cs
-        [ "block"
-        , "text-left"
-        , "underline"
-        , "underline-offset-4"
-        , "decoration-honey-500"
-        ]
+  okClasses =
+    Css.cs
+      [ "block"
+      , "text-left"
+      , "underline"
+      , "underline-offset-4"
+      , "decoration-honey-500"
+      ]
 
-    badClasses =
-      Css.cs
-        [ "block"
-        , "text-left"
-        , "underline"
-        , "underline-offset-4"
-        , "decoration-honey-500"
-        ]
+  badClasses =
+    Css.cs
+      [ "block"
+      , "text-left"
+      , "underline"
+      , "underline-offset-4"
+      , "decoration-honey-500"
+      ]
 
 renderDetails ::
   forall f m.
@@ -178,7 +168,7 @@ renderDetails st =
     let
       renderBuyerData (SS.Buyer buyer) =
         HH.div [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
-          [ if st.readOnly then
+          [ if st.readOnly || st.fixedBuyer then
               HH.text ""
             else
               HH.slot SelectBuyer.proxy unit SelectBuyer.component absurd ChooseBuyer
@@ -404,21 +394,6 @@ handleAction = case _ of
       Loaded buyer -> H.raise buyer
       _ -> pure unit
   CancelAndCloseDetails -> H.modify_ \st -> st { buyer = st.acceptedBuyer, open = false }
-
-handleQuery ::
-  forall action slots output a m.
-  MonadAff m =>
-  Query a -> H.HalogenM State action slots output m (Maybe a)
-handleQuery = case _ of
-  ResetBuyer buyer enabled next -> do
-    H.modify_ \st ->
-      st
-        { buyer = maybe Idle Loaded buyer
-        , buyerAvailableContacts = Idle
-        , acceptedBuyer = Idle
-        , enabled = enabled
-        }
-    pure $ Just next
 
 emptyBuyer :: SS.Buyer
 emptyBuyer =

@@ -18,6 +18,7 @@ import Sofa.Component.Icon as Icon
 import Sofa.Component.Spinner as Spinner
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
+import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Route as Route
 import Sofa.Data.SmartSpec as SS
@@ -47,6 +48,7 @@ type State
     , nextPageToken :: Loadable (Maybe String)
     , orderFilter :: OrderFilter
     -- TODO: Make use of the order filter field once backend support is available.
+    , showNewOrderButton :: Boolean
     }
 
 data Action
@@ -60,6 +62,7 @@ component ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   H.Component query Input output m
 component =
   H.mkComponent
@@ -78,6 +81,7 @@ initialState input =
   { orders: []
   , nextPageToken: Idle
   , orderFilter: input
+  , showNewOrderButton: true
   }
 
 initialize :: Maybe Action
@@ -245,7 +249,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
         [ HH.h1 [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Orders" ]
         , renderSearchForm
-        , renderNewOrderLink
+        , if state.showNewOrderButton then renderNewOrderLink else HH.text ""
         ]
     , renderOrders
     ]
@@ -255,10 +259,16 @@ handleAction ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   LoadNext nextPageToken -> do
-    H.modify_ \st -> st { nextPageToken = Loading }
+    fixedBuyer <- H.lift isBuyerFixed
+    H.modify_ \st ->
+      st
+        { nextPageToken = Loading
+        , showNewOrderButton = not fixedBuyer
+        }
     let
       token
         | nextPageToken == firstPageToken = Nothing

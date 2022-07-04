@@ -4,7 +4,7 @@
 module Sofa.App.OrderForm (Slot, Input(..), proxy, component) where
 
 import Prelude
-import Control.Alternative (guard)
+import Control.Alternative (guard, (<|>))
 import Control.Parallel (parallel, sequential)
 import Data.Argonaut (decodeJson, encodeJson, jsonParser, printJsonDecodeError, stringify, stringifyWithIndent)
 import Data.Array (foldl, modifyAt, snoc)
@@ -64,6 +64,7 @@ import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Charge (ChargeUnitMap, dims, productChargeUnitMap, unitIds) as Charge
 import Sofa.Data.Currency (mkCurrency, unsafeMkCurrency)
+import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
@@ -115,7 +116,8 @@ data Input
   | SalesforceNewOrder
     { buyer :: SS.Buyer
     , contacts :: Array SS.Contact
-    , billingAccountId :: String
+    , billingAccountId :: SS.BillingAccountId
+    , legalEntityRegisteredName :: String
     }
 
 data State
@@ -147,11 +149,17 @@ type OrderForm
   = { original :: Maybe SS.OrderForm -- ^ The original order form, if one exists.
     , changed :: Boolean -- ^ Whether this order has unsaved changes.
     , crmQuoteId :: Maybe SS.CrmQuoteId
+    , billingAccountId :: Maybe SS.BillingAccountId
     , commercial :: Maybe SS.Commercial
     , buyer :: Maybe SS.Buyer
+    , fixedBuyer :: Boolean
+    -- ^ Whether the buyer is fixed, when `false` then the user is allowed to
+    -- choose a different buyer. Note, this also applies to the billing account,
+    -- i.e., if the buyer is fixed then so is the billing account.
     , buyerAvailableContacts :: Maybe (Array SS.Contact)
     -- ^ The buyer contacts, if available. When nothing then we fetch the
     -- contacts from the ordering backend.
+    , legalEntityRegisteredName :: Maybe String
     , seller :: Maybe SS.Seller
     , displayName :: Maybe String
     , status :: SS.OrderStatus
@@ -280,6 +288,7 @@ component ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   H.Component query Input output m
 component =
   H.mkComponent
@@ -1252,10 +1261,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
     where
     title t = HH.h4 [ Css.classes [ "w-40" ] ] [ HH.text t ]
 
-    renderSeller =
-      HH.slot Seller.proxy unit Seller.component
-        ((\s -> { seller: s, readOnly: not isInDraft }) <$> orderForm.seller)
-        SetSeller
+    renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
+      where
+      input = case orderForm.seller of
+        Just seller ->
+          Seller.InputSeller
+            { seller
+            , readOnly: not isInDraft
+            }
+        Nothing -> case orderForm.legalEntityRegisteredName of
+          Just registeredName ->
+            Seller.InputRegisteredName
+              { registeredName
+              , readOnly: not isInDraft || orderForm.fixedBuyer
+              }
+          Nothing -> Seller.InputNothing
 
     renderBuyer = HH.slot Buyer.proxy unit Buyer.component input SetBuyer
       where
@@ -1263,17 +1283,38 @@ render state = HH.section_ [ HH.article_ renderContent ]
         { buyer: b
         , buyerAvailableContacts: orderForm.buyerAvailableContacts
         , readOnly: not isInDraft
+        , fixedBuyer: orderForm.fixedBuyer
         }
 
       input = mkInput <$> orderForm.buyer
 
     renderCommercial =
       let
-        input = do
+        inputCommercial = do
           commercial <- orderForm.commercial
           SS.Buyer buyer <- orderForm.buyer
           crmAccountId <- buyer.crmAccountId
-          pure { commercial, crmAccountId, readOnly: not isInDraft }
+          pure
+            $ Commercial.InputCommercial
+                { commercial
+                , crmAccountId
+                , readOnly: not isInDraft
+                }
+
+        inputBillingAccountId = do
+          billingAccountId <- orderForm.billingAccountId
+          SS.Buyer buyer <- orderForm.buyer
+          crmAccountId <- buyer.crmAccountId
+          pure
+            $ Commercial.InputIds
+                { billingAccountId
+                , crmAccountId
+                , readOnly: not isInDraft || orderForm.fixedBuyer
+                }
+
+        input =
+          fromMaybe Commercial.InputNothing
+            (inputCommercial <|> inputBillingAccountId)
       in
         HH.slot Commercial.proxy unit Commercial.component input SetCommercial
 
@@ -1605,8 +1646,14 @@ loadCatalog ::
   forall slots output m.
   MonadAff m =>
   Maybe SS.CrmQuoteId ->
+  Maybe
+    { buyer :: SS.Buyer
+    , billingAccountId :: SS.BillingAccountId
+    , contacts :: Array SS.Contact
+    , legalEntityRegisteredName :: String
+    } ->
   H.HalogenM State Action slots output m Unit
-loadCatalog crmQuoteId = do
+loadCatalog crmQuoteId customerData = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
   orderSectionId <- genOrderSectionId
@@ -1621,9 +1668,12 @@ loadCatalog crmQuoteId = do
               , changed: false
               , displayName: Nothing
               , crmQuoteId
+              , billingAccountId: (_.billingAccountId) <$> customerData
               , commercial: Nothing
-              , buyer: Nothing
-              , buyerAvailableContacts: Nothing
+              , buyer: (_.buyer) <$> customerData
+              , fixedBuyer: isJust customerData
+              , buyerAvailableContacts: (_.contacts) <$> customerData
+              , legalEntityRegisteredName: (_.legalEntityRegisteredName) <$> customerData
               , seller: Nothing
               , status: SS.OsInDraft
               , observers: []
@@ -1812,16 +1862,18 @@ modifyOrderLineConfig configId alter orderLine =
 loadExisting ::
   forall slots output m.
   MonadAff m =>
+  MonadDeployment m =>
   SS.OrderForm ->
   Boolean ->
   H.HalogenM State Action slots output m Unit
 loadExisting original@(SS.OrderForm orderForm) changed = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
-  H.put $ Initialized $ convertOrderForm =<< productCatalog
+  fixedBuyer <- H.lift isBuyerFixed
+  H.put $ Initialized $ convertOrderForm fixedBuyer =<< productCatalog
   where
-  convertOrderForm :: SS.ProductCatalog -> Loadable StateOrderForm
-  convertOrderForm productCatalog = do
+  convertOrderForm :: Boolean -> SS.ProductCatalog -> Loadable StateOrderForm
+  convertOrderForm fixedBuyer productCatalog = do
     let
       -- The value to use as v5 UUID root namespace for generated internal IDs.
       uuidRootNs = UUID.emptyUUID
@@ -1843,9 +1895,20 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
               , changed
               , displayName: orderForm.displayName
               , crmQuoteId: orderForm.crmQuoteId
+              , billingAccountId:
+                  let
+                    SS.Commercial { billingAccountId } = orderForm.commercial
+                  in
+                    billingAccountId
               , commercial: Just orderForm.commercial
               , buyer: Just orderForm.buyer
+              , fixedBuyer
               , buyerAvailableContacts: Nothing
+              , legalEntityRegisteredName:
+                  let
+                    SS.Seller { registeredName } = orderForm.seller
+                  in
+                    Just registeredName
               , seller: Just orderForm.seller
               , status: orderForm.status
               , observers: orderForm.orderObservers
@@ -2107,14 +2170,15 @@ createUpdateOrder ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   State -> H.HalogenM State Action Slots output m (Maybe SS.OrderForm)
 createUpdateOrder state = do
   let
     -- Updates the current state to match the response order object.
-    ld o = case o of
-      Loaded o' -> do
-        loadExisting o' false
-        pure $ Just o'
+    loadOrder = case _ of
+      Loaded order' -> do
+        loadExisting order' false
+        pure $ Just order'
       _ -> do
         modifyInitialized $ _ { orderUpdateInFlight = false }
         pure Nothing
@@ -2143,7 +2207,7 @@ createUpdateOrder state = do
         modifyInitialized $ _ { orderUpdateInFlight = true }
         order <- H.lift $ run json (getOrderId st')
         H.lift $ alert order
-        ld order
+        loadOrder order
     _ -> pure Nothing
 
 handleAction ::
@@ -2151,12 +2215,13 @@ handleAction ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   Action -> H.HalogenM State Action Slots output m Unit
 handleAction = case _ of
   Initialize -> do
     st <- H.get
     let
-      load = case _ of
+      loadOrder = case _ of
         Error err -> H.put $ Initialized (Error err)
         Idle -> H.put $ Initialized Idle
         Loaded order -> loadExisting order false
@@ -2176,25 +2241,25 @@ handleAction = case _ of
         let
           noOrder err = do
             H.liftEffect $ Console.log err
-            loadCatalog Nothing
+            loadCatalog Nothing Nothing
 
           gotOrder order = do
             H.liftEffect $ Console.log "Got stored order"
             case order of
               SS.OrderForm { id: Nothing } -> loadExisting order true
-              _ -> loadCatalog Nothing
+              _ -> loadCatalog Nothing Nothing
         either noOrder gotOrder eStoredOrder
       Initializing (ExistingOrder orderForm) -> loadExisting orderForm false
       Initializing (ExistingOrderId id) -> do
         H.put $ Initialized Loading
         orderForm <- H.lift $ Requests.getOrder id
-        load orderForm
+        loadOrder orderForm
       Initializing (ExistingCrmQuoteId crmQuoteId) -> do
         H.put $ Initialized Loading
         orderForm <- H.lift $ Requests.getOrderForQuote crmQuoteId
-        load orderForm
-      -- TODO:
-      Initializing (SalesforceNewOrder _) -> loadCatalog Nothing
+        loadOrder orderForm
+      Initializing (SalesforceNewOrder sfData) -> do
+        loadCatalog Nothing (Just sfData)
       Initialized _ -> pure unit
   SetOrderDisplayName name ->
     modifyInitialized
@@ -2210,7 +2275,7 @@ handleAction = case _ of
                     if sname == "" then Nothing else Just sname
                 }
             }
-  SetSeller seller -> do
+  SetSeller seller ->
     modifyInitialized
       $ \st ->
           st
@@ -2220,9 +2285,6 @@ handleAction = case _ of
                 , seller = Just seller
                 }
             }
-    H.tell Buyer.proxy unit (Buyer.ResetBuyer Nothing true)
-    H.tell Commercial.proxy unit
-      (Commercial.ResetCommercial { commercial: Nothing, crmAccountId: Nothing, enabled: false })
   SetBuyer buyer -> do
     modifyInitialized
       $ \st ->
@@ -2235,8 +2297,14 @@ handleAction = case _ of
             }
     let
       SS.Buyer { crmAccountId } = buyer
-    H.tell Commercial.proxy unit
-      (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
+    -- Reset the commercial field if we are using a non-fixed billing account.
+    state <- H.get
+    case state of
+      Initialized (Loaded { orderForm: { fixedBuyer } })
+        | fixedBuyer -> pure unit
+      _ ->
+        H.tell Commercial.proxy unit
+          (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
   SetCommercial (SS.BillingAccount { displayName, shortId, commercial }) ->
     modifyInitialized
       $ \st ->
@@ -2611,7 +2679,7 @@ handleAction = case _ of
     -- Flush the order form state from the browser store.
     H.liftEffect clearSessionOrderForm
     -- Reloading the catalog will reset the component state.
-    loadCatalog Nothing
+    loadCatalog Nothing Nothing
   CreateUpdateOrder -> do
     state <- H.get
     void $ createUpdateOrder state

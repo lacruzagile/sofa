@@ -257,6 +257,7 @@ renderBody ::
   MonadAff m =>
   CredentialStore f m =>
   MonadAlert m =>
+  MonadDeployment m =>
   State ->
   H.ComponentHTML Action Slots m
 renderBody state =

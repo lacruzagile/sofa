@@ -5,11 +5,12 @@ module Sofa.Data.Deployment
   , class MonadDeployment
   , detectDeployment
   , getDeployment
+  , isBuyerFixed
   ) where
 
 import Prelude
 import Control.Alternative ((<|>))
-import Data.Argonaut (class DecodeJson, JsonDecodeError(..), decodeJson, jsonParser, printJsonDecodeError, (.:))
+import Data.Argonaut (class DecodeJson, JsonDecodeError(..), decodeJson, jsonParser, printJsonDecodeError, (.!=), (.:), (.:?))
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), maybe)
@@ -48,7 +49,8 @@ data SalesforcePageData
   = SfPageOrderForm
     { buyer :: SS.Buyer
     , contacts :: Array SS.Contact
-    , billingAccountId :: String
+    , billingAccountId :: SS.BillingAccountId
+    , legalEntityRegisteredName :: String
     }
   | SfPageCustomerOrderList { crmAccountId :: SS.CrmAccountId }
   | SfPageUserOrderList
@@ -73,6 +75,7 @@ instance decodeJsonSalesforcePageData :: DecodeJson SalesforcePageData where
       -- Note the name change, billingAccountId is the naming used in SOFA and
       -- Smart Spec so best to keep that.
       billingAccountId <- o .: "platformAccountId"
+      legalEntityRegisteredName <- o .:? "crmLegalEntityId" .!= ""
       pure
         $ SfPageOrderForm
             { buyer:
@@ -92,6 +95,7 @@ instance decodeJsonSalesforcePageData :: DecodeJson SalesforcePageData where
                   }
             , contacts
             , billingAccountId
+            , legalEntityRegisteredName
             }
 
     decodeCustomerOrderList o = do
@@ -105,6 +109,17 @@ foreign import getSfData ::
   (forall x. Maybe x) ->
   (String -> Effect SalesforcePageData) ->
   Effect (Maybe SalesforceData)
+
+-- | Whether the buyer should be considered fixed in the given deployment. When
+-- the buyer is fixed then it is not possible to change the buyer and billing
+-- account of an order. Note, it is still possible to, e.g., set the buyer
+-- contact.
+isBuyerFixed :: forall m. Monad m => MonadDeployment m => m Boolean
+isBuyerFixed = check <$> getDeployment
+  where
+  check = case _ of
+    Standard -> false
+    Salesforce _ -> true
 
 parseSalesforceData :: String -> Effect SalesforcePageData
 parseSalesforceData pageDataStr =

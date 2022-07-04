@@ -15,7 +15,6 @@ import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..), isLoaded)
-import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (focusElementByRef)
 import Type.Proxy (Proxy(..))
@@ -29,12 +28,18 @@ proxy = Proxy
 type Slots
   = ( selectCommercial :: SelectCommercial.Slot Unit )
 
-type Input
-  = Maybe
-      { commercial :: SS.Commercial
-      , crmAccountId :: SS.CrmAccountId
-      , readOnly :: Boolean
-      }
+data Input
+  = InputIds
+    { billingAccountId :: SS.BillingAccountId
+    , crmAccountId :: SS.CrmAccountId
+    , readOnly :: Boolean
+    }
+  | InputCommercial
+    { commercial :: SS.Commercial
+    , crmAccountId :: SS.CrmAccountId
+    , readOnly :: Boolean
+    }
+  | InputNothing
 
 type Output
   = SS.BillingAccount
@@ -46,6 +51,7 @@ type State
     , acceptedCommercial :: Loadable SS.Commercial -- ^ The latest accepted commercial.
     , acceptedBillingAccount :: Loadable SS.BillingAccount -- ^ The latest accepted billing account.
     , crmAccountId :: Maybe SS.CrmAccountId
+    , billingAccountId :: Maybe SS.BillingAccountId
     , readOnly :: Boolean
     , enabled :: Boolean
     , open :: Boolean -- ^ Whether the details modal is open.
@@ -86,24 +92,37 @@ component =
 
 initialState :: Input -> State
 initialState input = case input of
-  Nothing ->
-    { commercial: Idle
-    , billingAccount: Idle
-    , acceptedCommercial: Idle
-    , acceptedBillingAccount: Idle
-    , crmAccountId: Nothing
-    , readOnly: false
-    , enabled: false
+  InputIds { billingAccountId, crmAccountId, readOnly } ->
+    { commercial: Loading
+    , billingAccount: Loading
+    , acceptedCommercial: Loading
+    , acceptedBillingAccount: Loading
+    , crmAccountId: Just crmAccountId
+    , billingAccountId: Just billingAccountId
+    , readOnly
+    , enabled: true
     , open: false
     }
-  Just { commercial, crmAccountId, readOnly } ->
+  InputCommercial { commercial, crmAccountId, readOnly } ->
     { commercial: Loaded commercial
     , billingAccount: Loading
     , acceptedCommercial: Loaded commercial
     , acceptedBillingAccount: Loading
     , crmAccountId: Just crmAccountId
+    , billingAccountId: let SS.Commercial { billingAccountId } = commercial in billingAccountId
     , readOnly
     , enabled: true
+    , open: false
+    }
+  InputNothing ->
+    { commercial: Idle
+    , billingAccount: Idle
+    , acceptedCommercial: Idle
+    , acceptedBillingAccount: Idle
+    , crmAccountId: Nothing
+    , billingAccountId: Nothing
+    , readOnly: false
+    , enabled: false
     , open: false
     }
 
@@ -145,21 +164,14 @@ renderSummary st
     HH.div
       [ Css.class_ "text-gray-400" ]
       [ HH.text "Not available" ]
-  | otherwise = case st.acceptedCommercial of
-    Loaded c ->
-      btn okClasses case st.acceptedBillingAccount of
-        Loaded (SS.BillingAccount ba) ->
-          [ HH.text ba.displayName
-          , subtleSlash
-          , HH.text ba.shortId
-          ]
-        _ ->
-          [ renderBillingOption c
-          , subtleSlash
-          , renderContractTerm c
-          , subtleSlash
-          , renderBillingCurrency c
-          ]
+  | otherwise = case st.acceptedBillingAccount of
+    Loaded (SS.BillingAccount ba) ->
+      btn okClasses
+        [ HH.text ba.displayName
+        , subtleSlash
+        , HH.text ba.shortId
+        ]
+    Loading -> HH.div_ [ HH.text "Loading …" ]
     _ -> btn badClasses [ HH.text "Select …" ]
     where
     btn classes = HH.button [ HP.classes classes, HE.onClick $ \_ -> OpenDetails ]
@@ -196,11 +208,11 @@ renderDetails st =
         $ Modal.defaultInput
             { title = HH.text "Commercial"
             , closeAction = Just (const CancelAndCloseDetails)
-            , content = renderContent st.commercial
+            , content = renderContent st.billingAccount
             }
     ]
   where
-  renderContent commercialLoadable =
+  renderContent billingAccountLoadable =
     HH.div [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
       [ case st.crmAccountId of
           Just crmAccountId
@@ -210,14 +222,11 @@ renderDetails st =
                 unit
                 SelectCommercial.component
                 { crmAccountId
-                , billingAccountId:
-                    do
-                      SS.Commercial { billingAccountId } <- Loadable.toMaybe st.commercial
-                      billingAccountId
+                , billingAccountId: st.billingAccountId
                 }
                 ChooseCommercial
           _ -> HH.text ""
-      , case commercialLoadable of
+      , case billingAccountLoadable of
           Error err ->
             HH.p
               [ Css.classes
@@ -254,7 +263,9 @@ renderDetails st =
       , HH.div [ Css.classes [ "flex", "space-x-5" ] ] bottomButtons
       ]
     where
-    mCommercial = Loadable.toMaybe commercialLoadable
+    mCommercial = case billingAccountLoadable of
+      Loaded (SS.BillingAccount { commercial }) -> Just commercial
+      _ -> Nothing
 
     empty = HH.text ""
 
@@ -277,7 +288,7 @@ renderDetails st =
         , HH.button
             [ HP.ref okBtnLabel
             , Css.class_ "nectary-btn-primary"
-            , HP.enabled (isLoaded st.commercial)
+            , HP.enabled (isLoaded st.billingAccount)
             , HE.onClick \_ -> AcceptAndCloseDetails
             ]
             [ HH.text "OK" ]
@@ -294,10 +305,8 @@ getBillingAccount = do
   state <- H.get
   -- Try to fetch the billing account. This is only possible if we have a CRM
   -- account ID and billing account ID.
-  case Tuple state.crmAccountId state.commercial of
-    Tuple
-      (Just crmAccountId)
-      (Loaded (SS.Commercial { billingAccountId: Just billingAccountId })) ->
+  case Tuple state.crmAccountId state.billingAccountId of
+    Tuple (Just crmAccountId) (Just billingAccountId) ->
       H.lift
         $ Requests.getBillingAccount crmAccountId billingAccountId
     _ -> pure Idle
@@ -315,6 +324,11 @@ handleAction = case _ of
         { billingAccount = billingAccount
         , acceptedBillingAccount = billingAccount
         }
+    -- If we get a nice billing account then let the parent component know about
+    -- the commercial object.
+    case billingAccount of
+      Loaded ba -> H.raise ba
+      _ -> pure unit
   ChooseCommercial billingAccount -> do
     H.modify_
       _
@@ -352,8 +366,12 @@ handleQuery = case _ of
     H.modify_ \st ->
       st
         { commercial = maybe Idle Loaded commercial
-        , acceptedCommercial = Idle
+        , acceptedBillingAccount = Idle
         , crmAccountId = crmAccountId
+        , billingAccountId =
+          do
+            SS.Commercial { billingAccountId } <- commercial
+            billingAccountId
         , enabled = enabled
         }
     case crmAccountId of

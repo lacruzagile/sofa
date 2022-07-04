@@ -3,7 +3,7 @@ module Sofa.App.OrderForm.Seller (Slot, Input(..), Output(..), Query(..), proxy,
 
 import Prelude
 import Data.Array as A
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe, maybe')
 import Data.Newtype (unwrap)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -11,9 +11,11 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Sofa.App.OrderForm.SelectLegalEntity as SelectLegalEntity
+import Sofa.App.Requests as Requests
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
+import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (focusElementByRef)
 import Sofa.Widgets as Widgets
@@ -28,17 +30,23 @@ proxy = Proxy
 type Slots
   = ( selectLegalEntity :: SelectLegalEntity.Slot Unit )
 
-type Input
-  = Maybe
-      { seller :: SS.Seller
-      , readOnly :: Boolean
-      }
+data Input
+  = InputSeller
+    { seller :: SS.Seller
+    , readOnly :: Boolean
+    }
+  | InputRegisteredName
+    { registeredName :: String
+    , readOnly :: Boolean
+    }
+  | InputNothing
 
 type Output
   = SS.Seller
 
 type State
-  = { legalEntity :: Maybe SS.LegalEntity -- ^ The currently chosen legal entity.
+  = { registeredName :: Maybe String -- ^ The seller's registered name.
+    , legalEntity :: Maybe SS.LegalEntity -- ^ The currently chosen legal entity.
     , seller :: Maybe SS.Seller -- ^ The currently chosen seller.
     , acceptedLegalEntity :: Maybe SS.LegalEntity -- ^ The latest accepted legal entity.
     , acceptedSeller :: Maybe SS.Seller -- ^ The latest accepted seller.
@@ -47,7 +55,8 @@ type State
     }
 
 data Action
-  = ChooseLegalEntity (Maybe SS.LegalEntity)
+  = Initialize
+  | ChooseLegalEntity (Maybe SS.LegalEntity)
   | UpdateContactPrimary (SS.Contact -> SS.Contact)
   | UpdateContactFinance (SS.Contact -> SS.Contact)
   | UpdateContactSupport (SS.Contact -> SS.Contact)
@@ -72,25 +81,38 @@ component =
           H.defaultEval
             { handleAction = handleAction
             , handleQuery = handleQuery
+            , initialize = Just Initialize
             }
     }
 
 initialState :: Input -> State
 initialState input = case input of
-  Nothing ->
-    { legalEntity: Nothing
-    , seller: Nothing
-    , acceptedLegalEntity: Nothing
-    , acceptedSeller: Nothing
-    , readOnly: false
-    , open: false
-    }
-  Just { seller, readOnly } ->
-    { legalEntity: Nothing
+  InputSeller { seller, readOnly } ->
+    { registeredName:
+        let SS.Seller { registeredName } = seller in Just registeredName
+    , legalEntity: Nothing
     , seller: Just seller
     , acceptedLegalEntity: Nothing
     , acceptedSeller: Just seller
     , readOnly
+    , open: false
+    }
+  InputRegisteredName { registeredName, readOnly } ->
+    { registeredName: Just registeredName
+    , legalEntity: Nothing
+    , seller: Nothing
+    , acceptedLegalEntity: Nothing
+    , acceptedSeller: Nothing
+    , readOnly
+    , open: false
+    }
+  InputNothing ->
+    { registeredName: Nothing
+    , legalEntity: Nothing
+    , seller: Nothing
+    , acceptedLegalEntity: Nothing
+    , acceptedSeller: Nothing
+    , readOnly: false
     , open: false
     }
 
@@ -252,27 +274,44 @@ renderDetails st =
         <> opt contact.email
         <> opt contact.phone
 
+toSeller :: SS.LegalEntity -> SS.Seller
+toSeller (SS.LegalEntity le) =
+  SS.Seller
+    { sellerId: Nothing
+    , registeredName: le.registeredName
+    , novaShortName: le.novaShortName
+    , address: le.address
+    , contacts: le.contacts
+    }
+
 handleAction ::
   forall slots m.
   MonadAff m => Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
+  Initialize -> do
+    { registeredName } <- H.get
+    case registeredName of
+      Nothing -> pure unit
+      Just regName -> do
+        result <- H.lift $ Requests.getLegalEntity regName
+        let
+          legalEntity = Loadable.toMaybe result
+
+          seller = toSeller <$> legalEntity
+        H.modify_
+          _
+            { legalEntity = legalEntity
+            , acceptedLegalEntity = legalEntity
+            , seller = seller
+            , acceptedSeller = seller
+            }
+        maybe' pure H.raise seller
   ChooseLegalEntity legalEntity -> do
     H.modify_
-      $ \st ->
-          let
-            toSeller (SS.LegalEntity le) =
-              SS.Seller
-                { sellerId: Nothing
-                , registeredName: le.registeredName
-                , novaShortName: le.novaShortName
-                , address: le.address
-                , contacts: le.contacts
-                }
-          in
-            st
-              { legalEntity = legalEntity
-              , seller = toSeller <$> legalEntity
-              }
+      _
+        { legalEntity = legalEntity
+        , seller = toSeller <$> legalEntity
+        }
     -- Switch focus to OK button.
     focusElementByRef okBtnLabel
   UpdateContactPrimary update ->
