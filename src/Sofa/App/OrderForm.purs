@@ -2652,8 +2652,20 @@ handleAction = case _ of
         order <- H.lift $ Requests.postOrderFulfillment id
         -- Updates the current state to match the response order object.
         case order of
-          Loaded o' -> loadExisting o' false
-          _ -> modifyInitialized $ _ { orderFulfillStatus = FulfillStatusIdle }
+          Loaded o' -> do
+            loadExisting o' false
+            H.lift
+              $ Alerts.push
+              $ Alert.defaultAlert
+                  { type_ = Alert.Success
+                  , content = HH.text "Sent order for fulfillment."
+                  }
+          Error errMsg ->
+            H.lift
+              $ Alerts.push
+              $ Alert.errorAlert "Failed to send order for fulfillment." errMsg
+          _ -> pure unit
+        modifyInitialized $ _ { orderFulfillStatus = FulfillStatusIdle }
       _ -> do
         H.liftEffect $ Console.log "Could not fulfill unsaved order"
         pure unit
