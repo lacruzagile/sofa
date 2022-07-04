@@ -2451,23 +2451,12 @@ handleAction = case _ of
             $ Alerts.push
             $ Alert.defaultAlert
                 { type_ = Alert.Success
-                , content = HH.text "Deleted order line"
+                , content = HH.text "Deleted order line."
                 }
         Error errMsg ->
           H.lift
             $ Alerts.push
-            $ Alert.defaultAlert
-                { type_ = Alert.Error
-                , content =
-                  HH.div_
-                    [ HH.p_ [ HH.text "Error deleting order line" ]
-                    , HH.p [ Css.classes [ "mt-1", "text-sm" ] ]
-                        [ HH.strong_ [ HH.text "Error" ]
-                        , HH.text ": "
-                        , HH.text errMsg
-                        ]
-                    ]
-                }
+            $ Alert.errorAlert "Error deleting order line." errMsg
   OrderLineSetProduct { orderSectionId, orderLineId: oldOrderLineId, product } -> do
     let
       mkOrderLineId :: { orderLineId :: UUID, configId :: UUID } -> IEId SS.OrderLineId
