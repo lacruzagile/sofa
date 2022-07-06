@@ -981,10 +981,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ]
           ]
 
-    tdAsset orderLineFullId statusReason =
-      HH.td [ Css.class_ "text-center" ]
-        [ HH.slot_ (Proxy :: Proxy "assetModal") orderLineFullId AssetModal.component { statusReason }
-        ]
+    tdAsset orderLineFullId statusReason = case _ of
+      Nothing ->
+        HH.td [ Css.class_ "text-center" ]
+          [ HH.text "" ]
+      Just oId ->
+        HH.td [ Css.class_ "text-center" ]
+          [ HH.slot_ (Proxy :: Proxy "assetModal") orderLineFullId AssetModal.component { statusReason, orderId: oId }
+          ]
 
     sectionRow { orderSectionId, solution, orderLines } = case solution of
       Nothing -> [ HH.text "" ]
@@ -1011,6 +1015,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
         ]
           <> A.mapWithIndex (orderRow orderSectionId) orderLines
 
+    orderId = case sof.orderForm.original of
+      Nothing -> Nothing
+      Just (SS.OrderForm original) -> original.id
+
     orderRow orderSectionId orderLineIndex = case _ of
       { product: Nothing } -> HH.text ""
       ol@{ product: Just (SS.Product prod) } ->
@@ -1031,7 +1039,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , HH.td
               [ Css.classes [ "p-2", "px-5" ] ]
               [ HH.text $ show $ orderLineQuantity ol ]
-          , tdAsset { orderSectionId, orderLineId: ol.orderLineId } ol.statusReason
+          , tdAsset { orderSectionId, orderLineId: ol.orderLineId } ol.statusReason orderId
           , tdDelete $ RemoveOrderLine { orderSectionId, orderLineId: ol.orderLineId }
           ]
 

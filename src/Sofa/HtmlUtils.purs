@@ -4,6 +4,7 @@ module Sofa.HtmlUtils
   , scrollToElement
   , selectInputText
   , setInputText
+  , copyToClipboard
   ) where
 
 import Prelude
@@ -20,6 +21,8 @@ import Web.HTML.HTMLInputElement as HTMLInputElement
 foreign import scrollToBottom :: Effect Unit
 
 foreign import scrollIntoView :: DomElement.Element -> Effect Unit
+
+foreign import copyToClipboard :: String -> Effect Unit
 
 -- | Smoothly scroll to the top of the referenced element.
 scrollToElement ::

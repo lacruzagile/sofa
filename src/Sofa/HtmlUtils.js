@@ -8,3 +8,7 @@ exports.scrollToBottom = () => {
 exports.scrollIntoView = el => () => {
   el.scrollIntoView({behavior: "smooth"});
 }
+
+exports.copyToClipboard = value => () => {
+  navigator.clipboard.writeText(value);
+}
