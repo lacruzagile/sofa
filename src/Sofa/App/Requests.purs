@@ -2,6 +2,7 @@
 module Sofa.App.Requests
   ( FileStatus(..)
   , appendPathPiece
+  , appendQueryParams
   , deleteFile
   , deleteOrder
   , deleteOrderLine
@@ -39,9 +40,10 @@ import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Control.Alternative ((<|>))
 import Data.Argonaut (JsonDecodeError(..), (.:), class DecodeJson, class EncodeJson, Json, decodeJson, encodeJson, printJsonDecodeError)
+import Data.Array as A
 import Data.Either (Either(..))
 import Data.HTTP.Method as HTTP
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple)
@@ -49,6 +51,7 @@ import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Foreign.Object as FO
 import JSURI (encodeURIComponent)
+import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
@@ -77,7 +80,14 @@ buyersUrl = orderingBaseUrl </> "v1alpha1" </> "buyers"
 appendPathPiece :: String -> String -> String
 appendPathPiece a b = a <> "/" <> b
 
+appendQueryParams :: String -> Array String -> String
+appendQueryParams a b
+  | A.null b = a
+  | otherwise = a <> "?" <> S.joinWith "&" b
+
 infixr 5 appendPathPiece as </>
+
+infixr 5 appendQueryParams as <?>
 
 -- | Fetches buyers that match the given query string.
 getBuyers ::
@@ -269,10 +279,23 @@ deleteOrderLine orderId sectionId lineId = deleteR_ url
       </> "order-lines"
       </> show lineId
 
-postOrderFulfillment :: forall f m. MonadAff m => CredentialStore f m => OrderId -> m (Loadable OrderForm)
-postOrderFulfillment orderId = postRJson_ url
+postOrderFulfillment ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  OrderId -> Maybe MarioPriority -> m (Loadable OrderForm)
+postOrderFulfillment orderId mMarioPrio = postRJson_ url
   where
-  url = ordersUrl </> show orderId <> ":fulfillment"
+  url = ordersUrl </> show orderId <> ":fulfillment" <?> marioPrioParam
+
+  marioPrioParam = maybe [] (\p -> [ "marioPriority=" <> prioValue p ]) mMarioPrio
+
+  prioValue :: MarioPriority -> String
+  prioValue = case _ of
+    MarioPrioCritical -> "1"
+    MarioPrioHigh -> "2"
+    MarioPrioMedium -> "3"
+    MarioPrioLow -> "4"
 
 -- | Creates a new order note.
 postOrderNote ::

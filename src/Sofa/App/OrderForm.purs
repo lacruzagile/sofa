@@ -2637,10 +2637,9 @@ handleAction = case _ of
     case mSavedOrder of
       Just (SS.OrderForm { id: Just id }) -> do
         modifyInitialized $ _ { orderFulfillStatus = FulfillStatusInFlight }
-        -- TODO: Add support for Mario ticket priority.
-        order <- H.lift $ Requests.postOrderFulfillment id
+        lOrder <- H.lift $ Requests.postOrderFulfillment id result.marioPriority
         -- Updates the current state to match the response order object.
-        case order of
+        case lOrder of
           Loaded o' -> do
             loadExisting o' false
             H.lift

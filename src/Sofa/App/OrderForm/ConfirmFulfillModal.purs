@@ -43,9 +43,10 @@ data Output
     }
 
 data MarioPriority
-  = MarioPrioLow
-  | MarioPrioNormal
+  = MarioPrioCritical
   | MarioPrioHigh
+  | MarioPrioMedium
+  | MarioPrioLow
 
 derive instance eqMarioPriority :: Eq MarioPriority
 
@@ -62,9 +63,10 @@ data Action
 
 showPrettyMarioPriority :: MarioPriority -> String
 showPrettyMarioPriority = case _ of
-  MarioPrioLow -> "Low"
-  MarioPrioNormal -> "Normal"
+  MarioPrioCritical -> "Critical"
   MarioPrioHigh -> "High"
+  MarioPrioMedium -> "Medium"
+  MarioPrioLow -> "Low"
 
 component ::
   forall query m.
@@ -79,7 +81,7 @@ component =
 
 initialState :: Input -> State
 initialState input =
-  { marioPriority: if input.isMarioOrder then Just MarioPrioNormal else Nothing
+  { marioPriority: if input.isMarioOrder then Just MarioPrioLow else Nothing
   , note: ""
   }
 
@@ -146,8 +148,9 @@ renderMarioPrioritySelect marioPriority =
                 mkValue p = Tuple (HH.text $ showPrettyMarioPriority p) p
               in
                 [ mkValue MarioPrioLow
-                , mkValue MarioPrioNormal
+                , mkValue MarioPrioMedium
                 , mkValue MarioPrioHigh
+                , mkValue MarioPrioCritical
                 ]
             }
         )
