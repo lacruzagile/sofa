@@ -37,7 +37,7 @@ type Input
       }
 
 type Output
-  = SS.Commercial
+  = SS.BillingAccount
 
 type State
   = { commercial :: Loadable SS.Commercial -- ^ The currently chosen commercial.
@@ -332,8 +332,8 @@ handleAction = case _ of
           , acceptedBillingAccount = st.billingAccount
           , open = false
           }
-    case st'.acceptedCommercial of
-      Loaded commercial -> H.raise commercial
+    case st'.acceptedBillingAccount of
+      Loaded billingAccount -> H.raise billingAccount
       _ -> pure unit
   CancelAndCloseDetails ->
     H.modify_ \st ->

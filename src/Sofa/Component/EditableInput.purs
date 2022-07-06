@@ -2,6 +2,7 @@ module Sofa.Component.EditableInput (Slot, Input(..), Output(..), Action, proxy,
 
 import Prelude
 import DOM.HTML.Indexed as HTMLI
+import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -52,7 +53,8 @@ type State
     }
 
 data Action
-  = SetEditing
+  = Receive Input
+  | SetEditing
   | SetViewing Event
   | UpdateValue String
 
@@ -66,7 +68,12 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+    , eval:
+        H.mkEval
+          H.defaultEval
+            { handleAction = handleAction
+            , receive = Just <<< Receive
+            }
     }
 
 initialState :: Input -> State
@@ -141,6 +148,19 @@ handleAction ::
   forall m.
   MonadAff m => Action -> H.HalogenM State Action () Output m Unit
 handleAction = case _ of
+  Receive { value: newValue } -> do
+    { value: oldValue } <- H.get
+    if newValue == oldValue then
+      pure unit
+    else
+      H.modify_ \st ->
+        st
+          { value = newValue
+          , editState =
+            case st.editState of
+              Viewing -> Viewing
+              Editing _ -> Editing newValue
+          }
   SetEditing -> do
     H.modify_ \st -> st { editState = Editing st.value }
     focusElementByRef inputRef

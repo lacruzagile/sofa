@@ -211,7 +211,7 @@ data Action
   | SetOrderDisplayName String
   | SetSeller SS.Seller
   | SetBuyer SS.Buyer
-  | SetCommercial SS.Commercial
+  | SetCommercial SS.BillingAccount
   | SetObservers (Array SS.OrderObserver)
   | SetNotes (Array SS.OrderNote)
   | SetOrderStatus SS.OrderStatus
@@ -2229,7 +2229,7 @@ handleAction = case _ of
       SS.Buyer { crmAccountId } = buyer
     H.tell Commercial.proxy unit
       (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
-  SetCommercial commercial ->
+  SetCommercial (SS.BillingAccount { displayName, shortId, commercial }) ->
     modifyInitialized
       $ \st ->
           let
@@ -2255,6 +2255,10 @@ handleAction = case _ of
               , orderForm =
                 st.orderForm
                   { changed = true
+                  , displayName =
+                    case st.orderForm.displayName of
+                      Nothing -> Just $ displayName <> " / " <> shortId
+                      _ -> st.orderForm.displayName
                   , commercial = Just commercial
                   --  If the currency changed then we can't use the same price
                   --  book, so the summary and all sections need to be updated.
