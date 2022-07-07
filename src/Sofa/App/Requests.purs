@@ -9,6 +9,7 @@ module Sofa.App.Requests
   , deleteOrderNote
   , deleteOrderObserver
   , deleteOrderSection
+  , getAsset
   , getBillingAccount
   , getBillingAccounts
   , getBuyer
@@ -53,7 +54,7 @@ import JSURI (encodeURIComponent)
 import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), AssetConfig(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
 import Web.URL.URLSearchParams (URLSearchParams)
 import Web.URL.URLSearchParams as UrlParams
 
@@ -119,6 +120,20 @@ getBuyer ::
 getBuyer (CrmAccountId id) = getRJson $ buyersUrl </> idEncoded
   where
   idEncoded = fromMaybe "" $ encodeURIComponent id
+
+-- | Fetches a specific asset that match the given order ID.
+getAsset ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  OrderId -> m (Loadable (Array AssetConfig))
+getAsset id = map conv <$> getRJson (ordersUrl </> idEncoded </> "assets")
+  where
+  idEncoded = fromMaybe "" $ encodeURIComponent (show id)
+
+  conv :: { assets :: Array AssetConfig } -> Array AssetConfig
+  conv { assets } = assets
+  
 
 getBillingAccounts ::
   forall f m.

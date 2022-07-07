@@ -1,6 +1,7 @@
 module Sofa.Data.SmartSpec
   ( Address(..)
   , Asset(..)
+  , AssetConfig(..)
   , BillingAccount(..)
   , BillingAccountId(..)
   , BillingCurrency(..)
@@ -2130,6 +2131,51 @@ derive newtype instance showCrmAccountId :: Show CrmAccountId
 derive newtype instance decodeJsonCrmAccountId :: DecodeJson CrmAccountId
 
 derive newtype instance encodeJsonCrmAccountId :: EncodeJson CrmAccountId
+
+newtype AssetConfig
+  = AssetConfig
+  { id :: String
+  , billingAccountId :: String
+  , solutionUri :: Uri
+  , sku :: String
+  , assetConfig :: Map String ConfigValue
+  , orderConfig :: Map String ConfigValue
+  , isProvisioned :: Boolean
+  , returnedId :: String
+  , createTime :: DateTime
+  , updateTime :: DateTime
+  }
+
+instance decodeJsonAssetConfig :: DecodeJson AssetConfig where
+  decodeJson json = do
+    o <- decodeJson json
+    id <- o .: "id"
+    billingAccountId <- o .: "billingAccountId"
+    sku <- o .: "sku"
+    solutionUri <- o .: "solutionUri"
+    assetConfigObj :: FO.Object ConfigValue <- o .: "assetConfig"
+    let
+      assetConfig = Map.fromFoldable (FO.toUnfoldable assetConfigObj :: Array _)
+    orderConfigObj :: FO.Object ConfigValue <- o .: "orderConfig"
+    let
+      orderConfig = Map.fromFoldable (FO.toUnfoldable orderConfigObj :: Array _)
+    isProvisioned <- o .: "isProvisioned"
+    returnedId <- o .: "returnedId"
+    createTime <- decodeJsonDateTime =<< o .: "createTime"
+    updateTime <- decodeJsonDateTime =<< o .: "updateTime"
+    pure
+      $ AssetConfig
+          { id
+          , billingAccountId
+          , solutionUri
+          , sku
+          , assetConfig
+          , orderConfig
+          , isProvisioned
+          , returnedId
+          , createTime
+          , updateTime
+          }
 
 newtype Buyer
   = Buyer
