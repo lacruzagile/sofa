@@ -100,7 +100,6 @@ module Sofa.Data.SmartSpec
   , Severity(..)
   , SkuCode(..)
   , Solution(..)
-  , Subdivision(..)
   , Uri(..)
   , UriTemplate
   , Validity(..)
@@ -118,7 +117,6 @@ module Sofa.Data.SmartSpec
   , prettyOrderLineStatus
   , prettyOrderStatus
   , solutionProducts
-  , subdivisionRegex
   ) where
 
 import Prelude
@@ -330,32 +328,6 @@ instance decodeJsonCountry :: DecodeJson Country where
     error = Left (TypeMismatch "Country (ISO 3166-1 alpha-2 code)")
 
 derive newtype instance encodeJsonCountry :: EncodeJson Country
-
-newtype Subdivision
-  = Subdivision String
-
-subdivisionRegex :: Re.Regex
-subdivisionRegex = unsafeRegex "^[0-9A-Z]{1,3}$" mempty
-
-derive instance eqSubdivision :: Eq Subdivision
-
-derive instance ordSubdivision :: Ord Subdivision
-
-derive instance newtypeSubdivision :: Newtype Subdivision _
-
-instance showSubdivision :: Show Subdivision where
-  show (Subdivision code) = code
-
-instance decodeJsonSubdivision :: DecodeJson Subdivision where
-  decodeJson json = do
-    s <- decodeJson json
-    if check s then pure (Subdivision s) else error
-    where
-    check = Re.test subdivisionRegex
-
-    error = Left (TypeMismatch "Subdivision (ISO 3166-2 subdivision code)")
-
-derive newtype instance encodeJsonSubdivision :: EncodeJson Subdivision
 
 -- | The billing currency. This is the currency that is used for the buyer's
 -- | invoice. It is always the same as the pricing currency and is therefore an
@@ -2008,7 +1980,7 @@ newtype Address
   , line2 :: Maybe String
   , line3 :: Maybe String
   , city :: Maybe String
-  , stateOrProvince :: Maybe Subdivision
+  , stateOrProvince :: Maybe String
   , county :: Maybe String
   , country :: Maybe Country
   , postOfficeBox :: Maybe String

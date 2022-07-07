@@ -21,7 +21,7 @@ import Sofa.Css as Css
 import Sofa.Data.BigNumber as BN
 import Sofa.Data.Currency (Currency)
 import Sofa.Data.Currency as Currency
-import Sofa.Data.Iso3166 (countryForCode, subdivisionForCode)
+import Sofa.Data.Iso3166 (countryForCode)
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal(..))
 import Sofa.Data.SubTotal as SubTotal
@@ -72,13 +72,7 @@ address (SS.Address addr) =
       <> entry "Postal Code" addr.postalCode
       <> entry "City" addr.city
       <> entry "County" addr.county
-      <> entry "State or Province"
-          ( do
-              SS.Country cCode <- addr.country
-              SS.Subdivision sCode <- addr.stateOrProvince
-              subdiv <- subdivisionForCode cCode sCode
-              pure subdiv.name
-          )
+      <> entry "State or Province" addr.stateOrProvince
       <> entry "Country"
           ( do
               SS.Country cCode <- addr.country

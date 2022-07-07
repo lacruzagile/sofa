@@ -1,10 +1,9 @@
 module Sofa.App.OrderForm.Widget.Dropdown (Slot, Output(..), proxy, component) where
 
 import Prelude
-import Control.Alternative ((<|>))
 import Data.Array ((!!))
 import Data.Array as A
-import Data.Maybe (Maybe(..), fromMaybe, maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe, maybe')
 import Data.Tuple (Tuple(..), fst)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -94,23 +93,39 @@ component =
         H.modify \st ->
           st { available = Loading }
       lAvailable <- H.lift $ state.getEnumData Nothing
+      let
+        -- Index of the selected input value, if available.
+        inputSelectedIndex = do
+          inputValue <- state.selectedValue
+          available <- Loadable.toMaybe lAvailable
+          A.findIndex (\(Tuple _ v) -> v == inputValue) available
+
+        -- If the list of available value is exactly one element long and we
+        -- haven't received a specific selection in the component input, then
+        -- pick the available element.
+        useFirst =
+          isNothing inputSelectedIndex
+            && fromMaybe false
+                ( do
+                    available <- Loadable.toMaybe lAvailable
+                    pure $ A.length available == 1
+                )
+
+        selectedIndex = if useFirst then Just 0 else inputSelectedIndex
       state' <-
         H.modify \st ->
           st
-            { selectedIndex =
-              let
-                selectSelected = do
-                  inputValue <- st.selectedValue
-                  available <- Loadable.toMaybe lAvailable
-                  A.findIndex (\(Tuple _ v) -> v == inputValue) available
-
-                selectOnly = do
-                  available <- Loadable.toMaybe lAvailable
-                  if A.length available == 1 then Just 0 else Nothing
-              in
-                selectSelected <|> selectOnly
+            { selectedIndex = selectedIndex
+            , selectedValue =
+              do
+                available <- Loadable.toMaybe lAvailable
+                idx <- selectedIndex
+                Tuple _ value <- available !! idx
+                pure value
             , available = lAvailable
             }
+      -- If we forced selection to the first entry then notify the parent component.
+      when useFirst $ H.raise state'.selectedValue
       -- Set the input element to the full selection key.
       maybe' pure (setInputText "select-input") do
         idx <- state'.selectedIndex
