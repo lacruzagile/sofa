@@ -2,7 +2,7 @@
 module Sofa.App.Requests
   ( FileStatus(..)
   , appendPathPiece
-  , appendQueryParams
+  , appendUrlParams
   , deleteFile
   , deleteOrder
   , deleteOrderLine
@@ -40,10 +40,9 @@ import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Control.Alternative ((<|>))
 import Data.Argonaut (JsonDecodeError(..), (.:), class DecodeJson, class EncodeJson, Json, decodeJson, encodeJson, printJsonDecodeError)
-import Data.Array as A
 import Data.Either (Either(..))
 import Data.HTTP.Method as HTTP
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple)
@@ -55,6 +54,8 @@ import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
+import Web.URL.URLSearchParams (URLSearchParams)
+import Web.URL.URLSearchParams as UrlParams
 
 -- | Base URL to use for the ordering service.
 foreign import orderingBaseUrl :: String
@@ -80,14 +81,17 @@ buyersUrl = orderingBaseUrl </> "v1alpha1" </> "buyers"
 appendPathPiece :: String -> String -> String
 appendPathPiece a b = a <> "/" <> b
 
-appendQueryParams :: String -> Array String -> String
-appendQueryParams a b
-  | A.null b = a
-  | otherwise = a <> "?" <> S.joinWith "&" b
+appendUrlParams :: String -> URLSearchParams -> String
+appendUrlParams a params = case UrlParams.toString params of
+  "" -> a
+  paramsStr -> a <> "?" <> paramsStr
+
+emptyUrlParams :: UrlParams.URLSearchParams
+emptyUrlParams = UrlParams.fromString ""
 
 infixr 5 appendPathPiece as </>
 
-infixr 5 appendQueryParams as <?>
+infixr 5 appendUrlParams as <?>
 
 -- | Fetches buyers that match the given query string.
 getBuyers ::
@@ -98,11 +102,11 @@ getBuyers ::
 getBuyers query =
   map (map conv) $ getRJson
     $ buyersUrl
-    <> "?pageSize=5&corporateName="
-    <> encodedQuery
+    <?> ( UrlParams.set "pageSize" "5"
+          $ UrlParams.set "corporateName" query
+          $ emptyUrlParams
+      )
   where
-  encodedQuery = fromMaybe "" $ encodeURIComponent query
-
   conv :: { buyers :: Array Buyer } -> Array Buyer
   conv { buyers } = buyers
 
@@ -186,16 +190,15 @@ getOrders ::
   m (Loadable { orders :: Array OrderForm, nextPageToken :: Maybe String })
 getOrders nextPageToken = filterNextPageToken <$> getRJson url
   where
-  url = ordersUrl <> "?pageSize=10" <> pageToken
-
-  pageToken =
-    fromMaybe "" do
-      tok <- nextPageToken
-      tokParam <- encodeURIComponent tok
-      pure $ "&pageToken=" <> tokParam
+  url =
+    ordersUrl
+      <?> ( UrlParams.set "pageSize" "10"
+            $ UrlParams.set "pageToken" (fromMaybe "" nextPageToken)
+            $ emptyUrlParams
+        )
 
   -- If the next page token is an empty string then we'll change it to a Nothing
-  -- value.
+  -- value to indicate that there are no more pages.
   filterNextPageToken = case _ of
     Loaded r ->
       Loaded
@@ -286,9 +289,13 @@ postOrderFulfillment ::
   OrderId -> Maybe MarioPriority -> m (Loadable OrderForm)
 postOrderFulfillment orderId mMarioPrio = postRJson_ url
   where
-  url = ordersUrl </> show orderId <> ":fulfillment" <?> marioPrioParam
+  url = ordersUrl </> show orderId <> ":fulfillment" <?> params
 
-  marioPrioParam = maybe [] (\p -> [ "marioPriority=" <> prioValue p ]) mMarioPrio
+  params = setMarioPrioParam emptyUrlParams
+
+  setMarioPrioParam = case mMarioPrio of
+    Nothing -> identity
+    Just p -> UrlParams.set "marioPriority" (prioValue p)
 
   prioValue :: MarioPriority -> String
   prioValue = case _ of
