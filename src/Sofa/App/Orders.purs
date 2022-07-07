@@ -264,16 +264,21 @@ handleAction ::
 handleAction = case _ of
   LoadNext nextPageToken -> do
     fixedBuyer <- H.lift isBuyerFixed
-    H.modify_ \st ->
-      st
-        { nextPageToken = Loading
-        , showNewOrderButton = not fixedBuyer
-        }
+    state <-
+      H.modify \st ->
+        st
+          { nextPageToken = Loading
+          , showNewOrderButton = not fixedBuyer
+          }
     let
       token
         | nextPageToken == firstPageToken = Nothing
         | otherwise = Just nextPageToken
-    result <- H.lift $ getOrders token
+
+      crmAccountId = case state.orderFilter of
+        ListAllAccessibleOrder -> Nothing
+        ListCustomerOrders { crmAccountId: id } -> Just id
+    result <- H.lift $ getOrders token crmAccountId
     case result of
       Loaded { orders, nextPageToken: nextPageToken' } -> do
         H.modify_ \st ->
