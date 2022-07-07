@@ -136,7 +136,6 @@ renderContent state =
     ]
 
 renderAssets :: forall m. Loadable (Array SS.AssetConfig) -> Array (H.ComponentHTML Action () m)
--- renderEntries entries = A.concatMap renderEntry $ Map.toUnfoldable entries
 renderAssets = case _ of
   Idle -> []
   Loaded assets -> map renderAssetConfig (assets)
@@ -197,8 +196,6 @@ handleAction = case _ of
   OpenModal event -> do
     -- Don't propagate the click to the underlying table row.
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
-    -- H.modify _ doesn't do a return
-    -- H.modify without _ returns the state
     { orderId } <- H.modify $ \st -> st { assets = Loading, open = true }
     -- Fetch the assets.
     assets <- H.lift $ getAsset orderId
