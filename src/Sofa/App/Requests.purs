@@ -229,7 +229,7 @@ getOrders nextPageToken crmAccountId = filterNextPageToken <$> getRJson url
 
   setCrmAccountParam = case crmAccountId of
     Nothing -> identity
-    Just id -> UrlParams.set "crmAccountId" (show id)
+    Just (CrmAccountId id) -> UrlParams.set "crmAccountId" id
 
   -- If the next page token is an empty string then we'll change it to a Nothing
   -- value to indicate that there are no more pages.
