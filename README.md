@@ -94,7 +94,15 @@ Then place your product catalog JSON file in
 
 ## Salesforce deployment
 
-The `salesforce` directory contains the necessary files to produce a Salesforce deployment.
+The `salesforce` directory contains the necessary files to produce a
+Salesforce deployment.
+
+Note, when deploying to a new Salesforce environment, it is necessary
+to create an SSL certificate. To do that you can follow the
+[Salesforce authentication key instructions]. The `server.crt` file
+should be sent to the person on the Salesforce side and the
+`server.key` file should be added as a GitLab CI variable using the
+"File" type.
 
 [CUE]: https://cuelang.org/
 [Docker Compose]: https://docs.docker.com/compose/
@@ -104,6 +112,7 @@ The `salesforce` directory contains the necessary files to produce a Salesforce 
 [Halogen]: https://purescript-halogen.github.io/purescript-halogen/
 [Nix]: https://nixos.org/
 [PureScript]: https://www.purescript.org/
+[Salesforce authentication key instructions]: https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_auth_key_and_cert.htm
 [Spago]: https://github.com/purescript/spago
 [Yarn]: https://yarnpkg.com/
 [jq]: https://stedolan.github.io/jq/
