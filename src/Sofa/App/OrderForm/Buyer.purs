@@ -231,31 +231,42 @@ renderDetails st =
                   , renderContact contactPrimary buyer.contacts.primary SetContactPrimary
                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Finance Contact" ]
                   , renderContact contactFinance buyer.contacts.finance SetContactFinance
-                  , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Customer Status" ]
-                  , HH.fieldset [ Css.class_ "col-span-2" ]
-                      [ HH.label [ Css.class_ "ml-2" ]
-                          [ HH.input
-                              [ HP.type_ HP.InputRadio
-                              , HP.name "buyer-existing-customer"
-                              , Css.class_ "nectary-input-radio"
-                              , HP.checked $ not buyer.existingCustomer
-                              , HP.enabled $ not st.readOnly
-                              , HE.onChange \_ -> SetCustomerStatus false
-                              ]
-                          , HH.span [ Css.class_ "ml-2" ] [ HH.text "New Customer" ]
-                          ]
-                      , HH.label [ Css.class_ "ml-2" ]
-                          [ HH.input
-                              [ HP.type_ HP.InputRadio
-                              , HP.name "buyer-existing-customer"
-                              , Css.class_ "nectary-input-radio"
-                              , HP.checked buyer.existingCustomer
-                              , HP.enabled $ not st.readOnly
-                              , HE.onChange \_ -> SetCustomerStatus true
-                              ]
-                          , HH.span [ Css.class_ "ml-2" ] [ HH.text "Existing Customer" ]
-                          ]
-                      ]
+                  , HH.h4
+                      (if st.readOnly then [] else [ Css.class_ "col-span-2" ])
+                      [ HH.text "Customer Status" ]
+                  , if st.readOnly then
+                      HH.div_
+                        [ HH.text
+                            if buyer.existingCustomer then
+                              "Existing Customer"
+                            else
+                              "New Customer"
+                        ]
+                    else
+                      HH.fieldset [ Css.class_ "col-span-2" ]
+                        [ HH.label [ Css.class_ "ml-2" ]
+                            [ HH.input
+                                [ HP.type_ HP.InputRadio
+                                , HP.name "buyer-existing-customer"
+                                , Css.class_ "nectary-input-radio"
+                                , HP.checked $ not buyer.existingCustomer
+                                , HP.enabled $ not st.readOnly
+                                , HE.onChange \_ -> SetCustomerStatus false
+                                ]
+                            , HH.span [ Css.class_ "ml-2" ] [ HH.text "New Customer" ]
+                            ]
+                        , HH.label [ Css.class_ "ml-2" ]
+                            [ HH.input
+                                [ HP.type_ HP.InputRadio
+                                , HP.name "buyer-existing-customer"
+                                , Css.class_ "nectary-input-radio"
+                                , HP.checked buyer.existingCustomer
+                                , HP.enabled $ not st.readOnly
+                                , HE.onChange \_ -> SetCustomerStatus true
+                                ]
+                            , HH.span [ Css.class_ "ml-2" ] [ HH.text "Existing Customer" ]
+                            ]
+                        ]
                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Address" ]
                   ]
                 <> Widgets.address buyer.address
