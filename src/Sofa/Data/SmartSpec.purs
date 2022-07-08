@@ -2222,8 +2222,8 @@ instance encodeJsonBuyer :: EncodeJson Buyer where
       ~> ("contacts" := x.contacts)
       ~> ("corporateName" := x.corporateName)
       ~> ("registrationNr" := x.registrationNr)
-      ~> ("existingCustomer" :=? ifNonEq true x.existingCustomer)
-      ~>? ("taxId" := x.taxId)
+      ~> ("existingCustomer" := x.existingCustomer)
+      ~> ("taxId" := x.taxId)
       ~> ("website" := x.website)
       ~> jsonEmptyObject
 
