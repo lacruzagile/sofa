@@ -933,11 +933,10 @@ newtype PricePerDimSeg
   }
 
 instance decodeJsonPricePerDimSeg :: DecodeJson PricePerDimSeg where
-  decodeJson json =
-    map PricePerDimSeg
-      $ { dim: _, priceBySegment: _ }
-      <$> decodeJson json
-      <*> decodeJson json
+  decodeJson json = do
+    dim <- decodeJson json
+    priceBySegment <- decodeJson json
+    pure $ PricePerDimSeg { dim, priceBySegment }
 
 instance encodeJsonPricePerDimSeg :: EncodeJson PricePerDimSeg where
   encodeJson (PricePerDimSeg x) =
