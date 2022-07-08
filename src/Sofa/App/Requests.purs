@@ -54,7 +54,7 @@ import JSURI (encodeURIComponent)
 import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.SmartSpec (BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), AssetConfig(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (AssetConfig, BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity, OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
 import Web.URL.URLSearchParams (URLSearchParams)
 import Web.URL.URLSearchParams as UrlParams
 
@@ -133,7 +133,6 @@ getAsset id = map conv <$> getRJson (ordersUrl </> idEncoded </> "assets")
 
   conv :: { assets :: Array AssetConfig } -> Array AssetConfig
   conv { assets } = assets
-  
 
 getBillingAccounts ::
   forall f m.

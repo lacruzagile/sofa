@@ -9,7 +9,6 @@ import Data.Maybe (Maybe(..))
 import Data.String as S
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -19,7 +18,6 @@ import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (copyToClipboard)
 import Web.Event.Event (stopPropagation) as Event
