@@ -385,4 +385,13 @@
   .sofa-tooltip-group:hover .sofa-tooltip-group-hover\:opacity-100 {
     opacity: 1;
   }
+
+  .sofa-copy-icon {
+    color: #0A273D;
+    float: right;
+  }
+
+  .sofa-info-icon {
+    fill: #003B7E;
+  }
 }

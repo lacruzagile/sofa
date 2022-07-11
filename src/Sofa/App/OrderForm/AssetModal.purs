@@ -11,6 +11,7 @@ import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HHP
 import Halogen.HTML.Events as HE
 import Sofa.App.Requests (getAsset)
 import Sofa.Component.Icon as Icon
@@ -103,11 +104,11 @@ renderIcon ::
   H.ComponentHTML Action () m
 renderIcon =
   HH.button
-    [ Css.classes [ "p-2", "fill-snow-700", "hover:fill-snow-900" ]
+    [ Css.classes [ "p-2","sofa-info-icon"]
     , HE.onClick OpenModal
     ]
     [ Icon.info
-        [ Icon.classes [ Css.c "w-5" ]
+        [ Icon.classes [ Css.c "w-5"]
         , Icon.ariaLabel "Asset"
         ]
     ]
@@ -162,11 +163,11 @@ renderEntry (Tuple k v) =
   , HH.div_
       [ HH.text value
       , HH.button
-          [ Css.classes [ "p-2", "fill-snow-700", "hover:fill-snow-900" ]
+          [ Css.classes [ "p-2", "sofa-copy-icon" ]
           , HE.onClick (Copy value)
           ]
           [ Icon.copy
-              [ Icon.classes [ Css.c "w-5" ]
+              [ Icon.classes [ Css.c "w-5"]
               , Icon.ariaLabel "Copy"
               ]
           ]
