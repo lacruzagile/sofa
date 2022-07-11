@@ -386,12 +386,7 @@
     opacity: 1;
   }
 
-  .sofa-copy-icon {
-    color: #0A273D;
+  .sofa-icon-float-right {
     float: right;
-  }
-
-  .sofa-info-icon {
-    fill: #003B7E;
   }
 }
