@@ -104,11 +104,11 @@ renderIcon ::
   H.ComponentHTML Action () m
 renderIcon =
   HH.button
-    [ Css.classes [ "p-2","sofa-info-icon"]
+    [ Css.classes [ "p-2", "fill-informative-700" ]
     , HE.onClick OpenModal
     ]
     [ Icon.info
-        [ Icon.classes [ Css.c "w-5"]
+        [ Icon.classes [ Css.c "w-5" ]
         , Icon.ariaLabel "Asset"
         ]
     ]
@@ -163,7 +163,7 @@ renderEntry (Tuple k v) =
   , HH.div_
       [ HH.text value
       , HH.button
-          [ Css.classes [ "p-2", "sofa-copy-icon" ]
+          [ Css.classes [ "p-2", "fill-stormy-500", "sofa-icon-float-right" ]
           , HE.onClick (Copy value)
           ]
           [ Icon.copy
