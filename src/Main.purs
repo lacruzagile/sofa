@@ -42,14 +42,14 @@ main = do
       Just body -> case deployment of
         Salesforce { crmQuoteId: Just qId } -> do
           runOrderForm env body (OrderForm.ExistingCrmQuoteId qId)
-        -- Salesforce { pageData: Just (SfPageOrderForm pageData) } -> do
-        --   runOrderForm env body (OrderForm.SalesforceNewOrder pageData)
-        -- Salesforce { pageData: Just (SfPageCustomerOrderList rec) } -> do
-        --   runOrders env body (Orders.ListCustomerOrders rec)
-        -- Salesforce { pageData: Just SfPageUserOrderList } -> do
-        --   runOrders env body Orders.ListAllAccessibleOrder
-        Salesforce { pageData: Just pageData } -> do
-          runSalesforceDebugPage env body pageData
+        Salesforce { pageData: Just (SfPageOrderForm pageData) } -> do
+          runOrderForm env body (OrderForm.SalesforceNewOrder pageData)
+        Salesforce { pageData: Just (SfPageCustomerOrderList rec) } -> do
+          runOrders env body (Orders.ListCustomerOrders rec)
+        Salesforce { pageData: Just SfPageUserOrderList } -> do
+          runOrders env body Orders.ListAllAccessibleOrder
+        -- Salesforce { pageData: Just pageData } -> do
+        --   runSalesforceDebugPage env body pageData
         _ -> runFull env body
 
 -- | Start the full standalone SOFA implementation.
