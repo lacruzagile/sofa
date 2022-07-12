@@ -184,3 +184,19 @@ deploy-salesforce-fullsb:
       --deployment-env staging
   artifacts:
     paths: [ dist-sf ]
+
+deploy-salesforce-uat:
+  image: salesforce/salesforcedx:7.153.0-slim
+  stage: deploy
+  only: [ master ]
+  when: manual
+  environment:
+    name: sf-uat
+  script:
+    - >-
+      ./salesforce/build-deployment
+      --ordering-base-url https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com
+      --smart-spec-base-url https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com
+      --deployment-env staging
+  artifacts:
+    paths: [ dist-sf ]
