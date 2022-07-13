@@ -248,7 +248,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
         [ HH.h1 [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Orders" ]
-        , renderSearchForm
+        -- Temporary commenting search bar
+        -- , renderSearchForm
         , if state.showNewOrderButton then renderNewOrderLink else HH.text ""
         ]
     , renderOrders
