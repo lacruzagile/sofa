@@ -200,3 +200,19 @@ deploy-salesforce-uat:
       --deployment-env staging
   artifacts:
     paths: [ dist-sf ]
+
+deploy-salesforce-prd:
+  image: salesforce/salesforcedx:7.153.0-slim
+  stage: deploy
+  only: [ master ]
+  when: manual
+  environment:
+    name: sf-prd
+  script:
+    - >-
+      ./salesforce/build-deployment
+      --ordering-base-url https://ordering.eu1.bpa.unauth.int.prod.sinch.com
+      --smart-spec-base-url https://smart-solution.eu1.bpa.unauth.int.prod.sinch.com
+      --deployment-env production
+  artifacts:
+    paths: [ dist-sf ]
