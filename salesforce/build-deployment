@@ -90,7 +90,7 @@ sfdx force:auth:jwt:grant \
      --username "$SF_USERNAME" \
      --instanceurl "$SF_INSTANCEURL" \
      --setdefaultusername
-sfdx force:mdapi:deploy -d "$tmpPath/dist/sofa" -w 2
+sfdx force:mdapi:deploy -l RunSpecifiedTests -r sofaExtensionTest -d "$tmpPath/dist/sofa" -w 2
 popd
 
 cp -r "$tmpPath/dist/sofa" dist-sf
