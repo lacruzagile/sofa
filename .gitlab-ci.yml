@@ -210,7 +210,7 @@ deploy-salesforce-prd:
     name: sf-prd
   script:
     - >-
-      ./salesforce/build-deployment
+      ./salesforce/build-deployment-prd
       --ordering-base-url https://ordering.eu1.bpa.unauth.int.prod.sinch.com
       --smart-spec-base-url https://smart-solution.eu1.bpa.unauth.int.prod.sinch.com
       --deployment-env production

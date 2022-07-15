@@ -44,10 +44,15 @@ main = do
           runOrderForm env body (OrderForm.ExistingCrmQuoteId qId)
         Salesforce { pageData: Just (SfPageOrderForm pageData) } -> do
           runOrderForm env body (OrderForm.SalesforceNewOrder pageData)
+          -- Temporary commented while testing clickable
+        -- Salesforce { pageData: Just (SfPageCustomerOrderList rec) } -> do
+        --   runOrders env body (Orders.ListCustomerOrders rec)
+        -- Salesforce { pageData: Just SfPageUserOrderList } -> do
+        --   runOrders env body Orders.ListAllAccessibleOrder
         Salesforce { pageData: Just (SfPageCustomerOrderList rec) } -> do
-          runOrders env body (Orders.ListCustomerOrders rec)
+          runOrdersClickable env body (Orders.ListCustomerOrders rec)
         Salesforce { pageData: Just SfPageUserOrderList } -> do
-          runOrders env body Orders.ListAllAccessibleOrder
+          runOrdersClickable env body Orders.ListAllAccessibleOrder
         -- Salesforce { pageData: Just pageData } -> do
         --   runSalesforceDebugPage env body pageData
         _ -> runFull env body
@@ -78,6 +83,13 @@ runOrders env body orderFormInput =
     router = H.hoist (runAppM env) Orders.component
   in
     void $ runUI router orderFormInput body
+
+runOrdersClickable :: Env -> Html.HTMLElement -> Orders.Input -> Aff Unit
+runOrdersClickable env body orderFormInput  = do
+  let
+    router = H.hoist (runAppM env) Orders.component
+  app <- runUI router orderFormInput body
+  Router.startRouting app
 
 runSalesforceDebugPage :: Env -> Html.HTMLElement -> SalesforcePageData -> Aff Unit
 runSalesforceDebugPage env body buyerInput =
