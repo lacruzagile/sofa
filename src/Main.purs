@@ -87,7 +87,7 @@ runOrders env body orderFormInput =
 runOrdersClickable :: Env -> Html.HTMLElement -> Orders.Input -> Aff Unit
 runOrdersClickable env body orderFormInput  = do
   let
-    router = H.hoist (runAppM env) Orders.component
+    router = H.hoist (runAppM env) Router.component
   app <- runUI router orderFormInput body
   Router.startRouting app
 
