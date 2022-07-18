@@ -5,6 +5,7 @@ import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Sofa.Css as Css
+import Sofa.Data.Route as Route
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -37,4 +38,20 @@ render _ = do
             , HH.text " Note, both are work in progress."
             ]
         ]
+    ,  HH.div
+        [ Css.classes
+            [ "my-5"
+            , "flex"
+            , "flex-wrap"
+            , "items-center"
+            , "gap-4"
+            ]
+        ]
+        [ HH.a
+          [ Route.href Route.Orders
+          , Css.class_ "nectary-btn-primary"
+          ]
+          [ HH.text "Go to order list" ]
+        ]
+    
     ]

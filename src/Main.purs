@@ -50,7 +50,7 @@ main = do
         -- Salesforce { pageData: Just SfPageUserOrderList } -> do
         --   runOrders env body Orders.ListAllAccessibleOrder
         Salesforce { pageData: Just (SfPageCustomerOrderList rec) } -> do
-          runOrders env body (Orders.ListCustomerOrders rec)
+          runOrdersClickable env body (Orders.ListCustomerOrders rec)
         Salesforce { pageData: Just SfPageUserOrderList } -> do
           runOrdersClickable env body Orders.ListAllAccessibleOrder
         -- Salesforce { pageData: Just pageData } -> do

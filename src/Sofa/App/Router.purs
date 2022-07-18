@@ -103,8 +103,9 @@ render state =
             , "pt-16"
             ]
         ]
-        [ renderSideMenu state.route
-        , renderBody state
+        [ 
+          -- renderSideMenu state.route
+         renderBody state
         ]
     , HH.slot_ Alerts.proxy unit Alerts.component absurd
     ]
