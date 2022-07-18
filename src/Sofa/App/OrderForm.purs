@@ -1349,25 +1349,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
           HH.text ""
       , HH.button
           [ Css.class_ "nectary-btn-primary"
-          -- Temporary enabled
-          , HP.disabled $ isLeft preventFulfill
-          -- , HP.disabled true
-          , HP.title (either identity (const "") preventFulfill)
+          -- Temporary disabled
+          -- , HP.disabled $ isLeft preventFulfill
+          , HP.disabled true
+          -- , HP.title (either identity (const "") preventFulfill)
           , HE.onClick $ \_ -> FulfillOrderStart
           ]
-          [ HH.text $ if sof.orderForm.changed then "Save & fulfill order" else "Fulfill order"
-          , case sof.orderFulfillStatus of
-              FulfillStatusInFlight -> buttonSpinner unit
-              _ -> HH.text ""
-          ]
-          -- [ Tooltip.render
-          --             ( Tooltip.defaultInput
-          --                 { text = "Order Fulfillment is currently disabled, please contact Sarah Cook for further information"
-          --                 , orientation = Tooltip.Top
-          --                 , width = Just "20rem"
-          --                 }
-          --             )
-          --             (HH.text "Fulfill order")]
+          -- [ HH.text $ if sof.orderForm.changed then "Save & fulfill order" else "Fulfill order"
+          -- , case sof.orderFulfillStatus of
+          --     FulfillStatusInFlight -> buttonSpinner unit
+          --     _ -> HH.text ""
+          -- ]
+          [ Tooltip.render
+                      ( Tooltip.defaultInput
+                          { text = "Order Fulfillment is currently disabled, please contact Sarah Cook for further information"
+                          , orientation = Tooltip.Top
+                          , width = Just "20rem"
+                          }
+                      )
+                      (HH.text "Fulfill order")]
       , HH.button
           [ Css.class_ "nectary-btn-primary"
           , HP.disabled $ isLeft preventCreate
