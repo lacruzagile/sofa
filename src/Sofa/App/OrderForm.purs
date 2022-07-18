@@ -68,6 +68,7 @@ import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
+import Sofa.Data.Route as Route
 import Sofa.Data.Schema (mkDefaultConfig)
 import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
@@ -1523,7 +1524,24 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderContent :: Array (H.ComponentHTML Action Slots m)
   renderContent =
-    [ HH.h1_ [ HH.text "Order form" ] ]
+      [ HH.div
+        [ Css.classes
+            [ "my-5"
+            , "flex"
+            , "flex-wrap"
+            , "items-center"
+            , "gap-4"
+            ]
+        ]
+        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ]
+        , HH.a
+          [ Route.href Route.Orders
+          , Css.class_ "nectary-btn-primary"
+          ]
+          [ HH.text "Back to order list" ]
+        ]
+    ]
+    -- [ HH.h1_ [ HH.text "Order form" ] ]
       <> case state of
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
