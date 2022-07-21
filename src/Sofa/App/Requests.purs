@@ -329,8 +329,6 @@ postOrderFulfillment orderId mMarioPrio mMarioNote = postRJson_ url
             $ emptyUrlParams
             )
 
- {-   params = setMarioPrioParam emptyUrlParams-}
-
   setMarioPrioParam = case mMarioPrio of
     Nothing -> identity
     Just p -> UrlParams.set "marioPriority" (prioValue p)
