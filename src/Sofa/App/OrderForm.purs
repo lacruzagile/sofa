@@ -1350,7 +1350,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       , HH.button
           [ Css.class_ "nectary-btn-primary"
           -- Temporary disabled
-          -- , HP.disabled $ isLeft preventFulfill
+          , HP.disabled $ isLeft preventFulfill
           -- , HP.disabled true
           , HP.title (either identity (const "") preventFulfill)
           , HE.onClick $ \_ -> FulfillOrderStart
