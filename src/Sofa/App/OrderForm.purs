@@ -2745,7 +2745,7 @@ handleAction = case _ of
     case mSavedOrder of
       Just (SS.OrderForm { id: Just id }) -> do
         modifyInitialized $ _ { orderFulfillStatus = FulfillStatusInFlight }
-        lOrder <- H.lift $ Requests.postOrderFulfillment id result.marioPriority
+        lOrder <- H.lift $ Requests.postOrderFulfillment id result.marioPriority result.note
         -- Updates the current state to match the response order object.
         case lOrder of
           Loaded o' -> do
