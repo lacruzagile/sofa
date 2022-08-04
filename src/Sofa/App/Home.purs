@@ -1,11 +1,14 @@
-module Sofa.App.Home (Slot, proxy, component) where
+module Sofa.App.Home (OrderFilter(..), Slot, proxy, component) where
 
 import Prelude
+import Data.String (Pattern(..), Replacement(..), replaceAll) as S
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Sofa.Css as Css
 import Sofa.Data.Route as Route
+import Sofa.Data.SmartSpec as SS
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -14,7 +17,21 @@ type Slot id
 proxy :: Proxy "home"
 proxy = Proxy
 
-component :: forall q i o m. MonadEffect m => H.Component q i o m
+type Input
+  = OrderFilter
+
+type State
+  = { orderFilter :: OrderFilter }
+
+data OrderFilter
+  = HomeAllAccessibleOrder
+  | HomeCustomerOrders SS.CrmAccountId
+
+
+component ::
+  forall query output f m.
+  MonadEffect m=>
+  H.Component query Input output m
 component =
   H.mkComponent
     { initialState
@@ -22,11 +39,15 @@ component =
     , eval: H.mkEval H.defaultEval
     }
 
-initialState :: forall input. input -> Unit
-initialState _ = unit
 
-render :: forall action cs m. Unit -> H.ComponentHTML action cs m
-render _ = do
+initialState :: Input -> State
+initialState input =
+  {  orderFilter: input}
+
+render ::
+  forall action cs m.
+  State -> H.ComponentHTML action cs m
+render state = do
   HH.div_
     [ HH.h1_
         [ HH.text "SOFA" ]
@@ -38,20 +59,43 @@ render _ = do
             , HH.text " Note, both are work in progress."
             ]
         ]
-    ,  HH.div
-        [ Css.classes
-            [ "my-5"
-            , "flex"
-            , "flex-wrap"
-            , "items-center"
-            , "gap-4"
-            ]
-        ]
-        [ HH.a
-          [ Route.href Route.Orders
-          , Css.class_ "nectary-btn-primary"
-          ]
-          [ HH.text "Go to order list" ]
-        ]
+    ,  renderButton
     
     ]
+
+    where 
+    renderButton = case state.orderFilter of
+        HomeAllAccessibleOrder ->
+                HH.div
+                  [ Css.classes
+                      [ "my-5"
+                      , "flex"
+                      , "flex-wrap"
+                      , "items-center"
+                      , "gap-4"
+                      ]
+                  ]
+                  [ HH.a
+                    [ 
+                      Route.href Route.Orders
+                    , Css.class_ "nectary-btn-primary"
+                    ]
+                    [ HH.text "Go to order list" ]
+                  ]
+        HomeCustomerOrders crmAccountId -> 
+           HH.div
+                  [ Css.classes
+                      [ "my-5"
+                      , "flex"
+                      , "flex-wrap"
+                      , "items-center"
+                      , "gap-4"
+                      ]
+                  ]
+                  [ HH.a
+                    [ 
+                      Route.href (Route.OrdersCrmAccountId crmAccountId)
+                    , Css.class_ "nectary-btn-primary"
+                    ]
+                    [ HH.text $ "Go to order list" ]
+                  ]

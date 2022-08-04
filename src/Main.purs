@@ -67,7 +67,7 @@ runFull env body = do
   -- Then run the actual app.
   let
     router = H.hoist (runAppM env) Router.component
-  app <- runUI router unit body
+  app <- runUI router Orders.ListAllAccessibleOrder body
   Router.startRouting app
 
 runOrderForm :: Env -> Html.HTMLElement -> OrderForm.Input -> Aff Unit
