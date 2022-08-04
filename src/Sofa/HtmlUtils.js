@@ -12,3 +12,7 @@ exports.scrollIntoView = el => () => {
 exports.copyToClipboard = value => () => {
   navigator.clipboard.writeText(value);
 }
+
+exports.back = () => {
+  history.back()
+}
