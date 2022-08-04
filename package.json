@@ -19,7 +19,7 @@
   "devDependencies": {
     "parcel": "^2.6.0",
     "postcss": "^8.4.14",
-    "purescript": "=0.14.7",
+    "purescript": "=0.14.9",
     "purty": "^7.0.0",
     "spago": "=0.20.7",
     "tailwindcss": "^3.0.24"
