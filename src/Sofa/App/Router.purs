@@ -30,7 +30,6 @@ import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Deployment (class MonadDeployment)
 import Sofa.Data.Route (Route)
 import Sofa.Data.Route as Route
-import Sofa.Data.SmartSpec as SS
 
 startRouting :: forall output. H.HalogenIO Query output Aff -> Aff Unit
 startRouting app =
@@ -43,19 +42,14 @@ startRouting app =
           $ H.mkTell
           $ GotoRoute newRoute
 
-type Input
-  = Orders.OrderFilter
-
 type State
   = { route :: Route
-    , homeOrderFilter :: Orders.OrderFilter
     }
 
 type Slots
   = ( home :: Home.Slot Unit
     , productCatalog :: ProductCatalog.Slot Unit
     , orderForm :: OrderForm.Slot Unit
-    , ordersCrmAccountId :: Orders.Slot Unit
     , orders :: Orders.Slot Unit
     , navbarItemUser :: NavbarItemUser.Slot Unit
     , navbarTile :: NavbarTile.Slot Unit
@@ -74,7 +68,7 @@ component ::
   CredentialStore f m =>
   MonadAlert m =>
   MonadDeployment m =>
-  H.Component Query Input output m
+  H.Component Query input output m
 component =
   H.mkComponent
     { initialState
@@ -87,9 +81,8 @@ component =
             }
     }
 
-initialState :: Input -> State
-initialState input = 
-    { route: Route.Home, homeOrderFilter: input }
+initialState :: forall input. input -> State
+initialState _ = { route: Route.Home }
 
 render ::
   forall f m.
@@ -274,19 +267,11 @@ renderBody state =
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm
         Route.Orders -> slotOrders
-        (Route.OrdersCrmAccountId crmAccountId) -> slotOrdersCrmAccountId {crmAccountId}
         (Route.Order id) -> slotOrder id
         Route.ProductCatalog -> slotProductCatalog
     ]
   where
-  slotHome = HH.slot_ Home.proxy unit Home.component input
-    where
-     input = case state.homeOrderFilter of
-              filter -> do 
-                case filter of
-                    Orders.ListAllAccessibleOrder -> Home.HomeAllAccessibleOrder
-                    Orders.ListCustomerOrders { crmAccountId: id } -> Home.HomeCustomerOrders id
-              _ -> Home.HomeAllAccessibleOrder
+  slotHome = HH.slot_ Home.proxy unit Home.component absurd
 
   slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component input
     where
@@ -295,10 +280,6 @@ renderBody state =
   slotOrders = HH.slot_ Orders.proxy unit Orders.component input
     where
     input = Orders.ListAllAccessibleOrder
-
-  slotOrdersCrmAccountId crmAccountId = HH.slot_ Orders.proxy unit Orders.component input
-    where
-    input = Orders.ListCustomerOrders crmAccountId
 
   slotOrder id = HH.slot_ OrderForm.proxy unit OrderForm.component input
     where

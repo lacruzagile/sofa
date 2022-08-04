@@ -74,12 +74,11 @@ import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal)
 import Sofa.Data.SubTotal as SubTotal
-import Sofa.HtmlUtils (scrollToElement, back)
+import Sofa.HtmlUtils (scrollToElement)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (stopPropagation) as Event
 import Web.HTML as Html
-import Web.HTML.History as HtmlHistory
 import Web.HTML.Window as HtmlWindow
 import Web.Storage.Storage as HtmlStorage
 import Web.UIEvent.MouseEvent (MouseEvent, toEvent) as Event
@@ -284,7 +283,6 @@ data Action
   | CreateUpdateOrder -- ^ Create or update the current order.
   | FulfillOrderStart -- ^ Show modal for user to confirm order fulfillment.
   | FulfillOrderModalResult ConfirmFulfillModal.Output
-  | Back Event.MouseEvent
 
 component ::
   forall query output f m.
@@ -1536,27 +1534,17 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
         [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ]
-        , renderBackToOrdersButton state
+        , HH.a
+          [ Route.href Route.Orders
+          , Css.class_ "nectary-btn-primary"
+          ]
+          [ HH.text "Back to order list" ]
         ]
     ]
     -- [ HH.h1_ [ HH.text "Order form" ] ]
       <> case state of
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
-  
-  renderBackToOrdersButton :: 
-    forall m.
-    State -> H.ComponentHTML Action Slots m
-  renderBackToOrdersButton state = 
-        HH.button
-          [ Css.classes
-              [ "nectary-btn-primary"
-              ]
-          , HE.onClick Back
-          ]
-          [ HH.text "Back to order list"
-          ]
-        
 
 -- | Fetches all configurations within the given order section.
 orderSchemaGetConfigs ∷
@@ -2777,6 +2765,3 @@ handleAction = case _ of
       _ -> do
         H.liftEffect $ Console.log "Could not fulfill unsaved order"
         pure unit
-  Back event -> do
-    H.liftEffect $ back
- 
