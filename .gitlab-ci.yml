@@ -7,7 +7,7 @@ stages:
   - build
   - test
   - image
-  - pre-deploy
+  # - pre-deploy
   - deploy
 
 variables:
@@ -62,22 +62,22 @@ build-and-push-image:
       --dockerfile ./docker/Dockerfile
       --destination $NEXUS_REGISTRY/$CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
 
-neuvector:
-  stage: pre-deploy
-  only: [ master ]
-  image: nexus.int.clxnetworks.net:8089/pipeline/neuvector:latest
-  variables:
-    nexus_user: $NEXUS_USER
-    nexus_password: $NEXUS_PASSWORD
-    scan_target: $CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
-  script:
-    - scan
-  artifacts:
-    when: always
-    paths:
-      - ./nvreport/scan-summary.txt
-      - ./nvreport/security-report.csv
-      - ./nvreport/scan-repository.json
+# neuvector:
+#   stage: pre-deploy
+#   only: [ master ]
+#   image: nexus.int.clxnetworks.net:8089/pipeline/neuvector:latest
+#   variables:
+#     nexus_user: $NEXUS_USER
+#     nexus_password: $NEXUS_PASSWORD
+#     scan_target: $CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
+#   script:
+#     - scan
+#   artifacts:
+#     when: always
+#     paths:
+#       - ./nvreport/scan-summary.txt
+#       - ./nvreport/security-report.csv
+#       - ./nvreport/scan-repository.json
 
 # Build and publish project documentation.
 pages:
