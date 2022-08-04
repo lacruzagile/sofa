@@ -3,17 +3,15 @@ module Sofa.Data.Route (Route(..), routes, href) where
 import Prelude
 import Control.Alternative ((<|>))
 import Data.Generic.Rep (class Generic)
-import Data.String (Pattern(..), Replacement(..), replaceAll) as S
 import Data.Show.Generic (genericShow)
 import Halogen.HTML.Properties as HP
 import Routing.Match (Match, end, lit, root, str)
-import Sofa.Data.SmartSpec (OrderId(..), CrmAccountId(..))
+import Sofa.Data.SmartSpec (OrderId(..))
 
 data Route
   = Home
   | OrderForm
   | Orders
-  | OrdersCrmAccountId CrmAccountId
   | Order OrderId
   | ProductCatalog
 
@@ -29,7 +27,6 @@ routes =
   root
     *> ( home
           <|> orderForm
-          <|> ordersCrmAccountId
           <|> orders
           <|> order
           <|> productCatalog
@@ -40,8 +37,6 @@ routes =
   orderForm = OrderForm <$ lit "order-form" <* end
 
   orders = Orders <$ lit "orders" <* end
-  
-  ordersCrmAccountId = (OrdersCrmAccountId <<< CrmAccountId) <$> (lit "crm-account-orders" *> str <* end)
 
   order = (Order <<< OrderId) <$> (lit "orders" *> str <* end)
 
@@ -51,7 +46,6 @@ rawHref :: Route -> String
 rawHref = case _ of
   Home -> "/"
   OrderForm -> "/order-form"
-  OrdersCrmAccountId id -> "/crm-account-orders/" <> S.replaceAll (S.Pattern "\"") (S.Replacement "") (show id)
   Orders -> "/orders"
   Order id -> "/orders/" <> show id
   ProductCatalog -> "/product-catalog"
