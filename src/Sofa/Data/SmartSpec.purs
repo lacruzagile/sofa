@@ -2546,6 +2546,7 @@ prettyOrderApprovalStatus = case _ of
 data OrderLineStatus
   = OlsNew
   | OlsAccepted
+  | OlsStatusUnspecified
   | OlsSucceeded
   | OlsFailed
   | OlsCancelled
@@ -2555,6 +2556,7 @@ instance decodeJsonOrderLineStatus :: DecodeJson OrderLineStatus where
     string <- decodeJson json
     case string of
       "NEW" -> Right OlsNew
+      "STATUS_UNSPECIFIED" -> Right OlsStatusUnspecified
       "ACCEPTED" -> Right OlsAccepted
       "SUCCEEDED" -> Right OlsSucceeded
       "FAILED" -> Right OlsFailed
@@ -2566,6 +2568,7 @@ instance encodeOrderLineStatus :: EncodeJson OrderLineStatus where
     encodeJson
       <<< case _ of
           OlsNew -> "NEW"
+          OlsStatusUnspecified -> "STATUS_UNSPECIFIED"
           OlsAccepted -> "ACCEPTED"
           OlsSucceeded -> "SUCCEEDED"
           OlsFailed -> "FAILED"
@@ -2576,6 +2579,7 @@ prettyOrderLineStatus :: OrderLineStatus -> String
 prettyOrderLineStatus = case _ of
   OlsNew -> "New"
   OlsAccepted -> "Accepted"
+  OlsStatusUnspecified -> "Unspecified"
   OlsSucceeded -> "Succeeded"
   OlsFailed -> "Failed"
   OlsCancelled -> "Cancelled"
