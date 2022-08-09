@@ -334,6 +334,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       color = case status of
         SS.OlsNew -> "bg-informative-200"
         SS.OlsAccepted -> "bg-informative-200"
+        SS.OlsStatusUnspecified -> "bg-informative-200"
         SS.OlsSucceeded -> "bg-success-200"
         SS.OlsFailed -> "bg-error-200"
         SS.OlsCancelled -> "bg-informative-200"
