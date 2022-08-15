@@ -269,7 +269,7 @@ handleAction = case _ of
       H.modify \st ->
         st
           { nextPageToken = Loading
-          , showNewOrderButton = not fixedBuyer
+          , showNewOrderButton = true
           }
     let
       token
