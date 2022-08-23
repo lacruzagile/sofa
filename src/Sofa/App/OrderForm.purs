@@ -1901,21 +1901,72 @@ modifyOrderLineConfig configId alter orderLine =
         NA.modifyAt idx alter orderLine.configs
     }
 
-loadWithCrmAccount::
-  forall slots output m.
+loadWithCrmAccount ::
+  forall slots output f m.
   MonadAff m =>
-  MonadDeployment m =>
-  SS.OrderForm ->
-  SS.CrmAccountId
-loadWithCrmAccount original@(OrderForm orderForm) crmAccountId = do
+  CredentialStore f m =>
+  -- SS.OrderForm ->
+  SS.CrmAccountId ->
+  H.HalogenM State Action slots output m Unit
+loadWithCrmAccount crmAccountId = do
+  H.liftEffect $ Console.log (show crmAccountId)
   H.put $ Initialized Loading
-  let updateOFCrmAccount x = x{ crmAccountId = crmAccountId }
-  updateOFCrmAccount orderForm
-{-   let updateFixedBuyerForm x = x{ fixedBuyer = true }
-  updateFixedBuyerForm orderForm -}
-{-   orderForm.fixedBuyer <- true
-  orderForm.buyer <- Just orderForm.buyer -}
-  pure unit
+  productCatalog <- H.liftAff Requests.getProductCatalog
+  buyerRes <- H.lift $ Requests.getBuyer crmAccountId
+  -- pure unit
+
+  -- buyerFinal <- do 
+  --   case buyerRes of
+  --     SS.Buyer { crmAccountId: Just crmAccountId } -> do
+  --       -- Fetch the buyer contacts.
+  --       contacts <- H.lift $ Requests.getBuyerContacts crmAccountId
+  --       case contacts of
+  --         Error err -> Console.error $ "When fetching contacts: " <> err
+  --         _ -> pure unit
+  --       H.modify_ _ { buyerAvailableContacts = contacts }
+  --     _ -> pure unit
+
+  let
+    res =
+      ( \(pc :: SS.ProductCatalog) ->
+          { productCatalog: pc
+          , currency: Nothing
+          , priceBooks: Map.empty
+          , orderForm:
+              { original: Nothing
+              , changed: false
+              , displayName: Nothing
+              , crmQuoteId: Nothing
+              , billingAccountId: Nothing
+              , commercial: Nothing
+              , buyer:  Nothing
+              , fixedBuyer: false
+              , buyerAvailableContacts: Nothing
+              , legalEntityRegisteredName: Nothing
+              , seller: Nothing
+              , status: SS.OsInDraft
+              , observers: []
+              , notes: []
+              , orderTotal: mempty
+              , sections: []
+              }
+          , orderUpdateInFlight: false
+          , orderFulfillStatus: FulfillStatusIdle
+          , assetModalOpen: Nothing
+          }
+      )
+        <$> productCatalog
+  H.put $ Initialized res
+  
+  
+
+
+
+
+
+
+
+
 
 loadExisting ::
   forall slots output m.
@@ -2286,9 +2337,9 @@ handleAction = case _ of
         Loading -> H.put $ Initialized Loading
     case st of
       Initializing (NewOrderCrmAccountId crmAccountId) -> do
-        H.liftEffect $ Console.log (show crmAccountId)
+        H.liftEffect $ Console.log ("hola" <> (show crmAccountId))
         -- pure unit
-        loadWithCrmAccount st.orderForm crmAccountId
+        loadWithCrmAccount crmAccountId
       Initializing NewOrder -> do
         -- Check if there is an order in session storage. If there is one then
         -- load that order, otherwise simply load the product catalog and start
