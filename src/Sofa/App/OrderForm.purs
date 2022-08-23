@@ -115,6 +115,7 @@ data Input
   | ExistingOrder SS.OrderForm
   | ExistingOrderId SS.OrderId
   | ExistingCrmQuoteId SS.CrmQuoteId
+  | NewOrderCrmAccountId SS.CrmAccountId
   | SalesforceNewOrder
     { buyer :: SS.Buyer
     , contacts :: Array SS.Contact
@@ -1900,6 +1901,22 @@ modifyOrderLineConfig configId alter orderLine =
         NA.modifyAt idx alter orderLine.configs
     }
 
+loadWithCrmAccount::
+  forall slots output m.
+  MonadAff m =>
+  MonadDeployment m =>
+  SS.OrderForm ->
+  SS.CrmAccountId
+loadWithCrmAccount original@(OrderForm orderForm) crmAccountId = do
+  H.put $ Initialized Loading
+  let updateOFCrmAccount x = x{ crmAccountId = crmAccountId }
+  updateOFCrmAccount orderForm
+{-   let updateFixedBuyerForm x = x{ fixedBuyer = true }
+  updateFixedBuyerForm orderForm -}
+{-   orderForm.fixedBuyer <- true
+  orderForm.buyer <- Just orderForm.buyer -}
+  pure unit
+
 loadExisting ::
   forall slots output m.
   MonadAff m =>
@@ -2268,6 +2285,10 @@ handleAction = case _ of
         Loaded order -> loadExisting order false
         Loading -> H.put $ Initialized Loading
     case st of
+      Initializing (NewOrderCrmAccountId crmAccountId) -> do
+        H.liftEffect $ Console.log (show crmAccountId)
+        -- pure unit
+        loadWithCrmAccount st.orderForm crmAccountId
       Initializing NewOrder -> do
         -- Check if there is an order in session storage. If there is one then
         -- load that order, otherwise simply load the product catalog and start
