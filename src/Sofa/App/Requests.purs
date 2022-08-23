@@ -20,6 +20,7 @@ module Sofa.App.Requests
   , getFileMetadata
   , getLegalEntities
   , getLegalEntity
+  , getLegalEntityByShortName
   , getOrder
   , getOrderForQuote
   , getOrders
@@ -208,6 +209,18 @@ getLegalEntity registeredName = do
     legalEntities <- lLegalEntities
     case A.find isMatch legalEntities of
       Nothing -> Error $ "Legal entity not found: " <> registeredName
+      Just legalEntity -> Loaded legalEntity
+
+-- | Fetch the legal entity with the given registered name.
+getLegalEntityByShortName :: forall m. MonadAff m => String -> m (Loadable LegalEntity)
+getLegalEntityByShortName novaShortName = do
+  lLegalEntities <- getLegalEntities
+  let
+    isMatch (LegalEntity le) = le.novaShortName == novaShortName
+  pure do
+    legalEntities <- lLegalEntities
+    case A.find isMatch legalEntities of
+      Nothing -> Error $ "Legal entity not found: " <> novaShortName
       Just legalEntity -> Loaded legalEntity
 
 getOrders ::

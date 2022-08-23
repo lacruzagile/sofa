@@ -39,6 +39,11 @@ data Input
     { registeredName :: String
     , readOnly :: Boolean
     }
+  | InputLegalEntity
+    {
+      novaShortName :: String
+    , readOnly :: Boolean
+    }
   | InputNothing
 
 type Output
@@ -52,6 +57,7 @@ type State
     , acceptedSeller :: Maybe SS.Seller -- ^ The latest accepted seller.
     , readOnly :: Boolean
     , open :: Boolean -- ^ Whether the details modal is open.
+    , novaShortName :: Maybe String
     }
 
 data Action
@@ -96,6 +102,7 @@ initialState input = case input of
     , acceptedSeller: Just seller
     , readOnly
     , open: false
+    , novaShortName: Nothing
     }
   InputRegisteredName { registeredName, readOnly } ->
     { registeredName: Just registeredName
@@ -105,6 +112,17 @@ initialState input = case input of
     , acceptedSeller: Nothing
     , readOnly
     , open: false
+    , novaShortName: Nothing
+    }
+  InputLegalEntity { novaShortName, readOnly } ->
+    { registeredName: Nothing
+    , legalEntity: Nothing
+    , seller: Nothing
+    , acceptedLegalEntity: Nothing
+    , acceptedSeller: Nothing
+    , readOnly
+    , open: false
+    , novaShortName: Just novaShortName
     }
   InputNothing ->
     { registeredName: Nothing
@@ -114,6 +132,7 @@ initialState input = case input of
     , acceptedSeller: Nothing
     , readOnly: false
     , open: false
+    , novaShortName: Nothing
     }
 
 okBtnLabel :: H.RefLabel
@@ -294,6 +313,23 @@ handleAction = case _ of
       Nothing -> pure unit
       Just regName -> do
         result <- H.lift $ Requests.getLegalEntity regName
+        let
+          legalEntity = Loadable.toMaybe result
+
+          seller = toSeller <$> legalEntity
+        H.modify_
+          _
+            { legalEntity = legalEntity
+            , acceptedLegalEntity = legalEntity
+            , seller = seller
+            , acceptedSeller = seller
+            }
+        maybe' pure H.raise seller
+    { novaShortName } <- H.get
+    case novaShortName of
+      Nothing -> pure unit
+      Just name -> do
+        result <- H.lift $ Requests.getLegalEntityByShortName name
         let
           legalEntity = Loadable.toMaybe result
 

@@ -1250,10 +1250,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
       [ HH.h3 [ Css.class_ "mb-6" ] [ HH.text "Order details" ]
       , HH.div [ Css.class_ "flex" ]
-          [ title "Legal entity"
-          , renderSeller
-          ]
-      , HH.div [ Css.class_ "flex" ]
           [ title "Customer"
           , renderBuyer
           ]
@@ -1261,25 +1257,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ title "Commercial"
           , renderCommercial
           ]
+      , HH.div [ Css.class_ "flex" ]
+          [ title "Legal entity"
+          , renderSeller
+          ]
       ]
     where
     title t = HH.h4 [ Css.classes [ "w-40" ] ] [ HH.text t ]
-
-    renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
-      where
-      input = case orderForm.seller of
-        Just seller ->
-          Seller.InputSeller
-            { seller
-            , readOnly: not isInDraft
-            }
-        Nothing -> case orderForm.legalEntityRegisteredName of
-          Just registeredName ->
-            Seller.InputRegisteredName
-              { registeredName
-              , readOnly: not isInDraft || orderForm.fixedBuyer
-              }
-          Nothing -> Seller.InputNothing
 
     renderBuyer = HH.slot Buyer.proxy unit Buyer.component input SetBuyer
       where
@@ -1321,6 +1305,98 @@ render state = HH.section_ [ HH.article_ renderContent ]
             (inputCommercial <|> inputBillingAccountId)
       in
         HH.slot Commercial.proxy unit Commercial.component input SetCommercial
+
+    renderSeller = 
+      let
+        -- inputLegalEntity = 
+        --  Seller.InputLegalEntity 
+        --           { novaShortName: "CLX_AB"
+        --           , readOnly: true
+        --           }
+
+        inputSeller = do 
+          -- H.liftEffect $ Console.log (show  orderForm.seller)
+          case orderForm.seller of
+            Just seller ->
+              Seller.InputSeller
+                { seller
+                , readOnly: not isInDraft
+                }
+            Nothing -> case orderForm.legalEntityRegisteredName of
+              Just registeredName ->
+                Seller.InputRegisteredName
+                  { registeredName
+                  , readOnly: not isInDraft || orderForm.fixedBuyer
+                  }
+              Nothing -> Seller.InputNothing
+        
+        input = inputSeller
+          -- Seller.InputLegalEntity 
+          --         { novaShortName: "CLX_COMM_LTD"
+          --         , readOnly: true
+          --         }
+          -- fromMaybe Seller.InputNothing
+          --   (inputLegalEntity <|> inputSeller)
+      in
+        HH.slot Seller.proxy unit Seller.component input SetSeller
+      
+
+    -- renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
+    --   where
+    --   input = case orderForm.seller of
+    --     Just seller ->
+    --       Seller.InputSeller
+    --         { seller
+    --         , readOnly: not isInDraft
+    --         }
+    --     Nothing -> case orderForm.legalEntityRegisteredName of
+    --       Just registeredName ->
+    --         Seller.InputRegisteredName
+    --           { registeredName
+    --           , readOnly: not isInDraft || orderForm.fixedBuyer
+    --           }
+    --       Nothing -> Seller.InputNothing
+
+    -- renderBuyer = HH.slot Buyer.proxy unit Buyer.component input SetBuyer
+    --   where
+    --   mkInput b =
+    --     { buyer: b
+    --     , buyerAvailableContacts: orderForm.buyerAvailableContacts
+    --     , readOnly: not isInDraft
+    --     , fixedBuyer: orderForm.fixedBuyer
+    --     }
+
+    --   input = mkInput <$> orderForm.buyer
+
+    -- renderCommercial =
+    --   let
+    --     inputCommercial = do
+    --       commercial <- orderForm.commercial
+    --       SS.Buyer buyer <- orderForm.buyer
+    --       crmAccountId <- buyer.crmAccountId
+    --       pure
+    --         $ Commercial.InputCommercial
+    --             { commercial
+    --             , crmAccountId
+    --             , readOnly: not isInDraft
+    --             }
+
+    --     inputBillingAccountId = do
+    --       billingAccountId <- orderForm.billingAccountId
+    --       SS.Buyer buyer <- orderForm.buyer
+    --       crmAccountId <- buyer.crmAccountId
+    --       pure
+    --         $ Commercial.InputIds
+    --             { billingAccountId
+    --             , crmAccountId
+    --             , readOnly: not isInDraft || orderForm.fixedBuyer
+    --             }
+
+    --     input =
+    --       fromMaybe Commercial.InputNothing
+    --         (inputCommercial <|> inputBillingAccountId)
+    --   in
+    --     HH.slot Commercial.proxy unit Commercial.component input SetCommercial
 
   renderOrderFooter sof =
     HH.div
