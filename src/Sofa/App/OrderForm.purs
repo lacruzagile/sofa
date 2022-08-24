@@ -67,6 +67,7 @@ import Sofa.Data.Currency (mkCurrency, unsafeMkCurrency)
 import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
+import Sofa.Data.Loadable as Loadable
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Sofa.Data.Route as Route
 import Sofa.Data.Schema (mkDefaultConfig)
@@ -115,6 +116,7 @@ data Input
   | ExistingOrder SS.OrderForm
   | ExistingOrderId SS.OrderId
   | ExistingCrmQuoteId SS.CrmQuoteId
+  | NewOrderCrmAccountId SS.CrmAccountId
   | SalesforceNewOrder
     { buyer :: SS.Buyer
     , contacts :: Array SS.Contact
@@ -1900,6 +1902,51 @@ modifyOrderLineConfig configId alter orderLine =
         NA.modifyAt idx alter orderLine.configs
     }
 
+loadWithCrmAccount ::
+  forall slots output f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  -- SS.OrderForm ->
+  SS.CrmAccountId ->
+  H.HalogenM State Action slots output m Unit
+loadWithCrmAccount crmAccountId = do
+  H.liftEffect $ Console.log (show crmAccountId)
+  H.put $ Initialized Loading
+  productCatalog <- H.liftAff Requests.getProductCatalog
+  buyerLoadable <- H.lift $ Requests.getBuyer crmAccountId
+
+  let
+    res =
+      ( \(pc :: SS.ProductCatalog) ->
+          { productCatalog: pc
+          , currency: Nothing
+          , priceBooks: Map.empty
+          , orderForm:
+              { original: Nothing
+              , changed: false
+              , displayName: Nothing
+              , crmQuoteId: Nothing
+              , billingAccountId: Nothing
+              , commercial: Nothing
+              , buyer: Loadable.toMaybe buyerLoadable
+              , fixedBuyer: false
+              , buyerAvailableContacts: Nothing
+              , legalEntityRegisteredName: Nothing
+              , seller: Nothing
+              , status: SS.OsInDraft
+              , observers: []
+              , notes: []
+              , orderTotal: mempty
+              , sections: []
+              }
+          , orderUpdateInFlight: false
+          , orderFulfillStatus: FulfillStatusIdle
+          , assetModalOpen: Nothing
+          }
+      )
+        <$> productCatalog
+  H.put $ Initialized res
+
 loadExisting ::
   forall slots output m.
   MonadAff m =>
@@ -2268,6 +2315,10 @@ handleAction = case _ of
         Loaded order -> loadExisting order false
         Loading -> H.put $ Initialized Loading
     case st of
+      Initializing (NewOrderCrmAccountId crmAccountId) -> do
+        H.liftEffect $ Console.log ("hola" <> (show crmAccountId))
+        -- pure unit
+        loadWithCrmAccount crmAccountId
       Initializing NewOrder -> do
         -- Check if there is an order in session storage. If there is one then
         -- load that order, otherwise simply load the product catalog and start

@@ -55,6 +55,7 @@ type Slots
   = ( home :: Home.Slot Unit
     , productCatalog :: ProductCatalog.Slot Unit
     , orderForm :: OrderForm.Slot Unit
+    , orderFormCrmAccountId :: OrderForm.Slot Unit
     , ordersCrmAccountId :: Orders.Slot Unit
     , orders :: Orders.Slot Unit
     , navbarItemUser :: NavbarItemUser.Slot Unit
@@ -273,6 +274,7 @@ renderBody state =
     [ case state.route of
         Route.Home -> slotHome
         Route.OrderForm -> slotOrderForm
+        (Route.OrderFormCrmAccountId crmAccountId) -> slotOrderFormCrmAccountId crmAccountId
         Route.Orders -> slotOrders
         (Route.OrdersCrmAccountId crmAccountId) -> slotOrdersCrmAccountId {crmAccountId}
         (Route.Order id) -> slotOrder id
@@ -299,6 +301,10 @@ renderBody state =
   slotOrdersCrmAccountId crmAccountId = HH.slot_ Orders.proxy unit Orders.component input
     where
     input = Orders.ListCustomerOrders crmAccountId
+
+  slotOrderFormCrmAccountId crmAccountId = HH.slot_ OrderForm.proxy unit OrderForm.component input
+    where
+    input = OrderForm.NewOrderCrmAccountId crmAccountId
 
   slotOrder id = HH.slot_ OrderForm.proxy unit OrderForm.component input
     where

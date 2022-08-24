@@ -14,6 +14,7 @@ data Route
   | OrderForm
   | Orders
   | OrdersCrmAccountId CrmAccountId
+  | OrderFormCrmAccountId CrmAccountId
   | Order OrderId
   | ProductCatalog
 
@@ -29,6 +30,7 @@ routes =
   root
     *> ( home
           <|> orderForm
+          <|> orderFormCrmAccountId
           <|> ordersCrmAccountId
           <|> orders
           <|> order
@@ -38,6 +40,8 @@ routes =
   home = Home <$ end
 
   orderForm = OrderForm <$ lit "order-form" <* end
+
+  orderFormCrmAccountId = (OrderFormCrmAccountId <<< CrmAccountId) <$> (lit "crm-account-order-form" *> str <* end)
 
   orders = Orders <$ lit "orders" <* end
   
@@ -52,6 +56,7 @@ rawHref = case _ of
   Home -> "/"
   OrderForm -> "/order-form"
   OrdersCrmAccountId id -> "/crm-account-orders/" <> S.replaceAll (S.Pattern "\"") (S.Replacement "") (show id)
+  OrderFormCrmAccountId id -> "/crm-account-order-form/" <> S.replaceAll (S.Pattern "\"") (S.Replacement "") (show id)
   Orders -> "/orders"
   Order id -> "/orders/" <> show id
   ProductCatalog -> "/product-catalog"
