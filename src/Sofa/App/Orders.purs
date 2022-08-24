@@ -236,13 +236,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ Route.href (Route.OrderFormCrmAccountId crmAccountId.crmAccountId)
         , Css.class_ "nectary-btn-primary"
         ]
-        [ HH.text "New order crm" ]
+        [ HH.text "New order " ]
     _ ->
       HH.a
         [ Route.href Route.OrderForm 
         , Css.class_ "nectary-btn-primary"
         ]
-        [ HH.text "New order simplon" ]
+        [ HH.text "New order" ]
 
   renderContent =
     [ HH.div
