@@ -1914,7 +1914,7 @@ loadWithCrmAccount crmAccountId = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
   buyerLoadable <- H.lift $ Requests.getBuyer crmAccountId
-
+  contacts <- H.lift $ Requests.getBuyerContacts crmAccountId
   let
     res =
       ( \(pc :: SS.ProductCatalog) ->
@@ -1930,7 +1930,7 @@ loadWithCrmAccount crmAccountId = do
               , commercial: Nothing
               , buyer: Loadable.toMaybe buyerLoadable
               , fixedBuyer: false
-              , buyerAvailableContacts: Nothing
+              , buyerAvailableContacts: Loadable.toMaybe contacts
               , legalEntityRegisteredName: Nothing
               , seller: Nothing
               , status: SS.OsInDraft
@@ -2316,7 +2316,6 @@ handleAction = case _ of
         Loading -> H.put $ Initialized Loading
     case st of
       Initializing (NewOrderCrmAccountId crmAccountId) -> do
-        H.liftEffect $ Console.log ("hola" <> (show crmAccountId))
         -- pure unit
         loadWithCrmAccount crmAccountId
       Initializing NewOrder -> do
