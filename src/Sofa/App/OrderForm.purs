@@ -67,6 +67,7 @@ import Sofa.Data.Currency (mkCurrency, unsafeMkCurrency)
 import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.IEId (IEId(..), genInternalId, genInternalId', toExternalId, toRawId)
 import Sofa.Data.Loadable (Loadable(..))
+import Sofa.Data.Loadable as Loadable
 import Sofa.Data.Quantity (QuantityMap, Quantity, fromSmartSpecQuantity, toSmartSpecQuantity)
 import Sofa.Data.Route as Route
 import Sofa.Data.Schema (mkDefaultConfig)
@@ -1912,19 +1913,7 @@ loadWithCrmAccount crmAccountId = do
   H.liftEffect $ Console.log (show crmAccountId)
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
-  buyerRes <- H.lift $ Requests.getBuyer crmAccountId
-  -- pure unit
-
-  -- buyerFinal <- do 
-  --   case buyerRes of
-  --     SS.Buyer { crmAccountId: Just crmAccountId } -> do
-  --       -- Fetch the buyer contacts.
-  --       contacts <- H.lift $ Requests.getBuyerContacts crmAccountId
-  --       case contacts of
-  --         Error err -> Console.error $ "When fetching contacts: " <> err
-  --         _ -> pure unit
-  --       H.modify_ _ { buyerAvailableContacts = contacts }
-  --     _ -> pure unit
+  buyerLoadable <- H.lift $ Requests.getBuyer crmAccountId
 
   let
     res =
@@ -1939,7 +1928,7 @@ loadWithCrmAccount crmAccountId = do
               , crmQuoteId: Nothing
               , billingAccountId: Nothing
               , commercial: Nothing
-              , buyer:  Nothing
+              , buyer: Loadable.toMaybe buyerLoadable
               , fixedBuyer: false
               , buyerAvailableContacts: Nothing
               , legalEntityRegisteredName: Nothing
@@ -1957,16 +1946,6 @@ loadWithCrmAccount crmAccountId = do
       )
         <$> productCatalog
   H.put $ Initialized res
-  
-  
-
-
-
-
-
-
-
-
 
 loadExisting ::
   forall slots output m.
