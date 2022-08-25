@@ -1982,11 +1982,9 @@ loadWithCrmAccount ::
   forall slots output f m.
   MonadAff m =>
   CredentialStore f m =>
-  -- SS.OrderForm ->
   SS.CrmAccountId ->
   H.HalogenM State Action slots output m Unit
 loadWithCrmAccount crmAccountId = do
-  H.liftEffect $ Console.log (show crmAccountId)
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
   buyerLoadable <- H.lift $ Requests.getBuyer crmAccountId
