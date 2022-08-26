@@ -1928,6 +1928,7 @@ newtype BillingAccount
   , displayName :: String
   , shortId :: String
   , commercial :: Commercial
+  , legalEntity :: String
   }
 
 instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
@@ -1936,12 +1937,14 @@ instance decodeJsonBillingAccount :: DecodeJson BillingAccount where
     billingAccountId <- o .: "billingAccountId"
     displayName <- o .: "displayName"
     shortId <- o .: "shortId"
+    legalEntity <- o .: "legalEntity"
     Commercial commercial <- o .:? "commercial" .!= defaultCommercial
     pure
       $ BillingAccount
           { billingAccountId
           , displayName
           , shortId
+          , legalEntity
           , commercial:
               Commercial
                 $ commercial

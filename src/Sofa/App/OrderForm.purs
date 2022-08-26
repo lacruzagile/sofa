@@ -1252,10 +1252,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
       [ HH.h3 [ Css.class_ "mb-6" ] [ HH.text "Order details" ]
       , HH.div [ Css.class_ "flex" ]
-          [ title "Legal entity"
-          , renderSeller
-          ]
-      , HH.div [ Css.class_ "flex" ]
           [ title "Customer"
           , renderBuyer
           ]
@@ -1263,25 +1259,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ title "Commercial"
           , renderCommercial
           ]
+      , HH.div [ Css.class_ "flex" ]
+          [ title "Legal entity"
+          , renderSeller
+          ]
       ]
     where
     title t = HH.h4 [ Css.classes [ "w-40" ] ] [ HH.text t ]
-
-    renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
-      where
-      input = case orderForm.seller of
-        Just seller ->
-          Seller.InputSeller
-            { seller
-            , readOnly: not isInDraft
-            }
-        Nothing -> case orderForm.legalEntityRegisteredName of
-          Just registeredName ->
-            Seller.InputRegisteredName
-              { registeredName
-              , readOnly: not isInDraft || orderForm.fixedBuyer
-              }
-          Nothing -> Seller.InputNothing
 
     renderBuyer = HH.slot Buyer.proxy unit Buyer.component input SetBuyer
       where
@@ -1323,6 +1307,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
             (inputCommercial <|> inputBillingAccountId)
       in
         HH.slot Commercial.proxy unit Commercial.component input SetCommercial
+
+    renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
+      where
+      input = case orderForm.seller of
+        Just seller ->
+          Seller.InputSeller
+            { seller
+            , readOnly: not isInDraft
+            }
+        Nothing -> case orderForm.legalEntityRegisteredName of
+          Just registeredName ->
+            Seller.InputRegisteredName
+              { registeredName
+              , readOnly: not isInDraft || orderForm.fixedBuyer
+              }
+          Nothing -> Seller.InputNothing
 
   renderOrderFooter sof =
     HH.div
@@ -1906,15 +1906,13 @@ loadWithCrmAccount ::
   forall slots output f m.
   MonadAff m =>
   CredentialStore f m =>
-  -- SS.OrderForm ->
   SS.CrmAccountId ->
-  H.HalogenM State Action slots output m Unit
-loadWithCrmAccount crmAccountId = do
-  H.liftEffect $ Console.log (show crmAccountId)
+  H.HalogenM State Action Slots output m Unit
+loadWithCrmAccount id = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
-  buyerLoadable <- H.lift $ Requests.getBuyer crmAccountId
-
+  buyerLoadable <- H.lift $ Requests.getBuyer id
+  contacts <- H.lift $ Requests.getBuyerContacts id
   let
     res =
       ( \(pc :: SS.ProductCatalog) ->
@@ -1930,7 +1928,7 @@ loadWithCrmAccount crmAccountId = do
               , commercial: Nothing
               , buyer: Loadable.toMaybe buyerLoadable
               , fixedBuyer: false
-              , buyerAvailableContacts: Nothing
+              , buyerAvailableContacts: Loadable.toMaybe contacts
               , legalEntityRegisteredName: Nothing
               , seller: Nothing
               , status: SS.OsInDraft
@@ -1945,7 +1943,24 @@ loadWithCrmAccount crmAccountId = do
           }
       )
         <$> productCatalog
+    buyerFull = Loadable.toMaybe buyerLoadable
+    crmAccountId = case buyerFull of
+      Nothing -> Nothing
+      Just (SS.Buyer buyerFull) -> buyerFull.crmAccountId
+    
+    
+  modifyInitialized
+      $ \st ->
+          st
+            { orderForm =
+              st.orderForm
+                { changed = true
+                , buyer = buyerFull
+                }
+            }
   H.put $ Initialized res
+  H.tell Commercial.proxy unit
+        (Commercial.ResetCommercialFixed { commercial: Nothing, crmAccountId, enabled: true, open: false })
 
 loadExisting ::
   forall slots output m.
@@ -2316,7 +2331,6 @@ handleAction = case _ of
         Loading -> H.put $ Initialized Loading
     case st of
       Initializing (NewOrderCrmAccountId crmAccountId) -> do
-        H.liftEffect $ Console.log ("hola" <> (show crmAccountId))
         -- pure unit
         loadWithCrmAccount crmAccountId
       Initializing NewOrder -> do
@@ -2397,7 +2411,11 @@ handleAction = case _ of
       _ ->
         H.tell Commercial.proxy unit
           (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
-  SetCommercial (SS.BillingAccount { displayName, shortId, commercial }) ->
+  SetCommercial (SS.BillingAccount { displayName, shortId, commercial, legalEntity }) -> do
+    result <- H.lift $ Requests.getLegalEntityByShortName legalEntity
+    let
+      legalEntityResult = Loadable.toMaybe result
+      sellerFull = toSeller <$> legalEntityResult
     modifyInitialized
       $ \st ->
           let
@@ -2440,6 +2458,7 @@ handleAction = case _ of
                       st.orderForm.sections
                     else
                       map resetSection st.orderForm.sections
+                  , seller = sellerFull
                   }
               }
   SetObservers observers ->
@@ -2832,3 +2851,12 @@ handleAction = case _ of
   Back event -> do
     H.liftEffect $ back
  
+toSeller :: SS.LegalEntity -> SS.Seller
+toSeller (SS.LegalEntity le) =
+  SS.Seller
+    { sellerId: Nothing
+    , registeredName: le.registeredName
+    , novaShortName: le.novaShortName
+    , address: le.address
+    , contacts: le.contacts
+    }
