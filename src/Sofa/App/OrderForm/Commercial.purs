@@ -239,6 +239,16 @@ renderDetails st =
               ]
               [ HH.text err ]
           _ -> HH.text ""
+      , HH.p
+              [ Css.classes
+                  [ "p-3"
+                  , "bg-black-100"
+                  , "border"
+                  , "border-black-400"
+                  , "text-raspberry-500"
+                  ]
+              ]
+              [ HH.text "Please select a Platform Account to load the Commercial Information for this Order." ]
       , HH.div
           [ Css.classes
               [ "w-full"
