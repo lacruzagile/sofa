@@ -1308,97 +1308,21 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         HH.slot Commercial.proxy unit Commercial.component input SetCommercial
 
-    renderSeller = 
-      let
-        -- inputLegalEntity = 
-        --  Seller.InputLegalEntity 
-        --           { novaShortName: "CLX_AB"
-        --           , readOnly: true
-        --           }
-
-        inputSeller = do 
-          -- H.liftEffect $ Console.log (show  orderForm.seller)
-          case orderForm.seller of
-            Just seller ->
-              Seller.InputSeller
-                { seller
-                , readOnly: not isInDraft
-                }
-            Nothing -> case orderForm.legalEntityRegisteredName of
-              Just registeredName ->
-                Seller.InputRegisteredName
-                  { registeredName
-                  , readOnly: not isInDraft || orderForm.fixedBuyer
-                  }
-              Nothing -> Seller.InputNothing
-        
-        input = inputSeller
-          -- Seller.InputLegalEntity 
-          --         { novaShortName: "CLX_COMM_LTD"
-          --         , readOnly: true
-          --         }
-          -- fromMaybe Seller.InputNothing
-          --   (inputLegalEntity <|> inputSeller)
-      in
-        HH.slot Seller.proxy unit Seller.component input SetSeller
-      
-
-    -- renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
-    --   where
-    --   input = case orderForm.seller of
-    --     Just seller ->
-    --       Seller.InputSeller
-    --         { seller
-    --         , readOnly: not isInDraft
-    --         }
-    --     Nothing -> case orderForm.legalEntityRegisteredName of
-    --       Just registeredName ->
-    --         Seller.InputRegisteredName
-    --           { registeredName
-    --           , readOnly: not isInDraft || orderForm.fixedBuyer
-    --           }
-    --       Nothing -> Seller.InputNothing
-
-    -- renderBuyer = HH.slot Buyer.proxy unit Buyer.component input SetBuyer
-    --   where
-    --   mkInput b =
-    --     { buyer: b
-    --     , buyerAvailableContacts: orderForm.buyerAvailableContacts
-    --     , readOnly: not isInDraft
-    --     , fixedBuyer: orderForm.fixedBuyer
-    --     }
-
-    --   input = mkInput <$> orderForm.buyer
-
-    -- renderCommercial =
-    --   let
-    --     inputCommercial = do
-    --       commercial <- orderForm.commercial
-    --       SS.Buyer buyer <- orderForm.buyer
-    --       crmAccountId <- buyer.crmAccountId
-    --       pure
-    --         $ Commercial.InputCommercial
-    --             { commercial
-    --             , crmAccountId
-    --             , readOnly: not isInDraft
-    --             }
-
-    --     inputBillingAccountId = do
-    --       billingAccountId <- orderForm.billingAccountId
-    --       SS.Buyer buyer <- orderForm.buyer
-    --       crmAccountId <- buyer.crmAccountId
-    --       pure
-    --         $ Commercial.InputIds
-    --             { billingAccountId
-    --             , crmAccountId
-    --             , readOnly: not isInDraft || orderForm.fixedBuyer
-    --             }
-
-    --     input =
-    --       fromMaybe Commercial.InputNothing
-    --         (inputCommercial <|> inputBillingAccountId)
-    --   in
-    --     HH.slot Commercial.proxy unit Commercial.component input SetCommercial
+    renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
+      where
+      input = case orderForm.seller of
+        Just seller ->
+          Seller.InputSeller
+            { seller
+            , readOnly: not isInDraft
+            }
+        Nothing -> case orderForm.legalEntityRegisteredName of
+          Just registeredName ->
+            Seller.InputRegisteredName
+              { registeredName
+              , readOnly: not isInDraft || orderForm.fixedBuyer
+              }
+          Nothing -> Seller.InputNothing
 
   renderOrderFooter sof =
     HH.div
@@ -1983,12 +1907,12 @@ loadWithCrmAccount ::
   MonadAff m =>
   CredentialStore f m =>
   SS.CrmAccountId ->
-  H.HalogenM State Action slots output m Unit
-loadWithCrmAccount crmAccountId = do
+  H.HalogenM State Action Slots output m Unit
+loadWithCrmAccount id = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
-  buyerLoadable <- H.lift $ Requests.getBuyer crmAccountId
-  contacts <- H.lift $ Requests.getBuyerContacts crmAccountId
+  buyerLoadable <- H.lift $ Requests.getBuyer id
+  contacts <- H.lift $ Requests.getBuyerContacts id
   let
     res =
       ( \(pc :: SS.ProductCatalog) ->
@@ -2019,7 +1943,24 @@ loadWithCrmAccount crmAccountId = do
           }
       )
         <$> productCatalog
+    buyerFull = Loadable.toMaybe buyerLoadable
+    crmAccountId = case buyerFull of
+      Nothing -> Nothing
+      Just (SS.Buyer buyerFull) -> buyerFull.crmAccountId
+    
+    
+  modifyInitialized
+      $ \st ->
+          st
+            { orderForm =
+              st.orderForm
+                { changed = true
+                , buyer = buyerFull
+                }
+            }
   H.put $ Initialized res
+  H.tell Commercial.proxy unit
+        (Commercial.ResetCommercialFixed { commercial: Nothing, crmAccountId, enabled: true, open: false })
 
 loadExisting ::
   forall slots output m.
@@ -2470,7 +2411,11 @@ handleAction = case _ of
       _ ->
         H.tell Commercial.proxy unit
           (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
-  SetCommercial (SS.BillingAccount { displayName, shortId, commercial }) ->
+  SetCommercial (SS.BillingAccount { displayName, shortId, commercial, legalEntity }) -> do
+    result <- H.lift $ Requests.getLegalEntityByShortName legalEntity
+    let
+      legalEntityResult = Loadable.toMaybe result
+      sellerFull = toSeller <$> legalEntityResult
     modifyInitialized
       $ \st ->
           let
@@ -2513,6 +2458,7 @@ handleAction = case _ of
                       st.orderForm.sections
                     else
                       map resetSection st.orderForm.sections
+                  , seller = sellerFull
                   }
               }
   SetObservers observers ->
@@ -2905,3 +2851,12 @@ handleAction = case _ of
   Back event -> do
     H.liftEffect $ back
  
+toSeller :: SS.LegalEntity -> SS.Seller
+toSeller (SS.LegalEntity le) =
+  SS.Seller
+    { sellerId: Nothing
+    , registeredName: le.registeredName
+    , novaShortName: le.novaShortName
+    , address: le.address
+    , contacts: le.contacts
+    }
