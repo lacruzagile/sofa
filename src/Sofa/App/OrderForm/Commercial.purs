@@ -5,6 +5,7 @@ import Prelude
 import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -69,6 +70,13 @@ data Query a
     { commercial :: Maybe SS.Commercial
     , crmAccountId :: Maybe SS.CrmAccountId
     , enabled :: Boolean
+    }
+    a
+  | ResetCommercialFixed
+    { commercial :: Maybe SS.Commercial
+    , crmAccountId :: Maybe SS.CrmAccountId
+    , enabled :: Boolean
+    , open :: Boolean
     }
     a
 
@@ -383,6 +391,23 @@ handleQuery = case _ of
             SS.Commercial { billingAccountId } <- commercial
             billingAccountId
         , enabled = enabled
+        }
+    case crmAccountId of
+      Nothing -> pure unit
+      Just id -> H.tell SelectCommercial.proxy unit (SelectCommercial.SetCrmAccountId id)
+    pure $ Just next
+  ResetCommercialFixed { commercial, crmAccountId, enabled, open } next -> do
+    H.modify_ \st ->
+      st
+        { commercial = maybe Idle Loaded commercial
+        , acceptedBillingAccount = Idle
+        , crmAccountId = crmAccountId
+        , billingAccountId =
+          do
+            SS.Commercial { billingAccountId } <- commercial
+            billingAccountId
+        , enabled = enabled
+        , open = open
         }
     case crmAccountId of
       Nothing -> pure unit
