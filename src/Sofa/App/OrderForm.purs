@@ -1261,11 +1261,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       , HH.div [ Css.class_ "flex" ]
           [ title "Legal entity"
-          , renderSeller
+          -- , renderSeller
+          , sellerName
           ]
       ]
     where
     title t = HH.h4 [ Css.classes [ "w-40" ] ] [ HH.text t ]
+
+    sellerName = case orderForm.seller of
+      Nothing -> HH.text ""
+      Just (SS.Seller { registeredName }) -> HH.text registeredName
 
     renderBuyer = HH.slot Buyer.proxy unit Buyer.component input SetBuyer
       where
@@ -1308,21 +1313,22 @@ render state = HH.section_ [ HH.article_ renderContent ]
       in
         HH.slot Commercial.proxy unit Commercial.component input SetCommercial
 
-    renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
-      where
-      input = case orderForm.seller of
-        Just seller ->
-          Seller.InputSeller
-            { seller
-            , readOnly: not isInDraft
-            }
-        Nothing -> case orderForm.legalEntityRegisteredName of
-          Just registeredName ->
-            Seller.InputRegisteredName
-              { registeredName
-              , readOnly: not isInDraft || orderForm.fixedBuyer
-              }
-          Nothing -> Seller.InputNothing
+    -- Temporary commenting render seller
+    -- renderSeller = HH.slot Seller.proxy unit Seller.component input SetSeller
+    --   where
+    --   input = case orderForm.seller of
+    --     Just seller ->
+    --       Seller.InputSeller
+    --         { seller
+    --         , readOnly: not isInDraft
+    --         }
+    --     Nothing -> case orderForm.legalEntityRegisteredName of
+    --       Just registeredName ->
+    --         Seller.InputRegisteredName
+    --           { registeredName
+    --           , readOnly: not isInDraft || orderForm.fixedBuyer
+    --           }
+    --       Nothing -> Seller.InputNothing
 
   renderOrderFooter sof =
     HH.div
@@ -1960,7 +1966,8 @@ loadWithCrmAccount id = do
             }
   H.put $ Initialized res
   H.tell Commercial.proxy unit
-        (Commercial.ResetCommercialFixed { commercial: Nothing, crmAccountId, enabled: true, open: false })
+        (Commercial.ResetCommercialFixed { commercial: Nothing, crmAccountId, enabled: true, open: true })
+
 
 loadExisting ::
   forall slots output m.
