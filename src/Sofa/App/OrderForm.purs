@@ -1559,7 +1559,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderBackToOrdersButton state = 
         HH.button
           [ Css.classes
-              [ "nectary-btn-primary"
+              [ "nectary-btn-secondary"
               ]
           , HE.onClick Back
           ]

@@ -222,7 +222,14 @@ renderDetails st =
   where
   renderContent billingAccountLoadable =
     HH.div [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
-      [ case st.crmAccountId of
+      [ 
+      HH.p [
+        Css.classes
+          [ "p-3"
+          ]
+      ]
+      [ HH.text "Please select a Platform Account to load the Commercial Information for this Order." ]
+      , case st.crmAccountId of
           Just crmAccountId
             | not st.readOnly ->
               HH.slot
