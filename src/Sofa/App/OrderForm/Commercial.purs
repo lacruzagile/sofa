@@ -408,5 +408,5 @@ handleQuery = case _ of
         }
     case crmAccountId of
       Nothing -> pure unit
-      Just id -> H.tell SelectCommercial.proxy unit (SelectCommercial.SetCrmAccountId id)
+      Just id -> H.tell SelectCommercial.proxy unit (SelectCommercial.SetCrmAccountIdAndBillingAccounts id)
     pure $ Just next

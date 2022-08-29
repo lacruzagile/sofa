@@ -41,6 +41,7 @@ type Output
 
 data Query a
   = SetCrmAccountId SS.CrmAccountId a
+  | SetCrmAccountIdAndBillingAccounts SS.CrmAccountId a
 
 type State
   = ( crmAccountId :: SS.CrmAccountId
@@ -73,6 +74,9 @@ component =
               case _ of
                 SetCrmAccountId crmAccountId next -> do
                   H.tell selectLabel unit (Sel.Query <<< SetCrmAccountId crmAccountId)
+                  pure $ Just next
+                SetCrmAccountIdAndBillingAccounts crmAccountId next -> do
+                  H.tell selectLabel unit (Sel.Query <<< SetCrmAccountIdAndBillingAccounts crmAccountId)
                   pure $ Just next
             }
     }
@@ -127,6 +131,17 @@ component =
           , selectedFull = Idle
           , available = Idle
           , filtered = Idle
+          }
+      pure (Just next)
+    SetCrmAccountIdAndBillingAccounts crmAccountId next -> do
+      result <- H.lift $ getBillingAccounts crmAccountId
+      H.modify_
+        _
+          { crmAccountId = crmAccountId
+          , selected = Nothing
+          , selectedFull = Idle
+          , available = result
+          , filtered = result
           }
       pure (Just next)
 
