@@ -619,7 +619,7 @@ getJson url =
     $ AX.defaultRequest
         { url = url
         , method = Left HTTP.GET
-        , timeout = Just (Milliseconds 10_000.0)
+        , timeout = Just (Milliseconds 30_000.0)
         , responseFormat = ResponseFormat.json
         }
 
@@ -638,7 +638,7 @@ getRJson url =
           { url = url
           , method = Left HTTP.GET
           , headers = [ authHdr ]
-          , timeout = Just (Milliseconds 10_000.0)
+          , timeout = Just (Milliseconds 30_000.0)
           , responseFormat = ResponseFormat.json
           }
 
@@ -660,7 +660,7 @@ patchRJson url body =
           { url = url
           , method = Left HTTP.PATCH
           , headers = [ authHdr ]
-          , timeout = Just (Milliseconds 10_000.0)
+          , timeout = Just (Milliseconds 30_000.0)
           , responseFormat = ResponseFormat.json
           , content = Just $ RequestBody.json $ encodeJson body
           }
@@ -683,7 +683,7 @@ postRJson url body =
           { url = url
           , method = Left HTTP.POST
           , headers = [ authHdr ]
-          , timeout = Just (Milliseconds 10_000.0)
+          , timeout = Just (Milliseconds 30_000.0)
           , responseFormat = ResponseFormat.json
           , content = Just $ RequestBody.json $ encodeJson body
           }
@@ -704,7 +704,7 @@ postRJson_ url =
           { url = url
           , method = Left HTTP.POST
           , headers = [ authHdr ]
-          , timeout = Just (Milliseconds 10_000.0)
+          , timeout = Just (Milliseconds 30_000.0)
           , responseFormat = ResponseFormat.json
           }
 
@@ -723,5 +723,5 @@ deleteR_ url =
           { url = url
           , method = Left HTTP.DELETE
           , headers = [ authHdr ]
-          , timeout = Just (Milliseconds 10_000.0)
+          , timeout = Just (Milliseconds 30_000.0)
           }
