@@ -1173,10 +1173,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ title "Observers"
           , renderOrderObservers orderId orderForm.observers
           ]
-      , entry
-          [ title "Notes"
-          , renderOrderNotes orderId orderForm.notes
-          ]
       ]
     where
     entry = HH.div [ Css.classes [ "flex" ] ]
