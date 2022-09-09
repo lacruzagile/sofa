@@ -13,13 +13,14 @@ import JSURI (encodeURIComponent)
 import Sofa.App.Requests as Requests
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.SmartSpec (BillingAccountId(..), Commercial(..), ConfigValue, SchemaDataSourceEnum(..))
+import Sofa.Data.SmartSpec (BillingAccountId(..), Commercial(..), Buyer(..), CrmAccountId(..), ConfigValue, SchemaDataSourceEnum(..))
 
 -- | The 'replaceAll' method taking an effect as replacer.
 foreign import replaceAllFun :: String -> (Unit -> String) -> String -> String
 
 type DataSourceVars
-  = { getCommercial :: Unit -> Maybe Commercial }
+  = { getCommercial :: Unit -> Maybe Commercial, 
+      getBuyer :: Unit -> Maybe Buyer }
 
 type DataSourceEnumResult
   = Loadable (Array (Tuple String ConfigValue))
@@ -54,11 +55,21 @@ getDataSourceEnum vars dataSource input = case dataSource of
               BillingAccountId baid <- commercial.billingAccountId
               encUri baid
 
+    
+      varBuyer = do
+        mBuyer <- vars.getBuyer
+        pure
+          $ fromMaybe "" do
+              Buyer buyer <- mBuyer
+              CrmAccountId caid <- buyer.crmAccountId
+              encUri caid
+
       varInput = pure $ fromMaybe "" $ encUri =<< input
 
       applyVars =
         replaceAllFun "${input}" varInput
           <<< replaceAllFun "${commercial.billingAccountId}" varCommercial
+          <<< replaceAllFun "${buyer.crmAccountId}" varBuyer
 
       url = applyVars urlTemplate
     in
