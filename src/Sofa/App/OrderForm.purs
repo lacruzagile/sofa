@@ -711,6 +711,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
                                 \_ -> case state of
                                   Initialized (Loaded { orderForm: { commercial } }) -> commercial
                                   _ -> Nothing
+                              , getBuyer :
+                                \_ -> case state of
+                                  Initialized (Loaded { orderForm: { buyer } }) -> buyer
+                                  _ -> Nothing
                             }
                         , getConfigs: orderSchemaGetConfigs state orderSectionId
                         }
