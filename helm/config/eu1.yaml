@@ -1,5 +1,7 @@
 replicaCount: 2
 
+environment: production
+
 ingress:
   host: sofa.eu1.bpa.unauth.int.prod.sinch.com
 

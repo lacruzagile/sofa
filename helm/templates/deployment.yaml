@@ -17,7 +17,16 @@ spec:
     metadata:
       labels:
         app: {{ .Values.app.name }}
+        cg_env: {{ .Values.environment }}
+        cg_product_id: "0"
+        cg_product: "smart_ordering"
+        cg_release_state: "closed_beta"
+        cg_product_category: "provisioning"
+        cg_business_unit: "enterprise_messaging"
+        cg_team: "customer_provisioning"
+        cg_legal_zone: "eu"
       annotations:
+        cg_vcs_path: "https://git.clxnetworks.net/dev/business-process-automation/sofa"
         prometheus.io/path: "/metrics"
         prometheus.io/port: "{{ .Values.ports.httpMetrics }}"
         prometheus.io/scrape: "true"
