@@ -137,6 +137,7 @@ type StateOrderForm
     , orderUpdateInFlight :: Boolean -- ^ Whether a current order update request is in flight.
     , orderFulfillStatus :: OrderFulfillStatus
     , assetModalOpen :: Maybe OrderLineId
+    , crmAccountId :: Maybe SS.CrmAccountId
     }
 
 -- | The order fulfillment status. This indicates in which state the order
@@ -1556,15 +1557,26 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderBackToOrdersButton :: 
     forall m.
     State -> H.ComponentHTML Action Slots m
-  renderBackToOrdersButton state = 
-        HH.button
-          [ Css.classes
-              [ "nectary-btn-secondary"
-              ]
-          , HE.onClick Back
-          ]
-          [ HH.text "Back to order list"
-          ]
+  renderBackToOrdersButton st = do
+        case st of
+          Initialized (Loaded { crmAccountId })->
+            case crmAccountId of
+              Just id ->  HH.a
+                [ Route.href (Route.OrdersCrmAccountId id)
+                , Css.class_ "nectary-btn-secondary"
+                ]
+                [ HH.text "Back to order list" ]
+              _ -> HH.a
+                [ Route.href (Route.Orders)
+                , Css.class_ "nectary-btn-secondary"
+                ]
+                [ HH.text "Back to order list" ]
+          _ -> HH.a
+            [ Route.href (Route.Orders)
+            , Css.class_ "nectary-btn-secondary"
+            ]
+            [ HH.text "Back to order list" ]
+        
         
 
 -- | Fetches all configurations within the given order section.
@@ -1733,6 +1745,7 @@ loadCatalog crmQuoteId customerData = do
           , orderUpdateInFlight: false
           , orderFulfillStatus: FulfillStatusIdle
           , assetModalOpen: Nothing
+          , crmAccountId: Nothing
           }
       )
         <$> productCatalog
@@ -1946,6 +1959,7 @@ loadWithCrmAccount id = do
           , orderUpdateInFlight: false
           , orderFulfillStatus: FulfillStatusIdle
           , assetModalOpen: Nothing
+          , crmAccountId: crmAccountId
           }
       )
         <$> productCatalog
@@ -2029,6 +2043,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
         , orderUpdateInFlight: false
         , orderFulfillStatus: FulfillStatusIdle
         , assetModalOpen: Nothing
+        , crmAccountId: Nothing
         }
 
   convertOrderSection ::
