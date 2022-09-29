@@ -272,7 +272,7 @@ renderBody ::
 renderBody state =
   HH.main [ Css.classes [ "w-11/12", "mx-5" ] ]
     [ case state.route of
-        Route.Home -> slotHome
+        Route.Home -> slotHomeOrder
         Route.OrderForm -> slotOrderForm
         (Route.OrderFormCrmAccountId crmAccountId) -> slotOrderFormCrmAccountId crmAccountId
         Route.Orders -> slotOrders
@@ -281,14 +281,14 @@ renderBody state =
         Route.ProductCatalog -> slotProductCatalog
     ]
   where
-  slotHome = HH.slot_ Home.proxy unit Home.component input
+  slotHomeOrder = HH.slot_ Orders.proxy unit Orders.component input
     where
      input = case state.homeOrderFilter of
               filter -> do 
                 case filter of
-                    Orders.ListAllAccessibleOrder -> Home.HomeAllAccessibleOrder
-                    Orders.ListCustomerOrders { crmAccountId: id } -> Home.HomeCustomerOrders id
-              _ -> Home.HomeAllAccessibleOrder
+                    Orders.ListAllAccessibleOrder -> Orders.ListAllAccessibleOrder
+                    Orders.ListCustomerOrders { crmAccountId: id } -> Orders.ListCustomerOrders { crmAccountId: id }
+              _ -> Orders.ListAllAccessibleOrder
 
   slotOrderForm = HH.slot_ OrderForm.proxy unit OrderForm.component input
     where
