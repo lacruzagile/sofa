@@ -1,11 +1,13 @@
 module Sofa.HtmlUtils
-  ( focusElementByRef
+  ( addClassToElement
+  , focusElementByRef
   , scrollToBottom
   , scrollToElement
   , selectInputText
   , setInputText
   , copyToClipboard
   , back
+  , removeClassToElement
   ) where
 
 import Prelude
@@ -18,6 +20,8 @@ import Web.DOM.Element as DomElement
 import Web.HTML.HTMLElement as HtmlElement
 import Web.HTML.HTMLInputElement as HTMLInputElement
 
+foreign import addClassToElement :: String -> String -> Effect Unit
+
 -- | Move current scroll position to the bottom of the page.
 foreign import scrollToBottom :: Effect Unit
 
@@ -26,6 +30,8 @@ foreign import scrollIntoView :: DomElement.Element -> Effect Unit
 foreign import copyToClipboard :: String -> Effect Unit
 
 foreign import back :: Effect Unit
+
+foreign import removeClassToElement :: String -> String -> Effect Unit
 
 -- | Smoothly scroll to the top of the referenced element.
 scrollToElement ::
