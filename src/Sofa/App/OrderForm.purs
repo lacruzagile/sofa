@@ -75,7 +75,7 @@ import Sofa.Data.Schema as Schema
 import Sofa.Data.SmartSpec as SS
 import Sofa.Data.SubTotal (SubTotal)
 import Sofa.Data.SubTotal as SubTotal
-import Sofa.HtmlUtils (scrollToElement, back)
+import Sofa.HtmlUtils (scrollToElement, back, addClassToElement, removeClassToElement)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (stopPropagation) as Event
@@ -2321,6 +2321,8 @@ handleAction ::
   Action -> H.HalogenM State Action Slots output m Unit
 handleAction = case _ of
   Initialize -> do
+    H.liftEffect $ addClassToElement "new-form" "sofa-navbar-selected"
+    H.liftEffect $ removeClassToElement "order-lists" "sofa-navbar-selected"
     st <- H.get
     let
       loadOrder = case _ of

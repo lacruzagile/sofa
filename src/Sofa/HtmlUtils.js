@@ -16,3 +16,13 @@ exports.copyToClipboard = value => () => {
 exports.back = () => {
   history.back()
 }
+
+exports.addClassToElement = value => name => () => {
+  var element = document.getElementById(value);
+  element.classList.add(name)
+}
+
+exports.removeClassToElement = value => name => () => {
+  var element = document.getElementById(value);
+  element.classList.remove(name)
+}

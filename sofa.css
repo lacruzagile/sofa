@@ -389,4 +389,12 @@
   .sofa-icon-float-right {
     float: right;
   }
+
+  .sofa-navbar-border {
+    border-bottom: solid 1px #9CA8B0;
+  }
+
+  .sofa-navbar-selected {
+    border-bottom: solid 2px #0A273D;
+  }
 }

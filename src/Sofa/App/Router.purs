@@ -34,6 +34,10 @@ import Sofa.Data.Deployment (class MonadDeployment, Deployment(..), getDeploymen
 import Sofa.Data.Route (Route)
 import Sofa.Data.Route as Route
 import Sofa.Data.SmartSpec as SS
+import Sofa.HtmlUtils (addClassToElement, removeClassToElement)
+import Effect.Console as Console
+import Web.Event.Event (stopPropagation) as Event
+import Web.UIEvent.MouseEvent (MouseEvent, toEvent) as Event
 
 startRouting :: forall output. H.HalogenIO Query output Aff -> Aff Unit
 startRouting app =
@@ -73,6 +77,7 @@ data Query a
 data Action
   = DoAlert AlertType
   | Initialize
+  | Select String String Event.MouseEvent
 
 component ::
   forall input output f m.
@@ -282,11 +287,12 @@ renderNavbar state =
               Orders.ListAllAccessibleOrder -> renderStandardNavigation
               Orders.ListCustomerOrders { crmAccountId: id } -> 
                 HH.ul [ Css.classes [ "flex", "w-96", "h-full", "justify-self-end" ] ] 
-                [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+                [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold sofa-navbar-border sofa-navbar-selected", HE.onClick (Select "order-lists" "new-form") , HP.id "order-lists"]
                   [
                     HH.a 
                       [ Route.href (Route.OrdersCrmAccountId id)
                       , Css.class_ "flex space-x-24"
+                      
                       ]
                       [ Icon.viewList
                           [ Icon.classes
@@ -295,15 +301,16 @@ renderNavbar state =
                               ]
                           , Icon.ariaHidden true
                           ]
-                      , HH.text "Order List"
+                      , HH.text "Order Lists"
                       ]
                   ]
 
-                , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+                , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold sofa-navbar-border", HE.onClick (Select "new-form" "order-lists"), HP.id "new-form"]
                     [
                     HH.a 
                       [ Route.href (Route.OrderFormCrmAccountId id)
                       , Css.class_ "flex space-x-24"
+                      
                       ]
                       [ Icon.createFolder
                           [ Icon.classes
@@ -328,7 +335,7 @@ renderStandardNavigation ::
   H.ComponentHTML Action Slots m
 renderStandardNavigation = 
   HH.ul [ Css.classes [ "flex", "w-96", "h-full", "justify-self-end" ] ] 
-  [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+  [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold sofa-navbar-border sofa-navbar-selected", HE.onClick (Select "order-lists" "new-form") , HP.id "order-lists"]
     [
       HH.a 
         [ Route.href (Route.Orders)
@@ -341,11 +348,11 @@ renderStandardNavigation =
                 ]
             , Icon.ariaHidden true
             ]
-        , HH.text "Order List"
+        , HH.text "Order Lists"
         ]
     ]
 
-  , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+  , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 sofa-navbar-border font-semibold", HE.onClick (Select "new-form" "order-lists") , HP.id "new-form"]
       [
       HH.a 
         [ Route.href (Route.OrderForm)
@@ -450,3 +457,8 @@ handleAction = case _ of
           st
             { showLogin = false
             }
+  Select select unselect event -> do
+    H.liftEffect $ Event.stopPropagation $ Event.toEvent event
+    H.liftEffect $ addClassToElement select "sofa-navbar-selected"
+    H.liftEffect $ removeClassToElement unselect "sofa-navbar-selected"
+    
