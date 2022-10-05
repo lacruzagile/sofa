@@ -13,6 +13,9 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA as HPAria
 import Routing.Hash (matches)
 import Sofa.App.Home as Home
 import Sofa.App.NavbarItemUser as NavbarItemUser
@@ -27,7 +30,7 @@ import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
-import Sofa.Data.Deployment (class MonadDeployment)
+import Sofa.Data.Deployment (class MonadDeployment, Deployment(..), getDeployment)
 import Sofa.Data.Route (Route)
 import Sofa.Data.Route as Route
 import Sofa.Data.SmartSpec as SS
@@ -49,6 +52,7 @@ type Input
 type State
   = { route :: Route
     , homeOrderFilter :: Orders.OrderFilter
+    , showLogin :: Boolean
     }
 
 type Slots
@@ -68,6 +72,7 @@ data Query a
 
 data Action
   = DoAlert AlertType
+  | Initialize
 
 component ::
   forall input output f m.
@@ -85,12 +90,16 @@ component =
           H.defaultEval
             { handleQuery = handleQuery
             , handleAction = handleAction
+            , initialize = initialize
             }
     }
 
 initialState :: Input -> State
 initialState input = 
-    { route: Route.Home, homeOrderFilter: input }
+    { route: Route.Home, homeOrderFilter: input, showLogin: false }
+
+initialize :: Maybe Action
+initialize = Just Initialize
 
 render ::
   forall f m.
@@ -101,7 +110,7 @@ render ::
   State -> H.ComponentHTML Action Slots m
 render state =
   HH.div_
-    [ renderNavbar
+    [ renderNavbar state
     , HH.div
         [ Css.classes
             [ "flex"
@@ -218,12 +227,14 @@ renderNavbar ::
   MonadAlert m =>
   CredentialStore f m =>
   MonadDeployment m =>
+  State ->
   H.ComponentHTML Action Slots m
-renderNavbar =
+renderNavbar state =
   HH.nav [ Css.classes navbarClasses ]
     [ HH.div [ Css.classes navbarWrapperClasses ]
         [ primaryItem Route.Home
         , expander
+        , navBarButtons
         , tileMenu
         , navbarSubItemUser
         ]
@@ -240,7 +251,6 @@ renderNavbar =
   navbarWrapperClasses =
     [ "h-full"
     , "flex"
-    , "justify-between"
     , "items-center"
     ]
 
@@ -257,9 +267,101 @@ renderNavbar =
 
   tileMenu = HH.slot_ NavbarTile.proxy unit NavbarTile.component absurd
 
-  navbarSubItemUser = HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
+  navbarSubItemUser = do
+    case state.showLogin of
+      true -> HH.slot_ NavbarItemUser.proxy unit NavbarItemUser.component absurd
+      false -> HH.text ""
+    
 
   expander = HH.div [ Css.class_ "grow" ] []
+
+  navBarButtons = do
+    case state.homeOrderFilter of
+      filter -> do 
+          case filter of
+              Orders.ListAllAccessibleOrder -> renderStandardNavigation
+              Orders.ListCustomerOrders { crmAccountId: id } -> 
+                HH.ul [ Css.classes [ "flex", "w-96", "h-full", "justify-self-end" ] ] 
+                [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+                  [
+                    HH.a 
+                      [ Route.href (Route.OrdersCrmAccountId id)
+                      , Css.class_ "flex space-x-24"
+                      ]
+                      [ Icon.viewList
+                          [ Icon.classes
+                              [ Css.c "h-8"
+                              , Css.c "mr-2"
+                              ]
+                          , Icon.ariaHidden true
+                          ]
+                      , HH.text "Order List"
+                      ]
+                  ]
+
+                , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+                    [
+                    HH.a 
+                      [ Route.href (Route.OrderFormCrmAccountId id)
+                      , Css.class_ "flex space-x-24"
+                      ]
+                      [ Icon.createFolder
+                          [ Icon.classes
+                              [ Css.c "h-8"
+                              , Css.c "mr-2"
+                              ]
+                          , Icon.ariaHidden true
+                          ]
+                      , HH.text "New Order Form"
+                      ]
+                  ] 
+                ]
+              _ -> renderStandardNavigation
+    
+
+renderStandardNavigation ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  MonadAlert m =>
+  MonadDeployment m =>
+  H.ComponentHTML Action Slots m
+renderStandardNavigation = 
+  HH.ul [ Css.classes [ "flex", "w-96", "h-full", "justify-self-end" ] ] 
+  [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+    [
+      HH.a 
+        [ Route.href (Route.Orders)
+        , Css.class_ "flex space-x-24"
+        ]
+        [ Icon.viewList
+            [ Icon.classes
+                [ Css.c "h-8"
+                , Css.c "mr-2"
+                ]
+            , Icon.ariaHidden true
+            ]
+        , HH.text "Order List"
+        ]
+    ]
+
+  , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold"]
+      [
+      HH.a 
+        [ Route.href (Route.OrderForm)
+        , Css.class_ "flex space-x-24"
+        ]
+        [ Icon.createFolder
+            [ Icon.classes
+                [ Css.c "h-8"
+                , Css.c "mr-2"
+                ]
+            , Icon.ariaHidden true
+            ]
+        , HH.text "New Order Form"
+        ]
+    ] 
+  ]
 
 renderBody ::
   forall f m.
@@ -324,6 +426,8 @@ handleQuery = case _ of
 handleAction ::
   forall slots output m.
   MonadAlert m =>
+  MonadAff m =>
+  MonadDeployment m =>
   Action -> H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   DoAlert typ -> do
@@ -333,3 +437,16 @@ handleAction = case _ of
           { type_ = typ
           , content = HH.span_ [ HH.text "Got an alert of type ", HH.text (show typ) ]
           }
+  Initialize -> do
+    deployment <- H.lift getDeployment
+    case deployment of
+      Standard ->
+        H.modify_ \st ->
+          st
+            { showLogin = true
+            }
+      Salesforce _ ->
+        H.modify_ \st ->
+          st
+            { showLogin = false
+            }
