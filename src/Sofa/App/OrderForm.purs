@@ -1546,7 +1546,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
         [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ]
-        , renderBackToOrdersButton state
         ]
     ]
     -- [ HH.h1_ [ HH.text "Order form" ] ]
@@ -1554,28 +1553,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
   
-  renderBackToOrdersButton :: 
-    forall m.
-    State -> H.ComponentHTML Action Slots m
-  renderBackToOrdersButton st = do
-        case st of
-          Initialized (Loaded { crmAccountId })->
-            case crmAccountId of
-              Just id ->  HH.a
-                [ Route.href (Route.OrdersCrmAccountId id)
-                , Css.class_ "nectary-btn-secondary"
-                ]
-                [ HH.text "Back to order list" ]
-              _ -> HH.a
-                [ Route.href (Route.Orders)
-                , Css.class_ "nectary-btn-secondary"
-                ]
-                [ HH.text "Back to order list" ]
-          _ -> HH.a
-            [ Route.href (Route.Orders)
-            , Css.class_ "nectary-btn-secondary"
-            ]
-            [ HH.text "Back to order list" ]
         
         
 
