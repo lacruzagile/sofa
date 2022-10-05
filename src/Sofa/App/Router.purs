@@ -295,7 +295,7 @@ renderNavbar state =
                               ]
                           , Icon.ariaHidden true
                           ]
-                      , HH.text "Order List"
+                      , HH.text "Order Lists"
                       ]
                   ]
 
@@ -341,7 +341,7 @@ renderStandardNavigation =
                 ]
             , Icon.ariaHidden true
             ]
-        , HH.text "Order List"
+        , HH.text "Order Lists"
         ]
     ]
 
