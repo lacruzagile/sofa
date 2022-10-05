@@ -256,6 +256,7 @@ renderNavbar state =
   navbarWrapperClasses =
     [ "h-full"
     , "flex"
+    , "justify-center"
     , "items-center"
     ]
 
@@ -286,8 +287,8 @@ renderNavbar state =
           case filter of
               Orders.ListAllAccessibleOrder -> renderStandardNavigation
               Orders.ListCustomerOrders { crmAccountId: id } -> 
-                HH.ul [ Css.classes [ "flex", "w-96", "h-full", "justify-self-end" ] ] 
-                [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold sofa-navbar-border sofa-navbar-selected", HE.onClick (Select "order-lists" "new-form") , HP.id "order-lists"]
+                HH.ul [ Css.classes [ "flex", "h-full", "justify-self-end" ] ] 
+                [HH.li [Css.class_ "pr-8 py-4 pl-8 hover:bg-gray-100 font-semibold sofa-navbar-border sofa-navbar-selected", HE.onClick (Select "order-lists" "new-form") , HP.id "order-lists"]
                   [
                     HH.a 
                       [ Route.href (Route.OrdersCrmAccountId id)
@@ -305,7 +306,7 @@ renderNavbar state =
                       ]
                   ]
 
-                , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold sofa-navbar-border", HE.onClick (Select "new-form" "order-lists"), HP.id "new-form"]
+                , HH.li [Css.class_ "pr-8 py-4 pl-8 hover:bg-gray-100 font-semibold sofa-navbar-border", HE.onClick (Select "new-form" "order-lists"), HP.id "new-form"]
                     [
                     HH.a 
                       [ Route.href (Route.OrderFormCrmAccountId id)
@@ -334,8 +335,8 @@ renderStandardNavigation ::
   MonadDeployment m =>
   H.ComponentHTML Action Slots m
 renderStandardNavigation = 
-  HH.ul [ Css.classes [ "flex", "w-96", "h-full", "justify-self-end" ] ] 
-  [HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 font-semibold sofa-navbar-border sofa-navbar-selected", HE.onClick (Select "order-lists" "new-form") , HP.id "order-lists"]
+  HH.ul [ Css.classes [ "flex", "h-full", "justify-self-end" ] ] 
+  [HH.li [Css.class_ "pr-8 py-4 pl-8 hover:bg-gray-100 font-semibold sofa-navbar-border sofa-navbar-selected", HE.onClick (Select "order-lists" "new-form") , HP.id "order-lists"]
     [
       HH.a 
         [ Route.href (Route.Orders)
@@ -352,7 +353,7 @@ renderStandardNavigation =
         ]
     ]
 
-  , HH.li [Css.class_ "pr-2 py-4 pl-2 hover:bg-gray-100 sofa-navbar-border font-semibold", HE.onClick (Select "new-form" "order-lists") , HP.id "new-form"]
+  , HH.li [Css.class_ "pr-8 py-4 pl-8 hover:bg-gray-100 sofa-navbar-border font-semibold", HE.onClick (Select "new-form" "order-lists") , HP.id "new-form"]
       [
       HH.a 
         [ Route.href (Route.OrderForm)
