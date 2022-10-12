@@ -1235,6 +1235,25 @@ render state = HH.section_ [ HH.article_ renderContent ]
   isInDraft = case state of
     Initialized (Loaded { orderForm: { status: SS.OsInDraft } }) -> true
     _ -> false
+  
+  isMarioFF = if ( isMarioOrder Initialized (Loaded { orderForm: { sections } } ) )  && isStateFF then 
+      true 
+    else 
+      false
+    where
+      isMarioSection sec = case sec.solution of
+        Nothing -> false
+        Just (SS.Solution { id }) ->
+          (id == "Mario - Order Products")
+            || (id == "Mario - Everything Else")
+            || (id == "Mario - Edit Existing Products")
+
+      isMarioOrder = A.any isMarioSection sof.orderForm.sections
+  
+  isStateFF = case state of 
+    Initialized (Loaded { orderForm: { status: SS.OsInFulfillment } }) -> true
+    Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
+    _ -> false
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
@@ -1545,7 +1564,16 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , "gap-4"
             ]
         ]
-        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ]
+        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ], 
+        if isStateFF then
+              HH.button
+                [ Css.classes [ "nectary-btn-secondary", "h-7" ]
+                , HE.onClick \_ -> AddSection
+                ]
+                [ HH.text "Open Jira Ticket"
+                ]
+            else
+              HH.text ""
         ]
     ]
     -- [ HH.h1_ [ HH.text "Order form" ] ]
