@@ -3,7 +3,7 @@
     "target": "https://sso.admin-portal.int.staging.sinch.com",
     "changeOrigin": true,
     "headers": {
-      "Authorization": "Basic c29mYTpGWHNGMHVMQUtWQjdlY1M"
+      "Authorization": "Basic ADD CREDENTIALS HERE"
     }
   },
   "/v1alpha1/buyers": {
