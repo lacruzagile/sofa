@@ -93,7 +93,8 @@ render st = case st.available of
   loadingClasses = infoClasses <> [ Css.c "animate-pulse" ]
 
   renderItem (Tuple key v) =
-    HH.label_
+    HH.div
+      [ Css.classes [ "flex", "items-baseline" ] ]
       [ HH.input
           [ HP.type_ InputCheckbox
           , Css.class_ "nectary-input-checkbox"
