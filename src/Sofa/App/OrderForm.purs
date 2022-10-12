@@ -1138,47 +1138,50 @@ render state = HH.section_ [ HH.article_ renderContent ]
 
   renderOrderInfo :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderInfo orderForm =
-    HH.div
-      [ Css.classes
-          [ "flex"
-          , "flex-col"
-          , "gap-y-4"
-          , "pl-8"
-          ]
-      ]
-      [ withOriginal
+    withOriginal
           ( \o ->
-              entry
-                [ title "Order ID"
-                , value [ HH.text $ maybe "Not Available" show o.id ]
-                ]
-          )
-      , case orderForm.crmQuoteId of
-          Nothing -> HH.text ""
-          Just (SS.CrmQuoteId id) ->
-            entry
-              [ title "Quote ID"
-              , value [ HH.text id ]
+            HH.div
+              [ Css.classes
+                  [ "flex"
+                  , "flex-col"
+                  , "gap-y-4"
+                  , "pl-8"
+                  ]
               ]
-      , withOriginal
-          ( \o ->
-              entry
-                [ title "Created by"
-                , value [ HH.text $ fromMaybe "Not Available" o.createdBy ]
-                ]
-          )
-      , withOriginal
-          ( \o ->
-              entry
-                [ title "Approval"
-                , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
-                ]
-          )
-      , entry
-          [ title "Observers"
-          , renderOrderObservers orderId orderForm.observers
-          ]
-      ]
+              [ withOriginal
+                  ( \o ->
+                      entry
+                        [ title "Order ID"
+                        , value [ HH.text $ maybe "Not Available" show o.id ]
+                        ]
+                  )
+              , case orderForm.crmQuoteId of
+                  Nothing -> HH.text ""
+                  Just (SS.CrmQuoteId id) ->
+                    entry
+                      [ title "Quote ID"
+                      , value [ HH.text id ]
+                      ]
+              , withOriginal
+                  ( \o ->
+                      entry
+                        [ title "Created by"
+                        , value [ HH.text $ fromMaybe "Not Available" o.createdBy ]
+                        ]
+                  )
+              , withOriginal
+                  ( \o ->
+                      entry
+                        [ title "Approval"
+                        , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
+                        ]
+                  )
+              -- , entry
+                  -- [ title "Observers"
+                  -- , renderOrderObservers orderId orderForm.observers
+                  -- ]
+              ]
+            )
     where
     entry = HH.div [ Css.classes [ "flex" ] ]
 
