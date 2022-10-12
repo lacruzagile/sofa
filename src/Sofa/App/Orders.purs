@@ -230,20 +230,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       ]
 
-  renderNewOrderLink = case state.orderFilter of
-    ListCustomerOrders crmAccountId -> 
-      HH.a
-        [ Route.href (Route.OrderFormCrmAccountId crmAccountId.crmAccountId)
-        , Css.class_ "nectary-btn-primary"
-        ]
-        [ HH.text "New order " ]
-    _ ->
-      HH.a
-        [ Route.href Route.OrderForm 
-        , Css.class_ "nectary-btn-primary"
-        ]
-        [ HH.text "New order" ]
-
   renderContent =
     [ HH.div
         [ Css.classes
@@ -257,7 +243,6 @@ render state = HH.section_ [ HH.article_ renderContent ]
         [ HH.h1 [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Orders" ]
         -- Temporary commenting search bar
         -- , renderSearchForm
-        , if state.showNewOrderButton then renderNewOrderLink else HH.text ""
         ]
     , renderOrders
     ]
