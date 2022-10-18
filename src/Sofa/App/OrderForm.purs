@@ -284,6 +284,7 @@ data Action
     { orderSectionId :: OrderSectionId, orderLineId :: OrderLineId }
     Event.MouseEvent
   | DiscardOrder -- ^ Discard the currently loaded order.
+  | OpenJiraTicket -- ^ Discard the currently loaded order.
   | CreateUpdateOrder -- ^ Create or update the current order.
   | FulfillOrderStart -- ^ Show modal for user to confirm order fulfillment.
   | FulfillOrderModalResult ConfirmFulfillModal.Output
@@ -1140,47 +1141,47 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderInfo orderForm =
     withOriginal
           ( \o ->
-            HH.div
-              [ Css.classes
-                  [ "flex"
-                  , "flex-col"
-                  , "gap-y-4"
-                  , "pl-8"
-                  ]
+    HH.div
+      [ Css.classes
+          [ "flex"
+          , "flex-col"
+          , "gap-y-4"
+          , "pl-8"
+          ]
+      ]
+      [ withOriginal
+          ( \o ->
+              entry
+                [ title "Order ID"
+                , value [ HH.text $ maybe "Not Available" show o.id ]
+                ]
+          )
+      , case orderForm.crmQuoteId of
+          Nothing -> HH.text ""
+          Just (SS.CrmQuoteId id) ->
+            entry
+              [ title "Quote ID"
+              , value [ HH.text id ]
               ]
-              [ withOriginal
-                  ( \o ->
-                      entry
-                        [ title "Order ID"
-                        , value [ HH.text $ maybe "Not Available" show o.id ]
-                        ]
-                  )
-              , case orderForm.crmQuoteId of
-                  Nothing -> HH.text ""
-                  Just (SS.CrmQuoteId id) ->
-                    entry
-                      [ title "Quote ID"
-                      , value [ HH.text id ]
-                      ]
-              , withOriginal
-                  ( \o ->
-                      entry
-                        [ title "Created by"
-                        , value [ HH.text $ fromMaybe "Not Available" o.createdBy ]
-                        ]
-                  )
-              , withOriginal
-                  ( \o ->
-                      entry
-                        [ title "Approval"
-                        , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
-                        ]
-                  )
+      , withOriginal
+          ( \o ->
+              entry
+                [ title "Created by"
+                , value [ HH.text $ fromMaybe "Not Available" o.createdBy ]
+                ]
+          )
+      , withOriginal
+          ( \o ->
+              entry
+                [ title "Approval"
+                , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
+                ]
+          )
               -- , entry
                   -- [ title "Observers"
                   -- , renderOrderObservers orderId orderForm.observers
                   -- ]
-              ]
+          ]
             )
     where
     entry = HH.div [ Css.classes [ "flex" ] ]
@@ -1239,24 +1240,126 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Initialized (Loaded { orderForm: { status: SS.OsInDraft } }) -> true
     _ -> false
   
-  isMarioFF = if ( isMarioOrder Initialized (Loaded { orderForm: { sections } } ) )  && isStateFF then 
+  isMarioFF = if isMarioOrder  && isStateFF then 
       true 
     else 
       false
-    where
-      isMarioSection sec = case sec.solution of
-        Nothing -> false
-        Just (SS.Solution { id }) ->
-          (id == "Mario - Order Products")
-            || (id == "Mario - Everything Else")
-            || (id == "Mario - Edit Existing Products")
+    where 
+    isMarioSection sec = case sec.solution of
+      Nothing -> false
+      Just (SS.Solution { id }) ->
+        (id == "Mario - Order Products")
+          || (id == "Mario - Everything Else")
+          || (id == "Mario - Edit Existing Products")
 
-      isMarioOrder = A.any isMarioSection sof.orderForm.sections
-  
+    isMarioOrder = case state of  -- A.any  isMarioSection Initialized (Loaded { orderForm: { sections } }
+      Initialized (Loaded { orderForm: { sections } }) -> A.any isMarioSection sections
+      _ -> false
+
   isStateFF = case state of 
     Initialized (Loaded { orderForm: { status: SS.OsInFulfillment } }) -> true
     Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
     _ -> false
+
+  getJiraIntUrl =
+    case state of
+      Initialized
+        ( Loaded
+          { orderForm:
+            { original: Just (SS.OrderForm { id: Just orderId })
+            }
+          }
+        ) -> show ( getAssetResult orderId ) --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" <> ( show orderId )
+        {- result <- Requests.getAsset orderId
+        case result of
+          Loaded assets  -> "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+            --url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
+
+            -- A.head <<< renderUrl <<< Map.filterWithKey (Map.toUnfoldable result) "issueIntKeyUrl"
+            --A.filter ( match assetConfig ) assetConfig
+
+            -- pure filterAsset ( A.head assets )
+             
+          _ ->  ""  -}
+      _ -> ""
+
+  getAssetResult :: SS.OrderId -> String
+  getAssetResult orderId = do --case orderId of
+    filterAsset  ( getLoadedAsset ( Requests.getAsset orderId ) )
+    --assets <- Requests.getAsset orderId
+    --"https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+    -- case assets of
+    --  Loaded assetsA -> pure "https://tickets-stage.test.it.sinch.com/browse/INT-28024" -- ( filterAsset ( A.head assetsA ) ) --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" --
+    --  _ -> pure ""
+  
+  getLoadedAsset ::  Array SS.AssetConfig -> Maybe SS.AssetConfig
+  getLoadedAsset a = A.head a -- case _ of
+{-     Idle -> Nothing
+    Loaded assetsA -> A.head assetsA
+    _ -> Nothing -}
+    --assets <- Requests.getAsset orderId
+    --let url = 
+    --filterAsset ( convertLoadableAssetResults assets ) --case assets of
+        --Loaded assets -> filterAsset ( A.head assets )  --"https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+        --url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
+        --A.filter ( match assetConfig ) assetConfig
+       -- _ -> ""
+    --url
+
+  -- convertLoadableAssetResults :: Loadable (Array SS.AssetConfig) -> Maybe SS.AssetConfig
+  -- convertLoadableAssetResults las = case las of 
+    -- Loaded assets -> A.head assets
+    --_ -> pure Nothing
+
+  filterAsset:: Maybe SS.AssetConfig -> String 
+  filterAsset ac = case ac of
+    Just ( SS.AssetConfig { assetConfig } )-> show( Map.lookup "issueIntKeyUrl" assetConfig )
+    --Just ( SS.AssetConfig { assetConfig } ) -> Map.lookup "issueIntKeyUrl" assetConfig
+      --renderUrl ( A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) )
+      
+    Nothing -> ""
+    _ -> ""
+
+  --renderUrl :: forall m. Array( Tuple String SS.ConfigValue ) -> String
+  --renderUrl vlist = "hola"
+    -- v <- A.head vlist
+    --"hola"
+
+
+{-   filterAsset (SS.AssetConfig { assetConfig }) = 
+     A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) 
+     -- A.filter ( match assetConfig ) assetConfig -}
+
+  {- match (Tuple key _) = case key of
+    "issueIntKeyUrl" -> true
+    _ -> false
+ -}
+ {-  renderAssets :: forall m. Loadable (Array SS.AssetConfig) -> Array String
+  renderAssets = case _ of
+    Idle -> []
+    Loaded assets -> map renderUrl (assets)
+    Loading -> []
+    Error message -> []
+
+  renderUrl :: forall m. Tuple String SS.ConfigValue -> String
+  renderUrl (Tuple k v) =
+    show v -}
+    -- case k of 
+    --   "issueIntKeyUrl" -> show v
+    --   _ -> pure unit
+
+  {- case state of 
+    Initialized (Loaded { orderForm: { original } }) -> "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+    _ -> ""
+ -}
+  
+{-   getJiraIntUrlFromAssets = case _ of
+    Idle -> []
+    Loaded assets -> getJiraIntUrl assets
+    Loading -> ""
+    Error message -> [ HH.text message ]
+
+  getJiraIntUrl =  -}
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
@@ -1568,14 +1671,19 @@ render state = HH.section_ [ HH.article_ renderContent ]
             ]
         ]
         [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ], 
-        if isStateFF then
+          if isStateFF then
+            HH.a [ HP.href getJiraIntUrl --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" 
+              ,HP.target "_blank" ] 
+            [
               HH.button
                 [ Css.classes [ "nectary-btn-secondary", "h-7" ]
-                , HE.onClick \_ -> AddSection
+                --, HE.onClick \_ -> OpenJiraTicket
+                -- , HE.onClick  OpenJiraTicket
                 ]
                 [ HH.text "Open Jira Ticket"
                 ]
-            else
+            ]
+          else
               HH.text ""
         ]
     ]
@@ -2823,6 +2931,39 @@ handleAction = case _ of
     H.liftEffect clearSessionOrderForm
     -- Reloading the catalog will reset the component state.
     loadCatalog Nothing Nothing
+  
+  OpenJiraTicket -> do
+    --( HtmlWindow.open "https://tickets-stage.test.it.sinch.com/browse/INT-28024" "_blank" )
+    pure unit
+    -- url :: String
+    {- state <- H.get
+    case state of
+      -- If the order exists in the backend then we'll also delete it there, but
+      -- only if the order is in the draft status.
+      Initialized
+        ( Loaded
+          { orderForm:
+            { original: Just (SS.OrderForm { id: Just orderId })
+            , status: SS.OsInDraft
+            }
+        }
+      ) -> do
+        result <- Requests.getAsset orderId
+        -- Console.log $ "getting assets: " <> ( show result )
+        case result of
+          Error msg -> H.liftEffect $ Console.error $ "Error getting assets: " <> msg
+          Loaded _ -> do
+            -- url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
+            --url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
+
+            HtmlWindow.open "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+            pure unit
+          _ -> pure unit
+        pure unit
+      _ -> pure unit -}
+
+      --renderUrl (Tuple k v) = "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+
   CreateUpdateOrder -> do
     state <- H.get
     void $ createUpdateOrder state
