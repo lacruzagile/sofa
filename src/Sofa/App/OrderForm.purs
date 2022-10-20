@@ -1266,50 +1266,50 @@ render state = HH.section_ [ HH.article_ renderContent ]
     else
       HH.text ""
 
-    getJiraIntUrl ::
-      forall f m.
-      MonadAff m =>
-      CredentialStore f m =>
-      State -> H.ComponentHTML Action () m
-    getJiraIntUrl state = 
-    --HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-      case state of
-        Initialized
-          ( Loaded
-            { orderForm:
-              { original: Just (SS.OrderForm { id: Just orderId })}
-            }
-          ) -> do
-          case (Requests.getAsset orderId) of
-            Idle -> HH.text ""
-            Loaded a -> getLoadedAsset
-            Loading -> HH.text "Loading..." 
-            Error message -> HH.text message
-            --H.liftEffect $ Event.stopPropagation $ Event.toEvent event 
-            --getLoadedAsset (H.lift $ ( Requests.getAsset orderId )) 
-        _ -> HH.text ""
+{-   getJiraIntUrl ::
+    forall f m.
+    MonadAff m =>
+    CredentialStore f m =>
+    State -> H.ComponentHTML Action () m  -}
+  getJiraIntUrl state =
+    case state of
+      Initialized
+        ( Loaded
+          { orderForm:
+            { original: Just (SS.OrderForm { id: Just orderId })}
+          }
+        ) -> HH.text ""
+        --HH.a [HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024", HP.target "_blank" ]
+       -- [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]   do
+       {- case (Requests.getAsset orderId) of
+          Idle -> HH.text ""
+          Loaded a -> getLoadedAsset
+          Loading -> HH.text "Loading..." 
+          Error message -> HH.text message -}
+          --H.liftEffect $ Event.stopPropagation $ Event.toEvent event 
+          --getLoadedAsset (H.lift $ ( Requests.getAsset orderId )) 
+      _ -> HH.text ""
 
-    --getLoadedAsset :: Loadable (Array SS.AssetConfig) -> Maybe SS.AssetConfig
-    --getLoadedAsset :: forall m. Array SS.AssetConfig -> H.ComponentHTML Action () m
-    getLoadedAsset = 
-      HH.a [
+  --getLoadedAsset :: forall m. Array SS.AssetConfig -> H.ComponentHTML Action () m
+  getLoadedAsset = do 
+    HH.a [
         HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-        ,HP.target "_blank" 
+        ,HP.target "_blank"
       ]
       [
         HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]
       ] 
-  --A.head assetsA
-    --Loading -> HH.text "Loading..."
-    --Error message -> HH.text message
+--A.head assetsA
+  --Loading -> HH.text "Loading..."
+  --Error message -> HH.text message
 
-    filterAsset:: Maybe SS.AssetConfig -> String 
+{-     filterAsset:: Maybe SS.AssetConfig -> String 
     filterAsset ac = case ac of
       Just ( SS.AssetConfig { assetConfig } )-> show( Map.lookup "issueIntKeyUrl" assetConfig )
       --Just ( SS.AssetConfig { assetConfig } ) -> Map.lookup "issueIntKeyUrl" assetConfig
         --renderUrl ( A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) )
       Nothing -> ""
-      _ -> ""
+      _ -> "" -}
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
