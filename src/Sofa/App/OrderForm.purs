@@ -1261,105 +1261,55 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
     _ -> false
 
-  getJiraIntUrl =
-    case state of
-      Initialized
-        ( Loaded
-          { orderForm:
-            { original: Just (SS.OrderForm { id: Just orderId })
+  renderJiraUrl = if isMarioFF then
+      getJiraIntUrl state
+    else
+      HH.text ""
+
+    getJiraIntUrl ::
+      forall f m.
+      MonadAff m =>
+      CredentialStore f m =>
+      State -> H.ComponentHTML Action () m
+    getJiraIntUrl state = 
+    --HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+      case state of
+        Initialized
+          ( Loaded
+            { orderForm:
+              { original: Just (SS.OrderForm { id: Just orderId })}
             }
-          }
-        ) -> show ( getAssetResult orderId ) --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" <> ( show orderId )
-        {- result <- Requests.getAsset orderId
-        case result of
-          Loaded assets  -> "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-            --url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
+          ) -> do
+          case (Requests.getAsset orderId) of
+            Idle -> HH.text ""
+            Loaded a -> getLoadedAsset
+            Loading -> HH.text "Loading..." 
+            Error message -> HH.text message
+            --H.liftEffect $ Event.stopPropagation $ Event.toEvent event 
+            --getLoadedAsset (H.lift $ ( Requests.getAsset orderId )) 
+        _ -> HH.text ""
 
-            -- A.head <<< renderUrl <<< Map.filterWithKey (Map.toUnfoldable result) "issueIntKeyUrl"
-            --A.filter ( match assetConfig ) assetConfig
+    --getLoadedAsset :: Loadable (Array SS.AssetConfig) -> Maybe SS.AssetConfig
+    --getLoadedAsset :: forall m. Array SS.AssetConfig -> H.ComponentHTML Action () m
+    getLoadedAsset = 
+      HH.a [
+        HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+        ,HP.target "_blank" 
+      ]
+      [
+        HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]
+      ] 
+  --A.head assetsA
+    --Loading -> HH.text "Loading..."
+    --Error message -> HH.text message
 
-            -- pure filterAsset ( A.head assets )
-             
-          _ ->  ""  -}
+    filterAsset:: Maybe SS.AssetConfig -> String 
+    filterAsset ac = case ac of
+      Just ( SS.AssetConfig { assetConfig } )-> show( Map.lookup "issueIntKeyUrl" assetConfig )
+      --Just ( SS.AssetConfig { assetConfig } ) -> Map.lookup "issueIntKeyUrl" assetConfig
+        --renderUrl ( A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) )
+      Nothing -> ""
       _ -> ""
-
-  getAssetResult :: SS.OrderId -> String
-  getAssetResult orderId = do --case orderId of
-    filterAsset  ( getLoadedAsset ( Requests.getAsset orderId ) )
-    --assets <- Requests.getAsset orderId
-    --"https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-    -- case assets of
-    --  Loaded assetsA -> pure "https://tickets-stage.test.it.sinch.com/browse/INT-28024" -- ( filterAsset ( A.head assetsA ) ) --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" --
-    --  _ -> pure ""
-  
-  getLoadedAsset ::  Array SS.AssetConfig -> Maybe SS.AssetConfig
-  getLoadedAsset a = A.head a -- case _ of
-{-     Idle -> Nothing
-    Loaded assetsA -> A.head assetsA
-    _ -> Nothing -}
-    --assets <- Requests.getAsset orderId
-    --let url = 
-    --filterAsset ( convertLoadableAssetResults assets ) --case assets of
-        --Loaded assets -> filterAsset ( A.head assets )  --"https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-        --url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
-        --A.filter ( match assetConfig ) assetConfig
-       -- _ -> ""
-    --url
-
-  -- convertLoadableAssetResults :: Loadable (Array SS.AssetConfig) -> Maybe SS.AssetConfig
-  -- convertLoadableAssetResults las = case las of 
-    -- Loaded assets -> A.head assets
-    --_ -> pure Nothing
-
-  filterAsset:: Maybe SS.AssetConfig -> String 
-  filterAsset ac = case ac of
-    Just ( SS.AssetConfig { assetConfig } )-> show( Map.lookup "issueIntKeyUrl" assetConfig )
-    --Just ( SS.AssetConfig { assetConfig } ) -> Map.lookup "issueIntKeyUrl" assetConfig
-      --renderUrl ( A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) )
-      
-    Nothing -> ""
-    _ -> ""
-
-  --renderUrl :: forall m. Array( Tuple String SS.ConfigValue ) -> String
-  --renderUrl vlist = "hola"
-    -- v <- A.head vlist
-    --"hola"
-
-
-{-   filterAsset (SS.AssetConfig { assetConfig }) = 
-     A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) 
-     -- A.filter ( match assetConfig ) assetConfig -}
-
-  {- match (Tuple key _) = case key of
-    "issueIntKeyUrl" -> true
-    _ -> false
- -}
- {-  renderAssets :: forall m. Loadable (Array SS.AssetConfig) -> Array String
-  renderAssets = case _ of
-    Idle -> []
-    Loaded assets -> map renderUrl (assets)
-    Loading -> []
-    Error message -> []
-
-  renderUrl :: forall m. Tuple String SS.ConfigValue -> String
-  renderUrl (Tuple k v) =
-    show v -}
-    -- case k of 
-    --   "issueIntKeyUrl" -> show v
-    --   _ -> pure unit
-
-  {- case state of 
-    Initialized (Loaded { orderForm: { original } }) -> "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-    _ -> ""
- -}
-  
-{-   getJiraIntUrlFromAssets = case _ of
-    Idle -> []
-    Loaded assets -> getJiraIntUrl assets
-    Loading -> ""
-    Error message -> [ HH.text message ]
-
-  getJiraIntUrl =  -}
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
@@ -1670,10 +1620,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , "gap-4"
             ]
         ]
-        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ], 
-          if isStateFF then
-            HH.a [ HP.href getJiraIntUrl --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" 
-              ,HP.target "_blank" ] 
+        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ],
+          renderJiraUrl
+          {- if isStateFF then
+            HH.a [ 
+              getJiraIntUrl --HP.href getJiraIntUrl --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" 
+              ,HP.target "_blank"
+            ] 
             [
               HH.button
                 [ Css.classes [ "nectary-btn-secondary", "h-7" ]
@@ -1684,16 +1637,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 ]
             ]
           else
-              HH.text ""
+              HH.text "" -}
         ]
     ]
     -- [ HH.h1_ [ HH.text "Order form" ] ]
       <> case state of
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
-  
-        
-        
 
 -- | Fetches all configurations within the given order section.
 orderSchemaGetConfigs ∷
