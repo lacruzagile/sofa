@@ -15,6 +15,7 @@ module Sofa.App.Requests
   , getBuyer
   , getBuyerContacts
   , getBuyers
+  , getParticipants
   , getDataSourceEnum
   , getFileContent
   , getFileMetadata
@@ -44,20 +45,24 @@ import Affjax.StatusCode (StatusCode(..))
 import Control.Alternative ((<|>))
 import Data.Argonaut (JsonDecodeError(..), (.:), class DecodeJson, class EncodeJson, Json, decodeJson, encodeJson, printJsonDecodeError)
 import Data.Array as A
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Either (Either(..))
 import Data.HTTP.Method as HTTP
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple)
+import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Foreign.Object as FO
 import JSURI (encodeURIComponent)
-import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
+-- import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.SmartSpec (AssetConfig, BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity(..), OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (AssetConfig, BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity(..), MarioPriority(..), Participant(..), OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
 import Web.URL.URLSearchParams (URLSearchParams)
 import Web.URL.URLSearchParams as UrlParams
 
@@ -89,6 +94,9 @@ appendUrlParams :: String -> URLSearchParams -> String
 appendUrlParams a params = case UrlParams.toString params of
   "" -> a
   paramsStr -> a <> "?" <> paramsStr
+
+jiraUrl :: String
+jiraUrl = orderingBaseUrl </> "v1alpha1" </> "sofa-util" </> "jira-users"
 
 emptyUrlParams :: UrlParams.URLSearchParams
 emptyUrlParams = UrlParams.fromString ""
@@ -136,6 +144,22 @@ getAsset id = map conv <$> getRJson (ordersUrl </> idEncoded </> "assets")
 
   conv :: { assets :: Array AssetConfig } -> Array AssetConfig
   conv { assets } = assets
+
+-- | Fetches participants that match the given name.
+getParticipants ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  String -> m (Loadable (Array (Tuple String ConfigValue)))
+getParticipants query = map parse <$> result
+  where
+  parse (DataSourceResponse o) = FO.toUnfoldable o
+
+  result =  getRJson
+    $ jiraUrl
+    <?> ( UrlParams.set "search_string" query
+          $ emptyUrlParams
+      )
 
 getBillingAccounts ::
   forall f m.
@@ -333,12 +357,13 @@ postOrderFulfillment ::
   forall f m.
   MonadAff m =>
   CredentialStore f m =>
-  OrderId -> Maybe MarioPriority -> Maybe String -> m (Loadable OrderForm)
-postOrderFulfillment orderId mMarioPrio mMarioNote = postRJson_ url
+  OrderId -> Maybe MarioPriority -> Maybe String ->  Maybe String -> m (Loadable OrderForm)
+postOrderFulfillment orderId mMarioPrio mMarioNote mParticipants = postRJson_ url
   where
   url = ordersUrl </> show orderId <> ":fulfillment"
     <?> (setMarioPrioParam
             $ setMarioNoteParam
+            $ setMarioParticipants
             $ emptyUrlParams
             )
 
@@ -349,6 +374,10 @@ postOrderFulfillment orderId mMarioPrio mMarioNote = postRJson_ url
   setMarioNoteParam = case mMarioNote of
     Nothing -> identity
     Just p -> UrlParams.set "marioNote" p
+
+  setMarioParticipants = case mParticipants of
+    Nothing -> identity
+    Just p -> UrlParams.set "jiraParticipants" p
 
   prioValue :: MarioPriority -> String
   prioValue = case _ of
