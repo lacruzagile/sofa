@@ -137,6 +137,7 @@ type StateOrderForm
     , orderUpdateInFlight :: Boolean -- ^ Whether a current order update request is in flight.
     , orderFulfillStatus :: OrderFulfillStatus
     , assetModalOpen :: Maybe OrderLineId
+    , assets :: Loadable (Array SS.AssetConfig)
     , crmAccountId :: Maybe SS.CrmAccountId
     }
 
@@ -1261,24 +1262,34 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
     _ -> false
 
+  renderJiraUrl ::
+    forall f m.
+    MonadAff m =>
+    CredentialStore f m => H.ComponentHTML Action () m 
   renderJiraUrl = if isMarioFF then
       getJiraIntUrl state
     else
       HH.text ""
 
-{-   getJiraIntUrl ::
+  getJiraIntUrl ::
     forall f m.
     MonadAff m =>
     CredentialStore f m =>
-    State -> H.ComponentHTML Action () m  -}
-  getJiraIntUrl state =
+    State -> H.ComponentHTML Action () m 
+  getJiraIntUrl state = 
     case state of
       Initialized
-        ( Loaded
-          { orderForm:
-            { original: Just (SS.OrderForm { id: Just orderId })}
-          }
-        ) -> HH.text ""
+        ( Loaded { assets } 
+          --{ orderForm:
+          --  { original: Just (SS.OrderForm { id: Just orderId })}
+          --}
+        ) -> checkLoadedAsset assets
+        
+        {- HH.a [
+              HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+              ,HP.target "_blank"
+            ]
+            [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]  -}
         --HH.a [HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024", HP.target "_blank" ]
        -- [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]   do
        {- case (Requests.getAsset orderId) of
@@ -1290,26 +1301,35 @@ render state = HH.section_ [ HH.article_ renderContent ]
           --getLoadedAsset (H.lift $ ( Requests.getAsset orderId )) 
       _ -> HH.text ""
 
-  --getLoadedAsset :: forall m. Array SS.AssetConfig -> H.ComponentHTML Action () m
-  getLoadedAsset = do 
-    HH.a [
-        HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-        ,HP.target "_blank"
-      ]
-      [
-        HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]
-      ] 
+  checkLoadedAsset :: forall f m.
+    MonadAff m =>
+    CredentialStore f m => Loadable (Array SS.AssetConfig) -> H.ComponentHTML Action () m
+  checkLoadedAsset ass = HH.a [
+            HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+            ,HP.target "_blank"
+          ]
+          [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]] 
+
+  getLoadedAsset :: forall m. Array SS.AssetConfig -> H.ComponentHTML Action () m
+  getLoadedAsset aaa = HH.a [
+          HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+          ,HP.target "_blank"
+        ]
+        [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]] 
+      -- _ -> HH.text ""
+    
 --A.head assetsA
   --Loading -> HH.text "Loading..."
   --Error message -> HH.text message
 
-{-     filterAsset:: Maybe SS.AssetConfig -> String 
-    filterAsset ac = case ac of
+  filterAsset:: Maybe SS.AssetConfig -> String 
+  filterAsset ac = do
+    case ac of
       Just ( SS.AssetConfig { assetConfig } )-> show( Map.lookup "issueIntKeyUrl" assetConfig )
       --Just ( SS.AssetConfig { assetConfig } ) -> Map.lookup "issueIntKeyUrl" assetConfig
         --renderUrl ( A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) )
       Nothing -> ""
-      _ -> "" -}
+      _ -> ""
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
@@ -1620,8 +1640,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , "gap-4"
             ]
         ]
-        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ],
-          renderJiraUrl
+        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ] --,
+          --renderJiraUrl
           {- if isStateFF then
             HH.a [ 
               getJiraIntUrl --HP.href getJiraIntUrl --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" 
@@ -1811,6 +1831,7 @@ loadCatalog crmQuoteId customerData = do
           , orderUpdateInFlight: false
           , orderFulfillStatus: FulfillStatusIdle
           , assetModalOpen: Nothing
+          , assets: Loading
           , crmAccountId: Nothing
           }
       )
@@ -2025,6 +2046,7 @@ loadWithCrmAccount id = do
           , orderUpdateInFlight: false
           , orderFulfillStatus: FulfillStatusIdle
           , assetModalOpen: Nothing
+          , assets: Loading
           , crmAccountId: crmAccountId
           }
       )
@@ -2059,11 +2081,15 @@ loadExisting ::
 loadExisting original@(SS.OrderForm orderForm) changed = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
+  -- id <- case orderForm.id of 
+  --  Just oid -> oid
+  --  _ -> SS.OrderId ("")
+  -- assets <- H.liftAff ( Requests.getAsset id )
   fixedBuyer <- H.lift isBuyerFixed
   H.put $ Initialized $ convertOrderForm fixedBuyer =<< productCatalog
   where
-  convertOrderForm :: Boolean -> SS.ProductCatalog -> Loadable StateOrderForm
-  convertOrderForm fixedBuyer productCatalog = do
+  convertOrderForm :: Boolean -> SS.ProductCatalog  -> Loadable StateOrderForm
+  convertOrderForm fixedBuyer productCatalog  = do
     let
       -- The value to use as v5 UUID root namespace for generated internal IDs.
       uuidRootNs = UUID.emptyUUID
@@ -2109,6 +2135,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
         , orderUpdateInFlight: false
         , orderFulfillStatus: FulfillStatusIdle
         , assetModalOpen: Nothing
+        , assets: Loading
         , crmAccountId: Nothing
         }
 
