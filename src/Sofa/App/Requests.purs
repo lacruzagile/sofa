@@ -377,7 +377,7 @@ postOrderFulfillment orderId mMarioPrio mMarioNote mParticipants = postRJson_ ur
 
   setMarioParticipants = case mParticipants of
     Nothing -> identity
-    Just p -> UrlParams.set "jiraParticipants" p
+    Just p -> UrlParams.set "marioRequestParticipants" p
 
   prioValue :: MarioPriority -> String
   prioValue = case _ of

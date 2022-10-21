@@ -235,12 +235,13 @@ parseEmail s =
       Just email -> email
       Nothing -> ""
 
-parseParticipantUsers :: (Array Participant)  -> Maybe String -> Maybe String
-parseParticipantUsers lp n= do
-  -- let
-  --   users = A.concatMap (\p -> [p.user]) lp
-  -- in
-  n
+parseParticipantUsers :: (Array Participant) -> Maybe String
+parseParticipantUsers lp =
+  let
+    users = map (\(Participant { user } )-> user)  lp
+    user = A.intercalate "," users
+  in
+    if S.null user then Nothing else Just user
 
 
 handleAction ::
@@ -259,20 +260,17 @@ handleAction = case _ of
       $ FulfillConfirm
           { marioPriority: state.marioPriority
           , note: if S.null state.note then Nothing else Just state.note
-          , requestParticipants: (parseParticipantUsers state.participants (if S.null state.note then Nothing else Just state.note))
+          , requestParticipants: (parseParticipantUsers state.participants)
           }
   ChooseParticipant participant ->
     case participant of
       Loaded (Participant { email, user }) -> do
-        H.liftEffect $ Console.log ("Confirm" <> email)
         H.modify_ \st ->
           st
             { participants = (A.concat [[(Participant { email, user })], st.participants])
             }
-        -- H.modify_ _ { participants = (A.insert (Participant { email, user }) [])  }
       _ -> H.liftEffect $ Console.log "Error"
   RemoveParticipant idx -> do
-    H.liftEffect $ Console.log ("Remove" <> (show idx))
     H.modify_ \st ->
         st
           { participants = (fromMaybe st.participants (A.deleteAt idx st.participants))
