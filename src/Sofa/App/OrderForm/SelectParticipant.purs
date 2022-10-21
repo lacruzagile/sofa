@@ -179,6 +179,6 @@ selectComponent =
                   in
                     renderItem <$> available
                 _ -> []
-            , noSelectionText = "Type to search customer  …"
+            , noSelectionText = "Type to search participant  …"
             , loading = Loadable.isLoading st.available
             }
