@@ -39,6 +39,7 @@ module Sofa.Data.SmartSpec
   , LegalEntityTraffic(..)
   , Minimum(..)
   , MinimumPerDim(..)
+  , MarioPriority(..)
   , OrderApprovalStatus(..)
   , OrderForm(..)
   , OrderId(..)
@@ -54,6 +55,7 @@ module Sofa.Data.SmartSpec
   , OrderSection(..)
   , OrderSectionId(..)
   , OrderStatus(..)
+  , Participant(..)
   , PaymentCurrency(..)
   , Platform(..)
   , Price(..)
@@ -809,6 +811,14 @@ newtype MinimumPerDim
 derive newtype instance decodeJsonMinimumPerDim :: DecodeJson MinimumPerDim
 
 derive newtype instance encodeJsonMinimumPerDim :: EncodeJson MinimumPerDim
+
+data MarioPriority
+  = MarioPrioCritical
+  | MarioPrioHigh
+  | MarioPrioMedium
+  | MarioPrioLow
+
+derive instance eqMarioPriority :: Eq MarioPriority
 
 newtype RateCard
   = RateCard
@@ -2133,6 +2143,24 @@ derive newtype instance showCrmAccountId :: Show CrmAccountId
 derive newtype instance decodeJsonCrmAccountId :: DecodeJson CrmAccountId
 
 derive newtype instance encodeJsonCrmAccountId :: EncodeJson CrmAccountId
+
+newtype Participant
+  = Participant
+  {   user :: String
+   ,  email :: String
+  }
+
+
+instance decodeJsonParticipant :: DecodeJson Participant where
+  decodeJson json = do
+    o <- decodeJson json
+    user <- o .: "user"
+    email <- o .: "email"
+    pure
+      $ Participant
+          { user
+          , email
+          }
 
 newtype AssetConfig
   = AssetConfig
