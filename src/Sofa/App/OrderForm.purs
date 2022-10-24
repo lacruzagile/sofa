@@ -1157,13 +1157,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , value [ HH.text $ maybe "Not Available" show o.id ]
                 ]
           )
-      , case orderForm.crmQuoteId of
+      {- , case orderForm.crmQuoteId of
           Nothing -> HH.text ""
           Just (SS.CrmQuoteId id) ->
             entry
               [ title "Quote ID"
               , value [ HH.text id ]
-              ]
+              ] -}
       , withOriginal
           ( \o ->
               entry
@@ -1262,74 +1262,24 @@ render state = HH.section_ [ HH.article_ renderContent ]
     Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
     _ -> false
 
-  renderJiraUrl ::
-    forall f m.
-    MonadAff m =>
-    CredentialStore f m => H.ComponentHTML Action () m 
   renderJiraUrl = if isMarioFF then
       getJiraIntUrl state
     else
       HH.text ""
 
-  getJiraIntUrl ::
-    forall f m.
-    MonadAff m =>
-    CredentialStore f m =>
-    State -> H.ComponentHTML Action () m 
-  getJiraIntUrl state = 
+  getJiraIntUrl state =
     case state of
       Initialized
-        ( Loaded { assets } 
-          --{ orderForm:
-          --  { original: Just (SS.OrderForm { id: Just orderId })}
-          --}
-        ) -> checkLoadedAsset assets
-        
-        {- HH.a [
-              HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
+        ( Loaded --{ assets } 
+          { orderForm:
+            { original: Just (SS.OrderForm { crmQuoteId: Just (SS.CrmQuoteId crmQuoteId)})}
+          }
+        ) -> HH.a [
+              HP.href  crmQuoteId
               ,HP.target "_blank"
             ]
-            [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]  -}
-        --HH.a [HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024", HP.target "_blank" ]
-       -- [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]   do
-       {- case (Requests.getAsset orderId) of
-          Idle -> HH.text ""
-          Loaded a -> getLoadedAsset
-          Loading -> HH.text "Loading..." 
-          Error message -> HH.text message -}
-          --H.liftEffect $ Event.stopPropagation $ Event.toEvent event 
-          --getLoadedAsset (H.lift $ ( Requests.getAsset orderId )) 
+            [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]
       _ -> HH.text ""
-
-  checkLoadedAsset :: forall f m.
-    MonadAff m =>
-    CredentialStore f m => Loadable (Array SS.AssetConfig) -> H.ComponentHTML Action () m
-  checkLoadedAsset ass = HH.a [
-            HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-            ,HP.target "_blank"
-          ]
-          [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]] 
-
-  getLoadedAsset :: forall m. Array SS.AssetConfig -> H.ComponentHTML Action () m
-  getLoadedAsset aaa = HH.a [
-          HP.href "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-          ,HP.target "_blank"
-        ]
-        [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]] 
-      -- _ -> HH.text ""
-    
---A.head assetsA
-  --Loading -> HH.text "Loading..."
-  --Error message -> HH.text message
-
-  filterAsset:: Maybe SS.AssetConfig -> String 
-  filterAsset ac = do
-    case ac of
-      Just ( SS.AssetConfig { assetConfig } )-> show( Map.lookup "issueIntKeyUrl" assetConfig )
-      --Just ( SS.AssetConfig { assetConfig } ) -> Map.lookup "issueIntKeyUrl" assetConfig
-        --renderUrl ( A.filter ( \(Tuple k v) -> k == "issueIntKeyUrl" ) ( Map.toUnfoldable assetConfig ) )
-      Nothing -> ""
-      _ -> ""
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
@@ -1640,24 +1590,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , "gap-4"
             ]
         ]
-        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ] --,
-          --renderJiraUrl
-          {- if isStateFF then
-            HH.a [ 
-              getJiraIntUrl --HP.href getJiraIntUrl --"https://tickets-stage.test.it.sinch.com/browse/INT-28024" 
-              ,HP.target "_blank"
-            ] 
-            [
-              HH.button
-                [ Css.classes [ "nectary-btn-secondary", "h-7" ]
-                --, HE.onClick \_ -> OpenJiraTicket
-                -- , HE.onClick  OpenJiraTicket
-                ]
-                [ HH.text "Open Jira Ticket"
-                ]
-            ]
-          else
-              HH.text "" -}
+        [ HH.h1 [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ]
+          ,renderJiraUrl
         ]
     ]
     -- [ HH.h1_ [ HH.text "Order form" ] ]
