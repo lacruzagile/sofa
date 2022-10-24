@@ -285,7 +285,6 @@ data Action
     { orderSectionId :: OrderSectionId, orderLineId :: OrderLineId }
     Event.MouseEvent
   | DiscardOrder -- ^ Discard the currently loaded order.
-  | OpenJiraTicket -- ^ Discard the currently loaded order.
   | CreateUpdateOrder -- ^ Create or update the current order.
   | FulfillOrderStart -- ^ Show modal for user to confirm order fulfillment.
   | FulfillOrderModalResult ConfirmFulfillModal.Output
@@ -2842,39 +2841,6 @@ handleAction = case _ of
     H.liftEffect clearSessionOrderForm
     -- Reloading the catalog will reset the component state.
     loadCatalog Nothing Nothing
-  
-  OpenJiraTicket -> do
-    --( HtmlWindow.open "https://tickets-stage.test.it.sinch.com/browse/INT-28024" "_blank" )
-    pure unit
-    -- url :: String
-    {- state <- H.get
-    case state of
-      -- If the order exists in the backend then we'll also delete it there, but
-      -- only if the order is in the draft status.
-      Initialized
-        ( Loaded
-          { orderForm:
-            { original: Just (SS.OrderForm { id: Just orderId })
-            , status: SS.OsInDraft
-            }
-        }
-      ) -> do
-        result <- Requests.getAsset orderId
-        -- Console.log $ "getting assets: " <> ( show result )
-        case result of
-          Error msg -> H.liftEffect $ Console.error $ "Error getting assets: " <> msg
-          Loaded _ -> do
-            -- url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
-            --url <- A.head (renderUrl (Map.toUnfoldable assetConfig))
-
-            HtmlWindow.open "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-            pure unit
-          _ -> pure unit
-        pure unit
-      _ -> pure unit -}
-
-      --renderUrl (Tuple k v) = "https://tickets-stage.test.it.sinch.com/browse/INT-28024"
-
   CreateUpdateOrder -> do
     state <- H.get
     void $ createUpdateOrder state
