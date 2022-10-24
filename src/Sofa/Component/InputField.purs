@@ -134,7 +134,7 @@ renderCommon input inputElement =
           [ Css.classes [ "leading-5", "text-xs", "text-raspberry-500" ] ]
           [ HH.text txt ]
     _ -> case input.additionalText of
-      Nothing -> HH.div [ Css.class_ "h-5" ] []
+      Nothing -> HH.div [ Css.class_ "h-2" ] []
       Just txt ->
         HH.div
           [ Css.classes [ "leading-5", "text-xs", "text-right", subduedColor ] ]
