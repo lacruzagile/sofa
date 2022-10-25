@@ -137,6 +137,7 @@ type StateOrderForm
     , orderUpdateInFlight :: Boolean -- ^ Whether a current order update request is in flight.
     , orderFulfillStatus :: OrderFulfillStatus
     , assetModalOpen :: Maybe OrderLineId
+    , assets :: Loadable (Array SS.AssetConfig)
     , crmAccountId :: Maybe SS.CrmAccountId
     }
 
@@ -1140,47 +1141,47 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrderInfo orderForm =
     withOriginal
           ( \o ->
-            HH.div
-              [ Css.classes
-                  [ "flex"
-                  , "flex-col"
-                  , "gap-y-4"
-                  , "pl-8"
-                  ]
-              ]
-              [ withOriginal
-                  ( \o ->
-                      entry
-                        [ title "Order ID"
-                        , value [ HH.text $ maybe "Not Available" show o.id ]
-                        ]
-                  )
-              , case orderForm.crmQuoteId of
-                  Nothing -> HH.text ""
-                  Just (SS.CrmQuoteId id) ->
-                    entry
-                      [ title "Quote ID"
-                      , value [ HH.text id ]
-                      ]
-              , withOriginal
-                  ( \o ->
-                      entry
-                        [ title "Created by"
-                        , value [ HH.text $ fromMaybe "Not Available" o.createdBy ]
-                        ]
-                  )
-              , withOriginal
-                  ( \o ->
-                      entry
-                        [ title "Approval"
-                        , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
-                        ]
-                  )
+    HH.div
+      [ Css.classes
+          [ "flex"
+          , "flex-col"
+          , "gap-y-4"
+          , "pl-8"
+          ]
+      ]
+      [ withOriginal
+          ( \o ->
+              entry
+                [ title "Order ID"
+                , value [ HH.text $ maybe "Not Available" show o.id ]
+                ]
+          )
+      {- , case orderForm.crmQuoteId of
+          Nothing -> HH.text ""
+          Just (SS.CrmQuoteId id) ->
+            entry
+              [ title "Quote ID"
+              , value [ HH.text id ]
+              ] -}
+      , withOriginal
+          ( \o ->
+              entry
+                [ title "Created by"
+                , value [ HH.text $ fromMaybe "Not Available" o.createdBy ]
+                ]
+          )
+      , withOriginal
+          ( \o ->
+              entry
+                [ title "Approval"
+                , value [ HH.text $ SS.prettyOrderApprovalStatus o.approvalStatus ]
+                ]
+          )
               -- , entry
                   -- [ title "Observers"
                   -- , renderOrderObservers orderId orderForm.observers
                   -- ]
-              ]
+          ]
             )
     where
     entry = HH.div [ Css.classes [ "flex" ] ]
@@ -1238,6 +1239,46 @@ render state = HH.section_ [ HH.article_ renderContent ]
   isInDraft = case state of
     Initialized (Loaded { orderForm: { status: SS.OsInDraft } }) -> true
     _ -> false
+  
+  isMarioFF = if isMarioOrder  && isStateFF then 
+      true 
+    else 
+      false
+    where 
+    isMarioSection sec = case sec.solution of
+      Nothing -> false
+      Just (SS.Solution { id }) ->
+        (id == "Mario - Order Products")
+          || (id == "Mario - Everything Else")
+          || (id == "Mario - Edit Existing Products")
+
+    isMarioOrder = case state of  -- A.any  isMarioSection Initialized (Loaded { orderForm: { sections } }
+      Initialized (Loaded { orderForm: { sections } }) -> A.any isMarioSection sections
+      _ -> false
+
+  isStateFF = case state of 
+    Initialized (Loaded { orderForm: { status: SS.OsInFulfillment } }) -> true
+    Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
+    _ -> false
+
+  renderJiraUrl = if isMarioFF then
+      getJiraIntUrl state
+    else
+      HH.text ""
+
+  getJiraIntUrl state =
+    case state of
+      Initialized
+        ( Loaded --{ assets } 
+          { orderForm:
+            { original: Just (SS.OrderForm { crmQuoteId: Just (SS.CrmQuoteId crmQuoteId)})}
+          }
+        ) -> HH.a [
+              HP.href  crmQuoteId
+              ,HP.target "_blank"
+            ]
+            [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]
+      _ -> HH.text ""
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
@@ -1548,16 +1589,14 @@ render state = HH.section_ [ HH.article_ renderContent ]
             , "gap-4"
             ]
         ]
-        [ HH.h1  [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ]
+        [ HH.h1 [ Css.classes [ "grow", "my-0" ] ] [ HH.text "Order form" ]
+          ,renderJiraUrl
         ]
     ]
     -- [ HH.h1_ [ HH.text "Order form" ] ]
       <> case state of
           Initializing _ -> []
           Initialized state' -> defRender state' renderOrderForm
-  
-        
-        
 
 -- | Fetches all configurations within the given order section.
 orderSchemaGetConfigs ∷
@@ -1725,6 +1764,7 @@ loadCatalog crmQuoteId customerData = do
           , orderUpdateInFlight: false
           , orderFulfillStatus: FulfillStatusIdle
           , assetModalOpen: Nothing
+          , assets: Loading
           , crmAccountId: Nothing
           }
       )
@@ -1939,6 +1979,7 @@ loadWithCrmAccount id = do
           , orderUpdateInFlight: false
           , orderFulfillStatus: FulfillStatusIdle
           , assetModalOpen: Nothing
+          , assets: Loading
           , crmAccountId: crmAccountId
           }
       )
@@ -1973,11 +2014,15 @@ loadExisting ::
 loadExisting original@(SS.OrderForm orderForm) changed = do
   H.put $ Initialized Loading
   productCatalog <- H.liftAff Requests.getProductCatalog
+  -- id <- case orderForm.id of 
+  --  Just oid -> oid
+  --  _ -> SS.OrderId ("")
+  -- assets <- H.liftAff ( Requests.getAsset id )
   fixedBuyer <- H.lift isBuyerFixed
   H.put $ Initialized $ convertOrderForm fixedBuyer =<< productCatalog
   where
-  convertOrderForm :: Boolean -> SS.ProductCatalog -> Loadable StateOrderForm
-  convertOrderForm fixedBuyer productCatalog = do
+  convertOrderForm :: Boolean -> SS.ProductCatalog  -> Loadable StateOrderForm
+  convertOrderForm fixedBuyer productCatalog  = do
     let
       -- The value to use as v5 UUID root namespace for generated internal IDs.
       uuidRootNs = UUID.emptyUUID
@@ -2023,6 +2068,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
         , orderUpdateInFlight: false
         , orderFulfillStatus: FulfillStatusIdle
         , assetModalOpen: Nothing
+        , assets: Loading
         , crmAccountId: Nothing
         }
 
