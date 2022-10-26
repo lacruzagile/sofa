@@ -1952,6 +1952,7 @@ loadWithCrmAccount id = do
   productCatalog <- H.liftAff Requests.getProductCatalog
   buyerLoadable <- H.lift $ Requests.getBuyer id
   contacts <- H.lift $ Requests.getBuyerContacts id
+  orderSectionId <- genOrderSectionId
   let
     res =
       ( \(pc :: SS.ProductCatalog) ->
@@ -1974,7 +1975,7 @@ loadWithCrmAccount id = do
               , observers: []
               , notes: []
               , orderTotal: mempty
-              , sections: []
+              , sections: [ emptyOrderSection orderSectionId ]
               }
           , orderUpdateInFlight: false
           , orderFulfillStatus: FulfillStatusIdle
