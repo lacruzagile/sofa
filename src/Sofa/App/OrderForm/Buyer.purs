@@ -70,8 +70,8 @@ type State
 
 data Action
   = ChooseBuyer (Loadable SS.Buyer)
-  | SetContactPrimary SS.Contact
-  | SetContactFinance SS.Contact
+{-   | SetContactPrimary SS.Contact
+  | SetContactFinance SS.Contact -}
   | SetCustomerStatus Boolean
   | OpenDetails
   | AcceptAndCloseDetails
@@ -217,10 +217,10 @@ renderDetails st =
                       HH.div_ [ HH.text "" ]
                     else
                       HH.a [ HP.href (mkWebsiteUrl buyer.website) ] [ HH.text buyer.website ]
-                  , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Primary Contact" ]
+{-                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Primary Contact" ]
                   , renderContact contactPrimary buyer.contacts.primary SetContactPrimary
                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Finance Contact" ]
-                  , renderContact contactFinance buyer.contacts.finance SetContactFinance
+                  , renderContact contactFinance buyer.contacts.finance SetContactFinance -}
                   , HH.h4
                       (if st.readOnly then [] else [ Css.class_ "col-span-2" ])
                       [ HH.text "Customer Status" ]
@@ -291,7 +291,7 @@ renderDetails st =
 
   renderSmallTitle t = HH.h4_ [ HH.text t ]
 
-  renderContact ::
+ {-  renderContact ::
     ContactType ->
     SS.Contact ->
     (SS.Contact -> Action) ->
@@ -346,7 +346,7 @@ renderDetails st =
                   [ Css.class_ "animate-pulse" ]
                   [ HH.text "Loading contacts …" ]
               Error _ -> HH.text $ "Error loading contacts"
-          ]
+          ] -}
 
 handleAction ::
   forall slots f m.
@@ -356,7 +356,7 @@ handleAction ::
 handleAction = case _ of
   ChooseBuyer (Loaded buyer) -> do
     H.modify_ $ \st -> st { buyer = Loaded buyer, buyerAvailableContacts = Loading }
-    case buyer of
+    {- case buyer of
       SS.Buyer { crmAccountId: Just crmAccountId } -> do
         -- Fetch the buyer contacts.
         contacts <- H.lift $ getBuyerContacts crmAccountId
@@ -364,7 +364,7 @@ handleAction = case _ of
           Error err -> Console.error $ "When fetching contacts: " <> err
           _ -> pure unit
         H.modify_ _ { buyerAvailableContacts = contacts }
-      _ -> pure unit
+      _ -> pure unit -}
   ChooseBuyer buyer ->
     H.modify_
       $ \st ->
@@ -372,7 +372,7 @@ handleAction = case _ of
             { buyer = buyer
             , buyerAvailableContacts = Idle
             }
-  SetContactPrimary contact ->
+{-   SetContactPrimary contact ->
     let
       setContact (SS.Buyer s) = SS.Buyer $ s { contacts { primary = contact } }
     in
@@ -381,7 +381,7 @@ handleAction = case _ of
     let
       setContact (SS.Buyer s) = SS.Buyer $ s { contacts { finance = contact } }
     in
-      H.modify_ $ \st -> st { buyer = setContact <$> st.buyer }
+      H.modify_ $ \st -> st { buyer = setContact <$> st.buyer } -}
   SetCustomerStatus existingCustomer ->
     let
       setExistingCustomer (SS.Buyer s) = SS.Buyer $ s { existingCustomer = existingCustomer }
