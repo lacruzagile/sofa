@@ -63,9 +63,9 @@ type State
 data Action
   = Initialize
   | ChooseLegalEntity (Maybe SS.LegalEntity)
-  | UpdateContactPrimary (SS.Contact -> SS.Contact)
+ {-  | UpdateContactPrimary (SS.Contact -> SS.Contact)
   | UpdateContactFinance (SS.Contact -> SS.Contact)
-  | UpdateContactSupport (SS.Contact -> SS.Contact)
+  | UpdateContactSupport (SS.Contact -> SS.Contact) -}
   | OpenDetails
   | AcceptAndCloseDetails
   | CancelAndCloseDetails
@@ -237,12 +237,12 @@ renderDetails st =
                   , defaultCurrency
                   , renderSmallTitle "Available currencies"
                   , currencies
-                  , renderSmallTitle "Primary Contact"
+                  {- , renderSmallTitle "Primary Contact"
                   , renderContact seller.contacts.primary
                   , renderSmallTitle "Finance Contact"
                   , renderContact seller.contacts.finance
                   , renderSmallTitle "Support Contact"
-                  , renderContact seller.contacts.support
+                  , renderContact seller.contacts.support -}
                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Address" ]
                   ]
                 <> Widgets.address seller.address
@@ -278,7 +278,7 @@ renderDetails st =
 
   renderSmallTitle t = HH.h4_ [ HH.text t ]
 
-  renderContact (SS.Contact contact) =
+{-   renderContact (SS.Contact contact) =
     let
       opt = case _ of
         Nothing -> []
@@ -291,7 +291,7 @@ renderDetails st =
         $ A.intersperse subtleSlash
         $ opt contact.displayName
         <> opt contact.email
-        <> opt contact.phone
+        <> opt contact.phone -}
 
 toSeller :: SS.LegalEntity -> SS.Seller
 toSeller (SS.LegalEntity le) =
@@ -350,7 +350,7 @@ handleAction = case _ of
         }
     -- Switch focus to OK button.
     focusElementByRef okBtnLabel
-  UpdateContactPrimary update ->
+  {- UpdateContactPrimary update ->
     let
       setContact (SS.Seller s) = SS.Seller $ s { contacts { primary = update s.contacts.primary } }
     in
@@ -364,7 +364,7 @@ handleAction = case _ of
     let
       setContact (SS.Seller s) = SS.Seller $ s { contacts { support = update s.contacts.primary } }
     in
-      H.modify_ $ \st -> st { seller = setContact <$> st.seller }
+      H.modify_ $ \st -> st { seller = setContact <$> st.seller } -}
   OpenDetails -> H.modify_ $ \st -> st { open = true }
   AcceptAndCloseDetails -> do
     st' <-
