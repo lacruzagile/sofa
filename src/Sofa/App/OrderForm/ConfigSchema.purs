@@ -272,6 +272,53 @@ render state@{ orderLineId } =
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
             , wrapperClasses = [ Css.c "w-96" ]
             }
+    SS.CseDate { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
+    SS.CseDate c
+      | not (A.null c.enum) ->
+        renderEnumEntry
+          entryIdx
+          act
+          fallbackTitle
+          value
+          schemaEntry
+          c
+          SS.CvDate
+          identity
+    SS.CseDate c ->
+      InputField.render
+        $ InputField.defaultInput
+            { props =
+              let
+                -- Can be removed once
+                -- https://github.com/purescript-halogen/purescript-dom-indexed/pull/28
+                -- has been released.
+                pat = case c.pattern of
+                  Just pattern -> [ HP.pattern pattern ]
+                  Nothing -> []
+
+                placeholder = case c.pattern of
+                  Just pattern -> "String matching " <> pattern
+                  Nothing -> "Date"
+              in
+                [ HP.type_ HP.InputDate
+                , Css.classes
+                    $ if state.readOnly then
+                        readOnlyInputClasses
+                      else
+                        [ "nectary-input", "w-full" ]
+                , HP.placeholder placeholder
+                , HP.disabled state.readOnly
+                -- ^ Basic heuristic. Should support proper JSON Schema `required`.
+                , HE.onInput $ CheckInput entryIdx
+                , HE.onValueChange (act <<< const <<< SS.CvDate)
+                ]
+                  <> opt HP.value (maybe c.default (Just <<< show) value)
+                  <> pat
+            , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
+            , errorText = Map.lookup entryIdx state.errors
+            , tooltipText = SS.configSchemaEntryDescription schemaEntry
+            , wrapperClasses = [ Css.c "w-96" ]
+            }
     SS.CseRegex { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
     SS.CseRegex c ->
       InputField.render

@@ -24,6 +24,7 @@ import Sofa.Data.SmartSpec (ConfigSchemaEntry(..), ConfigValue(..))
 getTitle :: ConfigSchemaEntry -> Maybe String
 getTitle = case _ of
   CseBoolean { title } -> title
+  CseDate { title } -> title
   CseInteger { title } -> title
   CseString { title } -> title
   CseRegex { title } -> title
@@ -55,6 +56,21 @@ checkValue (CseString si) (CvString i) =
         | maybe false (\c -> c > len) si.minLength -> Left "string too small"
       _
         | maybe false (\c -> len > c) si.maxLength -> Left "string too long"
+      _
+        | maybe false (\pat -> not $ matchRegex pat i) si.pattern -> Left "string doesn't match expected pattern"
+      _
+        | not (A.null si.enum || A.elem i si.enum) -> Left "string not of allowed value"
+      _ -> Right unit
+
+checkValue (CseDate si) (CvDate i) =
+  let
+    len = S.length i
+
+    matchRegex pat str = case Re.regex pat mempty of
+      Left _ -> false -- Some regex syntax error.
+      Right re -> Re.test re str
+  in
+    case unit of
       _
         | maybe false (\pat -> not $ matchRegex pat i) si.pattern -> Left "string doesn't match expected pattern"
       _
@@ -113,6 +129,7 @@ mkDefaultConfig = case _ of
   CseBoolean x -> CvBoolean <$> x.default
   CseInteger x -> CvInteger <$> x.default
   CseString x -> CvString <$> (x.default <|> A.head x.enum <|> Just "")
+  CseDate x -> CvDate <$> (x.default <|> A.head x.enum <|> Just "")
   CseRegex x -> CvString <$> (x.default <|> Just "")
   CseConst x -> Just x.const
   CseArray _ -> Just $ CvArray []

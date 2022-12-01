@@ -106,6 +106,7 @@ render state = HH.section_ [ HH.article_ content ]
     SS.CseBoolean v -> renderBoolean v
     SS.CseInteger v -> renderInteger v
     SS.CseString v -> renderString v
+    SS.CseDate v -> renderDate v
     SS.CseRegex v -> renderRegex v
     SS.CseConst v -> renderConst v
     SS.CseArray v -> renderArray v
@@ -126,6 +127,12 @@ render state = HH.section_ [ HH.article_ content ]
         ( opt (dataItem "Minimum length" <<< show) v.minLength
             <> opt (dataItem "Maximum length" <<< show) v.maxLength
             <> opt (dataItem "Default") v.default
+        )
+    
+    renderDate v =
+      HH.dl_
+        ( 
+          opt (dataItem "Default") v.default
         )
 
     renderRegex v =
@@ -305,6 +312,7 @@ render state = HH.section_ [ HH.article_ content ]
 showCseTypeName :: SS.ConfigSchemaEntry -> String
 showCseTypeName = case _ of
   SS.CseBoolean _ -> "boolean"
+  SS.CseDate _ -> "date"
   SS.CseInteger _ -> "integer"
   SS.CseString _ -> "string"
   SS.CseRegex _ -> "regex"

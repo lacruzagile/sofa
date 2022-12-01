@@ -1357,6 +1357,13 @@ data ConfigSchemaEntry
     , widget :: Maybe SchemaWidget
     | ConfigSchemaEntryMeta
     }
+  | CseDate
+    { enum :: Array String
+    , pattern :: Maybe String
+    , default :: Maybe String
+    , widget :: Maybe SchemaWidget
+    | ConfigSchemaEntryMeta
+    }
   | CseRegex
     { pattern :: String
     , default :: Maybe String
@@ -1419,6 +1426,20 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
                 , default
                 , widget
                 }
+        "date" -> do
+          enum <- o .:? "enum" .!= []
+          pattern <- o .:? "pattern"
+          default <- o .:? "default"
+          widget <- o .:? "widget"
+          Right
+            $ CseDate
+                { title
+                , description
+                , enum
+                , pattern
+                , default
+                , widget
+                }
         "regex" -> do
           pattern <- o .: "pattern"
           default <- o .:? "default"
@@ -1441,6 +1462,7 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
 instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
   encodeJson = case _ of
     CseBoolean x -> encodeJson x
+    CseDate x -> encodeJson x
     CseInteger x -> encodeJson x
     CseString x -> encodeJson x
     CseRegex x -> encodeJson x
@@ -1452,6 +1474,7 @@ instance encodeJsonConfigSchemaEntry :: EncodeJson ConfigSchemaEntry where
 configSchemaEntryTitle :: ConfigSchemaEntry -> Maybe String
 configSchemaEntryTitle = case _ of
   CseBoolean x -> x.title
+  CseDate x -> x.title
   CseInteger x -> x.title
   CseString x -> x.title
   CseRegex x -> x.title
@@ -1463,6 +1486,7 @@ configSchemaEntryTitle = case _ of
 configSchemaEntryDescription :: ConfigSchemaEntry -> Maybe String
 configSchemaEntryDescription = case _ of
   CseBoolean x -> x.description
+  CseDate x -> x.description
   CseInteger x -> x.description
   CseString x -> x.description
   CseRegex x -> x.description
@@ -1473,6 +1497,7 @@ configSchemaEntryDescription = case _ of
 
 data ConfigValue
   = CvBoolean Boolean
+  | CvDate String
   | CvInteger Int
   | CvString String
   | CvArray (Array ConfigValue)
@@ -1488,6 +1513,7 @@ instance showConfigValue :: Show ConfigValue where
     CvBoolean v -> show v
     CvInteger v -> show v
     CvString v -> v
+    CvDate v -> v
     CvArray v -> show v
     CvObject v -> show v
     CvNull -> "null"
@@ -1497,6 +1523,7 @@ instance decodeJsonConfigValue :: DecodeJson ConfigValue where
     (CvBoolean <$> decodeJson json)
       <|> (CvInteger <$> decodeJson json)
       <|> (CvString <$> decodeJson json)
+      <|> (CvDate <$> decodeJson json)
       <|> (CvArray <$> decodeJson json)
       <|> parseObject
       <|> parseNull
@@ -1515,6 +1542,7 @@ instance encodeJsonConfigValue :: EncodeJson ConfigValue where
   encodeJson (CvBoolean v) = encodeJson v
   encodeJson (CvInteger v) = encodeJson v
   encodeJson (CvString v) = encodeJson v
+  encodeJson (CvDate v) = encodeJson v
   encodeJson (CvArray v) = encodeJson v
   encodeJson (CvObject v) = encodeJson $ FO.fromFoldable (Map.toUnfoldable v :: LL.List _)
   encodeJson (CvNull) = encodeJson (Nothing :: Maybe Int)
