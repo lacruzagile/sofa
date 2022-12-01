@@ -1,6 +1,6 @@
 include:
   - project: "devops/pipeline/kubernetes-components"
-    ref: 1.5.2
+    ref: 1.5.18
     file: "kubernetes-components.template.gitlab-ci.yml"
 
 stages:
