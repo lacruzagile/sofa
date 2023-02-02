@@ -2517,6 +2517,7 @@ data OrderStatus
   | OsInFulfillment
   | OsFulfilled
   | OsCancelled
+  | OsFailed
 
 derive instance genericOrderStatus :: Generic OrderStatus _
 
@@ -2574,7 +2575,7 @@ orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
 
 -- | Whether the given status is a final status.
 isFinalOrderStatus :: OrderStatus -> Boolean
-isFinalOrderStatus s = (s == OsFulfilled) || (s == OsCancelled)
+isFinalOrderStatus s = (s == OsFulfilled) || (s == OsCancelled) || (s == OsFailed)
 
 data OrderApprovalStatus
   = OasUndecided
