@@ -1259,6 +1259,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   isStateFF = case state of 
     Initialized (Loaded { orderForm: { status: SS.OsInFulfillment } }) -> true
     Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
+    Initialized (Loaded { orderForm: { status: SS.OsFailed } }) -> true
     _ -> false
 
   renderJiraUrl = if isMarioFF then

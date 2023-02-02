@@ -2517,6 +2517,7 @@ data OrderStatus
   | OsInFulfillment
   | OsFulfilled
   | OsCancelled
+  | OsFailed
 
 derive instance genericOrderStatus :: Generic OrderStatus _
 
@@ -2534,6 +2535,7 @@ instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
       "IN_FULFILLMENT" -> Right OsInFulfillment
       "FULFILLED" -> Right OsFulfilled
       "CANCELLED" -> Right OsCancelled
+      "FAILED" -> Right OsFailed
       _ -> Left (TypeMismatch "OrderStatus")
 
 instance encodeOrderStatus :: EncodeJson OrderStatus where
@@ -2548,6 +2550,7 @@ instance encodeOrderStatus :: EncodeJson OrderStatus where
           OsInFulfillment -> "IN_FULFILLMENT"
           OsFulfilled -> "FULFILLED"
           OsCancelled -> "CANCELLED"
+          OsFailed -> "FAILED"
 
 -- | Show pretty order status.
 prettyOrderStatus :: OrderStatus -> String
@@ -2560,6 +2563,7 @@ prettyOrderStatus = case _ of
   OsInFulfillment -> "In fulfillment"
   OsFulfilled -> "Fulfilled"
   OsCancelled -> "Cancelled"
+  OsFailed -> "Failed"
 
 -- | A collection of all order statuses.
 orderStatuses :: Array OrderStatus
@@ -2571,7 +2575,7 @@ orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
 
 -- | Whether the given status is a final status.
 isFinalOrderStatus :: OrderStatus -> Boolean
-isFinalOrderStatus s = (s == OsFulfilled) || (s == OsCancelled)
+isFinalOrderStatus s = (s == OsFulfilled) || (s == OsCancelled) || (s == OsFailed)
 
 data OrderApprovalStatus
   = OasUndecided
