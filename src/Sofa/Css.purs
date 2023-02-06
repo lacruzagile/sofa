@@ -45,4 +45,4 @@ statusColorClass status =
     SS.OsInFulfillment -> "bg-informative-200"
     SS.OsFulfilled -> "bg-success-200"
     SS.OsCancelled -> "bg-warning-200"
-    SS.OsFailed -> "bg-danger-200"
+    SS.OsFailed -> "bg-error-200"
