@@ -741,7 +741,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderSection sof sec = case sec.solution of
     Nothing ->
       body
-        [ HH.h2 [ Css.class_ "my-0" ] [ HH.text "Solution" ]
+        [ HH.h2 [ Css.class_ "my-0" ] [ HH.text "Category" ]
         , renderSelectSolution Nothing
         , HH.div [ Css.class_ "flex" ]
             [ HH.div [ Css.class_ "grow" ] []
@@ -766,7 +766,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ HH.div [ Css.class_ "grow" ]
                     [ HH.h2
                         [ Css.class_ "my-0" ]
-                        [ HH.text "Solution – "
+                        [ HH.text "Category – "
                         , HH.text $ solutionLabel solution
                         ]
                     ]
@@ -846,7 +846,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ Css.classes [ "nectary-btn-destructive", "h-8" ]
           , HE.onClick $ RemoveSection { orderSectionId: sec.orderSectionId }
           ]
-          [ HH.text "Discard solution"
+          [ HH.text "Discard category"
           ]
 
     renderAddProductButton =
@@ -952,7 +952,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ Css.classes [ "nectary-btn-primary", "h-8" ]
                 , HE.onClick \_ -> AddSection
                 ]
-                [ HH.text "Add solution"
+                [ HH.text "Add category"
                 ]
           ]
       , HH.table [ Css.classes [ "table-auto", "w-full" ] ]
@@ -972,7 +972,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           [ HP.colSpan 4
                           , Css.classes [ "p-2", "text-stormy-300", "text-center" ]
                           ]
-                          [ HH.text "No solutions added" ]
+                          [ HH.text "No category added" ]
                       ]
                   ]
                 else
@@ -1026,7 +1026,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HH.td [ HP.colSpan 3, Css.class_ "p-2" ]
                 [ HH.span
                     [ Css.class_ "text-tropical-500" ]
-                    [ HH.text "Solution" ]
+                    [ HH.text "Category" ]
                 , HH.br_
                 , HH.text $ fromMaybe (show sol.id) sol.title
                 ]
@@ -1452,8 +1452,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       pure unit
       where
       checkOrderSection os = do
-        SS.Solution solution <- note "Missing solution in section" os.solution
-        _ <- note "Missing solution URI in section" solution.uri
+        SS.Solution solution <- note "Missing category in section" os.solution
+        _ <- note "Missing category URI in section" solution.uri
         _ <-
           if A.null solution.priceBooks then
             Right unit
@@ -1677,7 +1677,7 @@ toJson orderForm = do
   toOrderSection :: OrderSection -> Either String SS.OrderSection
   toOrderSection os = do
     solutionUri <-
-      note "Missing solution URI"
+      note "Missing category URI"
         $ do
             SS.Solution { uri } <- os.solution
             uri
@@ -2087,7 +2087,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
 
       uuidSectionId = genv5UUID (show idx) uuidNs
     solution@(SS.Solution { id: solId, priceBooks: solPbs }) <-
-      maybe' (\_ -> Error "No matching solution found") Loaded
+      maybe' (\_ -> Error "No matching category found") Loaded
         $ List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri)
         $ Map.values solutions
     priceBook <-
