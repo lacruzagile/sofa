@@ -260,7 +260,7 @@ renderNavbar state =
     , "items-center"
     ]
 
-  primaryItem route = 
+  primaryItem route =
     HH.a
       [ Route.href route
       , Css.classes [ "flex", "w-64", "h-full" ]
