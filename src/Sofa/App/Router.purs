@@ -141,7 +141,7 @@ renderSideMenu ::
 renderSideMenu currentRoute =
   HH.nav [ Css.classes navbarClasses ]
     [ HH.ul [ Css.class_ "space-y-4" ]
-        [ navbarItem Icon.package "Solutions  ⃰"
+        [ navbarItem Icon.package "Categories  ⃰"
             [ navbarSubItem Route.ProductCatalog "Product catalog"
             ]
         , navbarItem Icon.longMessage "Order forms"

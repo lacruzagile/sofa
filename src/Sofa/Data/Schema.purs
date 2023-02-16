@@ -78,7 +78,7 @@ checkValue (CseDate si) (CvDate i) =
       _ -> Right unit
 
 checkValue (CseRegex si) (CvString i) = case Re.regex si.pattern mempty of
-  Left err -> Left $ "invalid regex syntax in solution file: " <> err
+  Left err -> Left $ "invalid regex syntax in category file: " <> err
   Right re
     | Re.test re i -> Right unit
     | otherwise -> Left "string doesn't match expected pattern"
