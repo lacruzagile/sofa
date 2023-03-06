@@ -11,7 +11,7 @@ use the prebuilt Docker image then start it with [Docker Compose]. Run
 
 ``` sh-session
 $ docker image pull \
-    nexus.int.clxnetworks.net:8089/dev/business-process-automation/sofa:latest
+    nexus.int.clxnetworks.net:8089/sinch/sinch-projects/enterprise-and-messaging/beehive/teams/customer-provisioning/smart-ordering/sofa:latest
 $ docker-compose up --no-build
 ```
 

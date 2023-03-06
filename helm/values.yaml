@@ -13,8 +13,7 @@ ports:
   httpMetrics: 9117
 
 image:
-  repository: nexus.int.clxnetworks.net:8089/sinch/sinch-projects/enterprise-and-messaging/internal-platform/customer-provisioning/smart-ordering/sofa
-  pullPolicy: Always
+  repository: nexus.int.clxnetworks.net:8089/sinch/sinch-projects/enterprise-and-messaging/beehive/teams/customer-provisioning/smart-ordering/sofa
   pullCreds: nexussecret
 
 ingress:

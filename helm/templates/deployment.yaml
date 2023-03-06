@@ -26,7 +26,7 @@ spec:
         cg_team: "customer_provisioning"
         cg_legal_zone: "eu"
       annotations:
-        cg_vcs_path: "https://git.clxnetworks.net/dev/business-process-automation/sofa"
+        cg_vcs_path: "https://gitlab.com/sinch/sinch-projects/enterprise-and-messaging/beehive/teams/customer-provisioning/smart-ordering/sofa"
         prometheus.io/path: "/metrics"
         prometheus.io/port: "{{ .Values.ports.httpMetrics }}"
         prometheus.io/scrape: "true"
