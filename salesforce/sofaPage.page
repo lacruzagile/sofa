@@ -11,8 +11,6 @@
 
   <apex:stylesheet value="{!URLFOR($Resource.sofaBundle, '@css@')}"/>
   <script type="module" src="{!URLFOR($Resource.sofaBundle, '@js@')}"></script>
-   <script type="text/javascript"  src="{!$Resource.iframeResizercontentWindow}"></script>
-
 
   <script>
     const __ACCESSTOKEN__ = '{!$Api.Session_ID}';
