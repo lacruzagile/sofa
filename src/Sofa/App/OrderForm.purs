@@ -1206,9 +1206,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
       EditableInput.component
       { value: fromMaybe "" name
       , placeholder: "Unnamed order"
-      , classes: [ Css.c "w-fit", Css.c "max-w-128", Css.c "text-2xl" ]
+      , classes: [ Css.c "w-fit", Css.c "max-w-4x1", Css.c "text-2xl" ]
       , editButtonProps: [ HPAria.label "Edit order name" ]
-      , inputProps: [ HP.attr (H.AttrName "maxlength") "50" ]
+      , inputProps: [ HP.attr (H.AttrName "maxlength") "100" ]
       }
       SetOrderDisplayName
 
