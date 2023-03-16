@@ -11,6 +11,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Select as Sel
 import Sofa.App.SchemaDataSource (DataSourceEnumResult)
 import Sofa.Component.Typeahead as Typeahead
@@ -177,7 +178,7 @@ component =
               case st.filtered of
                 Loaded filtered ->
                   let
-                    renderItem (Tuple key _) = HH.text key
+                    renderItem (Tuple key _) = HH.div [HP.title key] [HH.text key]
                   in
                     renderItem <$> filtered
                 _ -> []
