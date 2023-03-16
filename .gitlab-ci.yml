@@ -15,7 +15,9 @@ variables:
 
 .yarn-job:
   image: node:18
-  tags: [ docker+machine ]
+  tags:
+    - glsr
+    - eu1tst
   cache:
     key:
       files:
@@ -49,7 +51,9 @@ test:
 
 build-and-push-image:
   stage: image
-  tags: [ docker+machine ]
+  tags:
+    - glsr
+    - eu1tst
   only: [ master ]
   image:
     name: gcr.io/kaniko-project/executor:debug
