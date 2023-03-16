@@ -98,8 +98,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder (SS.OrderForm o) =
     trow
       [ tcell [ maybe (HH.text "N/A") Widgets.dateWithTimeTooltip o.createTime ]
-      , tcell [ HH.text buyer ]
-      , tcell [ HH.text seller ]
+      -- , tcell [ HH.text buyer ]
+      -- , tcell [ HH.text seller ]
       , tcell [ HH.text $ fromMaybe "" $ o.displayName ]
       , tcell
           [ HH.div
@@ -139,8 +139,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ thead
               [ trow
                   [ thcell [ HH.text "Date" ]
-                  , thcell [ HH.text "Customer" ]
-                  , thcell [ HH.text "Legal entity" ]
+                  -- , thcell [ HH.text "Customer" ]
+                  -- , thcell [ HH.text "Legal entity" ]
                   , thcell [ HH.text "Name" ]
                   , thcell [ HH.text "Status" ]
                   ]
