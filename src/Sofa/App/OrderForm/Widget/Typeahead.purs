@@ -159,8 +159,12 @@ component =
             , "flex"
             , "items-center"
             ]
+          , HP.title 
+              $ fromMaybe "" do
+                Tuple label _ <- st.selected
+                pure label
         ]
-        [ HH.text
+        [ HH.text 
             $ fromMaybe "" do
                 Tuple label _ <- st.selected
                 pure label

@@ -756,7 +756,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           let
             mkPriceBookOption i pb =
               Tuple
-                (HH.text $ pb.title <> " (" <> SS.prettyDate pb.version <> ")")
+                (HH.div [HP.title $ pb.title <> " (" <> SS.prettyDate pb.version <> ")"] [HH.text $ pb.title <> " (" <> SS.prettyDate pb.version <> ")"])
                 i
           in
             A.mapWithIndex mkPriceBookOption priceBooks
