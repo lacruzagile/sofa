@@ -11,6 +11,7 @@ import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Sofa.Component.Select as Select
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -136,7 +137,7 @@ render st
       Select.component
       ( Select.defaultInput
           { selected = st.selectedId
-          , values = map (\o -> Tuple (HH.text o.label) o.configId) st.options
+          , values = map (\o -> Tuple (HH.div [HP.title $ o.label] [HH.text $ o.label]) o.configId) st.options
           , noSelectionText = "Please choose a configuration"
           , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
           }
