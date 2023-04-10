@@ -220,7 +220,7 @@ renderDetails st =
 {-                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Primary Contact" ]
                   , renderContact contactPrimary buyer.contacts.primary SetContactPrimary
                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Finance Contact" ]
-                  , renderContact contactFinance buyer.contacts.finance SetContactFinance -}
+                  , renderContact contactFinance buyer.contacts.finance SetContactFinance
                   , HH.h4
                       (if st.readOnly then [] else [ Css.class_ "col-span-2" ])
                       [ HH.text "Customer Status" ]
@@ -256,7 +256,7 @@ renderDetails st =
                                 ]
                             , HH.span [ Css.class_ "ml-2" ] [ HH.text "Existing Customer" ]
                             ]
-                        ]
+                        ] -}
                   , HH.h4 [ Css.class_ "col-span-2" ] [ HH.text "Address" ]
                   ]
                 <> Widgets.address buyer.address
