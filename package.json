@@ -12,7 +12,7 @@
     "build": "spago bundle-app --to sofa.js && sed -i 's/&& module.require /\\&\\& false /' sofa.js && parcel build sofa.html",
     "clean": "rm -rf dist output sofa.js",
     "docker-build": "yarn build && docker build -f docker/Dockerfile -t sofa:latest .",
-    "start": "parcel serve sofa-dev.html",
+    "start": "sed -i 's/&& module.require /\\&\\& false /' ./output/Affjax/foreign.js && parcel serve sofa-dev.html",
     "test": "spago test",
     "watch": "spago build --watch --clear-screen",
     "format": "find src -name '*.purs' -exec purty format --write '{}' ';'"
