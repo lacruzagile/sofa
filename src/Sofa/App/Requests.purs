@@ -3,6 +3,7 @@ module Sofa.App.Requests
   ( FileStatus(..)
   , appendPathPiece
   , appendUrlParams
+  , copyOrder
   , deleteFile
   , deleteOrder
   , deleteOrderLine
@@ -37,6 +38,7 @@ module Sofa.App.Requests
   ) where
 
 import Prelude
+
 import Affjax as AX
 import Affjax.RequestBody as RequestBody
 import Affjax.RequestHeader (RequestHeader)
@@ -45,24 +47,23 @@ import Affjax.StatusCode (StatusCode(..))
 import Control.Alternative ((<|>))
 import Data.Argonaut (JsonDecodeError(..), (.:), class DecodeJson, class EncodeJson, Json, decodeJson, encodeJson, printJsonDecodeError)
 import Data.Array as A
-import Data.Map (Map)
-import Data.Map as Map
-import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Either (Either(..))
 import Data.HTTP.Method as HTTP
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.String as S
 import Data.Time.Duration (Milliseconds(..))
-import Data.Tuple (Tuple)
 import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Foreign.Object as FO
 import JSURI (encodeURIComponent)
--- import Sofa.App.OrderForm.ConfirmFulfillModal (MarioPriority(..))
 import Sofa.Data.Auth (class CredentialStore, getAuthorizationHeader)
 import Sofa.Data.Loadable (Loadable(..))
-import Sofa.Data.SmartSpec (AssetConfig, BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity(..), MarioPriority(..), Participant(..), OrderForm, OrderId, OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, ProductCatalog, Uri)
+import Sofa.Data.SmartSpec (AssetConfig, BillingAccount, BillingAccountId(..), Buyer, ConfigValue, Contact, CrmAccountId(..), CrmQuoteId(..), LegalEntity(..), MarioPriority(..), OrderForm, OrderId(..), OrderLineId, OrderNote, OrderNoteId, OrderObserver, OrderObserverId, OrderSectionId, Participant(..), ProductCatalog, Uri)
 import Web.URL.URLSearchParams (URLSearchParams)
 import Web.URL.URLSearchParams as UrlParams
 
@@ -314,6 +315,18 @@ postOrder ::
   CredentialStore f m =>
   OrderForm -> m (Loadable OrderForm)
 postOrder orderForm = postRJson ordersUrl orderForm
+
+copyOrder ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  String -> String -> m (Loadable OrderForm)
+copyOrder id name = postRJson_ copyUrl
+   where
+    copyUrl = ordersUrl </> (id) <> ":copy"
+      <?> ((UrlParams.set "orderName" name)
+              $ emptyUrlParams
+              )
 
 deleteOrder ::
   forall f m.

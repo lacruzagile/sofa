@@ -26,3 +26,8 @@ exports.removeClassToElement = value => name => () => {
   var element = document.getElementById(value);
   element.classList.remove(name)
 }
+
+exports.reload = () => {
+  location.reload()
+}
+

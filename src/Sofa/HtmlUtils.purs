@@ -8,9 +8,11 @@ module Sofa.HtmlUtils
   , copyToClipboard
   , back
   , removeClassToElement
+  , reload
   ) where
 
 import Prelude
+
 import Data.Maybe (maybe)
 import Data.Traversable (for_)
 import Effect (Effect)
@@ -30,6 +32,8 @@ foreign import scrollIntoView :: DomElement.Element -> Effect Unit
 foreign import copyToClipboard :: String -> Effect Unit
 
 foreign import back :: Effect Unit
+
+foreign import reload :: Effect Unit
 
 foreign import removeClassToElement :: String -> String -> Effect Unit
 

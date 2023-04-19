@@ -2,13 +2,16 @@
 module Sofa.App.Orders (Slot, Input(..), OrderFilter(..), proxy, component) where
 
 import Prelude
+
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Sofa.App.CopyOrderModal as CopyOrder
 import Sofa.App.OrderForm as OrderForm
 import Sofa.App.Requests (getOrders)
 import Sofa.Component.Alert as Alert
@@ -34,6 +37,7 @@ proxy = Proxy
 
 type Slots
   = ( orderForm :: OrderForm.Slot Unit
+    , copyOrder :: CopyOrder.Slot Unit
     )
 
 type Input
@@ -90,6 +94,7 @@ initialize = Just (LoadNext firstPageToken)
 render ::
   forall f m.
   MonadAff m =>
+  MonadAlert m =>
   CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 render state = HH.section_ [ HH.article_ renderContent ]
@@ -111,6 +116,28 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ]
               [ HH.text $ SS.prettyOrderStatus o.status ]
           ]
+      , tcell 
+            [
+              HH.div
+                [ Css.classes [ "p-4 dropdown hover:bg-tropical-400" ]
+                ]
+                [ 
+                  HH.button
+                    []  
+                    [
+                      Icon.moreVert
+                          [ Icon.classes [ Css.c "w-5" ]
+                          , Icon.ariaLabel "Action"
+                          ]
+                    , HH.div 
+                          [Css.classes [ "dropdown-options" ]]
+                          [HH.a [HP.href "#"] [
+                                HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
+                              ]
+                          ]
+                    ]
+                ]
+            ]
       ]
     where
     rowClasses = [ "table-row", "hover:bg-gray-100", "odd:bg-snow-200" ]
@@ -143,6 +170,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   -- , thcell [ HH.text "Legal entity" ]
                   , thcell [ HH.text "Name" ]
                   , thcell [ HH.text "Status" ]
+                  , thcell [ HH.text "Action" ]
                   ]
               ]
           , tbody $ map renderOrder state.orders
