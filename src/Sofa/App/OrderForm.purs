@@ -429,10 +429,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     [ HH.span [ Css.class_ "font-semibold" ] [ HH.text "Status" ]
                     , renderOrderLineStatus ol.status ol.statusReason
                     ]
-                , HH.label [ Css.classes [ "flex", "gap-4", "items-center" ] ]
-                    [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Quantity" ]
-                    , renderQuantityInput $ NA.head ol.configs
-                    ]
+                -- , HH.label [ Css.classes [ "flex", "gap-4", "items-center" ] ]
+                --     [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Quantity" ]
+                --     , renderQuantityInput $ NA.head ol.configs
+                --     ]
                 ]
             , renderSelectProduct ol.product
             , renderProductOptions product
@@ -960,7 +960,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               [ HH.tr [ Css.classes [ "border-b-2", "border-stormy-500" ] ]
                   [ th [ "w-full" ] [ HH.text "Name" ]
                   , th [ "px-5" ] [ HH.text "Status" ]
-                  , th [ "px-5" ] [ HH.text "Quantity" ]
+                  -- , th [ "px-5" ] [ HH.text "Quantity" ]
                   , th [] [ HH.text "Asset" ]
                   , if isInDraft then th [] [ HH.text "Remove" ] else HH.text ""
                   ]
@@ -1030,7 +1030,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 , HH.br_
                 , HH.text $ fromMaybe (show sol.id) sol.title
                 ]
-            , HH.td [ Css.class_ "text-center" ] []
+            -- , HH.td [ Css.class_ "text-center" ] []
             , tdDelete $ RemoveSection { orderSectionId }
             ]
         ]
@@ -1057,9 +1057,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , HH.td [ Css.classes [ "p-2", "px-5" ] ]
               [ renderOrderLineStatus ol.status ol.statusReason
               ]
-          , HH.td
-              [ Css.classes [ "p-2", "px-5" ] ]
-              [ HH.text $ show $ orderLineQuantity ol ]
+          -- , HH.td
+          --     [ Css.classes [ "p-2", "px-5" ] ]
+          --     [ HH.text $ show $ orderLineQuantity ol ]
           , tdAsset { orderSectionId, orderLineId: ol.orderLineId } ol.statusReason orderId
           , tdDelete $ RemoveOrderLine { orderSectionId, orderLineId: ol.orderLineId }
           ]
