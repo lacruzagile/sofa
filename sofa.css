@@ -435,7 +435,7 @@
 }
 
 
-input, ul.submenu {
+.menu, ul.submenu {
   display: none;
   position: absolute;
   overflow: auto;
@@ -452,14 +452,14 @@ label {
 }
 
 /*show the submenu when input is checked*/
-input:checked~ul.submenu {
+.menu:checked~ul.submenu {
   display: block;
   color: #000000;
   text-decoration: none;
   padding: 9px 40px;
 }
 
-input:checked~ul.submenu:hover {
+.menu:checked~ul.submenu:hover {
   color: #0a0a23;
   background-color: #ddd;
   border-radius:5px;

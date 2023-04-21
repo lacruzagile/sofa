@@ -204,7 +204,7 @@ handleAction = case _ of
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     H.modify_ $ \st -> st { open = false }
     { order } <- H.get
-    H.liftEffect $ uncheck (getIdByOrder order)
+    H.liftEffect $ uncheck ("check-" <> (getIdByOrder order))
   AcceptAndClose event -> do
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     { orderName, order } <- H.get

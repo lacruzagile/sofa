@@ -25,7 +25,7 @@ import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Route as Route
 import Sofa.Data.SmartSpec as SS
-import Sofa.HtmlUtils (scrollToBottom)
+import Sofa.HtmlUtils (scrollToBottom, uncheckall)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (stopPropagation) as Event
@@ -59,7 +59,7 @@ type State
 
 data Action
   = LoadNext String
-  | StopPropagation Event.MouseEvent
+  | StopPropagation String Event.MouseEvent
 
 firstPageToken :: String
 firstPageToken = ""
@@ -119,23 +119,23 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ]
               [ HH.text $ SS.prettyOrderStatus o.status ]
           ]
-      -- , tcell 
-      --       [
-      --           HH.input [Css.classes [ "p-4 hover:bg-tropical-400" ], HE.onClick StopPropagation, HP.type_ HP.InputCheckbox, HP.id oid] 
-      --           , HH.label [HP.for oid] [
-      --             Icon.moreVert
-      --               [ Icon.classes [ Css.c "w-5 hover:bg-tropical-400"]
-      --               , Icon.ariaLabel "Action"
-      --               ]
-      --           ]
-      --           , HH.ul [Css.classes [ "submenu" ]] [
-      --               HH.li [] 
-      --               [HH.a [HP.href "#"] [
-      --                     HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
-      --                   ]
-      --               ]
-      --             ]
-      --       ]
+      , tcell 
+            [
+                HH.input [Css.classes [ "p-4 menu hover:bg-tropical-400" ], HE.onClick (StopPropagation ("check-" <> oid)), HP.type_ HP.InputCheckbox, HP.id ("check-" <> oid)] 
+                , HH.label [HP.for ("check-" <> oid)] [
+                  Icon.moreVert
+                    [ Icon.classes [ Css.c "w-5 hover:bg-tropical-400"]
+                    , Icon.ariaLabel "Action"
+                    ]
+                ]
+                , HH.ul [Css.classes [ "submenu" ]] [
+                    HH.li [] 
+                    [HH.a [HP.href "#"] [
+                          HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
+                        ]
+                    ]
+                  ]
+            ]
       ]
     where
     rowClasses = [ "table-row", "hover:bg-gray-100", "odd:bg-snow-200" ]
@@ -172,7 +172,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                   -- , thcell [ HH.text "Legal entity" ]
                   , thcell [ HH.text "Name" ]
                   , thcell [ HH.text "Status" ]
-                  -- , thcell [ HH.text "Action" ]
+                  , thcell [ HH.text "Action" ]
                   ]
               ]
           , tbody $ map renderOrder state.orders
@@ -317,4 +317,7 @@ handleAction = case _ of
           $ Alert.errorAlert "Failed to load orders" msg
       _ -> do
         H.modify_ _ { nextPageToken = Loaded (Just nextPageToken) }
-  StopPropagation event -> H.liftEffect $ Event.stopPropagation $ Event.toEvent event
+  StopPropagation value event -> do
+    H.liftEffect $ Event.stopPropagation $ Event.toEvent event
+    H.liftEffect $ uncheckall value
+    pure unit

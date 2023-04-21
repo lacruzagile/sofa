@@ -32,6 +32,15 @@ exports.uncheck = value => () => {
   element.checked = false
 }
 
+exports.uncheckall = value => () => {
+  var inputs = document.querySelectorAll('input.menu');
+  for (var i = 0; i < inputs.length; i++) {
+    if(inputs[i].id !== value) {
+      inputs[i].checked = false;
+    }
+  }
+}
+
 exports.reload = () => {
   location.reload()
 }
