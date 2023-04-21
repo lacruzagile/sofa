@@ -136,6 +136,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       --               ]
       --             ]
       --       ]
+      
       ]
     where
     rowClasses = [ "table-row", "hover:bg-gray-100", "odd:bg-snow-200" ]
