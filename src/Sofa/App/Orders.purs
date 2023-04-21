@@ -28,6 +28,8 @@ import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (scrollToBottom)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
+import Web.Event.Event (stopPropagation) as Event
+import Web.UIEvent.MouseEvent (MouseEvent, toEvent) as Event
 
 type Slot id
   = forall query. H.Slot query Void id
@@ -57,6 +59,7 @@ type State
 
 data Action
   = LoadNext String
+  | StopPropagation Event.MouseEvent
 
 firstPageToken :: String
 firstPageToken = ""
@@ -118,25 +121,20 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       , tcell 
             [
-              HH.div
-                [ Css.classes [ "p-4 dropdown hover:bg-tropical-400" ]
-                ]
-                [ 
-                  HH.button
-                    []  
-                    [
-                      Icon.moreVert
-                          [ Icon.classes [ Css.c "w-5" ]
-                          , Icon.ariaLabel "Action"
-                          ]
-                    , HH.div 
-                          [Css.classes [ "dropdown-options" ]]
-                          [HH.a [HP.href "#"] [
-                                HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
-                              ]
-                          ]
+                HH.input [Css.classes [ "p-4 hover:bg-tropical-400" ], HE.onClick StopPropagation, HP.type_ HP.InputCheckbox, HP.id oid] 
+                , HH.label [HP.for oid] [
+                  Icon.moreVert
+                    [ Icon.classes [ Css.c "w-5 hover:bg-tropical-400"]
+                    , Icon.ariaLabel "Action"
                     ]
                 ]
+                , HH.ul [Css.classes [ "submenu" ]] [
+                    HH.li [] 
+                    [HH.a [HP.href "#"] [
+                          HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
+                        ]
+                    ]
+                  ]
             ]
       ]
     where
@@ -145,6 +143,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
     trow = case o.id of
       Nothing -> HH.div [ Css.classes rowClasses ]
       Just id -> HH.a [ Route.href (Route.Order id), Css.classes rowClasses ]
+
+    oid = case o.id of
+      Just id -> show id
+      Nothing -> ""
 
     tcell =
       HH.div
@@ -315,3 +317,4 @@ handleAction = case _ of
           $ Alert.errorAlert "Failed to load orders" msg
       _ -> do
         H.modify_ _ { nextPageToken = Loaded (Just nextPageToken) }
+  StopPropagation event -> H.liftEffect $ Event.stopPropagation $ Event.toEvent event

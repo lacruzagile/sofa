@@ -7,6 +7,7 @@ module Sofa.HtmlUtils
   , setInputText
   , copyToClipboard
   , back
+  , uncheck
   , removeClassToElement
   , reload
   ) where
@@ -34,6 +35,8 @@ foreign import copyToClipboard :: String -> Effect Unit
 foreign import back :: Effect Unit
 
 foreign import reload :: Effect Unit
+
+foreign import uncheck :: String -> Effect Unit
 
 foreign import removeClassToElement :: String -> String -> Effect Unit
 

@@ -27,6 +27,11 @@ exports.removeClassToElement = value => name => () => {
   element.classList.remove(name)
 }
 
+exports.uncheck = value => () => {
+  var element = document.getElementById(value);
+  element.checked = false
+}
+
 exports.reload = () => {
   location.reload()
 }
