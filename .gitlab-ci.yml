@@ -54,7 +54,7 @@ build-and-push-image:
   tags:
     - glsr
     - eu1tst
-  only: [ master ]
+  only: [ development, master ]
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
@@ -89,7 +89,7 @@ build-and-push-image:
 pages:
   extends: .yarn-job
   stage: deploy
-  only: [ master ]
+  only: [ development, master ]
   needs: [ test ]
   cache:
     policy: pull
@@ -136,7 +136,7 @@ deploy-k8s-staging:
   tags:
     - glsr
     - eu1tst
-  only: [ master ]
+  only: [ development, master ]
   environment:
     name: eu1tst
     on_stop: stop-k8s-staging
@@ -146,7 +146,7 @@ stop-k8s-staging:
   tags:
     - glsr
     - eu1tst
-  only: [ master ]
+  only: [ development, master ]
   environment:
     name: eu1tst
     action: stop
@@ -177,7 +177,7 @@ deploy-salesforce-sofa:
   tags:
     - glsr
     - eu1tst
-  only: [ master ]
+  only: [ development, master ]
   when: manual
   environment:
     name: sf-sofa
@@ -196,7 +196,7 @@ deploy-salesforce-fullsb:
   tags:
     - glsr
     - eu1tst
-  only: [ master ]
+  only: [ development, master ]
   when: manual
   environment:
     name: sf-fullsb
@@ -215,7 +215,7 @@ deploy-salesforce-uat:
   tags:
     - glsr
     - eu1tst
-  only: [ master ]
+  only: [ development, master ]
   when: manual
   environment:
     name: sf-uat
