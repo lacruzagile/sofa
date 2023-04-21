@@ -8,6 +8,7 @@ module Sofa.HtmlUtils
   , copyToClipboard
   , back
   , uncheck
+  , uncheckall
   , removeClassToElement
   , reload
   ) where
@@ -37,6 +38,9 @@ foreign import back :: Effect Unit
 foreign import reload :: Effect Unit
 
 foreign import uncheck :: String -> Effect Unit
+
+
+foreign import uncheckall :: String -> Effect Unit
 
 foreign import removeClassToElement :: String -> String -> Effect Unit
 
