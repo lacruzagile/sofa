@@ -11,7 +11,6 @@ module Sofa.App.CopyOrderModal
 
 import Prelude
 
-
 import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console as Console
@@ -24,12 +23,12 @@ import Sofa.Component.Alert as Alert
 import Sofa.Component.Alerts (class MonadAlert)
 import Sofa.Component.Alerts as Alerts
 import Sofa.Component.Icon as Icon
-import Sofa.HtmlUtils (reload)
 import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.SmartSpec as SS
+import Sofa.HtmlUtils (reload, uncheck)
 import Web.Event.Event (stopPropagation) as Event
 import Web.UIEvent.KeyboardEvent (KeyboardEvent, toEvent) as KE
 import Web.UIEvent.MouseEvent (MouseEvent, toEvent) as Event
@@ -134,6 +133,7 @@ renderIcon = HH.div [HE.onClick OpenModal]
                 Icon.control_point_duplicate
                     [ Icon.classes [ Css.c "h-6" , Css.c "mr-2", Css.c "list-icon"]
                     , Icon.ariaLabel "Duplicate Order"
+                    , HHP.style "float: left"
                     ]
                 , HH.text "Duplicate"
             ]
@@ -181,6 +181,9 @@ getId :: Maybe SS.OrderId -> String
 getId orderId = case orderId of
   Just id -> show id
   Nothing -> ""
+
+getIdByOrder :: SS.OrderForm  -> String
+getIdByOrder (SS.OrderForm order) = (getId order.id)
     
 
 handleAction ::
@@ -200,6 +203,8 @@ handleAction = case _ of
     -- Don't propagate the click to the underlying table row.
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     H.modify_ $ \st -> st { open = false }
+    { order } <- H.get
+    H.liftEffect $ uncheck (getIdByOrder order)
   AcceptAndClose event -> do
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     { orderName, order } <- H.get
