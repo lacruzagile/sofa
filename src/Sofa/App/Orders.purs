@@ -106,6 +106,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder (SS.OrderForm o) =
     trow
       [ tcell [ maybe (HH.text "N/A") Widgets.dateWithTimeTooltip o.createTime ]
+      , tcell [ HH.text (getId o.id)]
       -- , tcell [ HH.text buyer ]
       -- , tcell [ HH.text seller ]
       , tcell [ HH.text $ fromMaybe "" $ o.displayName ]
@@ -140,6 +141,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
     where
     rowClasses = [ "table-row", "hover:bg-gray-100", "odd:bg-snow-200" ]
 
+    getId orderId = case orderId of
+      Just id -> show id
+      Nothing -> ""
+
     trow = case o.id of
       Nothing -> HH.div [ Css.classes rowClasses ]
       Just id -> HH.a [ Route.href (Route.Order id), Css.classes rowClasses ]
@@ -168,6 +173,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ thead
               [ trow
                   [ thcell [ HH.text "Date" ]
+                  , thcell [ HH.text "ID" ]
                   -- , thcell [ HH.text "Customer" ]
                   -- , thcell [ HH.text "Legal entity" ]
                   , thcell [ HH.text "Name" ]
