@@ -121,10 +121,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
           ]
       , tcell 
             [
-                HH.input [Css.classes [ "p-4 menu hover:bg-tropical-400" ], HE.onClick (StopPropagation ("check-" <> oid)), HP.type_ HP.InputCheckbox, HP.id ("check-" <> oid)] 
-                , HH.label [HP.for ("check-" <> oid)] [
+                HH.input [Css.classes [ "p-4 menu", "nectary-btn-secondary", "ring-0", "w-full", "mb-3", "rounded-t-none" ], HE.onClick (StopPropagation ("check-" <> oid)), HP.type_ HP.InputCheckbox, HP.id ("check-" <> oid)] 
+                , HH.label [Css.classes ["nectary-btn-secondary h-9 w-11 label-action"], HP.for ("check-" <> oid)] [
                   Icon.moreVert
-                    [ Icon.classes [ Css.c "w-5 hover:bg-tropical-400"]
+                    [ Icon.classes [ Css.c "w-5"]
                     , Icon.ariaLabel "Action"
                     ]
                 ]

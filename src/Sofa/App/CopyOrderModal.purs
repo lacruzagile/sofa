@@ -128,7 +128,7 @@ renderContent state (SS.OrderForm o) =
 renderIcon ::
   forall m.
   H.ComponentHTML Action () m
-renderIcon = HH.div [HE.onClick OpenModal]
+renderIcon = HH.div [Css.classes [ "custom-padding" ], HE.onClick OpenModal]
             [
                 Icon.control_point_duplicate
                     [ Icon.classes [ Css.c "h-6" , Css.c "mr-2", Css.c "list-icon"]
@@ -214,5 +214,4 @@ handleAction = case _ of
     pure unit
     H.modify_ $ \st -> st { open = false }
   SetValue text -> do
-    --  H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     H.modify_ $ \st -> st { orderName = text }
