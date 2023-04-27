@@ -25,7 +25,7 @@ import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Route as Route
 import Sofa.Data.SmartSpec as SS
-import Sofa.HtmlUtils (scrollToBottom, uncheckall)
+import Sofa.HtmlUtils (scrollToBottom, uncheckall, clearCopyButtonsOnLoadMoreOrders)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (stopPropagation) as Event
@@ -129,10 +129,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     , Icon.ariaLabel "Action"
                     ]
                 ]
-                , HH.ul [Css.classes [ "submenu" ]] [
+                , HH.ul [Css.classes [ "submenu" ], HP.id $ "ul-" <> oid] [
                     HH.li [] 
                     [HH.a [HP.href "#"] [
-                          HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
+                          slotCopyModal 
                         ]
                     ]
                   ]
@@ -140,6 +140,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       ]
     where
     rowClasses = [ "table-row", "hover:bg-gray-100", "odd:bg-snow-200" ]
+
+    slotCopyModal = HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
 
     getId orderId = case orderId of
       Just id -> show id
@@ -315,6 +317,7 @@ handleAction = case _ of
             { orders = st.orders <> orders
             , nextPageToken = Loaded nextPageToken'
             }
+        H.liftEffect clearCopyButtonsOnLoadMoreOrders
         H.liftEffect scrollToBottom
       Error msg -> do
         H.modify_ _ { nextPageToken = Loaded (Just nextPageToken) }

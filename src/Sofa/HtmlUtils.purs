@@ -6,6 +6,7 @@ module Sofa.HtmlUtils
   , selectInputText
   , setInputText
   , copyToClipboard
+  , clearCopyButtonsOnLoadMoreOrders
   , back
   , uncheck
   , uncheckall
@@ -30,6 +31,8 @@ foreign import addClassToElement :: String -> String -> Effect Unit
 foreign import scrollToBottom :: Effect Unit
 
 foreign import scrollIntoView :: DomElement.Element -> Effect Unit
+
+foreign import clearCopyButtonsOnLoadMoreOrders :: Effect Unit
 
 foreign import copyToClipboard :: String -> Effect Unit
 
