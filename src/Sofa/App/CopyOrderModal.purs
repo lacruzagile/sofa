@@ -79,7 +79,7 @@ render ::
   State -> H.ComponentHTML Action () m
 render state
   | state.open = renderModal state
-  | otherwise = renderIcon
+  | otherwise = renderIcon state
 
 
 renderModal ::
@@ -127,8 +127,9 @@ renderContent state (SS.OrderForm o) =
 
 renderIcon ::
   forall m.
+  State ->
   H.ComponentHTML Action () m
-renderIcon = HH.div [Css.classes [ "custom-padding" ], HE.onClick OpenModal]
+renderIcon state = HH.div [Css.classes [ "custom-padding" ], HE.onClick OpenModal, HHP.id $ "copy-order-" <> (getIdByOrder state.order)]
             [
                 Icon.control_point_duplicate
                     [ Icon.classes [ Css.c "h-6" , Css.c "mr-2", Css.c "list-icon"]
