@@ -27,6 +27,7 @@ import Sofa.Component.Modal as Modal
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
+import Sofa.Data.SmartSpec (OrderStatus)
 import Sofa.Data.SmartSpec as SS
 import Sofa.HtmlUtils (reload, uncheck)
 import Web.Event.Event (stopPropagation) as Event
@@ -129,15 +130,27 @@ renderIcon ::
   forall m.
   State ->
   H.ComponentHTML Action () m
-renderIcon state = HH.div [Css.classes [ "custom-padding" ], HE.onClick OpenModal, HHP.id $ "copy-order-" <> (getIdByOrder state.order)]
-            [
-                Icon.control_point_duplicate
-                    [ Icon.classes [ Css.c "h-6" , Css.c "mr-2", Css.c "list-icon"]
-                    , Icon.ariaLabel "Duplicate Order"
-                    , HHP.style "float: left"
-                    ]
-                , HH.text "Duplicate"
-            ]
+renderIcon state =  case (getStatusByOrder state.order) of
+    "In draft" -> HH.div [Css.classes [ "custom-padding" ], HE.onClick OpenModal, HHP.id $ "copy-order-" <> (getIdByOrder state.order)]
+                [
+                    Icon.control_point_duplicate
+                        [ Icon.classes [ Css.c "h-6" , Css.c "mr-2", Css.c "list-icon"]
+                        , Icon.ariaLabel "Duplicate Order"
+                        , HHP.style "float: left"
+                        ]
+                    , HH.text $ "Duplicate"
+                ]
+    _ -> HH.div [Css.classes [ "custom-padding disabled" ], HHP.id $ "copy-order-" <> (getIdByOrder state.order)]
+                [
+                    Icon.control_point_duplicate
+                        [ Icon.classes [ Css.c "h-6" , Css.c "mr-2", Css.c "list-icon"]
+                        , Icon.ariaLabel "Duplicate Order"
+                        , HHP.style "float: left"
+                        ]
+                    , HH.text $ "Duplicate"
+                ]
+
+
 
 buttons ∷ forall w. Array (HH.HTML w Action)
 buttons =
@@ -185,6 +198,12 @@ getId orderId = case orderId of
 
 getIdByOrder :: SS.OrderForm  -> String
 getIdByOrder (SS.OrderForm order) = (getId order.id)
+
+getStatusByOrder :: SS.OrderForm  -> String
+getStatusByOrder (SS.OrderForm order) = (getStatus order.status)
+
+getStatus :: SS.OrderStatus -> String
+getStatus status = SS.prettyOrderStatus status
     
 
 handleAction ::

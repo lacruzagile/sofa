@@ -115,6 +115,7 @@ module Sofa.Data.SmartSpec
   , orderStatuses
   , prettyDate
   , prettyDateTime
+  , prettyDateTimeWithoutTimeZone
   , prettyOrderApprovalStatus
   , prettyOrderLineStatus
   , prettyOrderStatus
@@ -2393,6 +2394,23 @@ prettyDateTime = F.format fmt
       : F.Placeholder ":"
       : F.SecondsTwoDigits
       : F.Placeholder " UTC"
+      : SL.Nil
+
+prettyDateTimeWithoutTimeZone :: DateTime -> String
+prettyDateTimeWithoutTimeZone = F.format fmt
+  where
+  fmt =
+    F.DayOfMonth
+      : F.Placeholder " "
+      : F.MonthShort
+      : F.Placeholder " "
+      : F.YearFull
+      : F.Placeholder " "
+      : F.Hours24
+      : F.Placeholder ":"
+      : F.MinutesTwoDigits
+      : F.Placeholder ":"
+      : F.SecondsTwoDigits
       : SL.Nil
 
 newtype Asset
