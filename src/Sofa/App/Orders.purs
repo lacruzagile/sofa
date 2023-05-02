@@ -174,7 +174,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       [ table
           [ thead
               [ trow
-                  [ thcell [ HH.text "Date" ]
+                  [ thcell [ HH.text "Date (UTC)" ]
                   , thcell [ HH.text "ID" ]
                   -- , thcell [ HH.text "Customer" ]
                   -- , thcell [ HH.text "Legal entity" ]
