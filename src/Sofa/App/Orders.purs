@@ -25,7 +25,7 @@ import Sofa.Data.Deployment (class MonadDeployment, isBuyerFixed)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Route as Route
 import Sofa.Data.SmartSpec as SS
-import Sofa.HtmlUtils (scrollToBottom)
+import Sofa.HtmlUtils (scrollToBottom, uncheckall, clearCopyButtonsOnLoadMoreOrders)
 import Sofa.Widgets as Widgets
 import Type.Proxy (Proxy(..))
 import Web.Event.Event (stopPropagation) as Event
@@ -59,7 +59,7 @@ type State
 
 data Action
   = LoadNext String
-  | StopPropagation Event.MouseEvent
+  | StopPropagation String Event.MouseEvent
 
 firstPageToken :: String
 firstPageToken = ""
@@ -106,6 +106,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderOrder (SS.OrderForm o) =
     trow
       [ tcell [ maybe (HH.text "N/A") Widgets.dateWithTimeTooltip o.createTime ]
+      , tcell [ HH.text (getId o.id)]
       -- , tcell [ HH.text buyer ]
       -- , tcell [ HH.text seller ]
       , tcell [ HH.text $ fromMaybe "" $ o.displayName ]
@@ -119,26 +120,32 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ]
               [ HH.text $ SS.prettyOrderStatus o.status ]
           ]
-      -- , tcell 
-      --       [
-      --           HH.input [Css.classes [ "p-4 hover:bg-tropical-400" ], HE.onClick StopPropagation, HP.type_ HP.InputCheckbox, HP.id oid] 
-      --           , HH.label [HP.for oid] [
-      --             Icon.moreVert
-      --               [ Icon.classes [ Css.c "w-5 hover:bg-tropical-400"]
-      --               , Icon.ariaLabel "Action"
-      --               ]
-      --           ]
-      --           , HH.ul [Css.classes [ "submenu" ]] [
-      --               HH.li [] 
-      --               [HH.a [HP.href "#"] [
-      --                     HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
-      --                   ]
-      --               ]
-      --             ]
-      --       ]
+      , tcell 
+            [
+                HH.input [Css.classes [ "p-4 menu", "nectary-btn-secondary", "ring-0", "w-full", "mb-3", "rounded-t-none" ], HE.onClick (StopPropagation ("check-" <> oid)), HP.type_ HP.InputCheckbox, HP.id ("check-" <> oid)] 
+                , HH.label [Css.classes ["nectary-btn-secondary h-9 w-11 label-action"], HP.for ("check-" <> oid)] [
+                  Icon.moreVert
+                    [ Icon.classes [ Css.c "w-5"]
+                    , Icon.ariaLabel "Action"
+                    ]
+                ]
+                , HH.ul [Css.classes [ "submenu" ], HP.id $ "ul-" <> oid] [
+                    HH.li [] 
+                    [HH.a [HP.href "#"] [
+                          slotCopyModal 
+                        ]
+                    ]
+                  ]
+            ]
       ]
     where
     rowClasses = [ "table-row", "hover:bg-gray-100", "odd:bg-snow-200" ]
+
+    slotCopyModal = HH.slot_ (Proxy :: Proxy "copyOrder") unit CopyOrder.component { orderName: (fromMaybe "" $ o.displayName), order: (SS.OrderForm o) }
+
+    getId orderId = case orderId of
+      Just id -> show id
+      Nothing -> ""
 
     trow = case o.id of
       Nothing -> HH.div [ Css.classes rowClasses ]
@@ -167,12 +174,13 @@ render state = HH.section_ [ HH.article_ renderContent ]
       [ table
           [ thead
               [ trow
-                  [ thcell [ HH.text "Date" ]
+                  [ thcell [ HH.text "Date (UTC)" ]
+                  , thcell [ HH.text "ID" ]
                   -- , thcell [ HH.text "Customer" ]
                   -- , thcell [ HH.text "Legal entity" ]
                   , thcell [ HH.text "Name" ]
                   , thcell [ HH.text "Status" ]
-                  -- , thcell [ HH.text "Action" ]
+                  , thcell [ HH.text "Action" ]
                   ]
               ]
           , tbody $ map renderOrder state.orders
@@ -309,6 +317,7 @@ handleAction = case _ of
             { orders = st.orders <> orders
             , nextPageToken = Loaded nextPageToken'
             }
+        H.liftEffect clearCopyButtonsOnLoadMoreOrders
         H.liftEffect scrollToBottom
       Error msg -> do
         H.modify_ _ { nextPageToken = Loaded (Just nextPageToken) }
@@ -317,4 +326,7 @@ handleAction = case _ of
           $ Alert.errorAlert "Failed to load orders" msg
       _ -> do
         H.modify_ _ { nextPageToken = Loaded (Just nextPageToken) }
-  StopPropagation event -> H.liftEffect $ Event.stopPropagation $ Event.toEvent event
+  StopPropagation value event -> do
+    H.liftEffect $ Event.stopPropagation $ Event.toEvent event
+    H.liftEffect $ uncheckall value
+    pure unit

@@ -6,8 +6,10 @@ module Sofa.HtmlUtils
   , selectInputText
   , setInputText
   , copyToClipboard
+  , clearCopyButtonsOnLoadMoreOrders
   , back
   , uncheck
+  , uncheckall
   , removeClassToElement
   , reload
   ) where
@@ -30,6 +32,8 @@ foreign import scrollToBottom :: Effect Unit
 
 foreign import scrollIntoView :: DomElement.Element -> Effect Unit
 
+foreign import clearCopyButtonsOnLoadMoreOrders :: Effect Unit
+
 foreign import copyToClipboard :: String -> Effect Unit
 
 foreign import back :: Effect Unit
@@ -37,6 +41,9 @@ foreign import back :: Effect Unit
 foreign import reload :: Effect Unit
 
 foreign import uncheck :: String -> Effect Unit
+
+
+foreign import uncheckall :: String -> Effect Unit
 
 foreign import removeClassToElement :: String -> String -> Effect Unit
 
