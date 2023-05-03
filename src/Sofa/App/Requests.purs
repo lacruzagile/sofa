@@ -77,16 +77,16 @@ foreign import smartSpecBaseUrl :: String
 foreign import smartSpecProdCatalogFilename :: String
 
 filesUrl :: String
-filesUrl = orderingBaseUrl </> "v1alpha1" </> "files"
+filesUrl = orderingBaseUrl </> "v1" </> "files"
 
 ordersUrl :: String
-ordersUrl = orderingBaseUrl </> "v1alpha1" </> "orders"
+ordersUrl = orderingBaseUrl </> "v1" </> "orders"
 
 crmQuoteOrdersUrl :: String
-crmQuoteOrdersUrl = orderingBaseUrl </> "v1alpha1" </> "crm-quote-orders"
+crmQuoteOrdersUrl = orderingBaseUrl </> "v1" </> "crm-quote-orders"
 
 buyersUrl :: String
-buyersUrl = orderingBaseUrl </> "v1alpha1" </> "buyers"
+buyersUrl = orderingBaseUrl </> "v1" </> "buyers"
 
 appendPathPiece :: String -> String -> String
 appendPathPiece a b = a <> "/" <> b
@@ -97,7 +97,7 @@ appendUrlParams a params = case UrlParams.toString params of
   paramsStr -> a <> "?" <> paramsStr
 
 jiraUrl :: String
-jiraUrl = orderingBaseUrl </> "v1alpha1" </> "sofa-util" </> "jira-users"
+jiraUrl = orderingBaseUrl </> "v1" </> "sofa-util" </> "jira-users"
 
 emptyUrlParams :: UrlParams.URLSearchParams
 emptyUrlParams = UrlParams.fromString ""

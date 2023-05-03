@@ -150,8 +150,6 @@ renderIcon state =  case (getStatusByOrder state.order) of
                     , HH.text $ "Duplicate"
                 ]
 
-
-
 buttons ∷ forall w. Array (HH.HTML w Action)
 buttons =
   [ HH.div [ Css.class_ "grow" ] []
