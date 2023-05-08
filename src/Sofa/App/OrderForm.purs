@@ -1382,7 +1382,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     HH.div
       [ Css.classes
           [ "flex"
-          , "flex-wrap-reverse"
+          , "flex-wrap"
           , "items-center"
           , "space-x-4"
           ]
@@ -1436,11 +1436,23 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ HH.text "Save order"
           , if sof.orderUpdateInFlight then buttonSpinner unit else HH.text ""
           ]
+      , HH.div [ Css.class_ "break"] []
+      , HH.div [ Css.class_ "grow" ] []
+      , HH.span [ Css.class_ "text-red-500 mt-4 mr-4 mb-2 ml-4 pr-28", HP.title $ preventMessage (either identity (const "") preventCreate) (either identity (const "") preventFulfill)] [ HH.text $ preventMessage (either identity (const "") preventCreate) (either identity (const "") preventFulfill)]
       ]
     where
     buttonSpinner _ =
       Spinner.render
         $ Spinner.defaults { classes = Css.cs [ "ml-2", "align-text-bottom" ] }
+
+    preventMessage :: String -> String -> String
+    preventMessage create fulfill = do
+      if create == fulfill
+        then create
+        else 
+          if create == ""
+            then fulfill
+            else create <> " - " <> fulfill
 
     -- | Validates that the order in the current state is valid. If an error is
     -- | found then this is a left value containing the error message.
