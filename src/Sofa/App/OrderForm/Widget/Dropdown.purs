@@ -161,7 +161,8 @@ component =
     | st.readOnly =
       HH.div
         [ Css.classes
-            [ "w-96"
+            [ "w-70pur"
+            , "min-w-96"
             , "h-12"
             , "px-3"
             , "py-2"
@@ -193,7 +194,7 @@ component =
                 Nothing -> []
                 Just available -> map (renderAvailable <<< fst) available
             , loading = Loadable.isLoading st.available
-            , wrapperClasses = [ Css.c "w-96" ]
+            , wrapperClasses = [ Css.c "w-70pur", Css.c "min-w-96" ]
             }
 
 renderAvailable :: String -> HH.PlainHTML
