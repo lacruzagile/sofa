@@ -706,7 +706,7 @@ render state@{ orderLineId } =
                       selVal <- value <|> (mkValue <$> c.default)
                       A.findIndex (\v -> mkValue v == selVal) c.enum
                   , values = A.mapWithIndex (\i e -> Tuple (HH.div [HP.title $ showValue e] [HH.text $ showValue e]) i) c.enum
-                  , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+                  , wrapperClasses = [ Css.c "inline-block", Css.c "w-70pur", Css.c "min-w-96" ]
                   }
               )
               onIndexChange
