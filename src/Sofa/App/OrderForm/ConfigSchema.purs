@@ -206,7 +206,7 @@ render state@{ orderLineId } =
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
             , errorText = Map.lookup entryIdx state.errors
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
-            , wrapperClasses = [ Css.c "w-96" ]
+            , wrapperClasses = [ Css.c "w-90pur", Css.c "min-w-96" ]
             }
     SS.CseString { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
     SS.CseString c
@@ -270,7 +270,7 @@ render state@{ orderLineId } =
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
             , errorText = Map.lookup entryIdx state.errors
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
-            , wrapperClasses = [ Css.c "w-96" ]
+            , wrapperClasses = [ Css.c "w-90pur", Css.c "min-w-96" ]
             }
     SS.CseDate { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
     SS.CseDate c
@@ -340,7 +340,7 @@ render state@{ orderLineId } =
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
             , errorText = Map.lookup entryIdx state.errors
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
-            , wrapperClasses = [ Css.c "w-96" ]
+            , wrapperClasses = [ Css.c "w-90pur", Css.c "min-w-96" ]
             }
     SS.CseConst _c ->
       renderEntry' fallbackTitle schemaEntry
@@ -455,7 +455,8 @@ render state@{ orderLineId } =
         renderSectionEntry fallbackTitle schemaEntry [ inner ]
 
   readOnlyInputClasses =
-    [ "w-96"
+    [ "w-90pur"
+    , "min-w-96"
     , "h-12"
     , "px-3"
     , "py-2"
@@ -706,7 +707,7 @@ render state@{ orderLineId } =
                       selVal <- value <|> (mkValue <$> c.default)
                       A.findIndex (\v -> mkValue v == selVal) c.enum
                   , values = A.mapWithIndex (\i e -> Tuple (HH.div [HP.title $ showValue e] [HH.text $ showValue e]) i) c.enum
-                  , wrapperClasses = [ Css.c "inline-block", Css.c "w-70pur", Css.c "min-w-96" ]
+                  , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
                   }
               )
               onIndexChange
