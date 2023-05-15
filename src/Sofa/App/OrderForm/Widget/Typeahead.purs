@@ -149,7 +149,7 @@ component =
     | st.readOnly =
       HH.div
         [ Css.classes
-            [ "w-70pur"
+            [ "w-90pur"
             ,"min-w-96"
             , "h-12"
             , "px-3"
@@ -189,7 +189,7 @@ component =
                 _ -> []
             , noSelectionText = "Type to search value …"
             , loading = Loadable.isLoading st.filtered
-            , wrapperClasses = [ Css.c "inline-block", Css.c "w-70pur", Css.c "min-w-96" ]
+            , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
             , onInputFocus = Just $ \_ -> InputFocused
             }
 

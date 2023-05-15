@@ -114,7 +114,8 @@ render st
   | st.readOnly =
     HH.div
       [ Css.classes
-          [ "w-96"
+          [ "w-90pur"
+          , "min-w-96"
           , "h-12"
           , "px-3"
           , "my-0.5"
@@ -139,7 +140,7 @@ render st
           { selected = st.selectedId
           , values = map (\o -> Tuple (HH.div [HP.title $ o.label] [HH.text $ o.label]) o.configId) st.options
           , noSelectionText = "Please choose a configuration"
-          , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+          , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
           }
       )
       Select
