@@ -70,7 +70,7 @@ render st
   | otherwise =
     HH.textarea
       [ HP.value $ fromMaybe "" st.value
-      , Css.classes [ "nectary-textarea", "w-96" ]
+      , Css.classes [ "nectary-textarea", "w-90pur", "min-w-96" ]
       , HE.onValueChange SetValue
       ]
 
