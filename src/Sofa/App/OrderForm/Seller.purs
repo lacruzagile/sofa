@@ -304,8 +304,8 @@ toSeller (SS.LegalEntity le) =
     }
 
 handleAction ::
-  forall slots m.
-  MonadAff m => Action -> H.HalogenM State Action slots Output m Unit
+  forall slots f m.
+  MonadAff m => CredentialStore f m => Action -> H.HalogenM State Action slots Output m Unit
 handleAction = case _ of
   Initialize -> do
     { registeredName } <- H.get
