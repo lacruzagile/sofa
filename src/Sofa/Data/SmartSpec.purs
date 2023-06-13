@@ -2494,7 +2494,7 @@ newtype PriceBookRef
   = PriceBookRef
   { priceBookId :: String
   , version :: Date
-  , solutionUri :: Maybe Uri
+  , solutionUri :: String
   }
 
 instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
@@ -2502,29 +2502,20 @@ instance decodeJsonPriceBookRef :: DecodeJson PriceBookRef where
     o <- decodeJson json
     priceBookId <- o .: "priceBookId"
     version <- decodeJsonDate =<< o .: "version"
-    solutionUri <- o .:? "solutionUri"
+    solutionUri <- o .: "solutionUri"
     pure
       $ PriceBookRef
           { priceBookId
           , version
-          , solutionUri:
-              -- We do a bit of mapping here for backwards compatibility.
-              case solutionUri of
-                Just "NOVA" -> Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/solution.sms-automated.nova.json"
-                Just "https://ea.pages.sinch.com/smart-spec/v1alpha1/examples/solution.phase1.sms-prod.json" -> Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/solution.sms-automated.nova.json"
-                Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/v1alpha1/examples/solution.phase1.sms-prod.json" -> Just "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/solution.sms-automated.nova.json"
-                Just uri -> case S.stripPrefix (S.Pattern "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/v1alpha1/examples/") uri of
-                  Nothing -> solutionUri
-                  Just suffix -> Just $ "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com/examples/" <> suffix
-                _ -> solutionUri
+          , solutionUri
           }
 
 instance encodeJsonPriceBookRef :: EncodeJson PriceBookRef where
   encodeJson (PriceBookRef x) =
     ("priceBookId" := x.priceBookId)
       ~> ("version" := dateToIsoString x.version)
-      ~> ((\uri -> "solutionUri" := uri) <$> x.solutionUri)
-      ~>? jsonEmptyObject
+      ~> ("solutionUri" := x.solutionUri)
+      ~> jsonEmptyObject
 
 data OrderStatus
   = OsInDraft
