@@ -8,6 +8,7 @@ import Data.Tuple (Tuple(..), fst)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Select as Sel
 import Sofa.App.SchemaDataSource (DataSourceEnumResult)
 import Sofa.Component.Select as Select
@@ -160,7 +161,8 @@ component =
     | st.readOnly =
       HH.div
         [ Css.classes
-            [ "w-96"
+            [ "w-90pur"
+            , "min-w-96"
             , "h-12"
             , "px-3"
             , "py-2"
@@ -170,6 +172,11 @@ component =
             , "flex"
             , "items-center"
             ]
+            , HP.title $ fromMaybe "" do
+                          selectedIndex <- st.selectedIndex
+                          available <- Loadable.toMaybe st.available
+                          Tuple label _ <- A.index available selectedIndex
+                          pure label
         ]
         [ HH.text
             $ fromMaybe "" do
@@ -185,7 +192,10 @@ component =
             , values =
               case Loadable.toMaybe st.available of
                 Nothing -> []
-                Just available -> map (HH.text <<< fst) available
+                Just available -> map (renderAvailable <<< fst) available
             , loading = Loadable.isLoading st.available
-            , wrapperClasses = [ Css.c "w-96" ]
+            , wrapperClasses = [ Css.c "w-90pur", Css.c "min-w-96" ]
             }
+
+renderAvailable :: String -> HH.PlainHTML
+renderAvailable key = HH.div [HP.title key] [HH.text key]

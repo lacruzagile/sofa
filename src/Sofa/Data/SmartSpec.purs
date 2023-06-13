@@ -115,6 +115,7 @@ module Sofa.Data.SmartSpec
   , orderStatuses
   , prettyDate
   , prettyDateTime
+  , prettyDateTimeWithoutTimeZone
   , prettyOrderApprovalStatus
   , prettyOrderLineStatus
   , prettyOrderStatus
@@ -2395,6 +2396,23 @@ prettyDateTime = F.format fmt
       : F.Placeholder " UTC"
       : SL.Nil
 
+prettyDateTimeWithoutTimeZone :: DateTime -> String
+prettyDateTimeWithoutTimeZone = F.format fmt
+  where
+  fmt =
+    F.DayOfMonth
+      : F.Placeholder " "
+      : F.MonthShort
+      : F.Placeholder " "
+      : F.YearFull
+      : F.Placeholder " "
+      : F.Hours24
+      : F.Placeholder ":"
+      : F.MinutesTwoDigits
+      : F.Placeholder ":"
+      : F.SecondsTwoDigits
+      : SL.Nil
+
 newtype Asset
   = Asset
   { sku :: SkuCode
@@ -2517,6 +2535,7 @@ data OrderStatus
   | OsInFulfillment
   | OsFulfilled
   | OsCancelled
+  | OsFailed
 
 derive instance genericOrderStatus :: Generic OrderStatus _
 
@@ -2534,6 +2553,7 @@ instance decodeJsonOrderStatus :: DecodeJson OrderStatus where
       "IN_FULFILLMENT" -> Right OsInFulfillment
       "FULFILLED" -> Right OsFulfilled
       "CANCELLED" -> Right OsCancelled
+      "FAILED" -> Right OsFailed
       _ -> Left (TypeMismatch "OrderStatus")
 
 instance encodeOrderStatus :: EncodeJson OrderStatus where
@@ -2548,6 +2568,7 @@ instance encodeOrderStatus :: EncodeJson OrderStatus where
           OsInFulfillment -> "IN_FULFILLMENT"
           OsFulfilled -> "FULFILLED"
           OsCancelled -> "CANCELLED"
+          OsFailed -> "FAILED"
 
 -- | Show pretty order status.
 prettyOrderStatus :: OrderStatus -> String
@@ -2560,6 +2581,7 @@ prettyOrderStatus = case _ of
   OsInFulfillment -> "In fulfillment"
   OsFulfilled -> "Fulfilled"
   OsCancelled -> "Cancelled"
+  OsFailed -> "Failed"
 
 -- | A collection of all order statuses.
 orderStatuses :: Array OrderStatus
@@ -2571,7 +2593,7 @@ orderStatuses = A.mapMaybe genericToEnum $ enumFromTo bottom top
 
 -- | Whether the given status is a final status.
 isFinalOrderStatus :: OrderStatus -> Boolean
-isFinalOrderStatus s = (s == OsFulfilled) || (s == OsCancelled)
+isFinalOrderStatus s = (s == OsFulfilled) || (s == OsCancelled) || (s == OsFailed)
 
 data OrderApprovalStatus
   = OasUndecided

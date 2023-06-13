@@ -6,7 +6,7 @@
       "Authorization": "Basic ADD CREDENTIALS HERE"
     }
   },
-  "/v1alpha1/buyers": {
+  "/v1/buyers": {
     "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },
@@ -17,15 +17,15 @@
       "^/examples/product-catalog.json$": "/examples/product-catalog.staging.n.json"
     }
   },
-  "/v1alpha1/files": {
+  "/v1/files": {
     "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },
-  "/v1alpha1/orders": {
+  "/v1/orders": {
     "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },
-  "/v1alpha1/sofa-util": {
+  "/v1/sofa-util": {
     "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },

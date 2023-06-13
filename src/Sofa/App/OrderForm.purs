@@ -429,10 +429,10 @@ render state = HH.section_ [ HH.article_ renderContent ]
                     [ HH.span [ Css.class_ "font-semibold" ] [ HH.text "Status" ]
                     , renderOrderLineStatus ol.status ol.statusReason
                     ]
-                , HH.label [ Css.classes [ "flex", "gap-4", "items-center" ] ]
-                    [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Quantity" ]
-                    , renderQuantityInput $ NA.head ol.configs
-                    ]
+                -- , HH.label [ Css.classes [ "flex", "gap-4", "items-center" ] ]
+                --     [ HH.div [ Css.class_ "font-semibold" ] [ HH.text "Quantity" ]
+                --     , renderQuantityInput $ NA.head ol.configs
+                --     ]
                 ]
             , renderSelectProduct ol.product
             , renderProductOptions product
@@ -741,7 +741,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   renderSection sof sec = case sec.solution of
     Nothing ->
       body
-        [ HH.h2 [ Css.class_ "my-0" ] [ HH.text "Solution" ]
+        [ HH.h2 [ Css.class_ "my-0" ] [ HH.text "Category" ]
         , renderSelectSolution Nothing
         , HH.div [ Css.class_ "flex" ]
             [ HH.div [ Css.class_ "grow" ] []
@@ -756,7 +756,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           let
             mkPriceBookOption i pb =
               Tuple
-                (HH.text $ pb.title <> " (" <> SS.prettyDate pb.version <> ")")
+                (HH.div [HP.title $ pb.title <> " (" <> SS.prettyDate pb.version <> ")"] [HH.text $ pb.title <> " (" <> SS.prettyDate pb.version <> ")"])
                 i
           in
             A.mapWithIndex mkPriceBookOption priceBooks
@@ -766,7 +766,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ HH.div [ Css.class_ "grow" ]
                     [ HH.h2
                         [ Css.class_ "my-0" ]
-                        [ HH.text "Solution – "
+                        [ HH.text "Category – "
                         , HH.text $ solutionLabel solution
                         ]
                     ]
@@ -846,7 +846,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ Css.classes [ "nectary-btn-destructive", "h-8" ]
           , HE.onClick $ RemoveSection { orderSectionId: sec.orderSectionId }
           ]
-          [ HH.text "Discard solution"
+          [ HH.text "Discard category"
           ]
 
     renderAddProductButton =
@@ -952,7 +952,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                 [ Css.classes [ "nectary-btn-primary", "h-8" ]
                 , HE.onClick \_ -> AddSection
                 ]
-                [ HH.text "Add solution"
+                [ HH.text "Add category"
                 ]
           ]
       , HH.table [ Css.classes [ "table-auto", "w-full" ] ]
@@ -960,7 +960,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               [ HH.tr [ Css.classes [ "border-b-2", "border-stormy-500" ] ]
                   [ th [ "w-full" ] [ HH.text "Name" ]
                   , th [ "px-5" ] [ HH.text "Status" ]
-                  , th [ "px-5" ] [ HH.text "Quantity" ]
+                  -- , th [ "px-5" ] [ HH.text "Quantity" ]
                   , th [] [ HH.text "Asset" ]
                   , if isInDraft then th [] [ HH.text "Remove" ] else HH.text ""
                   ]
@@ -972,7 +972,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
                           [ HP.colSpan 4
                           , Css.classes [ "p-2", "text-stormy-300", "text-center" ]
                           ]
-                          [ HH.text "No solutions added" ]
+                          [ HH.text "No category added" ]
                       ]
                   ]
                 else
@@ -1026,11 +1026,11 @@ render state = HH.section_ [ HH.article_ renderContent ]
             [ HH.td [ HP.colSpan 3, Css.class_ "p-2" ]
                 [ HH.span
                     [ Css.class_ "text-tropical-500" ]
-                    [ HH.text "Solution" ]
+                    [ HH.text "Category" ]
                 , HH.br_
                 , HH.text $ fromMaybe (show sol.id) sol.title
                 ]
-            , HH.td [ Css.class_ "text-center" ] []
+            -- , HH.td [ Css.class_ "text-center" ] []
             , tdDelete $ RemoveSection { orderSectionId }
             ]
         ]
@@ -1057,9 +1057,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
           , HH.td [ Css.classes [ "p-2", "px-5" ] ]
               [ renderOrderLineStatus ol.status ol.statusReason
               ]
-          , HH.td
-              [ Css.classes [ "p-2", "px-5" ] ]
-              [ HH.text $ show $ orderLineQuantity ol ]
+          -- , HH.td
+          --     [ Css.classes [ "p-2", "px-5" ] ]
+          --     [ HH.text $ show $ orderLineQuantity ol ]
           , tdAsset { orderSectionId, orderLineId: ol.orderLineId } ol.statusReason orderId
           , tdDelete $ RemoveOrderLine { orderSectionId, orderLineId: ol.orderLineId }
           ]
@@ -1206,9 +1206,9 @@ render state = HH.section_ [ HH.article_ renderContent ]
       EditableInput.component
       { value: fromMaybe "" name
       , placeholder: "Unnamed order"
-      , classes: [ Css.c "w-fit", Css.c "max-w-128", Css.c "text-2xl" ]
+      , classes: [ Css.c "w-fit", Css.c "max-w-4x1", Css.c "text-2xl" ]
       , editButtonProps: [ HPAria.label "Edit order name" ]
-      , inputProps: [ HP.attr (H.AttrName "maxlength") "50" ]
+      , inputProps: [ HP.attr (H.AttrName "maxlength") "150" ]
       }
       SetOrderDisplayName
 
@@ -1251,6 +1251,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
         (id == "Mario - Order Products")
           || (id == "Mario - Everything Else")
           || (id == "Mario - Edit Existing Products")
+          || (id == "hello-world-example")
+          || (id == "Customized Jira Products")
 
     isMarioOrder = case state of  -- A.any  isMarioSection Initialized (Loaded { orderForm: { sections } }
       Initialized (Loaded { orderForm: { sections } }) -> A.any isMarioSection sections
@@ -1259,6 +1261,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
   isStateFF = case state of 
     Initialized (Loaded { orderForm: { status: SS.OsInFulfillment } }) -> true
     Initialized (Loaded { orderForm: { status: SS.OsFulfilled } }) -> true
+    Initialized (Loaded { orderForm: { status: SS.OsFailed } }) -> true
     _ -> false
 
   renderJiraUrl = if isMarioFF then
@@ -1379,7 +1382,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
     HH.div
       [ Css.classes
           [ "flex"
-          , "flex-wrap-reverse"
+          , "flex-wrap"
           , "items-center"
           , "space-x-4"
           ]
@@ -1433,11 +1436,23 @@ render state = HH.section_ [ HH.article_ renderContent ]
           [ HH.text "Save order"
           , if sof.orderUpdateInFlight then buttonSpinner unit else HH.text ""
           ]
+      , HH.div [ Css.class_ "break"] []
+      , HH.div [ Css.class_ "grow" ] []
+      , HH.span [ Css.class_ "text-red-500 mt-4 mr-4 mb-2 ml-4 pr-28", HP.title $ preventMessage (either identity (const "") preventCreate) (either identity (const "") preventFulfill)] [ HH.text $ preventMessage (either identity (const "") preventCreate) (either identity (const "") preventFulfill)]
       ]
     where
     buttonSpinner _ =
       Spinner.render
         $ Spinner.defaults { classes = Css.cs [ "ml-2", "align-text-bottom" ] }
+
+    preventMessage :: String -> String -> String
+    preventMessage create fulfill = do
+      if create == fulfill
+        then create
+        else 
+          if create == ""
+            then fulfill
+            else create <> " - " <> fulfill
 
     -- | Validates that the order in the current state is valid. If an error is
     -- | found then this is a left value containing the error message.
@@ -1451,8 +1466,8 @@ render state = HH.section_ [ HH.article_ renderContent ]
       pure unit
       where
       checkOrderSection os = do
-        SS.Solution solution <- note "Missing solution in section" os.solution
-        _ <- note "Missing solution URI in section" solution.uri
+        SS.Solution solution <- note "Missing category in section" os.solution
+        _ <- note "Missing category URI in section" solution.uri
         _ <-
           if A.null solution.priceBooks then
             Right unit
@@ -1676,7 +1691,7 @@ toJson orderForm = do
   toOrderSection :: OrderSection -> Either String SS.OrderSection
   toOrderSection os = do
     solutionUri <-
-      note "Missing solution URI"
+      note "Missing category URI"
         $ do
             SS.Solution { uri } <- os.solution
             uri
@@ -2086,7 +2101,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
 
       uuidSectionId = genv5UUID (show idx) uuidNs
     solution@(SS.Solution { id: solId, priceBooks: solPbs }) <-
-      maybe' (\_ -> Error "No matching solution found") Loaded
+      maybe' (\_ -> Error "No matching category found") Loaded
         $ List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri)
         $ Map.values solutions
     priceBook <-

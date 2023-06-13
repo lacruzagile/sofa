@@ -8,6 +8,7 @@ module Sofa.Component.Icon
   , close
   , close6
   , copy
+  , control_point_duplicate
   , createFolder
   , delete
   , done
@@ -125,6 +126,13 @@ copy attrs =
   svg
     ([ viewBox "0 0 24 24" ] <> attrs)
     [ path [ d "M15 1H4C2.9 1 2 1.9 2 3V16C2 16.55 2.45 17 3 17C3.55 17 4 16.55 4 16V4C4 3.45 4.45 3 5 3H15C15.55 3 16 2.55 16 2C16 1.45 15.55 1 15 1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM18 21H9C8.45 21 8 20.55 8 20V8C8 7.45 8.45 7 9 7H18C18.55 7 19 7.45 19 8V20C19 20.55 18.55 21 18 21Z" ]
+    ]
+
+control_point_duplicate :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i
+control_point_duplicate attrs =
+  svg
+    ([ viewBox "0 0 24 24" ] <> attrs)
+    [ path [ d "M16 8H14V11H11V13H14V16H16V13H19V11H16V8ZM2 12C2 9.21 3.64 6.8 6.01 5.68V3.52C2.52 4.76 0 8.09 0 12C0 15.91 2.52 19.24 6.01 20.48V18.32C3.64 17.2 2 14.79 2 12ZM15 3C10.04 3 6 7.04 6 12C6 16.96 10.04 21 15 21C19.96 21 24 16.96 24 12C24 7.04 19.96 3 15 3ZM15 19C11.14 19 8 15.86 8 12C8 8.14 11.14 5 15 5C18.86 5 22 8.14 22 12C22 15.86 18.86 19 15 19Z" ]
     ]
 
 createFolder :: forall w i. Array (HH.IProp SVGsvg i) -> HH.HTML w i

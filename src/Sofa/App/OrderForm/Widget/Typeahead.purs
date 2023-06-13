@@ -11,6 +11,7 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import Select as Sel
 import Sofa.App.SchemaDataSource (DataSourceEnumResult)
 import Sofa.Component.Typeahead as Typeahead
@@ -148,7 +149,8 @@ component =
     | st.readOnly =
       HH.div
         [ Css.classes
-            [ "w-96"
+            [ "w-90pur"
+            ,"min-w-96"
             , "h-12"
             , "px-3"
             , "py-2"
@@ -158,8 +160,12 @@ component =
             , "flex"
             , "items-center"
             ]
+          , HP.title 
+              $ fromMaybe "" do
+                Tuple label _ <- st.selected
+                pure label
         ]
-        [ HH.text
+        [ HH.text 
             $ fromMaybe "" do
                 Tuple label _ <- st.selected
                 pure label
@@ -177,13 +183,13 @@ component =
               case st.filtered of
                 Loaded filtered ->
                   let
-                    renderItem (Tuple key _) = HH.text key
+                    renderItem (Tuple key _) = HH.div [HP.title key] [HH.text key]
                   in
                     renderItem <$> filtered
                 _ -> []
             , noSelectionText = "Type to search value …"
             , loading = Loadable.isLoading st.filtered
-            , wrapperClasses = [ Css.c "inline-block", Css.c "w-96" ]
+            , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
             , onInputFocus = Just $ \_ -> InputFocused
             }
 

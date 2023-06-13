@@ -30,7 +30,7 @@ dateWithTimeTooltip :: forall slot action. DateTime -> HH.HTML slot action
 dateWithTimeTooltip t =
   TT.render
     (TT.defaultInput { text = SS.prettyDateTime t })
-    (HH.text $ SS.prettyDate (DateTime.date t))
+    (HH.text $ SS.prettyDateTimeWithoutTimeZone t)
 
 dateWithTimeTooltipRight :: forall slot action. DateTime -> HH.HTML slot action
 dateWithTimeTooltipRight t =

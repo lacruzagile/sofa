@@ -303,7 +303,7 @@ render state = HH.section_ [ HH.article_ content ]
     [ HH.h1_ [ HH.text (fromMaybe "Untitled product catalog" pc.title) ]
     , HH.h2_ [ HH.text "Description" ]
     , HH.p_ [ HH.text $ fromMaybe "No description" pc.description ]
-    , HH.h2_ [ HH.text "Solutions" ]
+    , HH.h2_ [ HH.text "Categories" ]
     , blockList <<< map solution <<< fromFoldable $ pc.solutions
     ]
 

@@ -398,3 +398,51 @@
     border-bottom: solid 2px #0A273D;
   }
 }
+
+
+.menu, ul.submenu {
+  display: none;
+  position: absolute;
+  overflow: auto;
+  background-color:#fff;
+  border-radius:5px;
+  box-shadow: 0px 10px 10px 0px rgba(0,0,0,0.4);
+}
+
+/*position the label*/
+.label-action {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+
+/*show the submenu when input is checked*/
+.menu:checked~ul.submenu {
+  display: block;
+  color: #000000;
+  text-decoration: none;
+  /* padding: 9px 40px; */
+}
+
+.menu:checked~ul.submenu:hover {
+  color: #0a0a23;
+  background-color: #ddd;
+  border-radius:5px;
+}
+
+.disabled {
+  border: 1px solid #999999;
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+.custom-padding {
+  padding: 9px 40px; 
+}
+
+.break {
+  flex-basis: 100%;
+  height: 0;
+}

@@ -141,7 +141,7 @@ renderSideMenu ::
 renderSideMenu currentRoute =
   HH.nav [ Css.classes navbarClasses ]
     [ HH.ul [ Css.class_ "space-y-4" ]
-        [ navbarItem Icon.package "Solutions  ⃰"
+        [ navbarItem Icon.package "Categories  ⃰"
             [ navbarSubItem Route.ProductCatalog "Product catalog"
             ]
         , navbarItem Icon.longMessage "Order forms"
@@ -266,9 +266,16 @@ renderNavbar state =
       , Css.classes [ "flex", "w-64", "h-full" ]
       ]
       [ Icon.sinchLogo
-          [ Icon.classes [ Css.c "ml-6", Css.c "my-auto", Css.c "h-6" ]
+          [ Icon.classes [ Css.c "ml-6", Css.c "my-auto", Css.c "h-4" ]
           , Icon.ariaLabel "SOFA Home"
           ]
+        ,HH.a
+          [
+            HP.href "https://platform.int.sinch.com/docs/provisioning/sofa-ui/"
+            ,HP.target "_blank"
+            ,Css.classes [ "align-middle", "my-auto"]
+          ]
+          [ HH.button [ Css.classes [ "align-middle","nectary-btn-secondary", "h-8", "ml-6"]][ HH.text "SOFA User Guide"]]
       ]
 
   tileMenu = HH.slot_ NavbarTile.proxy unit NavbarTile.component absurd

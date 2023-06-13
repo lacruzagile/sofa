@@ -476,7 +476,7 @@ render { unitMap
       Tooltip.render
         ( Tooltip.defaultInput
             { text =
-              "Solution file refers to undefined charge unit "
+              "Category file refers to undefined charge unit "
                 <> show qIdx.unitId
                 <> "."
             }

@@ -218,7 +218,7 @@ render st =
       HH.button
         (SelSet.setToggleProps [ Css.classes btnClasses ])
         [ maybe
-            (HH.span [ Css.class_ "text-stormy-300" ] [ HH.text st.noSelectionText ])
+            (HH.span [ Css.class_ "text-stormy-300", HP.title st.noSelectionText ] [ HH.text st.noSelectionText ])
             HH.fromPlainHTML
             selected
         ]

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "SOFA",
   "repository": "https://git.clxnetworks.net/dev/business-process-automation/sofa",
+  "repository": "https://gitlab.com/sinch/sinch-projects/enterprise-and-messaging/beehive/teams/customer-provisioning/smart-ordering/sofa",
   "license": "UNLICENSED",
   "browserslist": "defaults and supports es6-module",
   "private": true,

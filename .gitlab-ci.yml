@@ -1,6 +1,6 @@
 include:
-  - project: "devops/pipeline/kubernetes-components"
-    ref: 1.5.18
+  - project: "sinch/sinch-projects/sinch-platform/infra/pipeline/kubernetes-components"
+    ref: 1.5.19
     file: "kubernetes-components.template.gitlab-ci.yml"
 
 stages:
@@ -15,6 +15,9 @@ variables:
 
 .yarn-job:
   image: node:18
+  tags:
+    - glsr
+    - eu1tst
   cache:
     key:
       files:
@@ -48,7 +51,10 @@ test:
 
 build-and-push-image:
   stage: image
-  only: [ master ]
+  tags:
+    - glsr
+    - eu1tst
+  only: [ development, master ]
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
@@ -83,7 +89,7 @@ build-and-push-image:
 pages:
   extends: .yarn-job
   stage: deploy
-  only: [ master ]
+  only: [ development, master ]
   needs: [ test ]
   cache:
     policy: pull
@@ -127,20 +133,29 @@ pages:
 
 deploy-k8s-staging:
   extends: .deploy-k8s
-  only: [ master ]
+  tags:
+    - glsr
+    - eu1tst
+  only: [ development, master ]
   environment:
     name: eu1tst
     on_stop: stop-k8s-staging
 
 stop-k8s-staging:
   extends: .stop-k8s
-  only: [ master ]
+  tags:
+    - glsr
+    - eu1tst
+  only: [ development, master ]
   environment:
     name: eu1tst
     action: stop
 
 deploy-k8s-prod:
   extends: .deploy-k8s
+  tags:
+    - glsr
+    - eu1
   only: [ master ]
   environment:
     name: eu1
@@ -148,6 +163,9 @@ deploy-k8s-prod:
 
 stop-k8s-prod:
   extends: .stop-k8s
+  tags:
+    - glsr
+    - eu1
   only: [ master ]
   environment:
     name: eu1
@@ -156,7 +174,10 @@ stop-k8s-prod:
 deploy-salesforce-sofa:
   image: salesforce/salesforcedx:7.153.0-slim
   stage: deploy
-  only: [ master ]
+  tags:
+    - glsr
+    - eu1tst
+  only: [ development, master ]
   when: manual
   environment:
     name: sf-sofa
@@ -172,7 +193,10 @@ deploy-salesforce-sofa:
 deploy-salesforce-fullsb:
   image: salesforce/salesforcedx:7.153.0-slim
   stage: deploy
-  only: [ master ]
+  tags:
+    - glsr
+    - eu1tst
+  only: [ development, master ]
   when: manual
   environment:
     name: sf-fullsb
@@ -188,7 +212,10 @@ deploy-salesforce-fullsb:
 deploy-salesforce-uat:
   image: salesforce/salesforcedx:7.153.0-slim
   stage: deploy
-  only: [ master ]
+  tags:
+    - glsr
+    - eu1tst
+  only: [ development, master ]
   when: manual
   environment:
     name: sf-uat
@@ -204,6 +231,9 @@ deploy-salesforce-uat:
 deploy-salesforce-prd:
   image: salesforce/salesforcedx:7.153.0-slim
   stage: deploy
+  tags:
+    - glsr
+    - eu1
   only: [ master ]
   when: manual
   environment:
