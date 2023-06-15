@@ -2195,7 +2195,7 @@ newtype AssetConfig
   = AssetConfig
   { id :: String
   , billingAccountId :: String
-  , solutionUri :: Uri
+  , solutionUri :: String
   , sku :: String
   , assetConfig :: Map String ConfigValue
   , orderConfig :: Map String ConfigValue
