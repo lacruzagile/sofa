@@ -22,6 +22,7 @@ import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, fromMaybe', isJust, isNothing, maybe, maybe')
 import Data.Newtype (unwrap)
 import Data.Set as Set
+import Data.String.NonEmpty (fromString)
 import Data.String as S
 import Data.Traversable (for_, traverse)
 import Data.TraversableWithIndex (traverseWithIndex)
@@ -1467,7 +1468,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
       where
       checkOrderSection os = do
         SS.Solution solution <- note "Missing category in section" os.solution
-        _ <- note "Missing category URI in section" solution.uri
+        _ <- note "Missing category URI/ID in section" (fromString solution.id)
         _ <-
           if A.null solution.priceBooks then
             Right unit
@@ -1685,7 +1686,7 @@ toJson orderForm = do
     SS.PriceBookRef
       { priceBookId: pb.id
       , version: pb.version
-      , solutionUri: Just solutionUri
+      , solutionUri: solutionUri
       }
 
   toOrderSection :: OrderSection -> Either String SS.OrderSection
@@ -1693,8 +1694,8 @@ toJson orderForm = do
     solutionUri <-
       note "Missing category URI"
         $ do
-            SS.Solution { uri } <- os.solution
-            uri
+            SS.Solution { id } <- os.solution
+            pure id
     basePriceBook <- note "Missing price book" $ toPriceBookRef solutionUri <$> os.priceBook
     orderLines <- traverse toOrderLine os.orderLines
     pure
@@ -2102,7 +2103,7 @@ loadExisting original@(SS.OrderForm orderForm) changed = do
       uuidSectionId = genv5UUID (show idx) uuidNs
     solution@(SS.Solution { id: solId, priceBooks: solPbs }) <-
       maybe' (\_ -> Error "No matching category found") Loaded
-        $ List.find (\(SS.Solution { uri }) -> pbRef.solutionUri == uri)
+        $ List.find (\(SS.Solution { id }) -> pbRef.solutionUri == id)
         $ Map.values solutions
     priceBook <-
       maybe' (\_ -> Error "No matching price book found") Loaded

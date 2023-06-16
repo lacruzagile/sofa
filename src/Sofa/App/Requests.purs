@@ -216,16 +216,20 @@ getBuyerContacts (CrmAccountId id) =
   conv :: { contacts :: Array Contact } -> Array Contact
   conv { contacts } = contacts
 
-getLegalEntities :: forall m. MonadAff m => m (Loadable (Array LegalEntity))
-getLegalEntities = map (map conv) $ getJson url
+getLegalEntities ::
+  forall f m.
+  MonadAff m =>
+  CredentialStore f m =>
+  m (Loadable (Array LegalEntity))
+getLegalEntities = map (map conv) $ getRJson url
   where
-  url = smartSpecBaseUrl </> "examples" </> "legalentities.json"
+  url = orderingBaseUrl </> "v1" </> "legal-entities"
 
   conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
   conv { legalEntities } = legalEntities
 
 -- | Fetch the legal entity with the given registered name.
-getLegalEntity :: forall m. MonadAff m => String -> m (Loadable LegalEntity)
+getLegalEntity :: forall f m. MonadAff m => CredentialStore f m => String -> m (Loadable LegalEntity)
 getLegalEntity registeredName = do
   lLegalEntities <- getLegalEntities
   let
@@ -237,7 +241,7 @@ getLegalEntity registeredName = do
       Just legalEntity -> Loaded legalEntity
 
 -- | Fetch the legal entity with the given registered name.
-getLegalEntityByShortName :: forall m. MonadAff m => String -> m (Loadable LegalEntity)
+getLegalEntityByShortName :: forall f m. MonadAff m => CredentialStore f m => String -> m (Loadable LegalEntity)
 getLegalEntityByShortName novaShortName = do
   lLegalEntities <- getLegalEntities
   let

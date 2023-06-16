@@ -14,7 +14,7 @@
     "target": "https://smart-solution.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true,
     "pathRewrite": {
-      "^/examples/product-catalog.json$": "/examples/product-catalog.staging.n.json"
+      "^/examples/product-catalog.json$": "/examples/product-catalog.staging.json"
     }
   },
   "/v1/files": {
@@ -26,6 +26,10 @@
     "changeOrigin": true
   },
   "/v1/sofa-util": {
+    "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
+    "changeOrigin": true
+  },
+  "/v1/legal-entities": {
     "target": "https://ordering.eu1tst.bpa.unauth.int.staging.sinch.com",
     "changeOrigin": true
   },
