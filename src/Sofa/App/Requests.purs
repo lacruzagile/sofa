@@ -102,6 +102,9 @@ jiraUrl = orderingBaseUrl </> "v1" </> "sofa-util" </> "jira-users"
 emptyUrlParams :: UrlParams.URLSearchParams
 emptyUrlParams = UrlParams.fromString ""
 
+vpnErrorMessage :: String
+vpnErrorMessage = "This could be a VPN Issue, please check VPN"
+
 infixr 5 appendPathPiece as </>
 
 infixr 5 appendUrlParams as <?>
@@ -612,7 +615,7 @@ handleResponse ::
   Either AX.Error { body :: body, status :: StatusCode | r } ->
   Loadable result
 handleResponse handleBody decodeError = case _ of
-  Left err -> Error $ AX.printError err
+  Left err -> Error $ AX.printError err <> (" - " <> vpnErrorMessage)
   Right resp
     | statusOk resp.status -> handleBody resp.body
     | statusNotFound resp.status -> Error "Not found"
