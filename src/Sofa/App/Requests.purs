@@ -103,7 +103,7 @@ emptyUrlParams :: UrlParams.URLSearchParams
 emptyUrlParams = UrlParams.fromString ""
 
 vpnErrorMessage :: String
-vpnErrorMessage = "This could be a VPN Issue, please check VPN"
+vpnErrorMessage = "Potential VPN issue - if you are connected please disconnect and re-connect and try again"
 
 infixr 5 appendPathPiece as </>
 
