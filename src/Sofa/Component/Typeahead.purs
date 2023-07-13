@@ -3,6 +3,7 @@
 module Sofa.Component.Typeahead (initRenderState, render) where
 
 import Prelude
+
 import Data.Array as A
 import Data.Maybe (Maybe(..), maybe)
 import Halogen as H
@@ -27,6 +28,7 @@ type RenderState act
     , wrapperClasses :: Array HH.ClassName
     , inputClasses :: Array HH.ClassName
     , onInputFocus :: Maybe (Event.FocusEvent -> act) -- ^ Action when input is focused.
+    , required :: Boolean
     }
 
 initRenderState ::
@@ -47,6 +49,7 @@ initRenderState st =
   , wrapperClasses: []
   , inputClasses: []
   , onInputFocus: Nothing
+  , required: false
   }
 
 render :: forall act m. RenderState act -> H.ComponentHTML (Sel.Action act) () m
@@ -85,6 +88,7 @@ render st =
         ]
       <> maybe [] (A.singleton <<< HP.value) st.selected
       <> maybe [] (\act -> [ HE.onFocus (Sel.Action <<< act) ]) st.onInputFocus
+      -- <> [ HP.required st.required ]
 
   inputClasses =
     [ "nectary-input"

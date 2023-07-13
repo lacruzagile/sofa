@@ -123,6 +123,7 @@ module Sofa.Data.SmartSpec
   ) where
 
 import Prelude
+
 import Control.Alternative ((<|>))
 import Data.Argonaut (class DecodeJson, class EncodeJson, Json, JsonDecodeError(..), decodeJson, encodeJson, jsonEmptyObject, (.!=), (.:), (.:?), (:=), (:=?), (~>), (~>?))
 import Data.Array as A
@@ -1334,6 +1335,7 @@ instance encodeJsonSchemaWidget :: EncodeJson SchemaWidget where
 type ConfigSchemaEntryMeta
   = ( title :: Maybe String
     , description :: Maybe String
+    , required :: Maybe Boolean
     )
 
 data ConfigSchemaEntry
@@ -1398,17 +1400,18 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
       type_ <- o .: "type"
       title <- o .:? "title"
       description <- o .:? "description"
+      required <- o .:? "required"
       case type_ of
         "boolean" -> do
           default <- o .:? "default"
-          Right $ CseBoolean { title, description, default }
+          Right $ CseBoolean { title, description, default, required }
         "integer" -> do
           minimum <- o .:? "minimum"
           maximum <- o .:? "maximum"
           enum <- o .:? "enum" .!= []
           default <- o .:? "default"
           widget <- o .:? "widget"
-          Right $ CseInteger { title, description, minimum, maximum, enum, default, widget }
+          Right $ CseInteger { title, description, minimum, maximum, enum, default, widget, required }
         "string" -> do
           minLength <- o .:? "minLength"
           maxLength <- o .:? "maxLength"
@@ -1426,6 +1429,7 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
                 , pattern
                 , default
                 , widget
+                , required
                 }
         "date" -> do
           enum <- o .:? "enum" .!= []
@@ -1440,20 +1444,21 @@ instance decodeJsonConfigSchemaEntry :: DecodeJson ConfigSchemaEntry where
                 , pattern
                 , default
                 , widget
+                , required
                 }
         "regex" -> do
           pattern <- o .: "pattern"
           default <- o .:? "default"
           widget <- o .:? "widget"
-          Right $ CseRegex { title, description, pattern, default, widget }
+          Right $ CseRegex { title, description, pattern, default, widget, required }
         "array" -> do
           items <- o .: "items"
           widget <- o .:? "widget"
-          Right $ CseArray { title, description, items, widget }
+          Right $ CseArray { title, description, items, widget, required }
         "object" -> do
           properties :: FO.Object ConfigSchemaEntry <- o .: "properties"
           widget <- o .:? "widget"
-          Right $ CseObject { title, description, properties, widget }
+          Right $ CseObject { title, description, properties, widget, required }
         _ -> Left (TypeMismatch "ConfigSchemaEntry")
 
     constValue = CseConst <$> decodeJson json
@@ -1601,6 +1606,7 @@ newtype Product
   , features :: Maybe (Array ProductFeature)
   , chargeUnits :: Array ChargeUnit -- ^ Charge units ordered by unit ID.
   , rules :: Maybe (Array Rule)
+  --, required :: Maybe (Array String)
   }
 
 derive instance newtypeProduct :: Newtype Product _
@@ -1623,6 +1629,7 @@ instance decodeJsonProduct :: DecodeJson Product where
       A.sortBy (comparing (_.id <<< unwrap))
         <$> (o .:? "chargeUnits" .!= [])
     rules <- o .:? "rules"
+    --required <- o .:? "required"
     pure
       $ Product
           { sku
@@ -1636,6 +1643,7 @@ instance decodeJsonProduct :: DecodeJson Product where
           , features
           , chargeUnits
           , rules
+          --, required
           }
 
 derive newtype instance encodeJsonProduct :: EncodeJson Product
