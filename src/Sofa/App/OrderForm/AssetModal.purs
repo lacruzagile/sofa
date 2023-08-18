@@ -28,6 +28,7 @@ data Action
   = OpenModal Event.MouseEvent
   | CloseModal Event.MouseEvent
   | Copy String Event.MouseEvent
+  | StopPropagation Event.MouseEvent
 
 type Slot id
   = forall query output.
@@ -93,8 +94,7 @@ renderModal state =
     , Modal.render
         $ Modal.defaultInput
             { title = HH.text "Asset Information"
-            , closeAction = Just CloseModal
-            , backgroundClickAction = Just CloseModal
+            , backgroundClickAction = Just StopPropagation
             , content = renderContent state
             }
     ]
@@ -206,3 +206,6 @@ handleAction = case _ of
   Copy value event -> do
     H.liftEffect $ Event.stopPropagation $ Event.toEvent event
     H.liftEffect $ copyToClipboard value
+  StopPropagation event -> do
+    -- Don't propagate the click to the underlying table row.
+    H.liftEffect $ Event.stopPropagation $ Event.toEvent event
