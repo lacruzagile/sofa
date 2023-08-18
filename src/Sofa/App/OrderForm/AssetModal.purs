@@ -94,6 +94,7 @@ renderModal state =
     , Modal.render
         $ Modal.defaultInput
             { title = HH.text "Asset Information"
+            , closeAction = Just CloseModal
             , backgroundClickAction = Just StopPropagation
             , content = renderContent state
             }
