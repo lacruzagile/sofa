@@ -88,7 +88,7 @@ render st =
         ]
       <> maybe [] (A.singleton <<< HP.value) st.selected
       <> maybe [] (\act -> [ HE.onFocus (Sel.Action <<< act) ]) st.onInputFocus
-      -- <> [ HP.required st.required ]
+      <> [ HP.required st.required ]
 
   inputClasses =
     [ "nectary-input"

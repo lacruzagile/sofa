@@ -37,9 +37,9 @@ module Sofa.Data.SmartSpec
   , EstimatedWapPerUnit(..)
   , LegalEntity(..)
   , LegalEntityTraffic(..)
+  , MarioPriority(..)
   , Minimum(..)
   , MinimumPerDim(..)
-  , MarioPriority(..)
   , OrderApprovalStatus(..)
   , OrderForm(..)
   , OrderId(..)
@@ -120,7 +120,8 @@ module Sofa.Data.SmartSpec
   , prettyOrderLineStatus
   , prettyOrderStatus
   , solutionProducts
-  ) where
+  )
+  where
 
 import Prelude
 
