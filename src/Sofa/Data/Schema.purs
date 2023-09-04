@@ -39,40 +39,13 @@ getTitle = case _ of
 -- | Determines whether the given value is valid for the given schema.
 checkValue :: ConfigSchemaEntry -> ConfigValue -> Either String Unit
 checkValue (CseBoolean si) (CvBoolean v) = Right unit
-{-   let
-    val = v
-    isFilled:: Maybe Boolean -> Boolean
-    isFilled  = case _ of
-      Just true -> true
-      Just false -> true
-      _ -> false
-  in
-    case si.required of
-      Just true 
-        -> do
-          if isFilled (Maybe val) then
-            Right unit
-          else
-            Left "Value required"    
-      _ -> Right unit -}
-      
-      --maybe false (\b -> isFilled b) val -> Left "Value required"
-    {- case required of
-      Just true -> maybe false (\b -> isFilled b) val -> Left "Value required"
-      _ -> Right unit -}
-
 
 checkValue (CseInteger si) (CvInteger i)
   | maybe false (\c -> c > i) si.minimum = Left "integer too small"
   | maybe false (\c -> i > c) si.maximum = Left "integer too large"
   | not (A.null si.enum || A.elem i si.enum) = Left "integer not of allowed value"
-  -- | maybe true (isRequired si.required i) = Left "Value required"
   | otherwise = Right unit
-  --where 
-  --  isRequired required value = case required of
-  --    Just true ->  maybe true (\c -> c == 0) value
-  --    _  -> false
-
+  
 checkValue (CseString si) (CvString i) =
   let
     len = S.length i
