@@ -30,6 +30,7 @@ type Input m
   = { value :: Maybe SS.ConfigValue
     , getEnumData :: Maybe String -> m DataSourceEnumResult
     , readOnly :: Boolean
+    , required :: Boolean
     }
 
 type Output
@@ -41,6 +42,7 @@ type State m
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , getEnumData :: Maybe String -> m DataSourceEnumResult
     , readOnly :: Boolean
+    , required :: Boolean
     )
 
 data Action
@@ -84,6 +86,7 @@ component =
     , available: Idle
     , getEnumData: input.getEnumData
     , readOnly: input.readOnly
+    , required: input.required
     }
 
   getDataItemCount st = maybe 0 A.length $ Loadable.toMaybe $ st.available

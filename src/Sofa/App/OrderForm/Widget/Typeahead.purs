@@ -1,6 +1,7 @@
 module Sofa.App.OrderForm.Widget.Typeahead (Slot, Output(..), proxy, component) where
 
 import Prelude
+
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Int as Int
@@ -35,6 +36,7 @@ type Input m
     , debounceMs :: Int
     , getEnumData :: Maybe String -> m DataSourceEnumResult
     , readOnly :: Boolean
+    , required :: Boolean
     }
 
 type Output
@@ -47,6 +49,7 @@ type State m
     , minInputLength :: Int
     , getEnumData :: Maybe String -> m DataSourceEnumResult
     , readOnly :: Boolean
+    , required :: Boolean
     )
 
 data Action
@@ -92,6 +95,7 @@ component =
     , minInputLength: input.minInputLength
     , getEnumData: input.getEnumData
     , readOnly: input.readOnly
+    , required: input.required
     }
 
   getDataItemCount st = maybe 0 A.length $ Loadable.toMaybe $ st.filtered
@@ -191,6 +195,7 @@ component =
             , loading = Loadable.isLoading st.filtered
             , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
             , onInputFocus = Just $ \_ -> InputFocused
+            , required = st.required
             }
 
 filterAvailable ::

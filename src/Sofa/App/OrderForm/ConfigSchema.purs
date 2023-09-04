@@ -8,6 +8,7 @@ module Sofa.App.OrderForm.ConfigSchema
   ) where
 
 import Prelude
+
 import Control.Alternative ((<|>))
 import Data.Array as A
 import Data.Int as Int
@@ -23,6 +24,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA (required)
 import Sofa.App.OrderForm.Widget.AssetConfigLink (SkuConfigs)
 import Sofa.App.OrderForm.Widget.AssetConfigLink as WAssetConfigLink
 import Sofa.App.OrderForm.Widget.Checkbox as WCheckbox
@@ -163,7 +165,7 @@ render state@{ orderLineId } =
     SS.ConfigSchemaEntry ->
     H.ComponentHTML Action Slots m
   renderEntry entryIdx act fallbackTitle value schemaEntry = case schemaEntry of
-    SS.CseBoolean _ ->
+    SS.CseBoolean c ->
       let
         checked = case value of
           Just (SS.CvBoolean b) -> b
@@ -172,8 +174,10 @@ render state@{ orderLineId } =
         renderCheckbox fallbackTitle schemaEntry
           [ HP.checked checked
           , HE.onChecked (act <<< const <<< SS.CvBoolean)
+          , HP.required $ maybe false (_ == true) c.required
           ]
-    SS.CseInteger { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
+    SS.CseInteger { required: Just req, widget: Just w } -> renderWidget entryIdx fallbackTitle value req schemaEntry act w
+    SS.CseInteger { widget: Just w } -> renderWidget entryIdx fallbackTitle value false schemaEntry act w
     SS.CseInteger c
       | not (A.null c.enum) ->
         renderEnumEntry
@@ -181,6 +185,7 @@ render state@{ orderLineId } =
           act
           fallbackTitle
           value
+          c.required
           schemaEntry
           c
           SS.CvInteger
@@ -199,6 +204,7 @@ render state@{ orderLineId } =
               , HP.disabled state.readOnly
               , HE.onInput $ CheckInput entryIdx
               , HE.onValueChange (mact (act <<< const <<< SS.CvInteger) <<< Int.fromString)
+              , HP.required $ maybe false (_ == true) c.required
               ]
                 <> opt (HP.value <<< show) value
                 <> opt (HP.min <<< Int.toNumber) c.minimum
@@ -208,7 +214,8 @@ render state@{ orderLineId } =
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
             , wrapperClasses = [ Css.c "w-90pur", Css.c "min-w-96" ]
             }
-    SS.CseString { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
+    SS.CseString { required: Just req, widget: Just w } -> renderWidget entryIdx fallbackTitle value req schemaEntry act w
+    SS.CseString { widget: Just w } -> renderWidget entryIdx fallbackTitle value false schemaEntry act w
     SS.CseString c
       | not (A.null c.enum) ->
         renderEnumEntry
@@ -216,6 +223,7 @@ render state@{ orderLineId } =
           act
           fallbackTitle
           value
+          c.required
           schemaEntry
           c
           SS.CvString
@@ -258,7 +266,7 @@ render state@{ orderLineId } =
                         [ "nectary-input", "w-full" ]
                 , HP.placeholder placeholder
                 , HP.disabled state.readOnly
-                , HP.required $ maybe false (_ > 0) c.minLength
+                , HP.required $ maybe false (_ > 0) c.minLength || maybe false (_ == true) c.required
                 -- ^ Basic heuristic. Should support proper JSON Schema `required`.
                 , HE.onInput $ CheckInput entryIdx
                 , HE.onValueChange (act <<< const <<< SS.CvString)
@@ -272,7 +280,8 @@ render state@{ orderLineId } =
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
             , wrapperClasses = [ Css.c "w-90pur", Css.c "min-w-96" ]
             }
-    SS.CseDate { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
+    SS.CseDate { required: Just req, widget: Just w } -> renderWidget entryIdx fallbackTitle value req schemaEntry act w
+    SS.CseDate { widget: Just w } -> renderWidget entryIdx fallbackTitle value false schemaEntry act w
     SS.CseDate c
       | not (A.null c.enum) ->
         renderEnumEntry
@@ -280,6 +289,7 @@ render state@{ orderLineId } =
           act
           fallbackTitle
           value
+          c.required
           schemaEntry
           c
           SS.CvDate
@@ -311,6 +321,7 @@ render state@{ orderLineId } =
                 -- ^ Basic heuristic. Should support proper JSON Schema `required`.
                 , HE.onInput $ CheckInput entryIdx
                 , HE.onValueChange (act <<< const <<< SS.CvDate)
+                , HP.required $ maybe false (_ == true) c.required
                 ]
                   <> opt HP.value (maybe c.default (Just <<< show) value)
                   <> pat
@@ -319,7 +330,8 @@ render state@{ orderLineId } =
             , tooltipText = SS.configSchemaEntryDescription schemaEntry
             , wrapperClasses = [ Css.c "w-96" ]
             }
-    SS.CseRegex { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
+    SS.CseRegex { required: Just req, widget: Just w } -> renderWidget entryIdx fallbackTitle value req schemaEntry act w
+    SS.CseRegex { widget: Just w } -> renderWidget entryIdx fallbackTitle value false schemaEntry act w
     SS.CseRegex c ->
       InputField.render
         $ InputField.defaultInput
@@ -335,6 +347,7 @@ render state@{ orderLineId } =
               , HP.pattern c.pattern
               , HE.onInput $ CheckInput entryIdx
               , HE.onValueChange (act <<< const <<< SS.CvString)
+              , HP.required $ maybe false (_ == true) c.required
               ]
                 <> opt HP.value (maybe c.default (Just <<< show) value)
             , label = fromMaybe fallbackTitle $ SS.configSchemaEntryTitle schemaEntry
@@ -345,7 +358,8 @@ render state@{ orderLineId } =
     SS.CseConst _c ->
       renderEntry' fallbackTitle schemaEntry
         $ HH.input [ HP.type_ HP.InputText, HP.value "const", HP.disabled true ]
-    SS.CseArray { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
+    SS.CseArray { required: Just req, widget: Just w } -> renderWidget entryIdx fallbackTitle value req schemaEntry act w
+    SS.CseArray { widget: Just w } -> renderWidget entryIdx fallbackTitle value false schemaEntry act w
     SS.CseArray c ->
       let
         entries = case value of
@@ -379,7 +393,8 @@ render state@{ orderLineId } =
           $ A.mapWithIndex
               (\i -> renderListEntry (pushEntryIndex entryIdx i) (act' i) (removeAct i) c.items)
               entries
-    SS.CseObject { widget: Just w } -> renderWidget entryIdx fallbackTitle value schemaEntry act w
+    SS.CseObject { required: Just req, widget: Just w } -> renderWidget entryIdx fallbackTitle value req schemaEntry act w
+    SS.CseObject { widget: Just w } -> renderWidget entryIdx fallbackTitle value false schemaEntry act w
     SS.CseObject c ->
       let
         findVal k = Map.lookup k $ toVal value
@@ -480,7 +495,7 @@ render state@{ orderLineId } =
       , withDescription fallbackTitle schemaEntry
       ]
 
-  renderWidget entryIdx fallbackTitle value schemaEntry act = case _ of
+  renderWidget entryIdx fallbackTitle value required schemaEntry act = case _ of
     SS.SwTextarea ->
       labelled
         $ HH.slot
@@ -492,6 +507,7 @@ render state@{ orderLineId } =
                   Just (SS.CvString string) -> Just string
                   _ -> Nothing
             , readOnly: state.readOnly
+            , required: required
             }
             (mact (act <<< const <<< SS.CvString))
     SS.SwCheckbox { dataSource } ->
@@ -509,6 +525,7 @@ render state@{ orderLineId } =
                         _ -> []
                   , getEnumData: getEnumData
                   , readOnly: state.readOnly
+                  , required: required
                   }
                   (mact (act <<< const <<< SS.CvArray) <<< Just)
             )
@@ -525,6 +542,7 @@ render state@{ orderLineId } =
                   { value
                   , getEnumData: getEnumData
                   , readOnly: state.readOnly
+                  , required: required
                   }
                   (mact (act <<< const))
             )
@@ -538,7 +556,9 @@ render state@{ orderLineId } =
                   WRadio.proxy
                   entryIdx
                   WRadio.component
-                  { value, getEnumData: getEnumData }
+                  { value, getEnumData: getEnumData
+                    ,required: required
+                  }
                   (mact (act <<< const))
             )
             (mkGetEnumData <$> dataSourceWithFallback dataSource)
@@ -556,6 +576,7 @@ render state@{ orderLineId } =
                   , debounceMs
                   , getEnumData: getEnumData
                   , readOnly: state.readOnly
+                  , required: required
                   }
                   (mact (act <<< const))
             )
@@ -570,6 +591,7 @@ render state@{ orderLineId } =
             , skuPattern: sku
             , configs: state.getConfigs unit
             , readOnly: state.readOnly
+            , required: required
             }
             (mact (act <<< const))
     SS.SwFileAttachment { maxSize, mediaTypes } ->
@@ -677,12 +699,13 @@ render state@{ orderLineId } =
     ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
     String ->
     Maybe SS.ConfigValue ->
+    Maybe Boolean ->
     SS.ConfigSchemaEntry ->
     { default :: Maybe a, enum :: Array a | r } ->
     (a -> SS.ConfigValue) ->
     (a -> String) ->
     H.ComponentHTML Action Slots m
-  renderEnumEntry entryIdx act fallbackTitle value schemaEntry c mkValue showValue =
+  renderEnumEntry entryIdx act fallbackTitle value required schemaEntry c mkValue showValue =
     renderEntry' fallbackTitle schemaEntry
       $ if state.readOnly then
           HH.div
@@ -708,6 +731,7 @@ render state@{ orderLineId } =
                       A.findIndex (\v -> mkValue v == selVal) c.enum
                   , values = A.mapWithIndex (\i e -> Tuple (HH.div [HP.title $ showValue e] [HH.text $ showValue e]) i) c.enum
                   , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
+                  , required = maybe false (_ == true) required --getRequiredFromSchema schemaEntry --schemaEntry.required
                   }
               )
               onIndexChange

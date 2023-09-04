@@ -1,6 +1,7 @@
 module Sofa.App.OrderForm.Widget.AssetConfigLink (SkuConfigs, Slot, Output(..), proxy, component) where
 
 import Prelude
+
 import Control.Alternative (guard)
 import Data.Array as A
 import Data.Either (either)
@@ -12,6 +13,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA (required)
 import Sofa.Component.Select as Select
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -37,6 +39,7 @@ type Input
     , configs :: Array SkuConfigs
     -- ^ Array of configurations associated with different SKUs.
     , readOnly :: Boolean
+    , required :: Boolean
     }
 
 type SkuConfigs
@@ -57,6 +60,7 @@ type State
     , value :: Maybe SS.ConfigValue
     , options :: Array { configId :: SS.OrderLineConfigId, label :: String }
     , readOnly :: Boolean
+    , required :: Boolean
     }
 
 data Action
@@ -100,6 +104,7 @@ initialState input =
         { label, config: SS.OrderLineConfig { id } } <- configs.configs
         maybe [] (\configId -> [ { configId, label } ]) id
   , readOnly: input.readOnly
+  , required: input.required
   }
 
 initialize :: Maybe Action
@@ -141,6 +146,7 @@ render st
           , values = map (\o -> Tuple (HH.div [HP.title $ o.label] [HH.text $ o.label]) o.configId) st.options
           , noSelectionText = "Please choose a configuration"
           , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
+          , required = st.required
           }
       )
       Select

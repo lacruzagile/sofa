@@ -267,6 +267,7 @@ validatesBoolean = do
       { title: Nothing
       , description: Nothing
       , "default": Nothing
+      , required: Nothing
       }
 
 validatesInteger :: Spec Unit
@@ -283,6 +284,7 @@ validatesInteger = do
       , maximum: Nothing
       , enum: []
       , widget: Nothing
+      , required: Nothing
       }
 
 validatesString :: Spec Unit
@@ -305,6 +307,7 @@ validatesString = do
       , pattern: Nothing
       , "default": Nothing
       , widget: Nothing
+      , required: Nothing
       }
 
   schemaWithPattern =
@@ -317,6 +320,7 @@ validatesString = do
       , pattern: Just "^a.c"
       , "default": Nothing
       , widget: Nothing
+      , required: Nothing
       }
 
 validatesRegex :: Spec Unit
@@ -333,6 +337,7 @@ validatesRegex = do
       , pattern: "^a.c"
       , "default": Nothing
       , widget: Nothing
+      , required: Nothing
       }
 
 validatesConst :: Spec Unit
@@ -347,6 +352,7 @@ validatesConst = do
       { title: Nothing
       , description: Nothing
       , const: SS.CvInteger 10
+      , required: Nothing
       }
 
 validatesArray :: Spec Unit
@@ -362,6 +368,7 @@ validatesArray = do
     SS.CseArray
       { title: Nothing
       , description: Nothing
+      , required: Nothing
       , items:
           SS.CseInteger
             { title: Nothing
@@ -371,6 +378,7 @@ validatesArray = do
             , maximum: Nothing
             , enum: []
             , widget: Nothing
+            , required: Nothing
             }
       , widget: Nothing
       }
@@ -408,6 +416,7 @@ validatesObject = do
     SS.CseObject
       { title: Nothing
       , description: Nothing
+      , required: Nothing
       , properties:
           FO.fromHomogeneous
             { bool:
@@ -415,6 +424,7 @@ validatesObject = do
                   { title: Nothing
                   , description: Nothing
                   , "default": Nothing
+                  , required: Nothing
                   }
             , int:
                 SS.CseInteger
@@ -425,6 +435,7 @@ validatesObject = do
                   , maximum: Nothing
                   , enum: []
                   , widget: Nothing
+                  , required: Nothing
                   }
             }
       , widget: Nothing
@@ -443,11 +454,13 @@ validatesOneOf = do
     SS.CseOneOf
       { title: Nothing
       , description: Nothing
+      , required: Nothing
       , oneOf:
           [ SS.CseBoolean
               { title: Nothing
               , description: Nothing
               , "default": Nothing
+              , required: Nothing
               }
           , SS.CseInteger
               { title: Nothing
@@ -457,6 +470,7 @@ validatesOneOf = do
               , maximum: Nothing
               , enum: []
               , widget: Nothing
+              , required: Nothing
               }
           ]
       }

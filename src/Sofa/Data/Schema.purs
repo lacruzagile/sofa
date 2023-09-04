@@ -7,6 +7,7 @@ module Sofa.Data.Schema
   ) where
 
 import Prelude
+
 import Control.Alternative ((<|>))
 import Data.Array as A
 import Data.Either (Either(..), isRight)
@@ -17,8 +18,10 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.String as S
 import Data.String.Regex as Re
 import Data.Tuple (Tuple(..))
+--import Effect.AVar (isFilled)
 import Foreign.Object as FO
 import Sofa.Data.SmartSpec (ConfigSchemaEntry(..), ConfigValue(..))
+--import Web.HTML.Event.EventTypes (offline)
 
 -- | Tries to extract the title field from the given configuration schema entry.
 getTitle :: ConfigSchemaEntry -> Maybe String
@@ -35,14 +38,14 @@ getTitle = case _ of
 
 -- | Determines whether the given value is valid for the given schema.
 checkValue :: ConfigSchemaEntry -> ConfigValue -> Either String Unit
-checkValue (CseBoolean _) (CvBoolean _) = Right unit
+checkValue (CseBoolean si) (CvBoolean v) = Right unit
 
 checkValue (CseInteger si) (CvInteger i)
   | maybe false (\c -> c > i) si.minimum = Left "integer too small"
   | maybe false (\c -> i > c) si.maximum = Left "integer too large"
   | not (A.null si.enum || A.elem i si.enum) = Left "integer not of allowed value"
   | otherwise = Right unit
-
+  
 checkValue (CseString si) (CvString i) =
   let
     len = S.length i
@@ -121,6 +124,9 @@ checkValue _ _ = Left "incompatible types"
 
 isValidValue :: ConfigSchemaEntry -> ConfigValue -> Boolean
 isValidValue cse cv = isRight $ checkValue cse cv
+
+-- isValueRequired :: ConfigSchemaEntry -> ConfigValue -> Array String -> Either String Unit
+-- isValueRequired
 
 -- | Attempt to construct a default value that satisfies the given configuration
 -- | schema.

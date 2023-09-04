@@ -12,6 +12,7 @@ module Sofa.Component.Select
   ) where
 
 import Prelude
+
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Maybe (Maybe(..), maybe)
@@ -38,6 +39,7 @@ type Input a
     , values :: Array (Tuple HH.PlainHTML a)
     , noSelectionText :: String
     , wrapperClasses :: Array HH.ClassName
+    , required :: Boolean
     }
 
 defaultInput :: forall a. Input a
@@ -46,6 +48,7 @@ defaultInput =
   , values: []
   , noSelectionText: "Please choose"
   , wrapperClasses: []
+  , required: false
   }
 
 type Output :: forall k. k -> k
@@ -63,6 +66,7 @@ type State a
     , values :: Array (Tuple HH.PlainHTML a)
     , noSelectionText :: String
     , wrapperClasses :: Array HH.ClassName
+    , required :: Boolean
     )
 
 type RenderState
@@ -73,12 +77,14 @@ type RenderState
     , noSelectionText :: String
     , loading :: Boolean --  ^ Show loading spinner.
     , wrapperClasses :: Array HH.ClassName
+    , required :: Boolean
     }
 
 initRenderState ::
   forall props.
   { visibility :: Sel.Visibility
   , highlightedIndex :: Maybe Int
+  , required :: Boolean
   | props
   } ->
   RenderState
@@ -90,6 +96,7 @@ initRenderState st =
   , noSelectionText: "Please select value"
   , loading: false
   , wrapperClasses: []
+  , required: st.required
   }
 
 component ::
@@ -137,6 +144,7 @@ component =
     , values: input.values
     , noSelectionText: input.noSelectionText
     , wrapperClasses: input.wrapperClasses
+    , required: input.required
     }
 
   handleInnerEvent = case _ of
@@ -210,7 +218,7 @@ render st =
     | A.null st.values =
       HH.button
         [ Css.classes btnClasses
-        , HP.disabled true
+        --, HP.disabled true
         ]
         [ HH.text "No option available"
         ]
@@ -218,7 +226,7 @@ render st =
       HH.button
         (SelSet.setToggleProps [ Css.classes btnClasses ])
         [ maybe
-            (HH.span [ Css.class_ "text-stormy-300", HP.title st.noSelectionText ] [ HH.text st.noSelectionText ])
+            (HH.span [ Css.class_ "text-stormy-300", HP.title st.noSelectionText ] [ HH.text st.noSelectionText ] )
             HH.fromPlainHTML
             selected
         ]
@@ -231,6 +239,7 @@ render st =
     ]
       <> (if st.loading || A.null st.values then [] else [ "nectary-dropdown-icon" ])
       <> (if st.visibility == Sel.Off then [] else [ "rounded-b-none" ])
+      <> (if st.required == false then [] else [ "border-red-600" ])
 
   containerClasses =
     [ "absolute"
