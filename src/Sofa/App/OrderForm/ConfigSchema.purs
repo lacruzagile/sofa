@@ -185,6 +185,7 @@ render state@{ orderLineId } =
           act
           fallbackTitle
           value
+          c.required
           schemaEntry
           c
           SS.CvInteger
@@ -222,6 +223,7 @@ render state@{ orderLineId } =
           act
           fallbackTitle
           value
+          c.required
           schemaEntry
           c
           SS.CvString
@@ -287,6 +289,7 @@ render state@{ orderLineId } =
           act
           fallbackTitle
           value
+          c.required
           schemaEntry
           c
           SS.CvDate
@@ -390,6 +393,7 @@ render state@{ orderLineId } =
           $ A.mapWithIndex
               (\i -> renderListEntry (pushEntryIndex entryIdx i) (act' i) (removeAct i) c.items)
               entries
+    SS.CseObject { required: Just req, widget: Just w } -> renderWidget entryIdx fallbackTitle value req schemaEntry act w
     SS.CseObject { widget: Just w } -> renderWidget entryIdx fallbackTitle value false schemaEntry act w
     SS.CseObject c ->
       let
@@ -695,12 +699,13 @@ render state@{ orderLineId } =
     ((Maybe SS.ConfigValue -> SS.ConfigValue) -> Action) ->
     String ->
     Maybe SS.ConfigValue ->
+    Maybe Boolean ->
     SS.ConfigSchemaEntry ->
     { default :: Maybe a, enum :: Array a | r } ->
     (a -> SS.ConfigValue) ->
     (a -> String) ->
     H.ComponentHTML Action Slots m
-  renderEnumEntry entryIdx act fallbackTitle value schemaEntry c mkValue showValue =
+  renderEnumEntry entryIdx act fallbackTitle value required schemaEntry c mkValue showValue =
     renderEntry' fallbackTitle schemaEntry
       $ if state.readOnly then
           HH.div
@@ -726,22 +731,10 @@ render state@{ orderLineId } =
                       A.findIndex (\v -> mkValue v == selVal) c.enum
                   , values = A.mapWithIndex (\i e -> Tuple (HH.div [HP.title $ showValue e] [HH.text $ showValue e]) i) c.enum
                   , wrapperClasses = [ Css.c "inline-block", Css.c "w-90pur", Css.c "min-w-96" ]
-                  , required = true --getRequiredFromSchema schemaEntry --schemaEntry.required
+                  , required = maybe false (_ == true) required --getRequiredFromSchema schemaEntry --schemaEntry.required
                   }
               )
               onIndexChange
-  
-  getRequiredFromSchema schemaEntry = case _ of 
-    SS.CseBoolean c ->  maybe false (_ == true) c.required --{ required: Just req } -> req
-  --  SS.CseInteger { required: Just req } -> req
-  --  SS.CseString { required: Just req } -> req
-  --  SS.CseDate { required: Just req } -> req
-  --  SS.CseRegex { required: Just req } -> req
-  --  SS.CseArray { required: Just req } -> req
-  --  SS.CseObject { required: Just req } -> req
-    _ -> false
-   -- SS.CseObject c -> false
-   -- SS.CseOneOf c -> false
 
   withDescription fallbackTitle schemaEntry = case SS.configSchemaEntryDescription schemaEntry of
     Nothing -> body false

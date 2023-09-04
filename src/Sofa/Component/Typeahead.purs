@@ -85,10 +85,11 @@ render st =
       $ [ HP.type_ HP.InputSearch
         , HP.classes $ Css.cs inputClasses <> st.inputClasses
         , HP.placeholder st.noSelectionText
+        , HP.required st.required
         ]
       <> maybe [] (A.singleton <<< HP.value) st.selected
       <> maybe [] (\act -> [ HE.onFocus (Sel.Action <<< act) ]) st.onInputFocus
-      <> [ HP.required st.required ]
+      <> [ HP.required st.required ] 
 
   inputClasses =
     [ "nectary-input"
@@ -100,6 +101,7 @@ render st =
       <> (if st.loading then [ "pr-8" ] else [])
       <> (if st.loading || A.null st.values then [] else [ "nectary-dropdown-icon" ])
       <> (if st.visibility == Sel.Off then [] else [ "rounded-b-none" ])
+      <> (if st.required == false then [] else [ "border-red-600" ])
 
   containerClasses =
     [ "absolute"

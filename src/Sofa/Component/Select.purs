@@ -218,7 +218,7 @@ render st =
     | A.null st.values =
       HH.button
         [ Css.classes btnClasses
-        , HP.disabled true
+        --, HP.disabled true
         ]
         [ HH.text "No option available"
         ]
