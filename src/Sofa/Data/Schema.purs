@@ -108,7 +108,7 @@ checkValue (CseArray si) (CvArray i) =
     foundError = A.findMap mkError checked
   in
     case foundError of
-      _ | maybe true (\c -> c == true && len == 0) si.required -> Left "value is required"
+      _ | maybe false (\c -> c == true && len == 0) si.required -> Left "value is required"
       Nothing -> Right unit
       Just err -> Left err
 
