@@ -18,9 +18,10 @@ import Data.Maybe (Maybe(..), maybe)
 import Data.String as S
 import Data.String.Regex as Re
 import Data.Tuple (Tuple(..))
---import Effect.AVar (isFilled)
 import Foreign.Object as FO
 import Sofa.Data.SmartSpec (ConfigSchemaEntry(..), ConfigValue(..))
+import Web.HTML.Event.EventTypes (offline)
+
 --import Web.HTML.Event.EventTypes (offline)
 
 -- | Tries to extract the title field from the given configuration schema entry.
@@ -38,7 +39,7 @@ getTitle = case _ of
 
 -- | Determines whether the given value is valid for the given schema.
 checkValue :: ConfigSchemaEntry -> ConfigValue -> Either String Unit
-checkValue (CseBoolean si) (CvBoolean v) = Right unit
+checkValue (CseBoolean _) (CvBoolean _) = Right unit
 
 checkValue (CseInteger si) (CvInteger i)
   | maybe false (\c -> c > i) si.minimum = Left "integer too small"
@@ -63,6 +64,8 @@ checkValue (CseString si) (CvString i) =
         | maybe false (\pat -> not $ matchRegex pat i) si.pattern -> Left "string doesn't match expected pattern"
       _
         | not (A.null si.enum || A.elem i si.enum) -> Left "string not of allowed value"
+      _
+        | maybe false (\c -> c == true && len == 0) si.required -> Left "value is required"
       _ -> Right unit
 
 checkValue (CseDate si) (CvDate i) =
@@ -78,6 +81,8 @@ checkValue (CseDate si) (CvDate i) =
         | maybe false (\pat -> not $ matchRegex pat i) si.pattern -> Left "string doesn't match expected pattern"
       _
         | not (A.null si.enum || A.elem i si.enum) -> Left "string not of allowed value"
+      _ 
+        | maybe false (\c -> c == true && len == 0) si.required -> Left "value is required"
       _ -> Right unit
 
 checkValue (CseRegex si) (CvString i) = case Re.regex si.pattern mempty of
@@ -92,6 +97,8 @@ checkValue (CseConst si) i
 
 checkValue (CseArray si) (CvArray i) =
   let
+    len = A.length i
+
     checked = A.mapWithIndex (\idx e -> Tuple idx (checkValue si.items e)) i
 
     mkError = case _ of
@@ -101,6 +108,7 @@ checkValue (CseArray si) (CvArray i) =
     foundError = A.findMap mkError checked
   in
     case foundError of
+      _ | maybe true (\c -> c == true && len == 0) si.required -> Left "value is required"
       Nothing -> Right unit
       Just err -> Left err
 
@@ -124,9 +132,6 @@ checkValue _ _ = Left "incompatible types"
 
 isValidValue :: ConfigSchemaEntry -> ConfigValue -> Boolean
 isValidValue cse cv = isRight $ checkValue cse cv
-
--- isValueRequired :: ConfigSchemaEntry -> ConfigValue -> Array String -> Either String Unit
--- isValueRequired
 
 -- | Attempt to construct a default value that satisfies the given configuration
 -- | schema.

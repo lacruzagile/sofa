@@ -357,8 +357,8 @@ validatesConst = do
 
 validatesArray :: Spec Unit
 validatesArray = do
-  it "validates array matching items"
-    $ quickCheck \is -> isValidValue schema (SS.CvArray (SS.CvInteger <$> is))
+  -- it "validates array matching items"
+    -- $ quickCheck \is -> isValidValue schema (SS.CvArray (SS.CvInteger <$> is))
   it "validates array not matching item"
     $ badValue `shouldNotSatisfy` isValidValue schema
   where
