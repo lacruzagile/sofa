@@ -133,9 +133,6 @@ checkValue _ _ = Left "incompatible types"
 isValidValue :: ConfigSchemaEntry -> ConfigValue -> Boolean
 isValidValue cse cv = isRight $ checkValue cse cv
 
--- isValueRequired :: ConfigSchemaEntry -> ConfigValue -> Array String -> Either String Unit
--- isValueRequired
-
 -- | Attempt to construct a default value that satisfies the given configuration
 -- | schema.
 mkDefaultConfig :: ConfigSchemaEntry -> Maybe ConfigValue
