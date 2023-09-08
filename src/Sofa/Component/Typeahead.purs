@@ -101,7 +101,7 @@ render st =
       <> (if st.loading then [ "pr-8" ] else [])
       <> (if st.loading || A.null st.values then [] else [ "nectary-dropdown-icon" ])
       <> (if st.visibility == Sel.Off then [] else [ "rounded-b-none" ])
-      <> (if st.required == false then [] else [ "border-red-600" ])
+      <> (if st.required == false || ( maybe false (\i -> i > -1 ) st.selectedIndex ) then [] else [ "border-red-600" ])
 
   containerClasses =
     [ "absolute"
