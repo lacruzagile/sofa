@@ -107,7 +107,7 @@ render st = case st.available of
           , HP.disabled st.readOnly
           , HP.checked $ Set.member v st.selected
           , HE.onChecked $ Check v
-          , HP.required st.required
+          , HP.required $ st.required && ( Set.isEmpty st.selected )
           ]
       , HH.span [ Css.class_ "ml-2" ] [ HH.text key ]
       ]
