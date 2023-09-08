@@ -1,15 +1,18 @@
 module Sofa.App.OrderForm.Widget.Radio (Slot, Output(..), proxy, component) where
 
 import Prelude
+
 import DOM.HTML.Indexed.InputType (InputType(..))
 import Data.Array as A
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..), snd)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
+import Halogen.HTML (input)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA (required)
 import Sofa.App.SchemaDataSource (DataSourceEnumResult)
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -27,6 +30,7 @@ proxy = Proxy
 type Input m
   = { value :: Maybe SS.ConfigValue
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , required :: Boolean
     }
 
 type Output
@@ -36,6 +40,7 @@ type State m
   = { selected :: Maybe SS.ConfigValue
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , getEnumData :: Maybe String -> m DataSourceEnumResult
+    , required :: Boolean
     }
 
 data Action
@@ -68,6 +73,7 @@ initialState input =
   { selected: input.value
   , available: Idle
   , getEnumData: input.getEnumData
+  , required: input.required
   }
 
 render ::
@@ -95,6 +101,7 @@ render st = case st.available of
           , Css.class_ "nectary-input-radio"
           , HP.checked $ st.selected == Just v
           , HE.onChange \_ -> Select v
+          , HP.required st.required
           ]
       , HH.span [ Css.class_ "ml-2" ] [ HH.text key ]
       ]

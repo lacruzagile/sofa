@@ -1,6 +1,7 @@
 module Sofa.App.OrderForm.Widget.Checkbox (Slot, Output(..), proxy, component) where
 
 import Prelude
+
 import DOM.HTML.Indexed.InputType (InputType(..))
 import Data.Array as A
 import Data.Maybe (Maybe(..))
@@ -9,9 +10,11 @@ import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
+import Halogen.HTML (input)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.ARIA (required)
 import Sofa.App.SchemaDataSource (DataSourceEnumResult)
 import Sofa.Css as Css
 import Sofa.Data.Auth (class CredentialStore)
@@ -29,6 +32,7 @@ type Input m
   = { value :: Array SS.ConfigValue
     , getEnumData :: Maybe String -> m DataSourceEnumResult
     , readOnly :: Boolean
+    , required :: Boolean
     }
 
 type Output
@@ -39,6 +43,7 @@ type State m
     , available :: Loadable (Array (Tuple String SS.ConfigValue))
     , getEnumData :: Maybe String -> m DataSourceEnumResult
     , readOnly :: Boolean
+    , required :: Boolean
     }
 
 data Action
@@ -72,6 +77,7 @@ initialState input =
   , available: Idle
   , getEnumData: input.getEnumData
   , readOnly: input.readOnly
+  , required: input.required
   }
 
 render ::
@@ -101,6 +107,7 @@ render st = case st.available of
           , HP.disabled st.readOnly
           , HP.checked $ Set.member v st.selected
           , HE.onChecked $ Check v
+          , HP.required $ st.required && ( Set.isEmpty st.selected )
           ]
       , HH.span [ Css.class_ "ml-2" ] [ HH.text key ]
       ]

@@ -1,6 +1,7 @@
 module Sofa.App.OrderForm.Widget.Textarea (Slot, Output(..), proxy, component) where
 
 import Prelude
+
 import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -20,6 +21,7 @@ proxy = Proxy
 type Input
   = { value :: Maybe String
     , readOnly :: Boolean
+    , required :: Boolean
     }
 
 type Output
@@ -72,6 +74,7 @@ render st
       [ HP.value $ fromMaybe "" st.value
       , Css.classes [ "nectary-textarea", "w-90pur", "min-w-96" ]
       , HE.onValueChange SetValue
+      , HP.required st.required
       ]
 
 handleAction ::

@@ -3,6 +3,7 @@
 module Sofa.Component.Typeahead (initRenderState, render) where
 
 import Prelude
+
 import Data.Array as A
 import Data.Maybe (Maybe(..), maybe)
 import Halogen as H
@@ -27,6 +28,7 @@ type RenderState act
     , wrapperClasses :: Array HH.ClassName
     , inputClasses :: Array HH.ClassName
     , onInputFocus :: Maybe (Event.FocusEvent -> act) -- ^ Action when input is focused.
+    , required :: Boolean
     }
 
 initRenderState ::
@@ -47,6 +49,7 @@ initRenderState st =
   , wrapperClasses: []
   , inputClasses: []
   , onInputFocus: Nothing
+  , required: false
   }
 
 render :: forall act m. RenderState act -> H.ComponentHTML (Sel.Action act) () m
@@ -82,9 +85,11 @@ render st =
       $ [ HP.type_ HP.InputSearch
         , HP.classes $ Css.cs inputClasses <> st.inputClasses
         , HP.placeholder st.noSelectionText
+        , HP.required st.required
         ]
       <> maybe [] (A.singleton <<< HP.value) st.selected
       <> maybe [] (\act -> [ HE.onFocus (Sel.Action <<< act) ]) st.onInputFocus
+      <> [ HP.required st.required ] 
 
   inputClasses =
     [ "nectary-input"
@@ -96,6 +101,7 @@ render st =
       <> (if st.loading then [ "pr-8" ] else [])
       <> (if st.loading || A.null st.values then [] else [ "nectary-dropdown-icon" ])
       <> (if st.visibility == Sel.Off then [] else [ "rounded-b-none" ])
+      <> (if st.required == false || ( maybe false (\i -> i > -1 ) st.selectedIndex ) then [] else [ "border-red-600" ])
 
   containerClasses =
     [ "absolute"

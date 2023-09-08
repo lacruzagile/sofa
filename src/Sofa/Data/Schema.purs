@@ -7,6 +7,7 @@ module Sofa.Data.Schema
   ) where
 
 import Prelude
+
 import Control.Alternative ((<|>))
 import Data.Array as A
 import Data.Either (Either(..), isRight)
@@ -19,6 +20,9 @@ import Data.String.Regex as Re
 import Data.Tuple (Tuple(..))
 import Foreign.Object as FO
 import Sofa.Data.SmartSpec (ConfigSchemaEntry(..), ConfigValue(..))
+import Web.HTML.Event.EventTypes (offline)
+
+--import Web.HTML.Event.EventTypes (offline)
 
 -- | Tries to extract the title field from the given configuration schema entry.
 getTitle :: ConfigSchemaEntry -> Maybe String
@@ -42,7 +46,7 @@ checkValue (CseInteger si) (CvInteger i)
   | maybe false (\c -> i > c) si.maximum = Left "integer too large"
   | not (A.null si.enum || A.elem i si.enum) = Left "integer not of allowed value"
   | otherwise = Right unit
-
+  
 checkValue (CseString si) (CvString i) =
   let
     len = S.length i
@@ -60,6 +64,8 @@ checkValue (CseString si) (CvString i) =
         | maybe false (\pat -> not $ matchRegex pat i) si.pattern -> Left "string doesn't match expected pattern"
       _
         | not (A.null si.enum || A.elem i si.enum) -> Left "string not of allowed value"
+      _
+        | maybe false (\c -> c == true && len == 0) si.required -> Left "value is required"
       _ -> Right unit
 
 checkValue (CseDate si) (CvDate i) =
@@ -75,6 +81,8 @@ checkValue (CseDate si) (CvDate i) =
         | maybe false (\pat -> not $ matchRegex pat i) si.pattern -> Left "string doesn't match expected pattern"
       _
         | not (A.null si.enum || A.elem i si.enum) -> Left "string not of allowed value"
+      _ 
+        | maybe false (\c -> c == true && len == 0) si.required -> Left "value is required"
       _ -> Right unit
 
 checkValue (CseRegex si) (CvString i) = case Re.regex si.pattern mempty of
@@ -89,6 +97,8 @@ checkValue (CseConst si) i
 
 checkValue (CseArray si) (CvArray i) =
   let
+    len = A.length i
+
     checked = A.mapWithIndex (\idx e -> Tuple idx (checkValue si.items e)) i
 
     mkError = case _ of
@@ -98,6 +108,7 @@ checkValue (CseArray si) (CvArray i) =
     foundError = A.findMap mkError checked
   in
     case foundError of
+      _ | maybe false (\c -> c == true && len == 0) si.required -> Left "value is required"
       Nothing -> Right unit
       Just err -> Left err
 
