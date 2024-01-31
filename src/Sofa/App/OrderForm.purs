@@ -1282,7 +1282,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ,HP.target "_blank"
             ]
             [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]
-      _ -> HH.button [ Css.classes [ "nectary-btn-destructive", "h-7" ]][ HH.text "Jira Ticket Not Created"]
+      _ -> HH.text ""
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
