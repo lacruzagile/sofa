@@ -1282,7 +1282,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
               ,HP.target "_blank"
             ]
             [ HH.button [ Css.classes [ "nectary-btn-secondary", "h-7" ]][ HH.text "Open Jira Ticket"]]
-      _ -> HH.button [ Css.classes [ "nectary-btn-destructive", "h-7" ]][ HH.text "Jira Ticket Not Created"]
+      _ -> HH.text ""
 
   renderOrderHeader :: OrderForm -> H.ComponentHTML Action Slots m
   renderOrderHeader orderForm =
@@ -2479,7 +2479,8 @@ handleAction = case _ of
         H.tell Commercial.proxy unit
           (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
   SetCommercial (SS.BillingAccount { displayName, shortId, commercial, legalEntity }) -> do
-    result <- H.lift $ Requests.getLegalEntityByShortName legalEntity
+    result <- H.lift $ Requests.getLegalEntityById legalEntity
+    H.liftEffect $ Console.info $ "legal entity orderform: " <> legalEntity
     let
       legalEntityResult = Loadable.toMaybe result
       sellerFull = toSeller <$> legalEntityResult
@@ -2922,8 +2923,8 @@ toSeller :: SS.LegalEntity -> SS.Seller
 toSeller (SS.LegalEntity le) =
   SS.Seller
     { sellerId: Nothing
-    , registeredName: le.registeredName
-    , novaShortName: le.novaShortName
-    , address: le.address
-    , contacts: le.contacts
+    , registeredName: le.name
+    , novaShortName: le.name
+    , address: SS.emptyAddress
+    , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
     }

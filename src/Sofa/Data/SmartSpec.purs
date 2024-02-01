@@ -3030,20 +3030,9 @@ derive newtype instance decodeJsonLegalEntityTraffic :: DecodeJson LegalEntityTr
 
 derive newtype instance encodeJsonLegalEntityTraffic :: EncodeJson LegalEntityTraffic
 
-newtype LegalEntity
-  = LegalEntity
-  { registeredName :: String
-  , novaShortName :: String
-  , status :: String
-  , allowNewCustomers :: String
-  , defaultBankCurrency :: Currency
-  , availableCurrencies :: Set Currency
-  , traffics :: Array LegalEntityTraffic
-  , address :: Address
-  , phone :: Maybe String
-  , region :: String
-  , regionalVpInDpa :: String
-  , contacts :: { primary :: Contact, finance :: Contact, support :: Contact }
+newtype LegalEntity = LegalEntity
+  { id :: String
+  , name :: String
   }
 
 derive instance newtypeLegalEntity :: Newtype LegalEntity _
