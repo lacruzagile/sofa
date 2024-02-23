@@ -2923,8 +2923,8 @@ toSeller :: SS.LegalEntity -> SS.Seller
 toSeller (SS.LegalEntity le) =
   SS.Seller
     { sellerId: Nothing
-    , registeredName: le.name
-    , novaShortName: le.name
+    , registeredName: le.shortName
+    , novaShortName: le.shortName
     , address: SS.emptyAddress
     , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
     }

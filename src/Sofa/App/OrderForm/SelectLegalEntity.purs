@@ -126,17 +126,17 @@ selectComponent =
   render st =
     Typeahead.render
       $ (Typeahead.initRenderState st)
-          { selected = map (\(SS.LegalEntity { name }) -> name) st.selected
+          { selected = map (\(SS.LegalEntity { shortName }) -> shortName) st.selected
           , selectedIndex =
             do
-              SS.LegalEntity { name: selName } <- st.selected
+              SS.LegalEntity { shortName: selName } <- st.selected
               vals <- Loadable.toMaybe st.filtered
-              A.findIndex (\(SS.LegalEntity { name: name }) -> name == selName) vals
+              A.findIndex (\(SS.LegalEntity { shortName: shortName }) -> shortName == selName) vals
           , values =
             case st.filtered of
               Loaded filtered ->
                 let
-                  renderItem (SS.LegalEntity { name }) = HH.text name
+                  renderItem (SS.LegalEntity { shortName }) = HH.text shortName
                 in
                   renderItem <$> filtered
               _ -> []

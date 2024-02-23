@@ -3033,6 +3033,7 @@ derive newtype instance encodeJsonLegalEntityTraffic :: EncodeJson LegalEntityTr
 newtype LegalEntity = LegalEntity
   { id :: String
   , name :: String
+  , shortName :: String
   }
 
 derive instance newtypeLegalEntity :: Newtype LegalEntity _
