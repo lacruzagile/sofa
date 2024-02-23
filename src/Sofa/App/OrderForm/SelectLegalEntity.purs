@@ -97,7 +97,7 @@ selectComponent =
             let
               pat = S.Pattern $ S.toLower str
 
-              match (SS.LegalEntity le) = S.contains pat (S.toLower le.registeredName)
+              match (SS.LegalEntity le) = S.contains pat (S.toLower le.name)
             in
               A.filter match <$> st.available
           }
@@ -126,17 +126,17 @@ selectComponent =
   render st =
     Typeahead.render
       $ (Typeahead.initRenderState st)
-          { selected = map (\(SS.LegalEntity { registeredName }) -> registeredName) st.selected
+          { selected = map (\(SS.LegalEntity { shortName }) -> shortName) st.selected
           , selectedIndex =
             do
-              SS.LegalEntity { registeredName: selName } <- st.selected
+              SS.LegalEntity { shortName: selName } <- st.selected
               vals <- Loadable.toMaybe st.filtered
-              A.findIndex (\(SS.LegalEntity { registeredName: name }) -> name == selName) vals
+              A.findIndex (\(SS.LegalEntity { shortName: shortName }) -> shortName == selName) vals
           , values =
             case st.filtered of
               Loaded filtered ->
                 let
-                  renderItem (SS.LegalEntity { registeredName }) = HH.text registeredName
+                  renderItem (SS.LegalEntity { shortName }) = HH.text shortName
                 in
                   renderItem <$> filtered
               _ -> []

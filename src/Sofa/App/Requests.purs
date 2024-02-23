@@ -16,16 +16,16 @@ module Sofa.App.Requests
   , getBuyer
   , getBuyerContacts
   , getBuyers
-  , getParticipants
   , getDataSourceEnum
   , getFileContent
   , getFileMetadata
   , getLegalEntities
   , getLegalEntity
-  , getLegalEntityByShortName
+  , getLegalEntityById
   , getOrder
   , getOrderForQuote
   , getOrders
+  , getParticipants
   , getProductCatalog
   , patchOrder
   , patchOrderNote
@@ -35,7 +35,8 @@ module Sofa.App.Requests
   , postOrderFulfillment
   , postOrderNote
   , postOrderObserver
-  ) where
+  )
+  where
 
 import Prelude
 
@@ -228,15 +229,16 @@ getLegalEntities = map (map conv) $ getRJson url
   where
   url = orderingBaseUrl </> "v1" </> "legal-entities"
 
-  conv :: { legalEntities :: Array LegalEntity } -> Array LegalEntity
-  conv { legalEntities } = legalEntities
+  conv :: { legalentities :: Array LegalEntity } -> Array LegalEntity
+  conv { legalentities } = legalentities
+
 
 -- | Fetch the legal entity with the given registered name.
 getLegalEntity :: forall f m. MonadAff m => CredentialStore f m => String -> m (Loadable LegalEntity)
 getLegalEntity registeredName = do
   lLegalEntities <- getLegalEntities
   let
-    isMatch (LegalEntity le) = le.registeredName == registeredName
+    isMatch (LegalEntity le) = le.id == registeredName
   pure do
     legalEntities <- lLegalEntities
     case A.find isMatch legalEntities of
@@ -244,15 +246,15 @@ getLegalEntity registeredName = do
       Just legalEntity -> Loaded legalEntity
 
 -- | Fetch the legal entity with the given registered name.
-getLegalEntityByShortName :: forall f m. MonadAff m => CredentialStore f m => String -> m (Loadable LegalEntity)
-getLegalEntityByShortName novaShortName = do
+getLegalEntityById :: forall f m. MonadAff m => CredentialStore f m => String -> m (Loadable LegalEntity)
+getLegalEntityById id = do
   lLegalEntities <- getLegalEntities
   let
-    isMatch (LegalEntity le) = le.novaShortName == novaShortName
+    isMatch (LegalEntity le) = le.id == id
   pure do
     legalEntities <- lLegalEntities
     case A.find isMatch legalEntities of
-      Nothing -> Error $ "Legal entity not found: " <> novaShortName
+      Nothing -> Error $ "Legal entity not found: " <> id
       Just legalEntity -> Loaded legalEntity
 
 getOrders ::

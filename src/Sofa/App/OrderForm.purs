@@ -2479,7 +2479,8 @@ handleAction = case _ of
         H.tell Commercial.proxy unit
           (Commercial.ResetCommercial { commercial: Nothing, crmAccountId, enabled: true })
   SetCommercial (SS.BillingAccount { displayName, shortId, commercial, legalEntity }) -> do
-    result <- H.lift $ Requests.getLegalEntityByShortName legalEntity
+    result <- H.lift $ Requests.getLegalEntityById legalEntity
+    H.liftEffect $ Console.info $ "legal entity orderform: " <> legalEntity
     let
       legalEntityResult = Loadable.toMaybe result
       sellerFull = toSeller <$> legalEntityResult
@@ -2922,8 +2923,8 @@ toSeller :: SS.LegalEntity -> SS.Seller
 toSeller (SS.LegalEntity le) =
   SS.Seller
     { sellerId: Nothing
-    , registeredName: le.registeredName
-    , novaShortName: le.novaShortName
-    , address: le.address
-    , contacts: le.contacts
+    , registeredName: le.shortName
+    , novaShortName: le.shortName
+    , address: SS.emptyAddress
+    , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
     }

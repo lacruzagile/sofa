@@ -6,6 +6,7 @@ import Data.Array as A
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe, maybe')
 import Data.Newtype (unwrap)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -200,16 +201,17 @@ renderDetails st =
         notAvailableIfNull
           $ case st.legalEntity of
               Nothing -> []
-              Just (SS.LegalEntity le) -> [ HH.text (show le.defaultBankCurrency) ]
+              -- Just (SS.LegalEntity le) -> [ HH.text (show le.defaultBankCurrency) ]
+              Just (SS.LegalEntity le) -> [ HH.text (show "") ]
 
       subtleComma = HH.span [ Css.class_ "text-stormy-300" ] [ HH.text ", " ]
 
-      currencies =
-        notAvailableIfNull
-          $ A.intersperse subtleComma
-          $ map (HH.text <<< show)
-          $ A.fromFoldable
-          $ maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity
+      -- currencies =
+      --   notAvailableIfNull
+      --     $ A.intersperse subtleComma
+      --     $ map (HH.text <<< show)
+      --     $ A.fromFoldable
+      --     $ maybe mempty (_.availableCurrencies <<< unwrap) st.legalEntity
 
       renderSellerData (SS.Seller seller) =
         HH.div [ Css.classes [ "flex", "flex-col", "gap-y-4" ] ]
@@ -236,7 +238,7 @@ renderDetails st =
                   , renderSmallTitle "Bank currency"
                   , defaultCurrency
                   , renderSmallTitle "Available currencies"
-                  , currencies
+                  -- , currencies
                   {- , renderSmallTitle "Primary Contact"
                   , renderContact seller.contacts.primary
                   , renderSmallTitle "Finance Contact"
@@ -297,10 +299,10 @@ toSeller :: SS.LegalEntity -> SS.Seller
 toSeller (SS.LegalEntity le) =
   SS.Seller
     { sellerId: Nothing
-    , registeredName: le.registeredName
-    , novaShortName: le.novaShortName
-    , address: le.address
-    , contacts: le.contacts
+    , registeredName: le.shortName
+    , novaShortName: le.shortName
+    , address: SS.emptyAddress
+    , contacts: { primary: SS.emptyContact, finance: SS.emptyContact, support: SS.emptyContact }
     }
 
 handleAction ::
@@ -329,7 +331,8 @@ handleAction = case _ of
     case novaShortName of
       Nothing -> pure unit
       Just name -> do
-        result <- H.lift $ Requests.getLegalEntityByShortName name
+        result <- H.lift $ Requests.getLegalEntityById name
+        H.liftEffect $ Console.info $ "legal entity name seller: " <> name
         let
           legalEntity = Loadable.toMaybe result
 
