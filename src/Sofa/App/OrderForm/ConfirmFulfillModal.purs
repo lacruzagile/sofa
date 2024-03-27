@@ -145,7 +145,6 @@ renderContent state =
                     , HE.onValueChange SetRelatedIssue
                     , Css.classes [ "nectary-input", "w-full" ]
                     ]
-                  , wrapperClasses = [ Css.c "w-90pur" ]
                   }
     , HH.div [ Css.classes [ "flex", "gap-5" ] ]
         [ HH.div [ Css.class_ "grow" ] []
