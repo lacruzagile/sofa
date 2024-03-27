@@ -7,30 +7,30 @@ module Sofa.App.OrderForm.ConfirmFulfillModal
   ) where
 
 import Prelude
+
 import Data.Array ((!!))
 import Data.Array as A
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String as S
-import Data.Tuple (Tuple(..))
 import Data.Traversable (for_)
-import Sofa.Data.Auth (class CredentialStore)
+import Data.Tuple (Tuple(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console as Console
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Sofa.App.OrderForm.SelectParticipant as SelectParticipant
 import Sofa.App.OrderForm.SelectBuyer as SelectBuyer
+import Sofa.App.OrderForm.SelectParticipant as SelectParticipant
+import Sofa.Component.Icon as Icon
 import Sofa.Component.InputField as InputField
 import Sofa.Component.Modal as Modal
-import Sofa.Component.Icon as Icon
 import Sofa.Component.Select as Select
-import Sofa.Component.Spinner as Spinner
+import Sofa.Css as Css
+import Sofa.Data.Auth (class CredentialStore)
 import Sofa.Data.Loadable (Loadable(..))
 import Sofa.Data.Loadable as Loadable
 import Sofa.Data.SmartSpec (MarioPriority(..), Buyer(..), Participant(..))
-import Sofa.Css as Css
 import Type.Proxy (Proxy(..))
 
 type Slot id
@@ -41,6 +41,7 @@ type Slots
   = ( marioPrioritySelect :: Select.Slot Unit MarioPriority
     , selectBuyer :: SelectBuyer.Slot Unit
     , selectParticipant :: SelectParticipant.Slot Unit
+    , relatedIssue :: String
    )
 
 type Input
@@ -55,17 +56,20 @@ data Output
     , note :: Maybe String
     -- ^ Note that should be added to the order before fulfillment.
     , requestParticipants :: Maybe String
+    , relatedIssue :: Maybe String
     }
 
 type State
   = { marioPriority :: Maybe MarioPriority
     , note :: String
     , participants :: Array Participant
+    , relatedIssue :: Maybe String
     }
 
 data Action
   = SetNote String
   | SetMarioPriority MarioPriority
+  | SetRelatedIssue String
   | Cancel
   | Confirm
   | ChooseParticipant (Loadable Participant)
@@ -95,6 +99,7 @@ initialState input =
   { marioPriority: if input.isMarioOrder then Just MarioPrioLow else Nothing
   , note: ""
   , participants: []
+  , relatedIssue: Just ""
   }
 
 render :: forall f m. MonadAff m => CredentialStore f m => State -> H.ComponentHTML Action Slots m
@@ -113,7 +118,7 @@ renderContent ::
   CredentialStore f m =>
   State -> H.ComponentHTML Action Slots m
 renderContent state =
-  HH.div [ Css.classes [ "flex", "flex-col", "gap-6", "max-w-128" ] ]
+  HH.div [ Css.classes [ "flex", "flex-col", "gap-3", "max-w-128" ] ]
     [ HH.p_ [ HH.text "Once the order is fulfilled it is not possible to edit the order anymore." ]
     , case state.marioPriority of
         Nothing -> HH.text ""
@@ -129,6 +134,19 @@ renderContent state =
     , case state.marioPriority of
         Nothing -> HH.text ""
         Just marioPrio -> renderJiraUserSelect state marioPrio
+    , case state.marioPriority of
+        Nothing -> HH.text ""
+        Just _ -> InputField.render
+              $ InputField.defaultInput
+                  { label = "Related Issue"
+                  , tooltipText = Just "It will be linked always to INT issue even if it is not the main ticket."
+                  , props =
+                    [ HP.placeholder "Link Issue Key..."
+                    , HE.onValueChange SetRelatedIssue
+                    , Css.classes [ "nectary-input", "w-full" ]
+                    ]
+                  , wrapperClasses = [ Css.c "w-90pur" ]
+                  }
     , HH.div [ Css.classes [ "flex", "gap-5" ] ]
         [ HH.div [ Css.class_ "grow" ] []
         , HH.button
@@ -196,7 +214,6 @@ renderParticipants st =
         , "justify-start"
         , "gap-x-4"
         , "gap-y-2"
-        , "my-9"
         ]
     ]
     (A.mapWithIndex (renderShowParticipants st) st.participants)
@@ -250,6 +267,7 @@ handleAction ::
   Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   SetNote note -> H.modify_ _ { note = note }
+  SetRelatedIssue relatedIssue -> H.modify_ _ { relatedIssue = Just relatedIssue }
   SetMarioPriority marioPriority ->
     H.modify_
       _ { marioPriority = Just marioPriority }
@@ -261,6 +279,7 @@ handleAction = case _ of
           { marioPriority: state.marioPriority
           , note: if S.null state.note then Nothing else Just state.note
           , requestParticipants: (parseParticipantUsers state.participants)
+          , relatedIssue: state.relatedIssue
           }
   ChooseParticipant participant ->
     case participant of

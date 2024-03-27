@@ -379,13 +379,14 @@ postOrderFulfillment ::
   forall f m.
   MonadAff m =>
   CredentialStore f m =>
-  OrderId -> Maybe MarioPriority -> Maybe String ->  Maybe String -> m (Loadable OrderForm)
-postOrderFulfillment orderId mMarioPrio mMarioNote mParticipants = postRJson_ url
+  OrderId -> Maybe MarioPriority -> Maybe String ->  Maybe String -> Maybe String -> m (Loadable OrderForm)
+postOrderFulfillment orderId mMarioPrio mMarioNote mParticipants mRelatedIssue = postRJson_ url
   where
   url = ordersUrl </> show orderId <> ":fulfillment"
     <?> (setMarioPrioParam
             $ setMarioNoteParam
             $ setMarioParticipants
+            $ setRelatedIssueParam
             $ emptyUrlParams
             )
 
@@ -396,6 +397,10 @@ postOrderFulfillment orderId mMarioPrio mMarioNote mParticipants = postRJson_ ur
   setMarioNoteParam = case mMarioNote of
     Nothing -> identity
     Just p -> UrlParams.set "marioNote" p
+
+  setRelatedIssueParam = case mRelatedIssue of
+    Nothing -> identity
+    Just p -> UrlParams.set "relatedIssue" p
 
   setMarioParticipants = case mParticipants of
     Nothing -> identity
