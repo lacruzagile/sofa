@@ -1254,6 +1254,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
           || (id == "Mario - Edit Existing Products")
           || (id == "hello-world-example")
           || (id == "Customized Jira Products")
+          || (id == "Rich Messaging - Order Products")
 
     isMarioOrder = case state of
       Initialized (Loaded { orderForm: { sections } }) -> A.any isMarioSection sections
@@ -1533,6 +1534,7 @@ render state = HH.section_ [ HH.article_ renderContent ]
         (id == "Mario - Order Products")
           || (id == "Mario - Everything Else")
           || (id == "Mario - Edit Existing Products")
+          || (id == "Rich Messaging - Order Products")
 
     isMarioOrder = A.any isMarioSection sof.orderForm.sections
 
@@ -2896,7 +2898,7 @@ handleAction = case _ of
     case mSavedOrder of
       Just (SS.OrderForm { id: Just id }) -> do
         modifyInitialized $ _ { orderFulfillStatus = FulfillStatusInFlight }
-        lOrder <- H.lift $ Requests.postOrderFulfillment id result.marioPriority result.note result.requestParticipants
+        lOrder <- H.lift $ Requests.postOrderFulfillment id result.marioPriority result.note result.requestParticipants result.relatedIssue
         -- Updates the current state to match the response order object.
         case lOrder of
           Loaded o' -> do
